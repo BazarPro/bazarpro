@@ -59,6 +59,8 @@
     # OAuth app of a SumUp sandbox merchant (developer.sumup.com); without it no SumUp OAuth
     sumup_client_id: "{{ lookup('env', 'SUMUP_REVIEW_CLIENT_ID') | default('', true) }}"
     sumup_client_secret: "{{ lookup('env', 'SUMUP_REVIEW_CLIENT_SECRET') | default('', true) }}"
+    # Optional: other scopes than the backend's default (SUMUP_SCOPES in backend/README.md)
+    sumup_scopes: "{{ lookup('env', 'SUMUP_REVIEW_SCOPES') | default('', true) }}"
     remote_app_dir: '~/app'
 
   roles:

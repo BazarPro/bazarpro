@@ -433,6 +433,8 @@ jobs:
           # without it the review app has no SumUp OAuth
           SUMUP_REVIEW_CLIENT_ID: ${{ vars.SUMUP_REVIEW_CLIENT_ID || secrets.SUMUP_REVIEW_CLIENT_ID }}
           SUMUP_REVIEW_CLIENT_SECRET: ${{ secrets.SUMUP_REVIEW_CLIENT_SECRET }}
+          # Optional: scopes of the sandbox app, if SumUp has not enabled all of the default
+          SUMUP_REVIEW_SCOPES: ${{ vars.SUMUP_REVIEW_SCOPES }}
         run: |
           export SUBDOMAIN="review-${{ github.event.pull_request.number }}"
           export PR_ID="${{ github.event.pull_request.number }}"
