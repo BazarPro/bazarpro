@@ -43,6 +43,35 @@ vi.mock('../../../../native/sumup', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../../native/sumup')>()),
   useSumUp: () => sumUp,
 }));
+// The SumUp Solo in the browser: off unless a test pairs one (lib/sumupSolo.test.ts tests the hook)
+const solo = vi.hoisted(() => ({
+  oauth: false,
+  connected: false,
+  mayConnect: false,
+  readers: null as
+    | { id: string; name: string; status: 'paired' | 'processing'; online?: boolean }[]
+    | null,
+  mayPair: false,
+  error: null as unknown,
+  busy: false,
+  reader: undefined as { id: string; name: string } | undefined,
+  ready: false,
+  paying: false,
+  connect: vi.fn(async () => {}),
+  refresh: vi.fn(async () => {}),
+  choose: vi.fn(),
+  pair: vi.fn(async () => {}),
+  remove: vi.fn(async () => {}),
+  cancel: vi.fn(async () => {}),
+  charge: vi.fn(),
+}));
+const soloEnabled = vi.hoisted(() => ({ last: undefined as boolean | undefined }));
+vi.mock('../../../../lib/sumupSolo', () => ({
+  useSumUpSolo: (enabled: boolean) => {
+    soloEnabled.last = enabled;
+    return solo;
+  },
+}));
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() },
 }));
@@ -782,5 +811,126 @@ describe('productIdFromCode', () => {
     expect(productIdFromCode(' abc123def456ghi789 ')).toBe('abc123def456ghi789');
     expect(productIdFromCode('bazarpro://user/token')).toBeNull();
     expect(productIdFromCode('12')).toBeNull();
+  });
+});
+
+describe('CheckoutPage with a SumUp Solo (browser)', () => {
+  const SOLO = { id: 'rdr_1', name: 'Kasse 1', status: 'paired' as const, online: true };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem('bazarpro:checkout:camera-enabled', 'true');
+    resetOfflineCheckout();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+    permissions.sale = true;
+    Object.assign(sumUp, { available: false, loggedIn: null, mode: 'device' });
+    Object.assign(solo, {
+      oauth: true,
+      connected: true,
+      mayConnect: false,
+      readers: [SOLO],
+      mayPair: false,
+      error: null,
+      busy: false,
+      reader: SOLO,
+      ready: true,
+      paying: false,
+    });
+    sellProducts.mockResolvedValue({ purchaseIds: ['p1'], total: 9 });
+    vi.mocked(useMutation).mockReturnValue(
+      sellProducts as unknown as ReturnType<typeof useMutation>
+    );
+    vi.mocked(useQuery).mockImplementation(((query: unknown, args: unknown) => {
+      if (args === 'skip') return undefined;
+      const name = getFunctionName(query as FunctionReference<'query'>);
+      if (name === 'events.getEvent') {
+        return { title: 'Kinderbasar', features: { cardPayments: true } };
+      }
+      if (name === 'purchases.getCheckoutItem') {
+        return ITEMS[(args as { productId: string }).productId] ?? null;
+      }
+      return NO_OFFERS;
+    }) as typeof useQuery);
+  });
+
+  it('charges the card on the Solo and books the sale with SumUp’s code', async () => {
+    solo.charge.mockResolvedValue({ status: 'successful', transactionCode: 'TCODE77' });
+    renderPage();
+    scan('jack');
+    fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
+    expect(soloEnabled.last).toBe(true);
+    expect(screen.getByRole('radio', { name: /Kasse 1/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('checkbox', { name: /bezahlt/ })).not.toBeInTheDocument();
+    const charge = screen.getByRole('button', { name: '9,00 € mit SumUp kassieren' });
+    await waitFor(() => expect(charge).toBeEnabled());
+    fireEvent.click(charge);
+
+    await waitFor(() =>
+      expect(sellProducts).toHaveBeenCalledWith(
+        expect.objectContaining({ paymentMethod: 'card', cardTransactionCode: 'TCODE77' })
+      )
+    );
+    const { deskSaleId } = sellProducts.mock.calls[0][0] as { deskSaleId: string };
+    expect(solo.charge).toHaveBeenCalledWith({ total: 9, foreignTransactionId: deskSaleId });
+    expect(sumUp.charge).not.toHaveBeenCalled();
+  });
+
+  it('shows the running payment with a way to stop it on the Solo', () => {
+    Object.assign(solo, { paying: true });
+    renderPage();
+    scan('jack');
+    fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
+    expect(screen.getByText(/Bitte am Kasse 1 mit Karte oder Handy bezahlen/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(solo.cancel).toHaveBeenCalled();
+  });
+
+  it('without a paired Solo the card is recorded by hand, and the organizer pairs one', async () => {
+    Object.assign(solo, { readers: [], reader: undefined, ready: false });
+    const { unmount } = renderPage();
+    scan('jack');
+    fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
+    expect(screen.getByText(/noch keinen SumUp Solo gekoppelt/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '9,00 € mit Karte bezahlt' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Koppeln' })).not.toBeInTheDocument();
+    unmount();
+
+    Object.assign(solo, { mayPair: true });
+    renderPage();
+    scan('jack');
+    fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
+    const pair = screen.getByRole('button', { name: 'Koppeln' });
+    expect(pair).toBeDisabled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Code vom Solo' }), {
+      target: { value: 'abcd1234' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name des Solo' }), {
+      target: { value: 'Kasse 2' },
+    });
+    fireEvent.click(pair);
+    await waitFor(() => expect(solo.pair).toHaveBeenCalledWith('ABCD1234', 'Kasse 2'));
+  });
+
+  it('tells what keeps the Solo from charging, e.g. a connection without its scopes', () => {
+    Object.assign(solo, {
+      readers: null,
+      reader: undefined,
+      ready: false,
+      error: new ApiError(403, { code: 'sumup.reconnect', message: '' }),
+    });
+    renderPage();
+    scan('jack');
+    fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
+    expect(screen.getByText(/neu verbinden/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(solo.refresh).toHaveBeenCalled();
   });
 });

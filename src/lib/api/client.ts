@@ -1,4 +1,10 @@
-import type { FunctionReference, FunctionReturnType, Id, OptionalRestArgs } from './types';
+import type {
+  FunctionReference,
+  FunctionReturnType,
+  Id,
+  OptionalRestArgs,
+  SumUpSoloCalls,
+} from './types';
 import { getFunctionName } from './functions';
 import type { PersistedQueries } from './persistedQueries';
 import { removeDeviceFiles, setDeviceOwner } from '../deviceFiles';
@@ -871,6 +877,19 @@ export class ApiClient {
       expiresAt: number;
       merchantCode?: string;
     };
+  }
+
+  /**
+   * The SumUp Solo over SumUp's Cloud API (backend/src/modules/sumup_solo.rs): the
+   * organizer's readers, and payments on them from a desk without the SumUp SDK. Not
+   * queries or mutations: each one calls SumUp, and a payment must not run twice.
+   */
+  async sumUpSolo<P extends keyof SumUpSoloCalls>(
+    path: P,
+    body: SumUpSoloCalls[P][0]
+  ): Promise<SumUpSoloCalls[P][1]> {
+    const response = await this.post(`/api/sumup/${path}`, body);
+    return (await response.json()) as SumUpSoloCalls[P][1];
   }
 
   /** Changes the password of the signed-in user; wrong old passwords count like sign-ins. */

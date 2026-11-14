@@ -6,7 +6,7 @@ use crate::common;
 use std::sync::{Arc, Mutex};
 
 use axum::body::Body;
-use axum::extract::State;
+use axum::extract::{Path, Query, State};
 use axum::http::{Request, StatusCode, header};
 use axum::routing::{get, post};
 use axum::{Form, Json, Router};
@@ -27,6 +27,18 @@ struct SumUp {
     refuse: bool,
     /// Lifetime of the access tokens it hands out
     expires_in: i64,
+    /// Solos paired with the merchant
+    readers: Vec<Value>,
+    /// Checkout requests the backend sent, with the reader
+    checkouts: Vec<(String, Value)>,
+    /// Status of the last checkout: pending, successful, failed or cancelled
+    checkout_status: String,
+    /// The transaction of the last checkout is there
+    transaction: bool,
+    /// Readers whose payment was terminated
+    terminated: Vec<String>,
+    /// Answers readers calls as for a token without the readers scopes
+    no_readers_scope: bool,
 }
 
 type Shared = Arc<Mutex<SumUp>>;
@@ -68,6 +80,147 @@ async fn token(
     }
 }
 
+type Reply404 = axum::response::Response;
+
+fn sumup_error(status: StatusCode, body: Value) -> Reply404 {
+    use axum::response::IntoResponse;
+    (status, Json(body)).into_response()
+}
+
+fn check_auth(sumup: &SumUp, headers: &axum::http::HeaderMap) -> Option<Reply404> {
+    let auth = headers.get(header::AUTHORIZATION)?.to_str().ok()?;
+    assert!(auth.starts_with("Bearer at_"), "{auth}");
+    sumup.no_readers_scope.then(|| {
+        sumup_error(
+            StatusCode::FORBIDDEN,
+            json!({ "errors": { "type": "FORBIDDEN" } }),
+        )
+    })
+}
+
+async fn list_readers(
+    State(sumup): State<Shared>,
+    Path(merchant): Path<String>,
+    headers: axum::http::HeaderMap,
+) -> Reply404 {
+    use axum::response::IntoResponse;
+    let sumup = sumup.lock().unwrap();
+    assert_eq!(merchant, "MCODE42");
+    if let Some(refused) = check_auth(&sumup, &headers) {
+        return refused;
+    }
+    Json(json!({ "items": sumup.readers })).into_response()
+}
+
+async fn create_reader(
+    State(sumup): State<Shared>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> Reply404 {
+    use axum::response::IntoResponse;
+    let mut sumup = sumup.lock().unwrap();
+    if let Some(refused) = check_auth(&sumup, &headers) {
+        return refused;
+    }
+    if body["pairing_code"] != "ABCD1234" {
+        return sumup_error(
+            StatusCode::NOT_FOUND,
+            json!({ "errors": { "detail": "no" } }),
+        );
+    }
+    let reader = json!({
+        "id": format!("rdr_{}", sumup.readers.len() + 1),
+        "name": body["name"],
+        "status": "paired",
+        "device": { "identifier": "x", "model": "virtual-solo" },
+        "created_at": "2026-11-14T10:00:00Z",
+        "updated_at": "2026-11-14T10:00:00Z"
+    });
+    sumup.readers.push(reader.clone());
+    (StatusCode::CREATED, Json(reader)).into_response()
+}
+
+async fn delete_reader(
+    State(sumup): State<Shared>,
+    Path((_, reader)): Path<(String, String)>,
+) -> StatusCode {
+    let mut sumup = sumup.lock().unwrap();
+    let before = sumup.readers.len();
+    sumup.readers.retain(|item| item["id"] != reader.as_str());
+    if sumup.readers.len() < before {
+        StatusCode::OK
+    } else {
+        StatusCode::NOT_FOUND
+    }
+}
+
+async fn reader_status(Path((_, reader)): Path<(String, String)>) -> Json<Value> {
+    let status = if reader == "rdr_1" {
+        "ONLINE"
+    } else {
+        "OFFLINE"
+    };
+    Json(json!({ "data": { "status": status } }))
+}
+
+async fn reader_checkout(
+    State(sumup): State<Shared>,
+    Path((_, reader)): Path<(String, String)>,
+    Json(body): Json<Value>,
+) -> Reply404 {
+    use axum::response::IntoResponse;
+    let mut sumup = sumup.lock().unwrap();
+    if reader != "rdr_1" {
+        return sumup_error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            json!({ "errors": { "type": "READER_OFFLINE", "detail": "The device is offline." } }),
+        );
+    }
+    sumup.checkouts.push((reader, body));
+    sumup.checkout_status = "pending".to_owned();
+    (
+        StatusCode::CREATED,
+        Json(json!({ "data": { "checkout_id": "co_1", "client_transaction_id": "ctx-1" } })),
+    )
+        .into_response()
+}
+
+async fn get_reader_checkout(
+    State(sumup): State<Shared>,
+    Path((_, _, checkout)): Path<(String, String, String)>,
+) -> Json<Value> {
+    let sumup = sumup.lock().unwrap();
+    assert_eq!(checkout, "co_1");
+    Json(json!({ "data": { "checkout_id": checkout, "status": sumup.checkout_status } }))
+}
+
+async fn terminate(
+    State(sumup): State<Shared>,
+    Path((_, reader)): Path<(String, String)>,
+) -> StatusCode {
+    let mut sumup = sumup.lock().unwrap();
+    sumup.terminated.push(reader);
+    sumup.checkout_status = "cancelled".to_owned();
+    StatusCode::ACCEPTED
+}
+
+async fn transactions(
+    State(sumup): State<Shared>,
+    Query(query): Query<HashMap<String, String>>,
+) -> Reply404 {
+    use axum::response::IntoResponse;
+    let sumup = sumup.lock().unwrap();
+    assert_eq!(query["client_transaction_id"], "ctx-1");
+    if !sumup.transaction {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    Json(json!({
+        "transaction_code": "TCODE77", "status": "SUCCESSFUL",
+        "card": { "type": "VISA", "last_4_digits": "4242" }
+    }))
+    .into_response()
+}
+
 async fn me() -> Json<Value> {
     Json(json!({ "merchant_profile": { "merchant_code": "MCODE42" } }))
 }
@@ -95,6 +248,31 @@ impl Setup {
         let server = Router::new()
             .route("/token", post(token))
             .route("/v0.1/me", get(me))
+            .route(
+                "/v0.1/merchants/{merchant}/readers",
+                get(list_readers).post(create_reader),
+            )
+            .route(
+                "/v0.1/merchants/{merchant}/readers/{reader}",
+                axum::routing::delete(delete_reader),
+            )
+            .route(
+                "/v0.1/merchants/{merchant}/readers/{reader}/status",
+                get(reader_status),
+            )
+            .route(
+                "/v0.1/merchants/{merchant}/readers/{reader}/checkout",
+                post(reader_checkout),
+            )
+            .route(
+                "/v0.1/merchants/{merchant}/readers/{reader}/checkout/{checkout}",
+                get(get_reader_checkout),
+            )
+            .route(
+                "/v0.1/merchants/{merchant}/readers/{reader}/terminate",
+                post(terminate),
+            )
+            .route("/v2.1/merchants/{merchant}/transactions", get(transactions))
             .with_state(sumup.clone());
         tokio::spawn(async move { axum::serve(listener, server).await.unwrap() });
 
@@ -400,4 +578,202 @@ async fn without_sumup_credentials_each_device_logs_in_itself(db: PgPool) {
         .await;
     assert_eq!(start.status, StatusCode::NOT_FOUND);
     assert_eq!(start.body["code"], "sumup.notConfigured");
+}
+
+// --- the Solo over the Cloud API
+
+impl Setup {
+    async fn solo(&self, path: &str, body: Value, session: &str) -> Reply {
+        let mut body = body;
+        body["eventId"] = json!(self.event);
+        self.app
+            .post(&format!("/api/sumup/{path}"), body, Some(session))
+            .await
+    }
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_organizer_pairs_a_solo_and_a_desk_charges_it(db: PgPool) {
+    let setup = Setup::new(db).await;
+    setup.connect(json!({}), "good").await;
+
+    // Pairing is the organizer's
+    let helper = setup
+        .solo(
+            "readers/pair",
+            json!({ "pairingCode": "ABCD1234" }),
+            &setup.as_helper,
+        )
+        .await;
+    assert_eq!(helper.status, StatusCode::FORBIDDEN);
+    assert_eq!(helper.body["code"], "sumup.organizerOnly");
+    let malformed = setup
+        .solo(
+            "readers/pair",
+            json!({ "pairingCode": "AB/1" }),
+            &setup.as_organizer,
+        )
+        .await;
+    assert_eq!(malformed.body["code"], "sumup.pairingCode");
+    let wrong = setup
+        .solo(
+            "readers/pair",
+            json!({ "pairingCode": "ZZZZ9999" }),
+            &setup.as_organizer,
+        )
+        .await;
+    assert_eq!(wrong.status, StatusCode::BAD_REQUEST);
+    assert_eq!(wrong.body["code"], "sumup.pairingFailed");
+    for name in ["Kasse 1", "Kasse 2"] {
+        let paired = setup
+            .solo(
+                "readers/pair",
+                json!({ "pairingCode": "abcd 1234", "name": name }),
+                &setup.as_organizer,
+            )
+            .await;
+        assert_eq!(paired.status, StatusCode::OK, "{}", paired.body);
+    }
+
+    let readers = setup.solo("readers", json!({}), &setup.as_helper).await;
+    assert_eq!(readers.status, StatusCode::OK, "{}", readers.body);
+    assert_eq!(
+        readers.body,
+        json!({
+            "mayPair": false,
+            "readers": [
+                { "id": "rdr_1", "name": "Kasse 1", "model": "virtual-solo", "status": "paired", "online": true },
+                { "id": "rdr_2", "name": "Kasse 2", "model": "virtual-solo", "status": "paired", "online": false }
+            ]
+        })
+    );
+
+    let sale = Uuid::new_v4();
+    let offline = setup
+        .solo(
+            "checkout",
+            json!({ "readerId": "rdr_2", "amountCents": 1250, "deskSaleId": sale }),
+            &setup.as_helper,
+        )
+        .await;
+    assert_eq!(offline.body["code"], "sumup.readerOffline");
+    let too_little = setup
+        .solo(
+            "checkout",
+            json!({ "readerId": "rdr_1", "amountCents": 99, "deskSaleId": sale }),
+            &setup.as_helper,
+        )
+        .await;
+    assert_eq!(too_little.body["code"], "sumup.amount");
+    let started = setup
+        .solo(
+            "checkout",
+            json!({ "readerId": "rdr_1", "amountCents": 1250, "deskSaleId": sale }),
+            &setup.as_helper,
+        )
+        .await;
+    assert_eq!(started.status, StatusCode::OK, "{}", started.body);
+    assert_eq!(
+        started.body,
+        json!({ "checkoutId": "co_1", "clientTransactionId": "ctx-1" })
+    );
+    let sent = setup.sumup.lock().unwrap().checkouts[0].1.clone();
+    assert_eq!(
+        sent["total_amount"],
+        json!({ "value": 1250, "currency": "EUR", "minor_unit": 2 })
+    );
+    assert_eq!(sent["description"], "Basar");
+
+    let status =
+        json!({ "readerId": "rdr_1", "checkoutId": "co_1", "clientTransactionId": "ctx-1" });
+    let pending = setup
+        .solo("checkout/status", status.clone(), &setup.as_helper)
+        .await;
+    assert_eq!(pending.body, json!({ "status": "pending" }));
+
+    // Paid: with SumUp's transaction code, once the transaction is there
+    setup.sumup.lock().unwrap().checkout_status = "successful".to_owned();
+    let paid = setup
+        .solo("checkout/status", status.clone(), &setup.as_helper)
+        .await;
+    assert_eq!(paid.body, json!({ "status": "successful" }));
+    setup.sumup.lock().unwrap().transaction = true;
+    let paid = setup
+        .solo("checkout/status", status.clone(), &setup.as_helper)
+        .await;
+    assert_eq!(
+        paid.body,
+        json!({ "status": "successful", "transactionCode": "TCODE77", "cardType": "VISA", "lastFour": "4242" })
+    );
+    // Without a checkout ID: by the transaction
+    let by_transaction = setup
+        .solo(
+            "checkout/status",
+            json!({ "readerId": "rdr_1", "clientTransactionId": "ctx-1" }),
+            &setup.as_helper,
+        )
+        .await;
+    assert_eq!(by_transaction.body["status"], "successful");
+
+    // The desk stops a payment
+    setup.sumup.lock().unwrap().checkout_status = "pending".to_owned();
+    let cancelled = setup
+        .solo(
+            "checkout/cancel",
+            json!({ "readerId": "rdr_1" }),
+            &setup.as_helper,
+        )
+        .await;
+    assert_eq!(cancelled.status, StatusCode::OK, "{}", cancelled.body);
+    assert_eq!(setup.sumup.lock().unwrap().terminated, ["rdr_1"]);
+    let after = setup
+        .solo("checkout/status", status, &setup.as_helper)
+        .await;
+    assert_eq!(after.body["status"], "cancelled");
+
+    // Removed by the organizer; IDs that are no IDs never reach SumUp
+    let odd = setup
+        .solo(
+            "readers/remove",
+            json!({ "readerId": "../me" }),
+            &setup.as_organizer,
+        )
+        .await;
+    assert_eq!(odd.status, StatusCode::BAD_REQUEST);
+    let removed = setup
+        .solo(
+            "readers/remove",
+            json!({ "readerId": "rdr_2" }),
+            &setup.as_organizer,
+        )
+        .await;
+    assert_eq!(removed.status, StatusCode::OK, "{}", removed.body);
+    let readers = setup.solo("readers", json!({}), &setup.as_organizer).await;
+    assert_eq!(readers.body["mayPair"], true);
+    assert_eq!(readers.body["readers"].as_array().unwrap().len(), 1);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_solo_needs_a_desk_that_may_sell_and_a_token_with_the_readers_scopes(db: PgPool) {
+    let setup = Setup::new(db.clone()).await;
+    let not_connected = setup.solo("readers", json!({}), &setup.as_helper).await;
+    assert_eq!(not_connected.body["code"], "sumup.notConnected");
+
+    setup.connect(json!({}), "good").await;
+    let outsider = fixtures::user(&db, "Fremd").await;
+    let as_outsider = fixtures::session(&db, outsider).await;
+    let foreign = setup
+        .solo(
+            "checkout",
+            json!({ "readerId": "rdr_1", "amountCents": 1000, "deskSaleId": Uuid::new_v4() }),
+            &as_outsider,
+        )
+        .await;
+    assert_eq!(foreign.status, StatusCode::FORBIDDEN);
+
+    // Connected before BazarPro asked for the readers scopes
+    setup.sumup.lock().unwrap().no_readers_scope = true;
+    let old = setup.solo("readers", json!({}), &setup.as_helper).await;
+    assert_eq!(old.status, StatusCode::FORBIDDEN);
+    assert_eq!(old.body["code"], "sumup.reconnect");
 }

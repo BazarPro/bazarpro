@@ -8,8 +8,12 @@ use base64::Engine;
 const DEFAULT_APP_ORIGINS: &str = "capacitor://localhost,https://localhost";
 
 const SUMUP_API_URL: &str = "https://api.sumup.com";
-/// Payments with the reader SDK, and the merchant code for the team (`/me`)
-const SUMUP_SCOPES: &str = "payments user.profile_readonly";
+/// Payments with the reader SDK, the merchant code for the team (`/me`), the Solo over the
+/// Cloud API (`readers.*`) and the transaction code of its payments
+const SUMUP_SCOPES: &str =
+    "payments user.profile_readonly readers.read readers.write transactions.history";
+/// The app ID SumUp ties the affiliate key to
+const SUMUP_APP_ID: &str = "de.bazarpro.app";
 
 /// Settings from the environment; see backend/README.md.
 #[derive(Clone, Debug)]
@@ -39,6 +43,9 @@ pub struct Config {
     pub sumup_api_url: String,
     /// What BazarPro asks the merchant for; SumUp has to enable `payments` for the app
     pub sumup_scopes: String,
+    /// Sent with payments on the Solo (modules::sumup_solo), so SumUp counts them for
+    /// BazarPro; optional
+    pub sumup_affiliate: Option<SumUpAffiliate>,
     pub storage: StorageConfig,
     /// Days a deleted account can be reactivated before its data is anonymized
     pub account_deletion_grace_days: i32,
@@ -153,6 +160,12 @@ pub struct SmtpConfig {
 }
 
 #[derive(Clone, Debug)]
+pub struct SumUpAffiliate {
+    pub app_id: String,
+    pub key: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct OAuthCredentials {
     pub client_id: String,
     pub client_secret: String,
@@ -210,6 +223,10 @@ impl Config {
                 .trim_end_matches('/')
                 .to_owned(),
             sumup_scopes: env_or("SUMUP_SCOPES", SUMUP_SCOPES),
+            sumup_affiliate: env("SUMUP_AFFILIATE_KEY").map(|key| SumUpAffiliate {
+                app_id: env_or("SUMUP_APP_ID", SUMUP_APP_ID),
+                key,
+            }),
             storage: match env("S3_BUCKET") {
                 Some(bucket) => StorageConfig::S3 {
                     bucket,
@@ -250,6 +267,7 @@ impl Config {
             sumup: None,
             sumup_api_url: SUMUP_API_URL.to_owned(),
             sumup_scopes: SUMUP_SCOPES.to_owned(),
+            sumup_affiliate: None,
             storage: StorageConfig::Local {
                 dir: "unused-in-tests".to_owned(),
             },

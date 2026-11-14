@@ -243,6 +243,15 @@
     "unreachable": "SumUp ist gerade nicht erreichbar. Bitte versuche es gleich noch einmal.",
     "failed": "Die Verbindung mit SumUp hat nicht geklappt. Bitte versuche es noch einmal.",
     "cancelled": "Die Verbindung mit SumUp wurde abgebrochen.",
-    "expired": "Der Link ist abgelaufen. Bitte starte die Verbindung mit SumUp noch einmal."
+    "expired": "Der Link ist abgelaufen. Bitte starte die Verbindung mit SumUp noch einmal.",
+    "organizerOnly": "Nur der Veranstalter kann Kartenleser mit seinem SumUp-Konto koppeln oder entfernen.",
+    "readerOffline": "Der SumUp Solo ist nicht online. Bitte prüfe, ob er eingeschaltet und mit WLAN oder Mobilfunk verbunden ist.",
+    "readerBusy": "Auf dem SumUp Solo läuft schon eine Zahlung. Bitte schließe sie ab oder warte eine Minute.",
+    "readerNotFound": "Dieser SumUp Solo ist nicht mehr mit dem Konto gekoppelt. Bitte wähle einen anderen oder kopple ihn neu.",
+    "reconnect": "SumUp erlaubt BazarPro den Zugriff auf den Solo noch nicht. Der Veranstalter muss SumUp unter „Kartenzahlung“ trennen und neu verbinden.",
+    "refused": "SumUp hat die Anfrage abgelehnt. Bitte versuche es noch einmal.",
+    "pairingCode": "Der Code hat 8 oder 9 Zeichen. Du findest ihn auf dem Solo unter Verbindungen → API → Verbinden.",
+    "pairingFailed": "Der Solo ließ sich nicht koppeln. Der Code gilt nur fünf Minuten, und der Solo muss vom SumUp-Konto abgemeldet sein.",
+    "amount": "SumUp nimmt Karten erst ab 1 €."
   }
 }

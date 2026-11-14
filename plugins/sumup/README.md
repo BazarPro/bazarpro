@@ -18,6 +18,21 @@ surcharge on consumer cards is void under § 270a BGB). How the SDK logs in:
   no SumUp account of their own.
 - **On the device**, on servers without these settings: the SDK's own login screen.
 
+## Desks without the SDK: the SumUp Solo
+
+In the browser (e.g. on a PC at the cash desk), and in an app without the affiliate key,
+there is no SDK. There the desk charges a **SumUp Solo** over SumUp's Cloud API
+(`backend/src/modules/sumup_solo.rs`, `src/lib/sumupSolo.ts`): the Solo is online itself
+over Wi-Fi or mobile data, the organizer pairs it once with their connected account (in
+the event settings under "card payments" or at the desk: on the Solo, logged out,
+Connections → API → Connect shows a code), and the backend sends the cart's total to it.
+The desk asks the backend every two seconds until the payment is done, and may stop it on
+the Solo while it waits for the card. This needs OAuth and the scopes `readers.read
+readers.write` (plus `transactions.history` for SumUp's transaction code); accounts
+connected before these scopes have to be disconnected and connected again. Only the Solo
+works this way; Air, 3G and PIN+ need the app. To test without hardware: the Virtual Solo
+(virtual-solo.sumup.com) with the sandbox merchant.
+
 ## Setup
 
 1. In the SumUp dashboard (Settings → Developer → Affiliate keys) create an affiliate

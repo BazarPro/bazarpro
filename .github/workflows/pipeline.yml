@@ -371,6 +371,8 @@ jobs:
           AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
           SUMUP_CLIENT_ID: ${{ vars.SUMUP_CLIENT_ID || secrets.SUMUP_CLIENT_ID }}
           SUMUP_CLIENT_SECRET: ${{ secrets.SUMUP_CLIENT_SECRET }}
+          # Sent with payments on the SumUp Solo from the browser (modules::sumup_solo)
+          SUMUP_AFFILIATE_KEY: ${{ vars.SUMUP_AFFILIATE_KEY }}
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           ansible-playbook -i ansible/inventory ansible/site.yml --tags "deploy" \

@@ -59,7 +59,9 @@ import {
 import { OfflineCheckoutBanner } from './components/OfflineCheckoutBanner';
 import { OfflineQueueRefused } from './components/OfflineQueueRefused';
 import { SumUpPanel, SumUpUnclearDialog } from './components/SumUpPanel';
+import { SumUpSoloPanel } from './components/SumUpSoloPanel';
 import { SUMUP_MIN_AMOUNT, useSumUp, type SumUpOutcome } from '../../../../native/sumup';
+import { useSumUpSolo } from '../../../../lib/sumupSolo';
 import { useOfflinePreparation } from '../../../../lib/offlinePrefetch';
 import { downloadPrivateInvoicesForSale } from '../../../../lib/privateInvoice';
 import { provisionalSale } from '../../../../lib/saleBreakdown';
@@ -282,8 +284,13 @@ function CashDesk() {
   // In the app with a SumUp login the desk charges the card itself and books afterwards;
   // the confirmation of the terminal takes the place of the tick "received"
   const sumUp = useSumUp(cardPayments, eventId as Id<'events'> | undefined);
+  // Without the SDK (in the browser, e.g. on a PC) a SumUp Solo takes the card, over
+  // SumUp's cloud and the organizer's account
+  const solo = useSumUpSolo(cardPayments && !sumUp.available, eventId as Id<'events'> | undefined);
+  const viaSolo = byCard && !sumUp.available && solo.ready && !offline.offline;
   // Offline SumUp cannot charge; the desk records a card payment by hand as before
-  const viaSumUp = byCard && sumUp.available && sumUp.loggedIn === true && !offline.offline;
+  const viaSumUp =
+    (byCard && sumUp.available && sumUp.loggedIn === true && !offline.offline) || viaSolo;
   const belowSumUpMinimum = viaSumUp && total < SUMUP_MIN_AMOUNT;
   /** A card payment SumUp could not confirm; the cashier says whether it went through */
   const [unclear, setUnclear] = useState<{
@@ -444,11 +451,13 @@ function CashDesk() {
     const deskSaleId = crypto.randomUUID();
     setIsSubmitting(true);
     try {
-      const outcome = await sumUp.charge({
-        total,
-        foreignTransactionId: deskSaleId,
-        title: event?.title,
-      });
+      const outcome = viaSolo
+        ? await solo.charge({ total, foreignTransactionId: deskSaleId })
+        : await sumUp.charge({
+            total,
+            foreignTransactionId: deskSaleId,
+            title: event?.title,
+          });
       if (outcome.status === 'successful') {
         await bookCardSale(deskSaleId, ready, outcome.transactionCode);
       } else if (outcome.status === 'unknown') {
@@ -665,6 +674,9 @@ function CashDesk() {
                     {byCard && sumUp.available && (
                       <SumUpPanel sumUp={sumUp} disabled={isSubmitting} />
                     )}
+                    {byCard && solo.oauth && !offline.offline && (
+                      <SumUpSoloPanel solo={solo} disabled={isSubmitting} />
+                    )}
                     {byCard && !viaSumUp && (
                       <p className="text-xs text-muted-foreground">{t('checkout.cardHint')}</p>
                     )}
@@ -701,7 +713,12 @@ function CashDesk() {
                       size="lg"
                       className="h-auto min-h-10 min-w-0 flex-1 gap-2 whitespace-normal"
                       disabled={
-                        !allReady || !emailValid || belowSumUpMinimum || isSubmitting || sumUp.busy
+                        !allReady ||
+                        !emailValid ||
+                        belowSumUpMinimum ||
+                        isSubmitting ||
+                        sumUp.busy ||
+                        solo.busy
                       }
                       onClick={() => void chargeWithSumUp()}
                     >

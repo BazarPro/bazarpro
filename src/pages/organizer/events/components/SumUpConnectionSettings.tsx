@@ -19,6 +19,8 @@ import { useMutation, useOptionalQuery } from '../../../../lib/api/react';
 import type { Id } from '../../../../lib/api/types';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
 import { useSumUpConnect, useSumUpReturn } from '../../../../native/sumup';
+import { useSumUpSolo } from '../../../../lib/sumupSolo';
+import { SumUpPairForm, SumUpReaderList } from '../dashboard/components/SumUpSoloPanel';
 import { useSumUpReturnToast } from './useSumUpReturnToast';
 
 /**
@@ -77,32 +79,62 @@ export function SumUpConnectionSettings({ eventId }: { eventId: Id<'events'> }) 
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <p className="min-w-0 flex-1 basis-48 text-sm text-muted-foreground">
-        {connection.merchantCode
-          ? t('features.sumup.connected', { merchant: connection.merchantCode })
-          : t('features.sumup.connectedNoCode')}
-      </p>
-      {connection.mine && (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button type="button" variant="outline" size="sm" disabled={busy}>
-              {t('features.sumup.disconnect')}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{t('features.sumup.disconnectTitle')}</AlertDialogTitle>
-              <AlertDialogDescription>{t('features.sumup.disconnectText')}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t('features.sumup.keep')}</AlertDialogCancel>
-              <AlertDialogAction onClick={() => void act(() => disconnect({}))()}>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="min-w-0 flex-1 basis-48 text-sm text-muted-foreground">
+          {connection.merchantCode
+            ? t('features.sumup.connected', { merchant: connection.merchantCode })
+            : t('features.sumup.connectedNoCode')}
+        </p>
+        {connection.mine && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="outline" size="sm" disabled={busy}>
                 {t('features.sumup.disconnect')}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('features.sumup.disconnectTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('features.sumup.disconnectText')}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('features.sumup.keep')}</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void act(() => disconnect({}))()}>
+                  {t('features.sumup.disconnect')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+      {connection.mine && <SoloSettings eventId={eventId} />}
+    </div>
+  );
+}
+
+/**
+ * The organizer's SumUp Solos, which take cards at desks without the SumUp SDK, e.g. in
+ * the browser on a PC: paired here once by the code the Solo shows.
+ */
+function SoloSettings({ eventId }: { eventId: Id<'events'> }) {
+  const { t } = useTranslation('organizer');
+  const solo = useSumUpSolo(true, eventId);
+  return (
+    <div className="space-y-2 rounded-lg border p-3">
+      <p className="text-sm font-medium">{t('features.sumup.soloTitle')}</p>
+      <p className="text-xs text-muted-foreground">{t('features.sumup.soloText')}</p>
+      {solo.error ? (
+        <p className="text-xs text-destructive">{getUserFacingErrorMessage(solo.error)}</p>
+      ) : solo.readers === null ? (
+        <p className="text-xs text-muted-foreground">{t('checkout.sumup.checking')}</p>
+      ) : (
+        <>
+          <SumUpReaderList solo={solo} disabled={false} />
+          <SumUpPairForm solo={solo} disabled={false} />
+        </>
       )}
     </div>
   );

@@ -379,6 +379,48 @@ export type SumUpConnection = {
   connectedAt?: number;
 };
 
+/** A SumUp Solo of the organizer's account (backend/src/modules/sumup_solo.rs) */
+export type SumUpReader = {
+  id: string;
+  name: string;
+  /** `solo`, or `virtual-solo` in SumUp's sandbox */
+  model?: string;
+  /** `processing` until the Solo has confirmed its pairing code */
+  status: 'paired' | 'processing';
+  /** Missing when SumUp did not say */
+  online?: boolean;
+};
+
+/** Where a payment on the Solo stands */
+export type SumUpReaderPayment = {
+  status: 'pending' | 'successful' | 'failed' | 'cancelled';
+  /** SumUp's code of the payment, once SumUp has its transaction */
+  transactionCode?: string;
+  cardType?: string;
+  lastFour?: string;
+};
+
+/** `/api/sumup/<path>`: arguments and answer of each call for the Solo */
+export type SumUpSoloCalls = {
+  readers: [{ eventId: Id<'events'> }, { readers: SumUpReader[]; mayPair: boolean }];
+  'readers/pair': [{ eventId: Id<'events'>; pairingCode: string; name?: string }, SumUpReader];
+  'readers/remove': [{ eventId: Id<'events'>; readerId: string }, { success: boolean }];
+  checkout: [
+    { eventId: Id<'events'>; readerId: string; amountCents: number; deskSaleId: string },
+    { checkoutId?: string; clientTransactionId: string },
+  ];
+  'checkout/status': [
+    {
+      eventId: Id<'events'>;
+      readerId: string;
+      checkoutId?: string;
+      clientTransactionId: string;
+    },
+    SumUpReaderPayment,
+  ];
+  'checkout/cancel': [{ eventId: Id<'events'>; readerId: string }, { success: boolean }];
+};
+
 export type EventFeatures = {
   discounts: boolean;
   discountStartsAt?: number | undefined;

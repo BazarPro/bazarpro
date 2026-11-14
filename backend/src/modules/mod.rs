@@ -36,6 +36,7 @@ pub mod seller_records;
 pub mod settlement;
 pub mod site_pages;
 pub mod sumup;
+pub mod sumup_solo;
 pub mod users;
 pub mod walk_in_sellers;
 

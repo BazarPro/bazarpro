@@ -83,6 +83,7 @@ services:
       AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
       SUMUP_CLIENT_ID: ${SUMUP_CLIENT_ID:-}
       SUMUP_CLIENT_SECRET: ${SUMUP_CLIENT_SECRET:-}
+      SUMUP_AFFILIATE_KEY: ${SUMUP_AFFILIATE_KEY:-}
     volumes:
       - files:/data/files
     labels:

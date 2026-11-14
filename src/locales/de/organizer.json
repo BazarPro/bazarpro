@@ -172,7 +172,7 @@
     "discountFromNeedsDates": "Wähle zuerst Beginn und Ende des Basars.",
     "discountStartLater": "Ab wann die Rabatte gelten, legst du bei „Wann und wo?“ fest, sobald der Termin steht.",
     "sumup": {
-      "connectText": "Verbinde dein SumUp-Konto einmal, dann kassiert jede Kasse deines Teams in der BazarPro-App damit – Helfer brauchen keine SumUp-Anmeldung.",
+      "connectText": "Verbinde dein SumUp-Konto einmal, dann kassiert jede Kasse deines Teams damit – in der BazarPro-App mit dem Kartenleser, im Browser (z. B. am PC) mit dem SumUp Solo. Helfer brauchen keine SumUp-Anmeldung.",
       "connect": "Mit SumUp verbinden",
       "saveFirst": "Bitte speichere zuerst deine Änderungen.",
       "organizerConnects": "Der Veranstalter hat noch kein SumUp-Konto verbunden. Er kann es hier verbinden.",
@@ -182,7 +182,9 @@
       "disconnect": "Trennen",
       "disconnectTitle": "SumUp trennen?",
       "disconnectText": "Die Kassen deines Teams kassieren dann nicht mehr mit deinem SumUp-Konto, bis du es wieder verbindest. Den Zugriff von BazarPro kannst du auch in SumUp selbst widerrufen.",
-      "keep": "Verbunden lassen"
+      "keep": "Verbunden lassen",
+      "soloTitle": "SumUp Solo für Kassen im Browser",
+      "soloText": "Am PC oder in einem Browser ohne BazarPro-App kassiert die Kasse über einen SumUp Solo, der per WLAN oder Mobilfunk online ist. Melde den Solo von seinem SumUp-Konto ab und öffne auf ihm Verbindungen → API → Verbinden. Gib dann den angezeigten Code hier ein."
     }
   },
   "logistics": {
@@ -751,6 +753,27 @@
       "notConnected": "Der Veranstalter hat noch kein SumUp-Konto verbunden. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
       "tokenFailed": "Die Anmeldung mit dem SumUp-Konto des Veranstalters hat nicht geklappt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
       "retry": "Erneut versuchen"
+    },
+    "solo": {
+      "title": "SumUp Solo",
+      "refresh": "Aktualisieren",
+      "online": "online",
+      "offline": "offline",
+      "processing": "wird gekoppelt…",
+      "none": "Der Veranstalter hat noch keinen SumUp Solo gekoppelt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "noneOrganizer": "Im Browser kassiert die Kasse über einen SumUp Solo. Kopple ihn einmal, dann geht der Betrag direkt an den Solo.",
+      "pairHint": "Auf dem Solo (vom SumUp-Konto abgemeldet): Verbindungen → API → Verbinden. Der Code gilt fünf Minuten.",
+      "code": "Code vom Solo",
+      "name": "Name des Solo",
+      "namePlaceholder": "Name, z. B. Kasse 1",
+      "pair": "Koppeln",
+      "pairAnother": "Weiteren Solo koppeln",
+      "paired": "Der Solo ist gekoppelt.",
+      "remove": "{{reader}} entfernen",
+      "payOnReader": "Bitte am {{reader}} mit Karte oder Handy bezahlen…",
+      "cancel": "Abbrechen",
+      "connectText": "Verbinde dein SumUp-Konto, dann kassiert die Kasse auch im Browser über deinen SumUp Solo. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "byHand": "Bis dahin: Betrag am eigenen Kartengerät eingeben."
     }
   },
   "proof": {

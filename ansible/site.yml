@@ -29,6 +29,7 @@
       AUTH_GOOGLE_SECRET: "{{ lookup('env', 'AUTH_GOOGLE_SECRET') }}"
       SUMUP_CLIENT_ID: "{{ lookup('env', 'SUMUP_CLIENT_ID') }}"
       SUMUP_CLIENT_SECRET: "{{ lookup('env', 'SUMUP_CLIENT_SECRET') }}"
+      SUMUP_AFFILIATE_KEY: "{{ lookup('env', 'SUMUP_AFFILIATE_KEY') }}"
     ci_registry: "{{ REGISTRY_URL | default(lookup('env', 'REGISTRY_URL') | default('docker.io', true), true) }}"
     ci_registry_user: "{{ REGISTRY_USER | default(lookup('env', 'REGISTRY_USER'), true) }}"
     ci_registry_password: "{{ REGISTRY_PASSWORD | default(lookup('env', 'REGISTRY_PASSWORD'), true) }}"

@@ -60,6 +60,7 @@ pub fn router() -> Router<AppState> {
         .route("/start", get(start))
         .route("/callback", get(callback))
         .route("/token", post(token))
+        .merge(super::sumup_solo::router())
 }
 
 /// Binds the flow to the browser that started it
@@ -547,33 +548,64 @@ pub struct DeskToken {
 }
 
 /// An access token of the event organizer's SumUp account, for a desk with the right to
-/// sell at an event that takes cards. Refreshed here under a row lock: SumUp may hand out
-/// a new refresh token each time, and two desks refreshing at once would lose one.
+/// sell at an event that takes cards.
 async fn token(
     State(state): State<AppState>,
     current: AuthUser,
     Json(request): Json<TokenRequest>,
 ) -> AppResult<Json<DeskToken>> {
-    let credentials = credentials(&state)?;
-    let event = request.event_id.0;
-    let mut tx = state.db.begin().await?;
-    match team_permissions(&mut tx, event, current.user_id).await? {
+    credentials(&state)?;
+    let desk = desk(&state, current.user_id, request.event_id.0).await?;
+    let access = access(&state, desk.owner).await?;
+    Ok(Json(DeskToken {
+        access_token: access.access_token,
+        expires_at: access.expires_at,
+        merchant_code: access.merchant_code,
+    }))
+}
+
+/// The event a cash desk charges cards for
+pub(super) struct Desk {
+    /// The organizer, whose SumUp account takes the money
+    pub owner: Uuid,
+    pub title: String,
+}
+
+/// The event of a desk whose user may sell there, if the event takes cards.
+pub(super) async fn desk(state: &AppState, user: Uuid, event: Uuid) -> AppResult<Desk> {
+    let mut conn = state.db.acquire().await?;
+    match team_permissions(&mut conn, event, user).await? {
         None => return Err(AppError::forbidden("auth.forbidden")),
         Some(permissions) if !permissions.contains(&Permission::Sale) => {
             return Err(AppError::forbidden("helper.sale"));
         }
         Some(_) => {}
     }
-    let (owner, stored_features): (Uuid, Option<Value>) =
-        sqlx::query_as("SELECT organizer_id, features FROM events WHERE id = $1")
+    let (owner, title, stored_features): (Uuid, String, Option<Value>) =
+        sqlx::query_as("SELECT organizer_id, title, features FROM events WHERE id = $1")
             .bind(event)
-            .fetch_optional(&mut *tx)
+            .fetch_optional(&mut *conn)
             .await?
             .ok_or_else(|| AppError::not_found("notFound.event"))?;
     if !features::resolve(stored_features.as_ref()).card_payments {
         return Err(AppError::forbidden("sumup.cardPaymentsOff"));
     }
+    Ok(Desk { owner, title })
+}
 
+/// An access token of a connected SumUp account
+pub(super) struct Access {
+    pub access_token: String,
+    pub expires_at: DateTime<Utc>,
+    pub merchant_code: Option<String>,
+}
+
+/// The access token of `owner`'s SumUp account, refreshed when it runs out soon. Refreshed
+/// under a row lock: SumUp may hand out a new refresh token each time, and two desks
+/// refreshing at once would lose one.
+pub(super) async fn access(state: &AppState, owner: Uuid) -> AppResult<Access> {
+    let credentials = credentials(state)?;
+    let mut tx = state.db.begin().await?;
     let row: Option<StoredConnection> = sqlx::query_as(
         "SELECT merchant_code, refresh_token, access_token, access_expires_at
              FROM sumup_connections WHERE user_id = $1 FOR UPDATE",
@@ -591,11 +623,11 @@ async fn token(
         && let Some(access_token) = open(credentials, owner, &sealed)
     {
         tx.commit().await?;
-        return Ok(Json(DeskToken {
+        return Ok(Access {
             access_token,
             expires_at,
             merchant_code,
-        }));
+        });
     }
 
     let Some(refresh_token) = open(credentials, owner, &sealed_refresh) else {
@@ -605,7 +637,7 @@ async fn token(
         return Err(not_connected());
     };
     let tokens = match request_tokens(
-        &state,
+        state,
         &[
             ("grant_type", "refresh_token"),
             ("refresh_token", &refresh_token),
@@ -623,11 +655,7 @@ async fn token(
         }
         Err(err) => {
             tracing::error!(error = ?err, "refreshing the SumUp token failed");
-            return Err(AppError::coded(
-                StatusCode::BAD_GATEWAY,
-                "sumup.unreachable",
-                &[],
-            ));
+            return Err(unreachable());
         }
     };
     let expires_at = expiry(&tokens);
@@ -647,11 +675,36 @@ async fn token(
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;
-    Ok(Json(DeskToken {
+    Ok(Access {
         access_token: tokens.access_token,
         expires_at,
         merchant_code,
-    }))
+    })
+}
+
+/// The merchant code of the account; asked from SumUp and kept when the connection has
+/// none yet (its `/me` did not answer when it was made).
+pub(super) async fn require_merchant_code(
+    state: &AppState,
+    owner: Uuid,
+    access: &Access,
+) -> AppResult<String> {
+    if let Some(code) = &access.merchant_code {
+        return Ok(code.clone());
+    }
+    let code = merchant_code(state, &access.access_token)
+        .await
+        .ok_or_else(unreachable)?;
+    sqlx::query("UPDATE sumup_connections SET merchant_code = $2 WHERE user_id = $1")
+        .bind(owner)
+        .bind(&code)
+        .execute(&state.db)
+        .await?;
+    Ok(code)
+}
+
+pub(super) fn unreachable() -> AppError {
+    AppError::coded(StatusCode::BAD_GATEWAY, "sumup.unreachable", &[])
 }
 
 #[cfg(test)]
