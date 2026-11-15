@@ -593,20 +593,28 @@ export function ProductManagementPage() {
           >
             <QrCode className="h-5 w-5" />
           </Button>
+          {/* Rarely needed before the drop-off ends: kept out of the way like the seller menu */}
           {canRejectAll && !showRejectNotice && (
-            <Button
-              variant="outline"
-              className="h-10 shrink-0 gap-2 px-3 shadow-sm"
-              title={t('products.rejectNotHandedInHint', { count: notHandedIn.length })}
-              aria-label={t('products.rejectNotHandedIn')}
-              onClick={() => setRejectScope('event')}
-            >
-              <PackageX className="h-5 w-5" />
-              <span className="hidden lg:inline">{t('products.rejectNotHandedIn')}</span>
-              <Badge variant="secondary" className="px-1.5 tabular-nums">
-                {notHandedIn.length}
-              </Badge>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 shadow-sm"
+                  aria-label={t('products.moreActions')}
+                >
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-w-xs">
+                <DropdownMenuItem onSelect={() => setRejectScope('event')}>
+                  <PackageX /> {t('products.rejectNotHandedIn')}
+                  <span className="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">
+                    {notHandedIn.length}
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
