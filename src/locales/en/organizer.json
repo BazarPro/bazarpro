@@ -508,6 +508,8 @@
     "rejectMail_other": "Each of the {{count}} sellers gets one email listing their items.",
     "rejectUndoHint": "You can take back single rejections in the “Rejected” tab.",
     "rejectNotHandedIn": "Reject items not handed in",
+    "rejectNotHandedInHint_one": "One announced item has not been accepted yet. Reject it if it will not come.",
+    "rejectNotHandedInHint_other": "{{count}} announced items have not been accepted yet. Reject them if they will not come.",
     "dropoffEnded": "Drop-off ended on {{time}}.",
     "notHandedIn_one": "One registered item was not handed in.",
     "notHandedIn_other": "{{count}} registered items were not handed in.",

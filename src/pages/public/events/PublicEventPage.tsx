@@ -2,7 +2,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { usePublicQuery } from '../../../hooks/usePublicQuery';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Ban, CalendarClock, Check, Clock, Plus, Tag, Users } from 'lucide-react';
-import { useQuery, useAuthState } from '../../../lib/api/react';
+import { useMutation, useQuery, useAuthState } from '../../../lib/api/react';
 import { api } from '../../../lib/api/functions';
 
 import { Button } from '../../../components/ui/button';
@@ -81,6 +81,17 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
     api.eventExclusions.getMine,
     isAuthenticated && eventId ? { eventId: eventId as Id<'events'> } : 'skip'
   );
+  // Read here, e.g. from the mail: the marker at "Basare" goes
+  const markSeen = useMutation(api.notifications.markNoticesSeen);
+  const unreadNotices = useQuery(
+    api.notifications.getUnreadNoticeCounts,
+    isAuthenticated ? {} : 'skip'
+  );
+  const unreadExclusion = !!exclusion && (unreadNotices?.participation ?? 0) > 0;
+  useEffect(() => {
+    if (!unreadExclusion || !eventId) return;
+    void markSeen({ area: 'participation', eventId: eventId as Id<'events'> }).catch(() => {});
+  }, [unreadExclusion, eventId, markSeen]);
 
   const currentPage = location.pathname;
 

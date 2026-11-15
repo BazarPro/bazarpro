@@ -1019,6 +1019,12 @@ export interface Api {
     >;
     /** Whether the organizer excluded the signed-in user, and why */
     getMine: FunctionReference<'query', { eventId: Id<'events'> }, Exclusion | null>;
+    /** The bazaars the organizer excluded the signed-in user from, for "Meine Basare" */
+    getMyExcludedEvents: FunctionReference<
+      'query',
+      { includePast?: boolean | undefined },
+      { event: Doc<'events'>; exclusion: Exclusion }[]
+    >;
   };
   eventSeller: {
     joinEvent: FunctionReference<
@@ -2128,11 +2134,14 @@ export interface Api {
     getUnreadNoticeCounts: FunctionReference<
       'query',
       EmptyObject,
-      { events: number; messages: number; products: number; sales: number }
+      { events: number; messages: number; participation: number; products: number; sales: number }
     >;
     markNoticesSeen: FunctionReference<
       'mutation',
-      { eventId?: Id<'events'> | undefined; area: 'events' | 'messages' | 'products' | 'sales' },
+      {
+        eventId?: Id<'events'> | undefined;
+        area: 'events' | 'messages' | 'participation' | 'products' | 'sales';
+      },
       null
     >;
     getMyNotificationPrefs: FunctionReference<

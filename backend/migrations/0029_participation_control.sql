@@ -20,3 +20,6 @@ ALTER TYPE event_product_status ADD VALUE 'rejected';
 ALTER TABLE event_products
   ADD COLUMN rejected_at timestamptz,
   ADD COLUMN rejected_by uuid REFERENCES users (id) ON DELETE SET NULL;
+
+-- The red marker at "Basare" when the organizer excluded the seller
+ALTER TYPE notice_area ADD VALUE 'participation';

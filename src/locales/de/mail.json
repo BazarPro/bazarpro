@@ -272,6 +272,7 @@
   },
   "participation": {
     "openEvent": "Basar öffnen",
+    "contact": "Fragen an den Veranstalter",
     "excluded": {
       "subject": "Du nimmst nicht mehr an „{{event}}“ teil",
       "heading": "Vom Basar ausgeschlossen",

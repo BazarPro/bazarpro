@@ -272,6 +272,7 @@
   },
   "participation": {
     "openEvent": "Open bazaar",
+    "contact": "Questions to the organizer",
     "excluded": {
       "subject": "You no longer take part in “{{event}}”",
       "heading": "Excluded from the bazaar",

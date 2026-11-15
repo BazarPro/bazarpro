@@ -90,10 +90,18 @@ pub enum Area {
     Sales,
     Messages,
     Events,
+    /// The seller's place at a bazaar: excluded by the organizer
+    Participation,
 }
 
 impl Area {
-    const ALL: [Area; 4] = [Self::Products, Self::Sales, Self::Messages, Self::Events];
+    const ALL: [Area; 5] = [
+        Self::Products,
+        Self::Sales,
+        Self::Messages,
+        Self::Events,
+        Self::Participation,
+    ];
 
     pub fn as_str(self) -> &'static str {
         match self {
@@ -101,6 +109,7 @@ impl Area {
             Self::Sales => "sales",
             Self::Messages => "messages",
             Self::Events => "events",
+            Self::Participation => "participation",
         }
     }
 }

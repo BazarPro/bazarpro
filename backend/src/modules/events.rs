@@ -216,7 +216,7 @@ struct ListArgs {
     include_past: Option<bool>,
 }
 
-fn time_condition(include_past: Option<bool>) -> &'static str {
+pub(crate) fn time_condition(include_past: Option<bool>) -> &'static str {
     if include_past == Some(true) {
         "true"
     } else {

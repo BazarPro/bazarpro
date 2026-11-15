@@ -62,8 +62,7 @@
       "sales": "{{count}} new sales",
       "reports": "{{count}} open reports",
       "approvals": "{{count}} bazaars awaiting approval",
-      "messages": "{{count}} open contact requests",
-      "organizerMessages": "{{count}} new messages from the organizer"
+      "messages": "{{count}} open contact requests"
     },
     "categories": "Categories",
     "allBazaars": "All bazaars",

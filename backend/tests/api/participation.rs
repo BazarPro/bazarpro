@@ -386,6 +386,26 @@ async fn an_excluded_seller_leaves_with_announced_items_only(db: PgPool) {
         html.contains("Rückgabe"),
         "handed-in items are mentioned: {html}"
     );
+    // The organizer's contact under a label, not a template with a gap
+    assert!(html.contains("Fragen an den Veranstalter"), "{html}");
+    assert!(!html.contains("{{contact}}"), "{html}");
+
+    // "Meine Basare" lists the bazaar as excluded
+    let excluded = b
+        .app
+        .query(
+            "eventExclusions.getMyExcludedEvents",
+            json!({}),
+            Some(&b.as_seller),
+        )
+        .await
+        .body["value"]
+        .clone();
+    assert_eq!(excluded[0]["event"]["_id"], json!(b.event));
+    assert_eq!(
+        excluded[0]["exclusion"]["reason"],
+        "Beim letzten Mal nichts abgeholt"
+    );
 
     // Excluding twice changes nothing and sends no second mail
     b.exclude(b.seller, None, &b.as_organizer).await;
@@ -423,7 +443,7 @@ async fn an_excluded_seller_leaves_with_announced_items_only(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
-async fn only_an_excluded_helper_gets_a_marker_for_organizing(db: PgPool) {
+async fn an_excluded_seller_gets_a_marker_and_a_helper_one_for_organizing(db: PgPool) {
     let b = Bazaar::new(db, json!({})).await;
     b.exclude(b.seller, None, &b.as_organizer).await;
     b.exclude(b.helper, None, &b.as_organizer).await;
@@ -434,7 +454,7 @@ async fn only_an_excluded_helper_gets_a_marker_for_organizing(db: PgPool) {
         let db = b.db.clone();
         async move {
             sqlx::query_scalar::<_, String>(
-                "SELECT area::text FROM unread_notices WHERE user_id = $1",
+                "SELECT area::text FROM unread_notices WHERE user_id = $1 ORDER BY area::text",
             )
             .bind(user)
             .fetch_all(&db)
@@ -442,8 +462,17 @@ async fn only_an_excluded_helper_gets_a_marker_for_organizing(db: PgPool) {
             .unwrap()
         }
     };
-    assert!(markers(b.seller).await.is_empty());
-    assert_eq!(markers(b.helper).await, ["events"]);
+    assert_eq!(markers(b.seller).await, ["participation"]);
+    assert_eq!(markers(b.helper).await, ["events", "participation"]);
+    let counts = b
+        .app
+        .query(
+            "notifications.getUnreadNoticeCounts",
+            json!({}),
+            Some(&b.as_seller),
+        )
+        .await;
+    assert_eq!(counts.body["value"]["participation"], 1);
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -522,6 +551,24 @@ async fn the_organizer_takes_an_exclusion_back(db: PgPool) {
     assert_eq!(mine.body["value"], Value::Null);
     let (_, subject, _) = b.mails().await.pop().unwrap();
     assert!(subject.contains("wieder"), "{subject}");
+    // The marker of the exclusion goes, and the bazaar is no longer listed as excluded
+    let unread: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM unread_notices WHERE user_id = $1 AND area = 'participation'",
+    )
+    .bind(b.seller)
+    .fetch_one(&b.db)
+    .await
+    .unwrap();
+    assert_eq!(unread, 0);
+    let excluded = b
+        .app
+        .query(
+            "eventExclusions.getMyExcludedEvents",
+            json!({}),
+            Some(&b.as_seller),
+        )
+        .await;
+    assert_eq!(excluded.body["value"], json!([]));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]

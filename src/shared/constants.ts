@@ -112,7 +112,7 @@ export type OfferCloseReason = (typeof OFFER_CLOSE_REASONS)[number];
  * Menu entries that show a red marker for unread notifications: "Meine Artikel",
  * "Meine Verkäufe", "Events" (messages from organizers) and, for organizers, "Meine Events".
  */
-export const NOTICE_AREAS = ['products', 'sales', 'messages', 'events'] as const;
+export const NOTICE_AREAS = ['products', 'sales', 'messages', 'events', 'participation'] as const;
 export type NoticeArea = (typeof NOTICE_AREAS)[number];
 
 /**

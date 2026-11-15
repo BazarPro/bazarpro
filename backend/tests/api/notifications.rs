@@ -197,7 +197,7 @@ async fn markers_count_until_the_page_is_opened(db: PgPool) {
         .await;
     assert_eq!(
         counts.body["value"],
-        json!({ "events": 2, "messages": 0, "products": 0, "sales": 0 })
+        json!({ "events": 2, "messages": 0, "participation": 0, "products": 0, "sales": 0 })
     );
     assert!(
         counts.body["topics"]

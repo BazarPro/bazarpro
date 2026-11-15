@@ -38,6 +38,8 @@ import {
   Package,
   Ban,
   PackageX,
+  MoreHorizontal,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
@@ -70,6 +72,10 @@ import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissin
 import { matchingVendors, productMatcher } from '../../../../lib/productSearch';
 import { addToCachedCart } from '../../../../lib/checkout';
 import { ExcludedBadge } from '../../../../components/participation/ExcludedBadge';
+import {
+  ExclusionDialog,
+  type ExclusionMode,
+} from '../../../../components/participation/ExclusionDialog';
 import { formatDateTimeDE } from '../../../../lib/utils';
 import { useNowPassing } from '../../../../hooks/useNowPassing';
 
@@ -117,6 +123,8 @@ export function ProductManagementPage() {
   const undoRejection = useMutation(api.eventProducts.undoRejection);
   const [rejectScope, setRejectScope] = useState<'event' | 'vendor' | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
+  // Taking the selected seller out of the bazaar, or back in
+  const [exclusionMode, setExclusionMode] = useState<ExclusionMode | null>(null);
   // Typing stays instant; filtering thousands of items may lag behind a little
   const deferredSearchTerm = useDeferredValue(localSearchTerm);
   // The search last written to the URL, to tell our own writes from the back button
@@ -125,7 +133,7 @@ export function ProductManagementPage() {
   const lastAutoSwitchedVendorId = useRef<Id<'users'> | null>(null);
 
   // Queries
-  const { isLoading: rolesLoading, canManage, can } = useEventAccess(eventId);
+  const { isLoading: rolesLoading, canManage, canLead, can } = useEventAccess(eventId);
 
   const products = useQuery(
     api.eventProducts.getProductsForEventManagement,
@@ -193,6 +201,15 @@ export function ProductManagementPage() {
   const now = useNowPassing([event?.endDate, dropoffEnd]);
   const canReject = can('intake') && !!event && event.endDate >= now;
   const dropoffOver = dropoffEnd !== undefined && dropoffEnd < now;
+  const canRejectAll = !selectedVendor && canReject && notHandedIn.length > 0;
+  // After the drop-off a notice asks for it; before, the button waits in the header
+  const showRejectNotice = canRejectAll && (dropoffOver || activeTab === 'announced');
+  // Organizer only, like helpers; sellers without an account belong to the bazaar anyway
+  const canExclude =
+    canLead &&
+    !!selectedVendor &&
+    !selectedVendor.managedByEventId &&
+    event?.organizerId !== selectedVendor._id;
 
   const stats = useMemo(() => {
     const announced = vendorProducts.filter((p) => p.status === 'announced').length;
@@ -576,6 +593,21 @@ export function ProductManagementPage() {
           >
             <QrCode className="h-5 w-5" />
           </Button>
+          {canRejectAll && !showRejectNotice && (
+            <Button
+              variant="outline"
+              className="h-10 shrink-0 gap-2 px-3 shadow-sm"
+              title={t('products.rejectNotHandedInHint', { count: notHandedIn.length })}
+              aria-label={t('products.rejectNotHandedIn')}
+              onClick={() => setRejectScope('event')}
+            >
+              <PackageX className="h-5 w-5" />
+              <span className="hidden lg:inline">{t('products.rejectNotHandedIn')}</span>
+              <Badge variant="secondary" className="px-1.5 tabular-nums">
+                {notHandedIn.length}
+              </Badge>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -662,24 +694,58 @@ export function ProductManagementPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              {canExclude && !selectedVendor.excluded && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label={t('sellers.moreFor', { name: selectedVendor.name })}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={!event || event.endDate < now}
+                      onSelect={() => setExclusionMode('exclude')}
+                    >
+                      <Ban /> {t('sellers.exclude')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
 
           {selectedVendor.excluded && (
-            <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              <Ban className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-              <div className="space-y-1">
-                <p>
-                  {t('products.excludedNotice', {
-                    time: formatDateTimeDE(selectedVendor.excluded.excludedAt),
-                  })}
-                </p>
-                {selectedVendor.excluded.reason && (
-                  <p className="text-muted-foreground">
-                    {t('participation.reasonQuoted', { reason: selectedVendor.excluded.reason })}
+            <div className="mb-4 flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-start gap-2">
+                <Ban className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <div className="space-y-1">
+                  <p>
+                    {t('products.excludedNotice', {
+                      time: formatDateTimeDE(selectedVendor.excluded.excludedAt),
+                    })}
                   </p>
-                )}
+                  {selectedVendor.excluded.reason && (
+                    <p className="text-muted-foreground">
+                      {t('participation.reasonQuoted', { reason: selectedVendor.excluded.reason })}
+                    </p>
+                  )}
+                </div>
               </div>
+              {canExclude && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-2 self-start bg-background sm:self-auto"
+                  onClick={() => setExclusionMode('readmit')}
+                >
+                  <UserCheck className="h-4 w-4" /> {t('sellers.readmit')}
+                </Button>
+              )}
             </div>
           )}
 
@@ -853,35 +919,32 @@ export function ProductManagementPage() {
       )}
 
       {/* After the drop-off, or while looking at the open items: turn down the rest at once */}
-      {!selectedVendor &&
-        canReject &&
-        notHandedIn.length > 0 &&
-        (dropoffOver || activeTab === 'announced') && (
-          <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3 text-sm">
-              <PackageX className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-              <p>
-                {dropoffOver && dropoffEnd !== undefined && (
-                  <span className="font-medium">
-                    {t('products.dropoffEnded', { time: formatDateTimeDE(dropoffEnd) })}{' '}
-                  </span>
-                )}
-                <span className="text-muted-foreground">
-                  {dropoffOver
-                    ? t('products.notHandedIn', { count: notHandedIn.length })
-                    : t('products.notHandedInYet', { count: notHandedIn.length })}
+      {showRejectNotice && (
+        <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 text-sm">
+            <PackageX className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            <p>
+              {dropoffOver && dropoffEnd !== undefined && (
+                <span className="font-medium">
+                  {t('products.dropoffEnded', { time: formatDateTimeDE(dropoffEnd) })}{' '}
                 </span>
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="shrink-0 gap-2"
-              onClick={() => setRejectScope('event')}
-            >
-              <PackageX className="h-4 w-4" /> {t('products.rejectNotHandedIn')}
-            </Button>
+              )}
+              <span className="text-muted-foreground">
+                {dropoffOver
+                  ? t('products.notHandedIn', { count: notHandedIn.length })
+                  : t('products.notHandedInYet', { count: notHandedIn.length })}
+              </span>
+            </p>
           </div>
-        )}
+          <Button
+            variant="outline"
+            className="shrink-0 gap-2"
+            onClick={() => setRejectScope('event')}
+          >
+            <PackageX className="h-4 w-4" /> {t('products.rejectNotHandedIn')}
+          </Button>
+        </div>
+      )}
 
       <ProductManagementList
         products={filteredProducts}
@@ -959,6 +1022,16 @@ export function ProductManagementPage() {
           {t('products.rejectMail', { count: rejectSellerCount })} {t('products.rejectUndoHint')}
         </p>
       </ConfirmDialog>
+
+      {selectedVendor && (
+        <ExclusionDialog
+          key={selectedVendor._id}
+          eventId={eventId}
+          seller={selectedVendor}
+          mode={exclusionMode}
+          onOpenChange={(open) => !open && setExclusionMode(null)}
+        />
+      )}
 
       <TeamScanner eventId={eventId} open={isScannerOpen} onOpenChange={setIsScannerOpen} />
 

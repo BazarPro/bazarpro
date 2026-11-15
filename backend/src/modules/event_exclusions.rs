@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 use super::docs;
 use super::event_roles::{self, Role};
+use super::events::{EventView, time_condition, view};
 use super::features::registration_unavailable;
 use super::notifications::{self, Area, Content, T};
 use super::offers::close_offers_for_event_product;
@@ -52,6 +53,7 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "eventExclusions.exclude" => exclude);
     register!(registry, Mutation "eventExclusions.readmit" => readmit);
     register!(registry, Query "eventExclusions.getMine" => get_mine);
+    register!(registry, Query "eventExclusions.getMyExcludedEvents" => get_my_excluded_events);
 }
 
 #[skip_serializing_none]
@@ -212,7 +214,8 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
         event.contact_info.clone(),
         format!("/public-events/{}", event.id),
     );
-    notifications::notify_user(
+    // "Basare" shows the marker and the bazaar among the seller's own
+    notifications::notify_user_at_event(
         ctx,
         user,
         |t: T| {
@@ -233,11 +236,15 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
                 ..Content::default()
             }
         },
-        // "Organisieren" only concerns helpers; a seller learns it on the bazaar's page
-        was_helper.then_some(Area::Events),
+        Some(Area::Participation),
+        Some(event.id),
         Duration::zero(),
     )
     .await?;
+    // A helper also loses the bazaar in "Organisieren"
+    if was_helper {
+        notifications::add_notice(ctx, user, Area::Events, None).await?;
+    }
     ctx.touch(Topic::Event(event.id));
     ctx.touch(Topic::User(user));
     Ok(Success { success: true })
@@ -263,7 +270,7 @@ fn contact_detail(t: T, contact: &str) -> Vec<Detail> {
         return Vec::new();
     }
     vec![Detail {
-        label: t.t("reminder.contact", &[]),
+        label: t.t("participation.contact", &[]),
         value: contact.to_owned(),
     }]
 }
@@ -307,6 +314,15 @@ async fn readmit(ctx: &mut Ctx, args: ReadmitArgs) -> AppResult<Success> {
     if removed.rows_affected() == 0 {
         return Ok(Success { success: true });
     }
+    // Not seen yet: nothing to point at any more
+    sqlx::query(
+        "DELETE FROM unread_notices
+         WHERE user_id = $1 AND area = 'participation' AND event_id = $2",
+    )
+    .bind(user)
+    .bind(event.id)
+    .execute(ctx.conn())
+    .await?;
     if returns {
         event_roles::add_role(ctx, event.id, user, Role::Seller).await?;
     }
@@ -357,4 +373,64 @@ async fn get_mine(ctx: &mut Ctx, args: EventArgs) -> AppResult<Option<Exclusion>
     };
     ctx.read(Topic::User(user));
     Ok(exclusion(ctx.conn(), args.event_id.0, user).await?)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ListArgs {
+    include_past: Option<bool>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExcludedEvent {
+    event: EventView,
+    exclusion: Exclusion,
+}
+
+/// The bazaars the organizer excluded the signed-in user from, for "Meine Basare".
+async fn get_my_excluded_events(ctx: &mut Ctx, args: ListArgs) -> AppResult<Vec<ExcludedEvent>> {
+    let Some(user) = ctx.user else {
+        return Ok(Vec::new());
+    };
+    ctx.read(Topic::User(user));
+    ctx.read(Topic::Events);
+    let time = time_condition(args.include_past);
+    let events = docs::events_where(
+        ctx.conn(),
+        &format!("{time} AND e.id IN (SELECT event_id FROM event_exclusions WHERE user_id = $1)"),
+        user,
+    )
+    .await?;
+    let mut exclusions: HashMap<Uuid, Exclusion> = sqlx::query_as(
+        "SELECT event_id, created_at AS excluded_at, reason FROM event_exclusions
+         WHERE user_id = $1",
+    )
+    .bind(user)
+    .fetch_all(ctx.conn())
+    .await?
+    .into_iter()
+    .map(
+        |(event, excluded_at, reason): (Uuid, DateTime<Utc>, Option<String>)| {
+            (
+                event,
+                Exclusion {
+                    excluded_at,
+                    reason,
+                },
+            )
+        },
+    )
+    .collect();
+    Ok(events
+        .into_iter()
+        .filter_map(|event| {
+            let exclusion = exclusions.remove(&event.id)?;
+            // No longer on the team: the access code stays hidden
+            Some(ExcludedEvent {
+                event: view(event, false),
+                exclusion,
+            })
+        })
+        .collect())
 }
