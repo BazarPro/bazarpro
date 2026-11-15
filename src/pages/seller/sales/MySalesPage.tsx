@@ -65,6 +65,10 @@ export function MySalesPage() {
         groups.map((group) => {
           // With an intake fee and few sales the seller pays the bazaar instead
           const owes = group.totals.payout < -0.005;
+          // Direct sales: the buyer paid the seller, who paid the commission at the desk
+          const keptDirectly = group.items
+            .filter((item) => item.sale.directSale)
+            .reduce((sum, item) => sum + item.sale.totalAmount - item.sale.commission, 0);
           return (
             <section
               key={group.event._id}
@@ -155,9 +159,18 @@ export function MySalesPage() {
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-xs text-muted-foreground">{t('mySales.forYou')}</dt>
+                            <dt className="text-xs text-muted-foreground">
+                              {item.sale.directSale
+                                ? t('mySales.receivedDirectly')
+                                : t('mySales.forYou')}
+                            </dt>
                             <dd className="font-semibold text-primary">
-                              {formatPriceDE(item.sale.payout)} €
+                              {formatPriceDE(
+                                item.sale.directSale
+                                  ? item.sale.totalAmount - item.sale.commission
+                                  : item.sale.payout
+                              )}{' '}
+                              €
                             </dd>
                           </div>
                         </dl>
@@ -201,6 +214,12 @@ export function MySalesPage() {
                       {formatPriceDE(group.totals.commission)} €
                     </dd>
                   </div>
+                  {keptDirectly > 0.005 && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">{t('mySales.keptDirectly')}</dt>
+                      <dd>−{formatPriceDE(keptDirectly)} €</dd>
+                    </div>
+                  )}
                   {group.totals.intakeFee.total > 0 && (
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">

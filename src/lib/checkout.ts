@@ -148,3 +148,8 @@ export function playScanBeep(): void {
     // Ignore errors from browser autoplay policies or audio failures
   }
 }
+
+/** The commission of a sale as the backend books it, rounded to cents. */
+export function commissionOf(price: number, percent: number): number {
+  return Math.round(price * percent) / 100;
+}

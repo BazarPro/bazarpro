@@ -115,6 +115,7 @@ export interface Docs {
           intakeFee?: number | undefined;
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
+          directSale?: boolean | undefined;
         }
       | undefined;
     sellerLogistics?:
@@ -243,6 +244,8 @@ export interface Docs {
     payoutAmount: number;
     payoutStatus: boolean;
     payoutDate: number;
+    /** Paid to the seller at the item; the desk took only the commission */
+    directSale: boolean;
   };
   eventSeller: {
     _id: Id<'eventSeller'>;
@@ -382,6 +385,7 @@ export type EventFeatures = {
   intakeFee?: number | undefined;
   privateSellersOnly: boolean;
   fixedSellerData: boolean;
+  directSale: boolean;
 };
 
 export type IntakeFee = { perItem: number; items: number; total: number };
@@ -466,6 +470,8 @@ export type SettlementSale = {
   priceSource: SaleInfo['priceSource'];
   commission: number;
   payout: number;
+  /** Paid to the seller at the item; the desk took only the commission */
+  directSale: boolean;
 };
 
 export type SettlementSeller = {
@@ -490,7 +496,10 @@ export type SaleInfo = {
   priceSource: 'list' | 'offer' | 'negotiated';
   totalAmount: number;
   commission: number;
+  /** What the seller gets from the bazaar; 0 at a direct sale */
   payout: number;
+  /** The buyer paid the seller at the item; the seller paid the commission at the desk */
+  directSale: boolean;
   soldAt: number;
 };
 
@@ -1058,6 +1067,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1127,6 +1137,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1198,6 +1209,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1269,6 +1281,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1348,6 +1361,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1420,6 +1434,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1489,6 +1504,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1544,6 +1560,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1597,6 +1614,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1669,6 +1687,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1708,6 +1727,9 @@ export interface Api {
         totalNetRevenue: number;
         totalDiscounts: number;
         totalCommission: number;
+        /** Paid to the seller at the item; the till holds only their commission */
+        totalDirectSales: number;
+        totalDirectCommission: number;
         totalPayoutSoll: number;
         totalPaidOut: number;
         totalPendingPayout: number;
@@ -2392,7 +2414,12 @@ export interface Api {
         /** From the app: a retry after a lost reply returns the first sale */
         deskSaleId?: string | undefined;
       },
-      { purchaseIds: Id<'purchase'>[]; total: number }
+      {
+        purchaseIds: Id<'purchase'>[];
+        total: number;
+        /** What the desk took: the total, at direct sales only their commission */
+        taken: number;
+      }
     >;
     getCheckoutItem: FunctionReference<
       'query',

@@ -125,6 +125,14 @@ export function CashReconciliationPage() {
                   {formatPriceDE(summary.totalNetRevenue)} €
                 </dd>
               </div>
+              {summary.totalDirectSales > 0.005 && (
+                <div className="flex justify-between gap-3">
+                  <dt>{t('cash.directSales')}</dt>
+                  <dd className="whitespace-nowrap font-medium">
+                    −{formatPriceDE(summary.totalDirectSales - summary.totalDirectCommission)} €
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <dt>{t('cash.paidOut')}</dt>
                 <dd className="whitespace-nowrap font-medium">

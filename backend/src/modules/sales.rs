@@ -39,8 +39,10 @@ pub struct SaleInfo {
     pub total_amount: Decimal,
     /// Fee the bazaar keeps
     pub commission: Decimal,
-    /// What the seller gets
+    /// What the seller gets from the bazaar; 0 at a direct sale
     pub payout: Decimal,
+    /// The buyer paid the seller at the item; the seller paid the commission at the desk
+    pub direct_sale: bool,
     #[serde(with = "ms")]
     pub sold_at: DateTime<Utc>,
 }
@@ -69,6 +71,7 @@ pub fn sale_info(purchase: &Purchase) -> SaleInfo {
         total_amount: purchase.total_amount,
         commission: purchase.commission_amount,
         payout: purchase.payout_amount,
+        direct_sale: purchase.direct_sale,
         sold_at: purchase.created_at,
     }
 }

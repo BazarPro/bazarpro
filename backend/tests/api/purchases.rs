@@ -803,3 +803,81 @@ async fn the_snapshot_for_an_offline_desk(db: PgPool) {
         .await;
     assert_eq!(forbidden.body["code"], "auth.forbidden");
 }
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_direct_sale_takes_only_the_commission(db: PgPool) {
+    // The buyer paid the seller at the bike; the desk books it at the agreed price
+    let desk = Desk::new(db.clone(), json!({ "directSale": true })).await;
+    let (agreed, agreed_relation) = desk.item("Trekkingrad", 280.0).await;
+    let (listed, listed_relation) = desk.item("Hollandrad", 190.0).await;
+    // Without a minimum price any agreed price up to the label counts
+    let above = desk
+        .cart(
+            json!([{ "eventProductId": agreed_relation, "negotiatedPrice": 300 }]),
+            None,
+        )
+        .await;
+    assert_eq!(above.body["code"], "checkout.itemFailed", "{}", above.body);
+    let reply = desk
+        .cart(
+            json!([
+                { "eventProductId": agreed_relation, "negotiatedPrice": 250 },
+                { "eventProductId": listed_relation },
+            ]),
+            None,
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // The desk took 10 % of 440 €, nothing is paid out
+    assert_eq!(reply.body["value"]["total"], json!(440.0));
+    assert_eq!(reply.body["value"]["taken"], json!(44.0));
+    assert_eq!(
+        desk.purchase(agreed).await,
+        Some((250.0, 25.0, 0.0, Some("negotiated".into()), None))
+    );
+    assert_eq!(
+        desk.purchase(listed).await,
+        Some((190.0, 19.0, 0.0, Some("list".into()), None))
+    );
+    let direct: i64 = sqlx::query_scalar("SELECT count(*) FROM purchases WHERE direct_sale")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(direct, 2);
+
+    // The till holds the commission only; the seller is owed nothing
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(summary.status, StatusCode::OK, "{}", summary.body);
+    let summary = &summary.body["value"];
+    assert_eq!(summary["cashInHandSoll"], json!(44.0), "{summary}");
+    assert_eq!(summary["totalDirectSales"], json!(440.0));
+    assert_eq!(summary["totalDirectCommission"], json!(44.0));
+    assert_eq!(summary["totalPendingPayout"], json!(0.0));
+
+    // The seller's mail names the commission paid at the desk and no payout
+    let mail = desk
+        .mails()
+        .await
+        .into_iter()
+        .find(|(to, _)| to == "seller@test.example");
+    assert!(mail.is_some());
+    let html = desk
+        .app
+        .sent
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|m| m.to == "seller@test.example")
+        .unwrap()
+        .html
+        .clone();
+    assert!(html.contains("an der Kasse bezahlt"), "{html}");
+    assert!(!html.contains("Auszahlung</"), "{html}");
+}

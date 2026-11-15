@@ -748,6 +748,7 @@ struct FeaturesArgs {
     intake_fee: Option<f64>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
+    direct_sale: Option<bool>,
 }
 
 fn sanitize_item_limit(limit: Option<f64>) -> AppResult<Option<f64>> {
@@ -917,6 +918,15 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
             features
                 .fixed_seller_data
                 .or(previous_bool("fixedSellerData"))
+                .unwrap_or(false)
+        ),
+    );
+    put(
+        "directSale",
+        json!(
+            features
+                .direct_sale
+                .or(previous_bool("directSale"))
                 .unwrap_or(false)
         ),
     );
@@ -1491,6 +1501,10 @@ struct FinancialSummary {
     total_net_revenue: Decimal,
     total_discounts: Decimal,
     total_commission: Decimal,
+    /// Sales paid to the seller at the item; the till holds only their commission
+    total_direct_sales: Decimal,
+    /// Their commission, the part of them in the till
+    total_direct_commission: Decimal,
     total_payout_soll: Decimal,
     total_paid_out: Decimal,
     total_pending_payout: Decimal,
@@ -1517,6 +1531,27 @@ async fn get_event_financial_summary(
     let net: Decimal = purchases.iter().map(|p| p.total_amount).sum();
     let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
     let payout_soll: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
+    let direct: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.total_amount)
+        .sum();
+    let direct_commission: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.commission_amount)
+        .sum();
+    // What came into the till: the price, at a direct sale only the commission
+    let taken: Decimal = purchases
+        .iter()
+        .map(|p| {
+            if p.direct_sale {
+                p.commission_amount
+            } else {
+                p.total_amount
+            }
+        })
+        .sum();
 
     let vendors = load_vendors_with_calculations(ctx, event).await?;
     // A seller whose sales do not cover the intake fee pays in instead of getting paid out
@@ -1550,6 +1585,8 @@ async fn get_event_financial_summary(
         total_net_revenue: net,
         total_discounts: gross - net,
         total_commission: commission,
+        total_direct_sales: direct,
+        total_direct_commission: direct_commission,
         total_payout_soll: payout_soll,
         total_paid_out: paid_out,
         total_pending_payout: pending,
@@ -1557,7 +1594,7 @@ async fn get_event_financial_summary(
         total_fees_collected: fees_collected,
         total_fees_to_collect: to_collect.iter().map(|s| s.amount).sum(),
         sellers_to_collect: to_collect,
-        cash_in_hand_soll: net - paid_out + fees_collected,
+        cash_in_hand_soll: taken - paid_out + fees_collected,
         sales_count: purchases.len(),
         vendors_paid_count: vendors.iter().filter(|v| v.paid).count(),
         vendors_total_count: vendors.len(),

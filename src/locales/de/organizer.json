@@ -167,6 +167,8 @@
     "privateSellersText": "Beim Anmelden bestätigen Verkäufer, dass sie als Privatperson verkaufen und nicht gewerblich.",
     "fixedData": "Feste Daten für den Nachweis",
     "fixedDataText": "Bei der Annahme vor Ort prüfst du Name und Anschrift mit dem Ausweis; weichen sie ab, korrigiert der Verkäufer sie vorher in seinem Profil. Mit dem ersten angenommenen Artikel sind sie fest, ebenso Titel, Kategorie, Preis und Pflichtangaben jedes angenommenen Artikels. So entsteht ein verlässlicher Nachweis, wer was angeboten hat, z. B. für die Polizei. Verkäufer brauchen dafür ein vollständiges Profil.",
+    "directSale": "Direktverkauf: Käufer bezahlen beim Verkäufer",
+    "directSaleText": "Käufer und Verkäufer einigen sich am Artikel, der Käufer bezahlt direkt beim Verkäufer. Danach scannt die Kasse das Etikett, bucht den Verkauf zum vereinbarten Preis und kassiert vom Verkäufer nur die Provision. Nach dem Markt gibt es keine Auszahlung, der Nachweis zeigt trotzdem jeden Verkauf.",
     "discountFromNeedsDates": "Wähle zuerst Beginn und Ende des Basars.",
     "discountStartLater": "Ab wann die Rabatte gelten, legst du bei „Wann und wo?“ fest, sobald der Termin steht."
   },
@@ -291,7 +293,8 @@
     "questionsDuringEvent": "erst während des Basars",
     "requiredFields": "Pflichtangaben: {{fields}}",
     "privateSellers": "Nur Privatverkäufer",
-    "fixedData": "Feste Daten für den Nachweis"
+    "fixedData": "Feste Daten für den Nachweis",
+    "directSale": "Direktverkauf, die Kasse kassiert nur die Provision"
   },
   "sellers": {
     "sortSheets": "Sortierblätter",
@@ -402,6 +405,7 @@
     "howTitle": "So kommt der Betrag zustande",
     "income_one": "Einnahmen aus {{count}} Verkauf",
     "income_other": "Einnahmen aus {{count}} Verkäufen",
+    "directSales": "Direktverkäufe: beim Verkäufer bezahlt, nur die Provision kam in die Kasse",
     "paidOut": "Bereits an Verkäufer ausgezahlt",
     "inCash": "In der Kasse",
     "discounts": "Gegenüber den Etikettenpreisen ({{gross}} €) wurden {{discounts}} € an Rabatten und Preisnachlässen gewährt.",
@@ -670,6 +674,8 @@
     "sum_other": "Summe ({{count}} Artikel)",
     "sold_one": "<b>{{count}} Artikel verkauft</b> für {{total}} €. Der nächste Käufer kann kommen.",
     "sold_other": "<b>{{count}} Artikel verkauft</b> für {{total}} €. Der nächste Käufer kann kommen.",
+    "soldDirect_one": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert. Der nächste Verkauf kann kommen.",
+    "soldDirect_other": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert. Der nächste Verkauf kann kommen.",
     "offline": {
       "title": "Offline – die Kasse verkauft weiter",
       "text": "Preise aus dem Artikelstand von {{time}} Uhr. Verkäufe werden auf dem Gerät gespeichert und nachgebucht, sobald wieder Internet da ist.",
@@ -684,6 +690,8 @@
       "refresh": "Aktualisieren",
       "queued_one": "<b>{{count}} Artikel verkauft</b> für {{total}} € – offline gespeichert, wird nachgebucht.",
       "queued_other": "<b>{{count}} Artikel verkauft</b> für {{total}} € – offline gespeichert, wird nachgebucht.",
+      "queuedDirect_one": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert – offline gespeichert, wird nachgebucht.",
+      "queuedDirect_other": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert – offline gespeichert, wird nachgebucht.",
       "synced_one": "{{count}} Offline-Verkauf nachgebucht",
       "synced_other": "{{count}} Offline-Verkäufe nachgebucht",
       "conflicts_one": "{{count}} Artikel konnte nicht gebucht werden – siehe Abrechnung.",
@@ -692,7 +700,16 @@
     "received": "{{total}} € erhalten",
     "cameraOn": "Kamera einschalten",
     "cameraOff": "Kamera ausschalten",
-    "invoice": "Rechnung erstellen"
+    "invoice": "Rechnung erstellen",
+    "direct": {
+      "sum_one": "Provision {{percent}} % ({{count}} Artikel)",
+      "sum_other": "Provision {{percent}} % ({{count}} Artikel)",
+      "paidToSeller": "Verkaufspreis, direkt an den Verkäufer bezahlt",
+      "received": "{{total}} € Provision vom Verkäufer erhalten",
+      "commission": "Provision {{amount}} €",
+      "agreed": "Vereinbarter Preis",
+      "agreedPrice": "Vereinbarter Preis"
+    }
   },
   "proof": {
     "cardTitle": "Nachweis der angebotenen Artikel",
@@ -775,7 +792,8 @@
     },
     "fileName": "Abrechnung",
     "fileNameSellers": "Abrechnung-Verkaeufer",
-    "fileNameSales": "Abrechnung-Verkaeufe"
+    "fileNameSales": "Abrechnung-Verkaeufe",
+    "direct": "direkt bezahlt"
   },
   "wizard": {
     "back": "Zurück",

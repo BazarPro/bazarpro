@@ -8,6 +8,7 @@ const sale = (overrides: Partial<SaleInfo>): SaleInfo => ({
   totalAmount: 200,
   commission: 20,
   payout: 180,
+  directSale: false,
   soldAt: 0,
   ...overrides,
 });

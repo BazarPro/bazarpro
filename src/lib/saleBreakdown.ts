@@ -84,6 +84,7 @@ export function provisionalSale(
     totalAmount: paid,
     commission: 0,
     payout: paid,
+    directSale: false,
     soldAt: Date.now(),
   };
 }

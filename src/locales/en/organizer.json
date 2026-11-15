@@ -167,6 +167,8 @@
     "privateSellersText": "When registering, sellers confirm that they sell as private persons, not commercially.",
     "fixedData": "Fixed data for the record",
     "fixedDataText": "At the intake on site you check name and address against the ID card; if they differ, the seller corrects them in their profile first. From the first accepted item on they are fixed, and so are title, category, price and required details of every accepted item. This gives a reliable record of who offered what, e.g. for the police. Sellers need a complete profile for this.",
+    "directSale": "Direct sale: buyers pay the seller",
+    "directSaleText": "Buyer and seller agree at the item, the buyer pays the seller directly. Then the cash desk scans the label, books the sale at the agreed price and takes only the commission from the seller. Nothing is paid out after the bazaar, and the record still shows every sale.",
     "discountFromNeedsDates": "Choose the start and end of the bazaar first.",
     "discountStartLater": "You set when the discounts start under “When and where?”, once the date is fixed."
   },
@@ -291,7 +293,8 @@
     "questionsDuringEvent": "only during the bazaar",
     "requiredFields": "Required details: {{fields}}",
     "privateSellers": "Private sellers only",
-    "fixedData": "Fixed data for the record"
+    "fixedData": "Fixed data for the record",
+    "directSale": "Direct sale, the cash desk takes only the commission"
   },
   "sellers": {
     "sortSheets": "Sorting sheets",
@@ -402,6 +405,7 @@
     "howTitle": "How the amount comes about",
     "income_one": "Income from {{count}} sale",
     "income_other": "Income from {{count}} sales",
+    "directSales": "Direct sales: paid to the seller, only the commission came into the till",
     "paidOut": "Already paid out to sellers",
     "inCash": "In the till",
     "discounts": "Compared with the label prices ({{gross}} €), {{discounts}} € in discounts and reductions were granted.",
@@ -670,6 +674,8 @@
     "sum_other": "Total ({{count}} items)",
     "sold_one": "<b>{{count}} item sold</b> for {{total}} €. Next buyer, please.",
     "sold_other": "<b>{{count}} items sold</b> for {{total}} €. Next buyer, please.",
+    "soldDirect_one": "<b>{{count}} item sold</b>, {{total}} € commission taken. Ready for the next sale.",
+    "soldDirect_other": "<b>{{count}} items sold</b>, {{total}} € commission taken. Ready for the next sale.",
     "offline": {
       "title": "Offline – the cash desk keeps selling",
       "text": "Prices from the item copy of {{time}}. Sales are stored on the device and booked as soon as there is internet again.",
@@ -684,6 +690,8 @@
       "refresh": "Refresh",
       "queued_one": "<b>{{count}} item sold</b> for {{total}} € – stored offline, will be booked.",
       "queued_other": "<b>{{count}} items sold</b> for {{total}} € – stored offline, will be booked.",
+      "queuedDirect_one": "<b>{{count}} item sold</b>, {{total}} € commission taken – saved offline, will be booked later.",
+      "queuedDirect_other": "<b>{{count}} items sold</b>, {{total}} € commission taken – saved offline, will be booked later.",
       "synced_one": "{{count}} offline sale booked",
       "synced_other": "{{count}} offline sales booked",
       "conflicts_one": "{{count}} item could not be booked – see settlement.",
@@ -692,7 +700,16 @@
     "received": "{{total}} € received",
     "cameraOn": "Turn camera on",
     "cameraOff": "Turn camera off",
-    "invoice": "Create invoice"
+    "invoice": "Create invoice",
+    "direct": {
+      "sum_one": "Commission {{percent}} % ({{count}} item)",
+      "sum_other": "Commission {{percent}} % ({{count}} items)",
+      "paidToSeller": "Sale price, paid to the seller directly",
+      "received": "{{total}} € commission received from the seller",
+      "commission": "Commission {{amount}} €",
+      "agreed": "Agreed price",
+      "agreedPrice": "Agreed price"
+    }
   },
   "proof": {
     "cardTitle": "Record of offered items",
@@ -775,7 +792,8 @@
     },
     "fileName": "Settlement",
     "fileNameSellers": "Settlement-sellers",
-    "fileNameSales": "Settlement-sales"
+    "fileNameSales": "Settlement-sales",
+    "direct": "paid directly"
   },
   "wizard": {
     "back": "Back",

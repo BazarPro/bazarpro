@@ -120,6 +120,7 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
       </Row>
       <Row label={t('summary.features')}>
         <ul className="space-y-1.5">
+          <Feature on={features.directSale} title={t('summary.directSale')} />
           <Feature on={features.discounts} title={t('summary.discounts')} detail={discountDetail} />
           <Feature on={features.priceOffers} title={t('summary.offers')} />
           <Feature on={features.minimumPrice} title={t('summary.minimum')} />

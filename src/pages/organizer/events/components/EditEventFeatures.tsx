@@ -23,7 +23,8 @@ type FeatureKey =
   | 'publicCatalog'
   | 'priceOnLabel'
   | 'privateSellersOnly'
-  | 'fixedSellerData';
+  | 'fixedSellerData'
+  | 'directSale';
 
 function FeatureToggle({
   name,
@@ -253,6 +254,12 @@ export function EditEventFeatures({
     >
       {show('sale') && (
         <>
+          <FeatureToggle
+            name="directSale"
+            title={t('features.directSale')}
+            description={t('features.directSaleText')}
+          />
+
           <FeatureToggle
             name="publicCatalog"
             title={t('features.publicCatalog')}

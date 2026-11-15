@@ -550,12 +550,14 @@ pub struct Purchase {
     pub category_label: Option<String>,
     pub product_attributes: Option<Value>,
     pub seller_number: Option<i32>,
+    /// Paid to the seller at the item; the cash desk took only the commission
+    pub direct_sale: bool,
 }
 
 pub const PURCHASE_COLUMNS: &str = "id, created_at, product_id, event_id, seller_id, total_amount,
     commission_amount, payout_amount, payout_status, payout_date, discount_percent, list_price,
     price_source::text AS price_source, offer_id, product_title, category_id, category_label,
-    product_attributes, seller_number";
+    product_attributes, seller_number, direct_sale";
 
 pub async fn purchases_where<P>(
     conn: &mut PgConnection,

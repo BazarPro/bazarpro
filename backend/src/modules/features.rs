@@ -33,6 +33,7 @@ struct Stored {
     intake_fee: Option<f64>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
+    direct_sale: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -58,6 +59,9 @@ pub struct EventFeatures {
     pub intake_fee: Option<Decimal>,
     pub private_sellers_only: bool,
     pub fixed_seller_data: bool,
+    /// Buyers pay the seller at the item; the cash desk books the sale and takes only the
+    /// commission from the seller, so nothing is paid out after the bazaar
+    pub direct_sale: bool,
 }
 
 /// Events created before features existed keep their old behaviour: discounts on (up to
@@ -95,6 +99,7 @@ pub fn resolve(features: Option<&Value>) -> EventFeatures {
             .map(|fee| fee.cents()),
         private_sellers_only: stored.private_sellers_only.unwrap_or(false),
         fixed_seller_data: stored.fixed_seller_data.unwrap_or(false),
+        direct_sale: stored.direct_sale.unwrap_or(false),
     }
 }
 
@@ -210,6 +215,7 @@ mod tests {
         assert!(features.discounts);
         assert_eq!(features.max_discount_percent, 50);
         assert!(!features.price_offers && !features.questions && !features.fixed_seller_data);
+        assert!(!features.direct_sale);
         assert_eq!(features.label_format, "standard");
         assert_eq!(features.label_mark, "universal");
     }

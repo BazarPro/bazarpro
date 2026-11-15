@@ -184,8 +184,10 @@
   "sale": {
     "price": "Sale price",
     "commission": "Commission",
+    "commissionPaid": "Commission (paid at the cash desk)",
     "payout": "Payout",
     "footnote": "You receive the payout from the organizer.",
+    "directFootnote": "You received the sale price directly from the buyer and paid the commission at the cash desk, so there is no payout.",
     "one": {
       "subject": "Sold: {{title}}",
       "heading": "Your item was sold",

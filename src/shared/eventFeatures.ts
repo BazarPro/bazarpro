@@ -57,6 +57,11 @@ export interface EventFeatures {
    * what, e.g. for the police at a bike market.
    */
   fixedSellerData: boolean;
+  /**
+   * Direct sale: buyers pay the seller at the item. The cash desk books the sale at the
+   * agreed price and takes only the commission from the seller; nothing is paid out later.
+   */
+  directSale: boolean;
 }
 
 export type StoredEventFeatures = Partial<EventFeatures>;
@@ -79,6 +84,7 @@ export const DEFAULT_EVENT_FEATURES: EventFeatures = {
   labelMark: 'universal',
   privateSellersOnly: false,
   fixedSellerData: false,
+  directSale: false,
 };
 
 export function resolveEventFeatures(event: { features?: StoredEventFeatures }): EventFeatures {
