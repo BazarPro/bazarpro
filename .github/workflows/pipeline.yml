@@ -195,7 +195,8 @@ jobs:
   # Playwright builds and starts the backend (playwright.config.ts)
   e2e-test:
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'labeled' && github.event.action != 'unlabeled'
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest is now 26.04, for which Playwright 1.58 has no browser builds
+    runs-on: ubuntu-24.04
     env:
       E2E_DATABASE_URL: postgres://bazarpro:bazarpro@127.0.0.1:5432/bazarpro_e2e
     steps:
