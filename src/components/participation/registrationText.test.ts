@@ -30,6 +30,28 @@ describe('describeRegistration', () => {
   });
 });
 
+describe('describeRegistration with an admission', () => {
+  const closedAndFull = {
+    features: { registrationOpen: false },
+    vendorLimit: 20,
+    sellerCount: 20,
+  };
+
+  it('lets the team and invited helpers past everything', () => {
+    expect(describeRegistration(closedAndFull, now, 'team')).toEqual({});
+    expect(describeRegistration(closedAndFull, now, 'helperInvitation')).toEqual({});
+  });
+
+  it('lets invited sellers past a closed registration, not past the limit', () => {
+    expect(describeRegistration(closedAndFull, now, 'invitation')).toEqual({
+      blocked: 'Alle Plätze belegt',
+    });
+    const room = describeRegistration({ ...closedAndFull, sellerCount: 19 }, now, 'invitation');
+    expect(room.blocked).toBeUndefined();
+    expect(room.spots).toBe('Nur noch ein Platz von 20 frei');
+  });
+});
+
 describe('spotsLeft', () => {
   it('counts only with a limit and the number of sellers', () => {
     expect(spotsLeft({ vendorLimit: 10, sellerCount: 4 })).toBe(6);

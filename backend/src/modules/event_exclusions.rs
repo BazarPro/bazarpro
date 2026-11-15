@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 use super::docs;
 use super::event_roles::{self, Role};
+use super::event_seller::seller_places_taken;
 use super::events::{EventView, time_condition, view};
 use super::features::registration_unavailable;
 use super::notifications::{self, Area, Content, T};
@@ -205,7 +206,8 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
     let handed_in = has_handed_in(ctx, event.id, user).await?;
     // The seller row stays with number and settlement, so the team still finds them. With
     // items handed in the role stays too: the ID code, the bazaar in the seller's list and
-    // the return depend on it, and the exclusion alone keeps new items out.
+    // the return depend on it, and the exclusion alone keeps new items out. It no longer
+    // takes a place toward the seller limit (`seller_places_taken`).
     if !handed_in {
         event_roles::remove_role(ctx, event.id, user, Role::Seller).await?;
     }
@@ -295,16 +297,11 @@ async fn readmit(ctx: &mut Ctx, args: ReadmitArgs) -> AppResult<Success> {
         && seller_row.is_some()
         && !event_roles::has_role(ctx.conn(), event.id, user, Role::Seller).await?;
     // The exclusion freed the place: someone else may have taken it meanwhile
-    if returns && let Some(limit) = event.vendor_limit.filter(|limit| *limit > 0) {
-        let sellers: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM event_roles WHERE event_id = $1 AND role = 'seller'",
-        )
-        .bind(event.id)
-        .fetch_one(ctx.conn())
-        .await?;
-        if sellers >= i64::from(limit) {
-            return Err(AppError::bad_request("exclusion.vendorLimit"));
-        }
+    if returns
+        && let Some(limit) = event.vendor_limit.filter(|limit| *limit > 0)
+        && seller_places_taken(ctx.conn(), event.id).await? >= i64::from(limit)
+    {
+        return Err(AppError::bad_request("exclusion.vendorLimit"));
     }
     let removed = sqlx::query("DELETE FROM event_exclusions WHERE event_id = $1 AND user_id = $2")
         .bind(event.id)

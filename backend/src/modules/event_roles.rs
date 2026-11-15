@@ -677,6 +677,8 @@ async fn add_co_organizer_for_event(ctx: &mut Ctx, args: AddHelperArgs) -> AppRe
     if !has_role(ctx.conn(), event, user, Role::Seller).await? {
         return Err(AppError::bad_request("seller.notParticipant"));
     }
+    // Excluded sellers keep the role for the return of handed-in items, not for the team
+    super::event_exclusions::assert_not_excluded(ctx.conn(), event, user).await?;
     add_role(ctx, event, user, Role::Coorganizer).await?;
     // Also when already a helper: appointing again sets the rights anew
     store_permissions(ctx, event, user, args.permissions.as_deref()).await?;

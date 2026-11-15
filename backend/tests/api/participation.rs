@@ -717,6 +717,24 @@ async fn a_rejected_item_is_neither_listed_nor_sold(db: PgPool) {
         .map(|item| &item["eventProductId"])
         .collect();
     assert_eq!(ids, [&json!(other)]);
+    // Nor the seller in their own view of the listing
+    let own = b
+        .app
+        .query(
+            "eventProducts.getProductsForEvent",
+            json!({ "eventId": b.event }),
+            Some(&b.as_seller),
+        )
+        .await
+        .body["value"]
+        .clone();
+    let own: Vec<&Value> = own
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| &item["eventProductId"])
+        .collect();
+    assert_eq!(own, [&json!(other)]);
     let page = b
         .app
         .query("products.getProduct", json!({ "productId": product }), None)
@@ -874,16 +892,20 @@ async fn rejecting_needs_the_intake_right_and_an_announced_item(db: PgPool) {
     assert_eq!(reply.body["value"]["rejectedCount"], 0);
     assert_eq!(b.status(handed_in).await, "available");
 
-    // Taken back: announced again, as before
+    // Taken back: announced again, as before, if still ready for the bazaar
     b.reject(&[ball], None, &b.as_organizer).await;
-    let undo = b
-        .app
-        .mutation(
+    let undo = || {
+        b.app.mutation(
             "eventProducts.undoRejection",
             json!({ "eventProductId": relation }),
             Some(&b.as_organizer),
         )
-        .await;
+    };
+    // The bazaar asks for photos and the item has none
+    assert_eq!(undo().await.body["code"], "product.incomplete");
+    assert_eq!(b.status(relation).await, "rejected");
+    b.set_features(json!({ "photosOptional": true })).await;
+    let undo = undo().await;
     assert_eq!(undo.status, StatusCode::OK, "{}", undo.body);
     assert_eq!(b.status(relation).await, "announced");
 }
@@ -1031,4 +1053,140 @@ async fn a_rejected_item_takes_no_place_in_the_item_limit(db: PgPool) {
         )
         .await;
     assert_eq!(count.body["value"], 1);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_team_joins_as_sellers_while_the_registration_is_closed(db: PgPool) {
+    let b = Bazaar::new(
+        db,
+        json!({ "registrationOpen": false, "photosOptional": true }),
+    )
+    .await;
+    sqlx::query("UPDATE events SET access_code = 'GEHEIM', vendor_limit = 2 WHERE id = $1")
+        .bind(b.event)
+        .execute(&b.db)
+        .await
+        .unwrap();
+    // Closed, with a code and all places taken: the organizer still gets in
+    let reply = b.join(b.organizer, json!({})).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert!(b.roles(b.organizer).await.contains(&"seller".to_owned()));
+    let product = fixtures::product(&b.db, b.organizer, "Wippe", 5.0).await;
+    let reply = b
+        .app
+        .mutation(
+            "eventProducts.addProductToEvent",
+            json!({ "eventId": b.event, "productId": product }),
+            Some(&b.as_organizer),
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn an_excluded_seller_who_handed_in_frees_the_place(db: PgPool) {
+    let b = Bazaar::new(db, json!({})).await;
+    b.item("Rad", "available").await;
+    sqlx::query("UPDATE events SET vendor_limit = 2 WHERE id = $1")
+        .bind(b.event)
+        .execute(&b.db)
+        .await
+        .unwrap();
+    let newcomer = fixtures::user(&b.db, "Neu").await;
+    assert_eq!(
+        b.join(newcomer, json!({})).await.body["code"],
+        "join.vendorLimit"
+    );
+    let reply = b.exclude(b.seller, None, &b.as_organizer).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // The role stays for the return, the place does not
+    assert_eq!(b.roles(b.seller).await, ["seller"]);
+    let event = b
+        .app
+        .query(
+            "events.getEvent",
+            json!({ "id": b.event }),
+            Some(&b.as_organizer),
+        )
+        .await;
+    assert_eq!(event.body["value"]["sellerCount"], 1, "{}", event.body);
+    let reply = b.join(newcomer, json!({})).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn an_excluded_seller_does_not_become_a_helper(db: PgPool) {
+    let b = Bazaar::new(db, json!({})).await;
+    b.item("Rad", "available").await;
+    b.exclude(b.seller, None, &b.as_organizer).await;
+    let reply = b
+        .app
+        .mutation(
+            "eventRoles.addCoOrganizerForEvent",
+            json!({ "eventId": b.event, "userId": b.seller }),
+            Some(&b.as_organizer),
+        )
+        .await;
+    assert_eq!(reply.body["code"], "join.excluded");
+    assert_eq!(b.roles(b.seller).await, ["seller"]);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_rejection_taken_back_is_told_and_not_after_the_payout(db: PgPool) {
+    let b = Bazaar::new(db, json!({ "photosOptional": true })).await;
+    let (ball, relation) = b.item("Ball", "announced").await;
+    let (roller, other) = b.item("Roller", "announced").await;
+    b.reject(&[ball, roller], None, &b.as_organizer).await;
+    let undo = |relation: Uuid| {
+        b.app.mutation(
+            "eventProducts.undoRejection",
+            json!({ "eventProductId": relation }),
+            Some(&b.as_organizer),
+        )
+    };
+    let notices = || async {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM unread_notices
+             WHERE user_id = $1 AND area = 'messages' AND event_id = $2",
+        )
+        .bind(b.seller)
+        .bind(b.event)
+        .fetch_one(&b.db)
+        .await
+        .unwrap()
+    };
+    assert_eq!(notices().await, 1);
+
+    let reply = undo(relation).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    let mails = b.mails().await;
+    let (to, subject, _) = mails.last().unwrap();
+    assert_eq!(to, "sina@test.example");
+    assert!(subject.contains("Ball"), "{subject}");
+    // The roller is still rejected: the marker stays
+    assert_eq!(notices().await, 1);
+
+    sqlx::query(
+        "UPDATE event_sellers SET payout_received = true WHERE event_id = $1 AND user_id = $2",
+    )
+    .bind(b.event)
+    .bind(b.seller)
+    .execute(&b.db)
+    .await
+    .unwrap();
+    assert_eq!(undo(other).await.body["code"], "seller.paidOutUndoFirst");
+    assert_eq!(b.status(other).await, "rejected");
+
+    sqlx::query(
+        "UPDATE event_sellers SET payout_received = false WHERE event_id = $1 AND user_id = $2",
+    )
+    .bind(b.event)
+    .bind(b.seller)
+    .execute(&b.db)
+    .await
+    .unwrap();
+    let reply = undo(other).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // Nothing rejected any more: the marker goes
+    assert_eq!(notices().await, 0);
 }

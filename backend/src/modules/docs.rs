@@ -302,7 +302,10 @@ pub const EVENT_COLUMNS: &str = "e.id, e.created_at, e.title, e.description, e.c
     e.approval_status::text AS approval_status, e.approved_at, e.approved_by, e.rejected_at,
     e.rejected_by, e.rejection_reason, e.access_code, e.vendor_limit,
     CASE WHEN e.vendor_limit > 0 THEN (SELECT count(*) FROM event_roles r
-      WHERE r.event_id = e.id AND r.role = 'seller') END AS seller_count, e.last_seller_number,
+      WHERE r.event_id = e.id AND r.role = 'seller'
+        AND NOT EXISTS (SELECT 1 FROM event_exclusions x
+                        WHERE x.event_id = r.event_id AND x.user_id = r.user_id))
+      END AS seller_count, e.last_seller_number,
     e.commission, e.sale_fee_fixed, e.sale_fee_percentage, e.features, e.dropoff_start,
     e.dropoff_end, e.pickup_start, e.pickup_end, e.logistics_note, e.reminder_day_before_sent_for,
     e.reminder_pickup_sent_for, e.hidden_at, e.hidden_by, e.hidden_reason, e.organizer_id";

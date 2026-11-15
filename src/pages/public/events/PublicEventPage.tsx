@@ -81,6 +81,12 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
     api.eventExclusions.getMine,
     isAuthenticated && eventId ? { eventId: eventId as Id<'events'> } : 'skip'
   );
+  // Organizer and helpers join as sellers at any time, also while the registration is closed
+  const myRoles = useQuery(
+    api.eventRoles.getMyRolesForEvent,
+    isAuthenticated && eventId ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
+  const isTeam = !!myRoles?.some((role) => role === 'organizer' || role === 'coorganizer');
   // Read here, e.g. from the mail: the marker at "Basare" goes
   const markSeen = useMutation(api.notifications.markNoticesSeen);
   const unreadNotices = useQuery(
@@ -188,7 +194,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
 
   const isPast = event.endDate < now;
   const isRunning = event.startDate <= now && !isPast;
-  const registration = describeRegistration(event, now);
+  const registration = describeRegistration(event, now, isTeam ? 'team' : undefined);
   const closedText = registration.blocked;
 
   const handleJoinAsVendor = async () => {

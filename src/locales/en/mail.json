@@ -298,6 +298,11 @@
       "more_other": "{{items}} and {{count}} more",
       "final_one": "It cannot be registered for this bazaar again. If you have questions, please contact the organizer.",
       "final_other": "They cannot be registered for this bazaar again. If you have questions, please contact the organizer."
+    },
+    "rejectionUndone": {
+      "subject": "“{{event}}”: “{{title}}” is registered again",
+      "heading": "Item registered again",
+      "text": "The team of “{{event}}” has taken back the rejection of “{{title}}”. The item is registered for the bazaar again; please hand it in at the drop-off."
     }
   }
 }

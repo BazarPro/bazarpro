@@ -2,6 +2,7 @@
 
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::docs;
@@ -29,6 +30,21 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "eventSeller.markVendorPayoutReceived" => mark_vendor_payout_received);
     register!(registry, Mutation "eventSeller.settleVendor" => settle_vendor);
     register!(registry, Mutation "eventSeller.unmarkVendorPayoutReceived" => unmark_vendor_payout_received);
+}
+
+/// Places taken toward the seller limit: sellers with the role, except those the organizer
+/// excluded, who keep the role only for the return of items they handed in. The free
+/// places in `docs::EVENT_COLUMNS` (`seller_count`) count the same way.
+pub async fn seller_places_taken(conn: &mut PgConnection, event: Uuid) -> sqlx::Result<i64> {
+    sqlx::query_scalar(
+        "SELECT count(*) FROM event_roles r
+         WHERE r.event_id = $1 AND r.role = 'seller'
+           AND NOT EXISTS (SELECT 1 FROM event_exclusions x
+                           WHERE x.event_id = r.event_id AND x.user_id = r.user_id)",
+    )
+    .bind(event)
+    .fetch_one(conn)
+    .await
 }
 
 /// Whether the given code opens the event; without a code on the event anything does,
@@ -98,15 +114,21 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
         Some(token) => Some(event_invitations::check(ctx, event.id, token, user).await?),
         None => None,
     };
+    // Organizer and helpers sell their own items at their bazaar whenever they like: the
+    // registration window, the code and the seller limit are for the public
+    let team =
+        event_roles::has_any_role_or_admin(ctx.conn(), event.id, user, &event_roles::TEAM).await?;
     // Closed or outside its window: only an invitation lets new sellers in. Asked before
     // the code, so a code typed in vain does not count against the user.
     if invited_as_helper.is_none()
+        && !team
         && let Some(code) = registration_unavailable(&event, chrono::Utc::now())
         && !event_roles::has_role(ctx.conn(), event.id, user, Role::Seller).await?
     {
         return Err(AppError::bad_request(code));
     }
     if invited_as_helper.is_none()
+        && !team
         && !verify_access_code(ctx, &event, args.access_code.as_deref()).await?
     {
         return Err(AppError::forbidden("join.invalidCode"));
@@ -134,20 +156,13 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
             return Err(AppError::bad_request("join.profileIncomplete"));
         }
     }
-    // A helper the organizer asked for does not take a seller's place
+    // A helper the organizer asked for, or one of the team, does not take a seller's place
     if let Some(limit) = event
         .vendor_limit
-        .filter(|limit| *limit > 0 && invited_as_helper != Some(true))
+        .filter(|limit| *limit > 0 && invited_as_helper != Some(true) && !team)
+        && seller_places_taken(ctx.conn(), event.id).await? >= i64::from(limit)
     {
-        let sellers: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM event_roles WHERE event_id = $1 AND role = 'seller'",
-        )
-        .bind(event.id)
-        .fetch_one(ctx.conn())
-        .await?;
-        if sellers >= i64::from(limit) {
-            return Err(AppError::bad_request("join.vendorLimit"));
-        }
+        return Err(AppError::bad_request("join.vendorLimit"));
     }
     let number = next_seller_number(ctx, event.id).await?;
     let id: Uuid = sqlx::query_scalar(

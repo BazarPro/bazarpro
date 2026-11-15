@@ -41,18 +41,31 @@ export interface RegistrationInfo {
 }
 
 /**
+ * Who joins other than through the public registration, as the backend lets them in:
+ * - `team`: organizer and helpers, at any time and without taking a place
+ * - `helperInvitation`: invited as helper, also without taking a place
+ * - `invitation`: invited as seller, past a closed registration but not past the limit
+ */
+export type Admission = 'team' | 'helperInvitation' | 'invitation';
+
+/**
  * The registration as sellers see it on the bazaar page, in the list and in the join
  * dialog: whether they can join, until when, and how many places are left.
  */
-export function describeRegistration(event: RegistrationEvent, now: number): RegistrationInfo {
+export function describeRegistration(
+  event: RegistrationEvent,
+  now: number,
+  admission?: Admission
+): RegistrationInfo {
+  if (admission === 'team' || admission === 'helperInvitation') return {};
   const state = getRegistrationState(event, now);
-  const closed = registrationClosedText(state);
+  const closed = admission === 'invitation' ? undefined : registrationClosedText(state);
   if (closed) return { blocked: closed, invitationHelps: true };
   const left = spotsLeft(event);
   if (left === 0) return { blocked: i18n.t('registration.full', { ns: 'events' }) };
   return {
     until:
-      state.open && state.closesAt !== undefined
+      admission !== 'invitation' && state.open && state.closesAt !== undefined
         ? i18n.t('registration.until', { ns: 'events', time: formatDateTimeDE(state.closesAt) })
         : undefined,
     spots:
