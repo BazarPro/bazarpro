@@ -22,7 +22,7 @@
     "newMessages_one": "{{count}} neue Nachricht vom Veranstalter",
     "newMessages_other": "{{count}} neue Nachrichten vom Veranstalter",
     "excluded": "Ausgeschlossen",
-    "excludedOn": "Am {{date}} hat dich der Veranstalter von diesem Basar ausgeschlossen."
+    "excludedSince": "Ausgeschlossen seit {{date}}"
   },
   "filters": {
     "search": "Basare suchen…",

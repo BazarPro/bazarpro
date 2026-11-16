@@ -15,6 +15,8 @@
     "productsUpdated": "Artikel aktualisiert",
     "selected_one": "Artikel ausgewählt",
     "selected_other": "Artikel ausgewählt",
+    "selectAll": "Alle auswählen",
+    "selectNone": "Auswahl aufheben",
     "labelsPdf": "Etiketten als PDF",
     "labelsPdfShort": "Etiketten",
     "pdfCreating": "PDF wird erstellt…",
@@ -217,6 +219,9 @@
     "clash": "Achtung: Ein anderer Verkäufer bei diesem Basar hat dasselbe Muster wie du. Eure Etiketten unterscheiden sich nur im Zusatzbuchstaben. Du musst nichts ändern, das Team sieht es auf den Sortierblättern. Bitte weise beim Abgeben darauf hin.",
     "clashAt": "Achtung: Bei {{bazaars}} hat ein anderer Verkäufer dasselbe Muster wie du. Eure Etiketten unterscheiden sich nur im Zusatzbuchstaben. Bitte weise beim Abgeben darauf hin.",
     "basket": "Korb-Etikett drucken",
+    "print": "Drucken",
+    "printItems": "Artikel-Etiketten",
+    "printBasket": "Korb-Etikett",
     "basketHint": "Dein Sortierzeichen groß zum Aufkleben auf deinen Korb"
   },
   "price": {

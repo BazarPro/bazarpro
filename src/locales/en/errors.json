@@ -243,6 +243,7 @@
     "cashSummary": "The organizer has not allowed you to see the cash summary."
   },
   "exclusion": {
+    "hasItems": "The seller still has announced items at this bazaar. Reject them as not handed in first.",
     "past": "Nobody can be excluded once the bazaar is over.",
     "organizer": "The organizer cannot be excluded.",
     "walkIn": "Sellers without an account cannot be excluded.",

@@ -535,6 +535,21 @@ export function MyProductsPage() {
       : undefined;
 
   const selectedSet = new Set(selectedProducts);
+  // "Select all" covers what the filters show; handed-in items keep their place at the bazaar
+  const selectableIds = filteredProducts
+    .filter((p) => !isEventSelectionMode || !(p.sold || isSelectionLocked(p._id)))
+    .map((p) => p._id);
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
+  const toggleSelectAll = () => {
+    const ids = new Set<Id<'products'>>(selectableIds);
+    setSelectedProducts((prev) =>
+      allSelected
+        ? prev.filter((id) => !ids.has(id))
+        : [...prev, ...selectableIds.filter((id) => !prev.includes(id))]
+    );
+  };
+  const selectAll =
+    selectableIds.length > 0 ? { allSelected, onToggle: toggleSelectAll } : undefined;
   const selectedForLabels = filteredProducts
     .filter((p) => selectedSet.has(p._id) && !p.sold)
     .map((p) => p._id);
@@ -621,7 +636,10 @@ export function MyProductsPage() {
             />
 
             {isBulkSelectionEnabled && !isEventSelectionMode && (
-              <SelectionBar title={t('myProducts.selected', { count: selectedProducts.length })}>
+              <SelectionBar
+                title={t('myProducts.selected', { count: selectedProducts.length })}
+                selectAll={selectAll}
+              >
                 <Button
                   variant="outline"
                   size="sm"
@@ -672,6 +690,7 @@ export function MyProductsPage() {
               <SelectionBar
                 title={filteredEvent?.title ?? t('myProducts.event')}
                 text={t('myProducts.selectedCount', { count: selectedProducts.length })}
+                selectAll={selectAll}
               >
                 <Button
                   loading={isEventSelectionSaving}
@@ -844,13 +863,17 @@ function SelectionBar({
   title,
   text,
   sticky = true,
+  selectAll,
   children,
 }: {
   title: string;
   text?: string;
   sticky?: boolean;
+  /** Offers to select (or clear) every item the filters show */
+  selectAll?: { allSelected: boolean; onToggle: () => void };
   children: ReactNode;
 }) {
+  const { t } = useTranslation('seller');
   return (
     <div
       className={cn(
@@ -860,7 +883,21 @@ function SelectionBar({
     >
       <div>
         <div className="text-base font-semibold">{title}</div>
-        {text && <div className="text-sm text-muted-foreground">{text}</div>}
+        {(text || selectAll) && (
+          <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+            {text}
+            {text && selectAll && <span aria-hidden>·</span>}
+            {selectAll && (
+              <button
+                type="button"
+                onClick={selectAll.onToggle}
+                className="font-medium text-primary hover:underline"
+              >
+                {selectAll.allSelected ? t('myProducts.selectNone') : t('myProducts.selectAll')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>

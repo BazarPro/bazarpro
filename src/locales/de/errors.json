@@ -243,6 +243,7 @@
     "cashSummary": "Den Kassensturz hat dir der Veranstalter nicht freigegeben."
   },
   "exclusion": {
+    "hasItems": "Der Verkäufer hat noch angemeldete Artikel bei diesem Basar. Lehne sie zuerst als nicht abgegeben ab.",
     "past": "Nach dem Basar kann niemand mehr ausgeschlossen werden.",
     "organizer": "Der Veranstalter kann nicht ausgeschlossen werden.",
     "walkIn": "Verkäufer ohne Konto können nicht ausgeschlossen werden.",

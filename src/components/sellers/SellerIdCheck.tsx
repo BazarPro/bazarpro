@@ -1,6 +1,5 @@
 import { IdCard } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import type { VendorWithCalculations } from '../../lib/api/types';
 import { countryName } from '../../i18n/countries';
 
@@ -13,18 +12,26 @@ export function SellerIdCheck({ seller }: { seller: VendorWithCalculations }) {
   const name = [seller.firstName, seller.lastName].filter(Boolean).join(' ') || seller.name;
   const place = [seller.zipCode, seller.city].filter(Boolean).join(' ');
   return (
-    <Alert variant="warning">
-      <IdCard />
-      <AlertTitle>{t('products.idCheckTitle')}</AlertTitle>
-      <AlertDescription>
-        <div className="font-medium text-foreground">
-          {name && <div>{name}</div>}
+    <section
+      aria-label={t('products.idCheckTitle')}
+      className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900 dark:bg-amber-950/20"
+    >
+      <div className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+        <IdCard className="h-4 w-4 shrink-0" />
+        {t('products.idCheckTitle')}
+      </div>
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
+        {/* Laid out like on the card, to hold it next to it */}
+        <address className="shrink-0 rounded-md border bg-background px-3 py-2 text-sm not-italic leading-snug sm:min-w-56">
+          {name && <div className="font-semibold">{name}</div>}
           {seller.street && <div>{seller.street}</div>}
           {place && <div>{place}</div>}
-          {seller.country && <div>{countryName(seller.country)}</div>}
-        </div>
-        <p>{t('products.idCheckText')}</p>
-      </AlertDescription>
-    </Alert>
+          {seller.country && (
+            <div className="text-muted-foreground">{countryName(seller.country)}</div>
+          )}
+        </address>
+        <p className="text-xs leading-relaxed text-muted-foreground">{t('products.idCheckText')}</p>
+      </div>
+    </section>
   );
 }

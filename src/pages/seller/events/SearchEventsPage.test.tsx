@@ -170,12 +170,9 @@ describe('find bazaars', () => {
     const mine = screen.getByRole('region', { name: 'Meine Basare' });
     expect(within(mine).getByText(LONG_TITLE)).toBeTruthy();
     expect(within(mine).getByText('Ausgeschlossen')).toBeTruthy();
-    expect(
-      within(mine).getByText(
-        'Am 14. November 2026 hat dich der Veranstalter von diesem Basar ausgeschlossen.'
-      )
-    ).toBeTruthy();
-    expect(within(mine).getByText('Begründung: Nichts abgeholt')).toBeTruthy();
+    expect(within(mine).getByText('Ausgeschlossen seit 14. November 2026')).toBeTruthy();
+    // The reason stays on the bazaar page, the card keeps its height
+    expect(within(mine).queryByText('Begründung: Nichts abgeholt')).toBeNull();
     // Neither joining nor leaving
     expect(within(mine).queryByRole('button', { name: 'Anmelden' })).toBeNull();
     expect(within(mine).queryByRole('button', { name: 'Vom Basar abmelden' })).toBeNull();

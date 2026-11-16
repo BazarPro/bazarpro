@@ -181,7 +181,14 @@ export function MyProductCard({
       discountState.visible,
   };
 
-  const menu = <MyProductMenu product={product} handlers={handlers} canDiscount={isOngoingEvent} />;
+  const menu = (
+    <MyProductMenu
+      product={product}
+      handlers={handlers}
+      canDiscount={isOngoingEvent}
+      hideEdit={layout !== 'list'}
+    />
+  );
 
   const shell = (className: string, children: ReactNode) => (
     <div

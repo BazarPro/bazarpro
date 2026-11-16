@@ -127,24 +127,16 @@ function EventCard({
           </p>
         </div>
 
-        {exclusion && (
-          <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-            <Ban className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <div className="space-y-1">
-              <p>{t('search.excludedOn', { date: formatDateDE(exclusion.excludedAt) })}</p>
-              {exclusion.reason && (
-                <p className="text-muted-foreground">
-                  {t('join.excludedReason', { reason: exclusion.reason })}
-                </p>
-              )}
-              {isRegistered && (
-                <p className="text-muted-foreground">{t('join.excludedHandedIn')}</p>
-              )}
-            </div>
-          </div>
-        )}
-
         <div className="space-y-2 mb-5">
+          {exclusion && (
+            // The full notice with the reason is on the bazaar page behind "Details"
+            <div className="flex items-start gap-2 text-sm">
+              <Ban className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+              <span className="text-destructive">
+                {t('search.excludedSince', { date: formatDateDE(exclusion.excludedAt) })}
+              </span>
+            </div>
+          )}
           <div className="flex items-start gap-2 text-sm">
             <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
             <span className="text-muted-foreground">

@@ -3,7 +3,8 @@
 //! invitation, until the organizer takes the exclusion back.
 //!
 //! What happened at the bazaar stays: handed-in items go back in the normal return, sales
-//! and the settlement remain. Only items that were merely announced leave the bazaar.
+//! and the settlement remain. Sellers with items still announced are refused: the team
+//! rejects those first (not handed in), so nobody loses prepared items without a word.
 //! Sellers without an account (walk-in) cannot be excluded: the team manages them anyway.
 
 use std::collections::HashMap;
@@ -20,7 +21,6 @@ use super::event_seller::seller_places_taken;
 use super::events::{EventView, time_condition, view};
 use super::features::registration_unavailable;
 use super::notifications::{self, Area, Content, T};
-use super::offers::close_offers_for_event_product;
 use crate::error::{AppError, AppResult};
 use crate::mail::Detail;
 use crate::realtime::Topic;
@@ -165,6 +165,9 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
         return Err(AppError::bad_request("seller.notParticipant"));
     }
     let reason = normalize_reason(args.reason, "exclusion.reasonTooLong")?;
+    if has_announced(ctx.conn(), event.id, user).await? {
+        return Err(AppError::bad_request("exclusion.hasItems"));
+    }
     let inserted = sqlx::query(
         "INSERT INTO event_exclusions (event_id, user_id, excluded_by, reason)
          VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
@@ -180,23 +183,6 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
         return Ok(Success { success: true });
     }
 
-    // Announced items leave the bazaar; their buyers learn that offers are void
-    let announced: Vec<(Uuid, Uuid, String)> = sqlx::query_as(
-        "SELECT ep.id, p.id, p.title FROM event_products ep JOIN products p ON p.id = ep.product_id
-         WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status = 'announced'",
-    )
-    .bind(event.id)
-    .bind(user)
-    .fetch_all(ctx.conn())
-    .await?;
-    for (relation, product, title) in &announced {
-        close_offers_for_event_product(ctx, *relation, title, "removed").await?;
-        sqlx::query("DELETE FROM event_products WHERE id = $1")
-            .bind(relation)
-            .execute(ctx.conn())
-            .await?;
-        ctx.touch(Topic::Product(*product));
-    }
     let was_helper = event_roles::has_role(ctx.conn(), event.id, user, Role::Coorganizer).await?;
     if was_helper {
         event_roles::remove_role(ctx, event.id, user, Role::Coorganizer).await?;
@@ -252,6 +238,18 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
     ctx.touch(Topic::Event(event.id));
     ctx.touch(Topic::User(user));
     Ok(Success { success: true })
+}
+
+/// Whether the seller has items announced at the bazaar, not handed in yet.
+pub async fn has_announced(conn: &mut PgConnection, event: Uuid, user: Uuid) -> sqlx::Result<bool> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
+                        WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status = 'announced')",
+    )
+    .bind(event)
+    .bind(user)
+    .fetch_one(conn)
+    .await
 }
 
 /// Whether the seller has items at the bazaar: handed in, sold or returned.

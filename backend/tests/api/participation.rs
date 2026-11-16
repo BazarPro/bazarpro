@@ -448,10 +448,21 @@ async fn opening_and_closing_registration_reaches_open_pages(db: PgPool) {
 // Exclusion -----------------------------------------------------------------------------
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
-async fn an_excluded_seller_leaves_with_announced_items_only(db: PgPool) {
+async fn an_excluded_seller_keeps_handed_in_items_only_announced_ones_refuse(db: PgPool) {
     let b = Bazaar::new(db, json!({})).await;
     let (_, announced) = b.item("Jacke", "announced").await;
     let (_, handed_in) = b.item("Stiefel", "available").await;
+
+    // Items still announced: the team rejects them first
+    let reply = b.exclude(b.seller, None, &b.as_organizer).await;
+    assert_eq!(reply.status, StatusCode::BAD_REQUEST, "{}", reply.body);
+    assert_eq!(reply.body["code"], "exclusion.hasItems");
+    assert!(b.mails().await.is_empty());
+    sqlx::query("UPDATE event_products SET status = 'rejected' WHERE id = $1")
+        .bind(announced)
+        .execute(&b.db)
+        .await
+        .unwrap();
 
     let reply = b
         .exclude(
@@ -463,14 +474,9 @@ async fn an_excluded_seller_leaves_with_announced_items_only(db: PgPool) {
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
     // Items handed in: still a seller, for the ID code and the return
     assert_eq!(b.roles(b.seller).await, ["seller"]);
-    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM event_products WHERE id = $1")
-        .bind(announced)
-        .fetch_one(&b.db)
-        .await
-        .unwrap();
-    assert_eq!(left, 0);
-    // Handed in: goes back in the normal return
+    // Handed in: goes back in the normal return; rejected stays as it was
     assert_eq!(b.status(handed_in).await, "available");
+    assert_eq!(b.status(announced).await, "rejected");
 
     // The team still finds them, with number and reason
     let vendors = b

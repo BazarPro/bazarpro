@@ -153,19 +153,22 @@ export function MyProductMenu({
   product,
   handlers,
   canDiscount,
+  hideEdit = false,
   className,
 }: {
   product: MyProductCardProduct;
   handlers: MyProductHandlers;
   /** A bazaar of the item runs and allows discounts */
   canDiscount: boolean;
+  /** The card already shows an edit button next to the menu */
+  hideEdit?: boolean;
   className?: string;
 }) {
   const { t } = useTranslation('seller');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const discountButton = getDiscountButtonState(product.discountRules);
   const deletable = !!handlers.onDelete && (product.canDelete ?? !product.isLocked);
-  const editable = !product.sold && !product.isLocked;
+  const editable = !hideEdit && !product.sold && !product.isLocked;
   const showDiscount =
     !product.sold &&
     canDiscount &&

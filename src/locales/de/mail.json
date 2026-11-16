@@ -276,7 +276,7 @@
     "excluded": {
       "subject": "Du nimmst nicht mehr an „{{event}}“ teil",
       "heading": "Vom Basar ausgeschlossen",
-      "text": "Der Veranstalter von „{{event}}“ hat dich als Verkäufer ausgeschlossen. Deine angemeldeten Artikel sind dort nicht mehr dabei, und du kannst dich nicht erneut anmelden.",
+      "text": "Der Veranstalter von „{{event}}“ hat dich als Verkäufer ausgeschlossen. Du kannst dich nicht erneut anmelden.",
       "handedIn": "Bereits abgegebene Artikel bekommst du wie gewohnt bei der Rückgabe zurück. Verkäufe und Abrechnung bleiben bestehen."
     },
     "readmitted": {

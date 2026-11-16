@@ -40,6 +40,8 @@ import {
   PackageX,
   MoreHorizontal,
   UserCheck,
+  ShieldCheck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
@@ -48,6 +50,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../../../components/ui/dropdown-menu';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
@@ -71,6 +74,10 @@ import { SellerIdCheck } from '../../../../components/sellers/SellerIdCheck';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { matchingVendors, productMatcher } from '../../../../lib/productSearch';
 import { addToCachedCart } from '../../../../lib/checkout';
+import {
+  HelperRoleDialog,
+  type HelperAction,
+} from '../../../../components/helpers/HelperRoleDialog';
 import { ExcludedBadge } from '../../../../components/participation/ExcludedBadge';
 import {
   ExclusionDialog,
@@ -210,6 +217,14 @@ export function ProductManagementPage() {
     !!selectedVendor &&
     !selectedVendor.managedByEventId &&
     event?.organizerId !== selectedVendor._id;
+
+  // Appointing helpers and their rights: organizer only, sellers with an account
+  const canManageHelper =
+    canLead &&
+    !!selectedVendor &&
+    !selectedVendor.managedByEventId &&
+    event?.organizerId !== selectedVendor._id;
+  const [helperAction, setHelperAction] = useState<HelperAction | null>(null);
 
   const stats = useMemo(() => {
     const announced = vendorProducts.filter((p) => p.status === 'announced').length;
@@ -702,7 +717,7 @@ export function ProductManagementPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {canExclude && !selectedVendor.excluded && (
+              {(canManageHelper || (canExclude && !selectedVendor.excluded)) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -713,14 +728,42 @@ export function ProductManagementPage() {
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={!event || event.endDate < now}
-                      onSelect={() => setExclusionMode('exclude')}
-                    >
-                      <Ban /> {t('sellers.exclude')}
-                    </DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="max-w-xs">
+                    {canManageHelper && selectedVendor.isHelper && (
+                      <DropdownMenuItem
+                        onSelect={() => setHelperAction({ mode: 'edit', vendor: selectedVendor })}
+                      >
+                        <SlidersHorizontal /> {t('sellers.editPermissions')}
+                      </DropdownMenuItem>
+                    )}
+                    {canManageHelper && !selectedVendor.isHelper && !selectedVendor.excluded && (
+                      <DropdownMenuItem
+                        onSelect={() => setHelperAction({ mode: 'add', vendor: selectedVendor })}
+                      >
+                        <ShieldCheck /> {t('sellers.appointHelper')}
+                      </DropdownMenuItem>
+                    )}
+                    {canExclude && !selectedVendor.excluded && (
+                      <>
+                        {canManageHelper && <DropdownMenuSeparator />}
+                        {/* Announced items would be lost: the team rejects them first */}
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={!event || event.endDate < now || stats.announced > 0}
+                          onSelect={() => setExclusionMode('exclude')}
+                        >
+                          <Ban />
+                          <span className="flex flex-col">
+                            {t('sellers.exclude')}
+                            {stats.announced > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                {t('sellers.excludeHasItems', { count: stats.announced })}
+                              </span>
+                            )}
+                          </span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -1030,6 +1073,8 @@ export function ProductManagementPage() {
           {t('products.rejectMail', { count: rejectSellerCount })} {t('products.rejectUndoHint')}
         </p>
       </ConfirmDialog>
+
+      <HelperRoleDialog eventId={eventId} action={helperAction} onActionChange={setHelperAction} />
 
       {selectedVendor && (
         <ExclusionDialog
