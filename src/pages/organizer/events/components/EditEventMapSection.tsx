@@ -2,7 +2,8 @@ import { FormSection } from '../../../../components/ui/form-section';
 import { useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useMutation, useQuery } from '../../../../lib/api/react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
+import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
 import { api } from '../../../../lib/api/functions';
 import type { Doc, Id } from '../../../../lib/api/types';
 import { Button } from '../../../../components/ui/button';
@@ -204,21 +205,25 @@ function PendingLocationCategories({
           {t('map.addToList')}
         </Button>
       </div>
-      <ul className="space-y-1">
-        {pendingLocationCategories.map((label, i) => (
-          <li
-            key={`${label}-${i}`}
-            className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
-          >
-            <span>{label}</span>
-            <Button type="button" size="sm" variant="ghost" onClick={() => removeAt(i)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </li>
-        ))}
-      </ul>
-      {pendingLocationCategories.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t('map.pendingHint')}</p>
+      {pendingLocationCategories.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {pendingLocationCategories.map((label, i) => (
+            <li
+              key={`${label}-${i}`}
+              className="inline-flex items-center gap-1 rounded-full border bg-muted/40 py-0.5 pl-3 pr-1 text-sm"
+            >
+              <span>{label}</span>
+              <button
+                type="button"
+                aria-label={t('map.remove')}
+                onClick={() => removeAt(i)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -254,24 +259,34 @@ export function EditEventMapSection({
 
   return (
     <FormSection
-      title={allowMapImage ? t('map.title') : t('map.categories')}
+      title={
+        allowMapImage ? (
+          t('map.title')
+        ) : (
+          <span className="flex items-center gap-1">
+            {t('map.categories')}
+            <InfoTip>{`${t('map.emptyHint')} ${t('map.pendingHint')}`}</InfoTip>
+          </span>
+        )
+      }
       description={allowMapImage ? t('map.intro') : undefined}
     >
       {allowMapImage && (
         <div className="space-y-2">
-          <Label>{t('map.image')}</Label>
+          <LabelWithInfo
+            info={t('basic.imageHint', {
+              width: IMAGE_UPLOAD_MAX_WIDTH,
+              height: IMAGE_UPLOAD_MAX_HEIGHT,
+            })}
+          >
+            {t('map.image')}
+          </LabelWithInfo>
           <ImageUpload
             onFilesChange={handleMapFilesChange}
             initialImageUrls={initialMapUrls}
             onRemoveExistingImage={handleRemoveExistingMap}
             maxFiles={1}
           />
-          <p className="text-xs text-muted-foreground">
-            {t('basic.imageHint', {
-              width: IMAGE_UPLOAD_MAX_WIDTH,
-              height: IMAGE_UPLOAD_MAX_HEIGHT,
-            })}
-          </p>
         </div>
       )}
 

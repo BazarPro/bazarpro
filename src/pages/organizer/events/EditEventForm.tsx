@@ -16,7 +16,9 @@ import { EditEventCategories } from './components/EditEventCategories';
 import { EditEventContact } from './components/EditEventContact';
 import { EditEventAccess } from './components/EditEventAccess';
 import { EditEventMapSection } from './components/EditEventMapSection';
-import { DiscountStartField, EditEventFeatures } from './components/EditEventFeatures';
+import { EditEventFeatures } from './components/EditEventFeatures';
+import { FormSection } from '../../../components/ui/form-section';
+import { followEventDates, type EventTimes } from '../../../lib/eventDates';
 import { EditEventSellerInfo } from './components/EditEventSellerInfo';
 import { logisticsFromForm } from '../../../lib/sellerLogistics';
 import type { FeeLock } from '../../../lib/sellerFees';
@@ -61,7 +63,7 @@ import { WizardPictures } from './components/wizard/WizardPictures';
 import { zodMessage } from '../../../i18n/zodMessage';
 import i18n from '../../../i18n';
 import { EventTypePicker } from './components/EventTypePicker';
-import { formatEventPlace, placeFromLocation, type EventPlace } from '../../../shared/eventJsonLd';
+import { placeFromLocation, type EventPlace } from '../../../shared/eventJsonLd';
 import {
   EVENT_TYPES,
   findEventType,
@@ -77,7 +79,7 @@ import {
   PlacePreview,
   SalePreview,
 } from './components/wizard/WizardPreviews';
-import { dateLocale } from '../../../i18n/format';
+import { WizardSummary } from './components/wizard/WizardSummary';
 import { PageSkeleton } from '../../../components/ui/loading';
 
 /**
@@ -416,29 +418,22 @@ function formatForDateTimeLocal(timestamp: number): string {
  */
 const WIZARD_STEPS = [
   { id: 'type', fields: [] },
-  // What makes the bazaar first, with a preview of each choice
-  { id: 'sale', fields: ['features.maxDiscountPercent'] },
+  // Date and place first: the times of discounts, registration and drop-off follow them
+  { id: 'basics', fields: ['title', 'location', 'address', 'startDate', 'endDate'] },
+  // What makes the bazaar, with a preview of each choice
+  {
+    id: 'sale',
+    fields: ['features.maxDiscountPercent', 'features.discountStartsAt'],
+  },
   { id: 'items', fields: ['categories', 'features.maxItemsPerSeller'] },
   { id: 'fees', fields: ['commission', 'features.intakeFee'] },
   {
     id: 'registration',
     fields: ['visibility', 'accessCode', 'vendorLimit', 'features.registrationEndsAt'],
   },
-  // The exact details at the end
-  {
-    id: 'basics',
-    fields: [
-      'title',
-      'description',
-      'location',
-      'address',
-      'startDate',
-      'endDate',
-      'features.discountStartsAt',
-      'contactInfo',
-    ],
-  },
   { id: 'logistics', fields: ['sellerLogistics'] },
+  // The words for the bazaar page last, with the page growing next to them
+  { id: 'details', fields: ['description', 'contactInfo'] },
   { id: 'preview', fields: [] },
 ] as const;
 type WizardStepId = (typeof WIZARD_STEPS)[number]['id'];
@@ -504,7 +499,8 @@ function WizardHeader({
 
 /** The sections of the edit page, in the order of the wizard's steps. */
 const EDIT_SECTIONS = ['basics', 'sale', 'items', 'fees', 'registration', 'logistics'] as const;
-type EventSectionId = (typeof EDIT_SECTIONS)[number];
+/** "details" exists only in the wizard; the edit page keeps them with the basics */
+type EventSectionId = (typeof EDIT_SECTIONS)[number] | 'details';
 
 /**
  * One group of settings: the wizard shows them step by step, the edit page all at once.
@@ -529,34 +525,48 @@ function EventSection({
     feeLock: FeeLock;
   };
 }) {
-  const { watch } = useFormContext<EventFormData>();
-  const discounts = watch('features.discounts');
   const feeLock = editing?.feeLock ?? null;
+  const contactAndMap = (
+    <>
+      <EditEventContact parts={['contact']} />
+      <EditEventMapSection
+        allowMapImage={!!editing}
+        eventId={editing?.eventId}
+        initialEventMapUrl={editing?.eventMapImageUrl ?? undefined}
+        pendingLocationCategories={pendingLocationCategories}
+        onPendingLocationCategoriesChange={onPendingLocationCategoriesChange}
+      />
+    </>
+  );
   switch (id) {
     case 'basics':
-      return (
+      return editing ? (
         <>
           <EditEventBasicInfo
-            allowCoverImage={!!editing}
-            initialCoverImageUrl={editing?.coverImageUrl ?? undefined}
-            lockDates={editing?.isRunning}
-            // On the edit page the discount start stays with the other discount settings
-            afterDates={!editing && discounts ? <DiscountStartField /> : undefined}
+            initialCoverImageUrl={editing.coverImageUrl ?? undefined}
+            lockDates={editing.isRunning}
           />
-          <EditEventContact parts={['contact']} />
+          {contactAndMap}
+        </>
+      ) : (
+        <EditEventBasicInfo allowCoverImage={false} parts={['when']} />
+      );
+    case 'details':
+      return (
+        <>
+          <FormSection>
+            <EditEventBasicInfo allowCoverImage={false} parts={['description']} />
+            <EditEventContact parts={['contact']} bare />
+          </FormSection>
           <EditEventMapSection
-            allowMapImage={!!editing}
-            eventId={editing?.eventId}
-            initialEventMapUrl={editing?.eventMapImageUrl ?? undefined}
+            allowMapImage={false}
             pendingLocationCategories={pendingLocationCategories}
             onPendingLocationCategoriesChange={onPendingLocationCategoriesChange}
           />
         </>
       );
     case 'sale':
-      return (
-        <EditEventFeatures parts={['sale']} showHeader={false} withDiscountStart={!!editing} />
-      );
+      return <EditEventFeatures parts={['sale']} showHeader={false} />;
     case 'items':
       return (
         <>
@@ -566,10 +576,10 @@ function EventSection({
       );
     case 'fees':
       return (
-        <>
-          <EditEventContact parts={['commission']} feeLock={feeLock} />
-          <EditEventFeatures parts={['fees']} showHeader={false} feeLock={feeLock} />
-        </>
+        <FormSection contentClassName="grid grid-cols-1 gap-5 space-y-0 sm:grid-cols-2">
+          <EditEventContact parts={['commission']} feeLock={feeLock} bare />
+          <EditEventFeatures parts={['fees']} showHeader={false} feeLock={feeLock} bare />
+        </FormSection>
       );
     case 'registration':
       return (
@@ -583,49 +593,19 @@ function EventSection({
   }
 }
 
-/** Last step: the bazaar page as visitors will see it, and the key facts. */
+/** Last step: the bazaar page as visitors will see it. */
 function WizardFinal({ type }: { type?: EventType }) {
-  const { t } = useTranslation('organizer');
   const { watch } = useFormContext<EventFormData>();
   const values = watch();
-  const start = values.startDate ? new Date(values.startDate) : undefined;
   return (
-    <div className="space-y-6">
-      <EventPagePreview
-        type={type}
-        conditions={{
-          commission: Number.isFinite(values.commission) ? values.commission : 0,
-          features: featuresFromForm(values.features),
-          sellerLogistics: logisticsFromForm(values.sellerLogistics),
-        }}
-      />
-      <dl className="grid gap-3 rounded-xl border bg-card p-6 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-muted-foreground">{t('wizard.summary.title')}</dt>
-          <dd className="font-medium">{values.title || '–'}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">{t('wizard.summary.when')}</dt>
-          <dd className="font-medium">
-            {start && !isNaN(start.getTime())
-              ? start.toLocaleString(dateLocale(), { dateStyle: 'full', timeStyle: 'short' })
-              : '–'}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">{t('wizard.summary.where')}</dt>
-          <dd className="font-medium">
-            {values.location
-              ? formatEventPlace({ ...values.address, location: values.location })
-              : '–'}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">{t('wizard.summary.categories')}</dt>
-          <dd className="font-medium">{values.categories.length}</dd>
-        </div>
-      </dl>
-    </div>
+    <EventPagePreview
+      type={type}
+      conditions={{
+        commission: Number.isFinite(values.commission) ? values.commission : 0,
+        features: featuresFromForm(values.features),
+        sellerLogistics: logisticsFromForm(values.sellerLogistics),
+      }}
+    />
   );
 }
 
@@ -641,6 +621,7 @@ function StepPreview({ id, type }: { id: WizardStepId; type?: EventType }) {
     case 'registration':
       return <ListingPreview type={type} />;
     case 'basics':
+    case 'details':
       return <PlacePreview type={type} />;
     case 'logistics':
       return <LogisticsPreview />;
@@ -740,6 +721,48 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     reset,
     formState: { isSubmitting, isDirty },
   } = methods;
+
+  // While a bazaar is set up, drop-off, pickup and the other times around it follow its
+  // date: picking the day suggests them on the same day, moving it moves them along
+  const lastEventTimes = useRef<EventTimes>({ startDate: '', endDate: '' });
+  useEffect(() => {
+    if (isEditing) return;
+    const values = methods.getValues();
+    lastEventTimes.current = { startDate: values.startDate, endDate: values.endDate };
+    const subscription = methods.watch((current, { name }) => {
+      if (name !== 'startDate' && name !== 'endDate') {
+        // A draft or template brings its own times: compare with those from now on
+        if (name === undefined) {
+          lastEventTimes.current = {
+            startDate: current.startDate ?? '',
+            endDate: current.endDate ?? '',
+          };
+        }
+        return;
+      }
+      const next = { startDate: current.startDate ?? '', endDate: current.endDate ?? '' };
+      const logistics = current.sellerLogistics ?? {};
+      const features = current.features ?? {};
+      const changes = followEventDates(lastEventTimes.current, next, {
+        dropoffStart: logistics.dropoffStart ?? '',
+        dropoffEnd: logistics.dropoffEnd ?? '',
+        pickupStart: logistics.pickupStart ?? '',
+        pickupEnd: logistics.pickupEnd ?? '',
+        registrationEndsAt: features.registrationEndsAt ?? '',
+        discountStartsAt: features.discountStartsAt ?? '',
+      });
+      if (!changes) return;
+      lastEventTimes.current = next;
+      for (const [key, value] of Object.entries(changes)) {
+        const field =
+          key === 'registrationEndsAt' || key === 'discountStartsAt'
+            ? (`features.${key}` as const)
+            : (`sellerLogistics.${key as 'dropoffStart'}` as const);
+        methods.setValue(field, value, { shouldDirty: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [isEditing, methods]);
 
   // Live updates fill the form, but never over what the user is typing
   useEffect(() => {
@@ -1331,8 +1354,15 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                       />
                     )}
                     {stepId === 'preview' && (
-                      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-                        <div className="min-w-0 lg:order-2">
+                      <WizardSummary
+                        onEdit={(id) =>
+                          void goToStep(WIZARD_STEPS.findIndex((candidate) => candidate.id === id))
+                        }
+                      />
+                    )}
+                    {stepId === 'preview' && (
+                      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+                        <div className="min-w-0 lg:sticky lg:top-24 lg:order-2">
                           <WizardPictures
                             isGuest={isGuest}
                             onLogin={loginForPictures}

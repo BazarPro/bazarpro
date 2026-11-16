@@ -116,7 +116,7 @@ describe('event creation wizard', () => {
   it('continues the signed-in organizer’s saved draft where it was left', () => {
     serverDraft.current = {
       updatedAt: Date.now(),
-      draft: { values: { title: 'Mein Entwurf' }, pendingLocationCategories: [], step: 5 },
+      draft: { values: { title: 'Mein Entwurf' }, pendingLocationCategories: [], step: 1 },
     };
     renderWizard();
 
@@ -130,13 +130,13 @@ describe('event creation wizard', () => {
       JSON.stringify({
         values: { title: 'Vor der Anmeldung' },
         pendingLocationCategories: [],
-        step: 5,
+        step: 1,
         savedAt: Date.now(),
       })
     );
     serverDraft.current = {
       updatedAt: Date.now() - 3600_000,
-      draft: { values: { title: 'Alter Entwurf' }, pendingLocationCategories: [], step: 5 },
+      draft: { values: { title: 'Alter Entwurf' }, pendingLocationCategories: [], step: 1 },
     };
     renderWizard();
 
@@ -146,7 +146,7 @@ describe('event creation wizard', () => {
   it('saves the continued draft without asking', async () => {
     serverDraft.current = {
       updatedAt: Date.now(),
-      draft: { values: { title: 'Mein Entwurf' }, pendingLocationCategories: [], step: 5 },
+      draft: { values: { title: 'Mein Entwurf' }, pendingLocationCategories: [], step: 1 },
     };
     renderWizard();
     fireEvent.click(screen.getByRole('button', { name: 'Später weitermachen' }));
@@ -158,7 +158,7 @@ describe('event creation wizard', () => {
   it('warns before a new bazaar replaces the saved draft', async () => {
     serverDraft.current = {
       updatedAt: Date.now(),
-      draft: { values: { title: 'Herbstbasar' }, pendingLocationCategories: [], step: 5 },
+      draft: { values: { title: 'Herbstbasar' }, pendingLocationCategories: [], step: 1 },
     };
     // From the landing page: a new bazaar of the picked kind, not the saved draft
     renderWizard('/events/new?type=kidsBazaar');
@@ -174,7 +174,7 @@ describe('event creation wizard', () => {
   it('keeps the saved draft when the warning is cancelled', async () => {
     serverDraft.current = {
       updatedAt: Date.now(),
-      draft: { values: { title: 'Herbstbasar' }, pendingLocationCategories: [], step: 5 },
+      draft: { values: { title: 'Herbstbasar' }, pendingLocationCategories: [], step: 1 },
     };
     renderWizard('/events/new?type=kidsBazaar');
     fireEvent.click(await screen.findByRole('button', { name: 'Später weitermachen' }));
@@ -189,7 +189,7 @@ describe('event creation wizard', () => {
   it('asks before throwing a saved draft away', async () => {
     serverDraft.current = {
       updatedAt: Date.now(),
-      draft: { values: { title: 'Mein Entwurf' }, pendingLocationCategories: [], step: 5 },
+      draft: { values: { title: 'Mein Entwurf' }, pendingLocationCategories: [], step: 1 },
     };
     renderWizard();
     fireEvent.click(screen.getByRole('button', { name: 'Neu beginnen' }));
@@ -201,34 +201,44 @@ describe('event creation wizard', () => {
     expect(screen.queryByText(/Du machst mit deinem Entwurf/)).toBeNull();
   });
 
-  /** Fills the details step: title, description, place, address and time. */
-  const fillDetails = (title: string) => {
+  /** Fills the step "when and where": title, day and times, place and address. */
+  const fillWhenAndWhere = (title: string) => {
     fireEvent.change(screen.getByLabelText('Titel des Basars *'), {
       target: { value: title },
     });
-    fireEvent.change(document.getElementById('description')!, {
-      target: { value: 'Von privat für privat' },
-    });
+    fireEvent.change(document.getElementById('startDay')!, { target: { value: '2099-04-18' } });
+    fireEvent.change(document.getElementById('startTime')!, { target: { value: '09:00' } });
+    fireEvent.change(document.getElementById('endTime')!, { target: { value: '13:00' } });
     fireEvent.change(screen.getByLabelText('Veranstaltungsort *'), {
       target: { value: 'Münsterplatz' },
     });
     fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '89073' } });
     fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Ulm' } });
-    fireEvent.change(document.getElementById('startDate')!, {
-      target: { value: '2099-04-18T09:00' },
-    });
-    fireEvent.change(document.getElementById('endDate')!, {
-      target: { value: '2099-04-18T13:00' },
+  };
+
+  /** Fills the step before the preview: description and contact. */
+  const fillDescription = () => {
+    fireEvent.change(document.getElementById('description')!, {
+      target: { value: 'Von privat für privat' },
     });
     fireEvent.change(screen.getByLabelText('Kontaktdaten / Veranstalter-Info *'), {
       target: { value: 'KV Ulm, info@example.org' },
     });
   };
 
-  it('creates a bike sale: settings first with previews, the details at the end', async () => {
+  it('creates a bike sale: date and place first, then the settings with previews', async () => {
     renderWizard();
-    expect(screen.getByText('Schritt 1 von 8')).toBeInTheDocument();
+    expect(screen.getByText('Schritt 1 von 9')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Fahrradbörse/ }));
+
+    // When and where; Austrian postal codes have four digits
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    fillWhenAndWhere('Fahrradbörse Ulm');
+    fireEvent.change(screen.getByLabelText('Land'), { target: { value: 'AT' } });
+    next();
+    expect(await screen.findByText('Bitte eine gültige Postleitzahl eingeben')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Land'), { target: { value: 'DE' } });
+    next();
 
     // Sale: the preview shows what buyers see of the switched-on features
     expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
@@ -255,16 +265,10 @@ describe('event creation wizard', () => {
 
     expect(await screen.findByText('Wer darf mitmachen?')).toBeInTheDocument();
     next();
-
-    // Details at the end; Austrian postal codes have four digits
-    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
-    fillDetails('Fahrradbörse Ulm');
-    fireEvent.change(screen.getByLabelText('Land'), { target: { value: 'AT' } });
-    next();
-    expect(await screen.findByText('Bitte eine gültige Postleitzahl eingeben')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Land'), { target: { value: 'DE' } });
-    next();
     expect(await screen.findByText('Abgabe und Abholung')).toBeInTheDocument();
+    next();
+    expect(await screen.findByText('Beschreibung und Kontakt')).toBeInTheDocument();
+    fillDescription();
     next();
 
     // The bazaar page as visitors will see it
@@ -290,20 +294,14 @@ describe('event creation wizard', () => {
   it('starts with the template picked on the landing page, at the top of the page', async () => {
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     renderWizard('/events/new?type=skiBazaar');
-    // The template is applied and the wizard is on its second step
+    // The template is applied and the wizard is on its second step; its name starts the title
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Titel des Basars *')).toHaveValue('Skibasar');
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+    fillWhenAndWhere('Skibasar');
+    next();
     expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /Verhandeln vor Ort/ })).toBeChecked();
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
-    next();
-    expect(await screen.findByText('Welche Artikel?')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Spielzeug'));
-    next();
-    expect(await screen.findByText('Was kostet es die Verkäufer?')).toBeInTheDocument();
-    next();
-    expect(await screen.findByText('Wer darf mitmachen?')).toBeInTheDocument();
-    next();
-    // The template's name is the start of the title
-    expect(await screen.findByLabelText('Titel des Basars *')).toHaveValue('Skibasar');
     scrollTo.mockRestore();
   }, 20_000);
 
@@ -312,6 +310,11 @@ describe('event creation wizard', () => {
     const view = renderWizard();
     fireEvent.click(screen.getByRole('button', { name: 'Ohne Vorlage weiter' }));
 
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    // Pictures cannot wait in the browser until the account exists
+    expect(screen.queryByText('Titelbild')).toBeNull();
+    fillWhenAndWhere('Kinderbasar Kita');
+    next();
     expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
     next();
     expect(await screen.findByText('Welche Artikel?')).toBeInTheDocument();
@@ -321,17 +324,14 @@ describe('event creation wizard', () => {
     next();
     expect(await screen.findByText('Wer darf mitmachen?')).toBeInTheDocument();
     next();
-
-    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
-    // Pictures cannot wait in the browser until the account exists
-    expect(screen.queryByText('Titelbild')).toBeNull();
-    fillDetails('Kinderbasar Kita');
+    expect(await screen.findByText('Abgabe und Abholung')).toBeInTheDocument();
+    next();
+    expect(await screen.findByText('Beschreibung und Kontakt')).toBeInTheDocument();
+    fillDescription();
     fireEvent.change(screen.getByPlaceholderText('z. B. Reihe 1, Raum 23a'), {
       target: { value: 'Halle 2' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Zur Liste hinzufügen' }));
-    next();
-    expect(await screen.findByText('Abgabe und Abholung')).toBeInTheDocument();
     next();
     expect(await screen.findByText('So sieht dein Basar aus')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Konto anlegen und Basar erstellen' }));
@@ -357,24 +357,24 @@ describe('event creation wizard', () => {
     expect(localStorage.getItem('bazarpro.eventDraft')).toBeNull();
   }, 20_000);
 
-  it('asks for the discount start after the dates, so the first steps cannot get stuck', async () => {
+  it('asks for the date first: discount start, drop-off and pickup follow it', async () => {
     renderWizard('/events/new?type=kidsBazaar');
-    expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
-    // Discounts are on, but the day comes later: nothing here needs the dates
-    expect(document.getElementById('discountStartsAt')).toBeNull();
-    next();
-    expect(await screen.findByText('Welche Artikel?')).toBeInTheDocument();
-    next();
-    expect(await screen.findByText('Was kostet es die Verkäufer?')).toBeInTheDocument();
-    next();
-    expect(await screen.findByText('Wer darf mitmachen?')).toBeInTheDocument();
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    // Picking the day fills in the usual times
+    fireEvent.change(document.getElementById('startDay')!, { target: { value: '2099-04-18' } });
+    expect(document.getElementById('startTime')).toHaveValue('10:00');
+    expect(document.getElementById('endTime')).toHaveValue('14:00');
+    // A later start moves the end along
+    fireEvent.change(document.getElementById('startTime')!, { target: { value: '09:00' } });
+    expect(document.getElementById('endTime')).toHaveValue('13:00');
+    fireEvent.change(screen.getByLabelText('Veranstaltungsort *'), {
+      target: { value: 'Münsterplatz' },
+    });
     next();
 
-    // Only with both dates can it be chosen, and it has to lie within them
-    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    // The discount start has to lie within the bazaar
+    expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
     const discountStart = document.getElementById('discountStartsAt') as HTMLInputElement;
-    expect(discountStart).toBeDisabled();
-    fillDetails('Kinderbasar Kita');
     expect(discountStart).toBeEnabled();
     expect(discountStart.min).toBe('2099-04-18T09:00');
     fireEvent.change(discountStart, { target: { value: '2099-04-19T09:00' } });
@@ -384,7 +384,24 @@ describe('event creation wizard', () => {
     ).toBeInTheDocument();
     fireEvent.change(discountStart, { target: { value: '2099-04-18T12:00' } });
     next();
+    expect(await screen.findByText('Welche Artikel?')).toBeInTheDocument();
+    next();
+    expect(await screen.findByText('Was kostet es die Verkäufer?')).toBeInTheDocument();
+    next();
+    expect(await screen.findByText('Wer darf mitmachen?')).toBeInTheDocument();
+    next();
+
+    // Drop-off and pickup are suggested on the same day: only the times are left
     expect(await screen.findByText('Abgabe und Abholung')).toBeInTheDocument();
+    expect(document.getElementById('dropoffDay')).toHaveValue('2099-04-18');
+    expect(document.getElementById('dropoffFrom')).toHaveValue('07:00');
+    expect(document.getElementById('dropoffTo')).toHaveValue('08:30');
+    expect(document.getElementById('pickupFrom')).toHaveValue('14:00');
+    expect(document.getElementById('pickupTo')).toHaveValue('15:00');
+    fireEvent.change(document.getElementById('pickupTo')!, { target: { value: '16:00' } });
+    next();
+    expect(await screen.findByText('Beschreibung und Kontakt')).toBeInTheDocument();
+    fillDescription();
     next();
 
     // The template's picture is preselected and uploaded with the new bazaar
@@ -393,12 +410,27 @@ describe('event creation wizard', () => {
       'aria-pressed',
       'true'
     );
+    // The summary leads back to the step of each fact
+    fireEvent.click(screen.getByRole('button', { name: 'Abgabe bearbeiten' }));
+    expect(await screen.findByText('Abgabe und Abholung')).toBeInTheDocument();
+    next();
+    expect(await screen.findByText('Beschreibung und Kontakt')).toBeInTheDocument();
+    next();
+    expect(await screen.findByText('So sieht dein Basar aus')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Basar anlegen' }));
     await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
     expect(fetch).toHaveBeenCalledWith('/images/covers/kids.webp');
     expect(createEvent.mock.calls[0][0]).toMatchObject({
       coverImage: 'file1',
+      startDate: new Date('2099-04-18T09:00').getTime(),
+      endDate: new Date('2099-04-18T13:00').getTime(),
       features: { discounts: true, discountStartsAt: new Date('2099-04-18T12:00').getTime() },
+      sellerLogistics: {
+        dropoffStart: new Date('2099-04-18T07:00').getTime(),
+        dropoffEnd: new Date('2099-04-18T08:30').getTime(),
+        pickupStart: new Date('2099-04-18T14:00').getTime(),
+        pickupEnd: new Date('2099-04-18T16:00').getTime(),
+      },
     });
   }, 20_000);
 
@@ -407,6 +439,9 @@ describe('event creation wizard', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderWizard();
     fireEvent.click(screen.getByRole('button', { name: 'Ohne Vorlage weiter' }));
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    fillWhenAndWhere('Kinderbasar Kita');
+    next();
     expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
     next();
     expect(await screen.findByText('Welche Artikel?')).toBeInTheDocument();
@@ -416,10 +451,10 @@ describe('event creation wizard', () => {
     next();
     expect(await screen.findByText('Wer darf mitmachen?')).toBeInTheDocument();
     next();
-    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
-    fillDetails('Kinderbasar Kita');
-    next();
     expect(await screen.findByText('Abgabe und Abholung')).toBeInTheDocument();
+    next();
+    expect(await screen.findByText('Beschreibung und Kontakt')).toBeInTheDocument();
+    fillDescription();
     next();
     expect(await screen.findByText('So sieht dein Basar aus')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Basar anlegen' }));
@@ -441,7 +476,7 @@ describe('event creation wizard', () => {
 
   it('comes back to the step of the draft and can start over', async () => {
     auth.current = { isLoading: false, isAuthenticated: false };
-    storeDraft({ step: 1 });
+    storeDraft({ step: 2 });
     renderWizard();
     expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Neu beginnen' }));
@@ -454,14 +489,14 @@ describe('event creation wizard', () => {
 
   it('takes the kind picked on the landing page over an older draft', async () => {
     auth.current = { isLoading: false, isAuthenticated: false };
-    storeDraft({ step: 7 });
+    storeDraft({ step: 8 });
     renderWizard('/events/new?type=kidsBazaar');
-    expect(await screen.findByText('Wie wird verkauft?')).toBeInTheDocument();
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
     expect(localStorage.getItem('bazarpro.eventDraft')).toBeNull();
   }, 20_000);
 
   it('does not create an unfinished draft by itself', async () => {
-    storeDraft({ step: 7 });
+    storeDraft({ step: 8 });
     renderWizard('/events/new?draft=1');
     expect(await screen.findByRole('button', { name: 'Neu beginnen' })).toBeInTheDocument();
     expect(createEvent).not.toHaveBeenCalled();
@@ -498,10 +533,8 @@ describe('event creation wizard', () => {
       'aria-pressed',
       'true'
     );
-    // One button each for the cover and the site plan
-    const login = screen.getAllByRole('button', { name: 'Anmelden und hochladen' });
-    expect(login).toHaveLength(2);
-    fireEvent.click(login[1]);
+    // One button for the own cover and the site plan
+    fireEvent.click(screen.getByRole('button', { name: 'Anmelden und hochladen' }));
     expect(await screen.findByText('Registrierung ?redirect=%2Fevents%2Fnew')).toBeInTheDocument();
     // The choice waits in the draft for the way back
     expect(JSON.parse(localStorage.getItem('bazarpro.eventDraft')!).values.coverTemplate).toBe(

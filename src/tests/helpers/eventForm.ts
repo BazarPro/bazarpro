@@ -13,13 +13,28 @@ export interface EventFormInput {
 
 /**
  * Goes through the creation wizard on /events/new without an event type and creates
- * the event: the settings first, the details at the end. Steps without required fields
- * are skipped with "Weiter".
+ * the event: date and place first, then the settings, the description at the end. Steps
+ * without required fields are skipped with "Weiter".
  */
 export async function fillEventWizard(page: Page, input: EventFormInput) {
   const next = () => page.getByRole('button', { name: 'Weiter', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Neuen Basar anlegen' })).toBeVisible();
   await page.getByRole('button', { name: 'Ohne Vorlage weiter' }).click();
+
+  // When and where: one day, start and end time (several days only when they differ)
+  await expect(page.getByRole('heading', { name: 'Wann und wo?' })).toBeVisible();
+  await page.getByLabel('Titel des Basars *').fill(input.title);
+  const [startDay, startTime] = input.start.split('T');
+  const [endDay, endTime] = input.end.split('T');
+  await page.locator('#startDay').fill(startDay);
+  await page.locator('#startTime').fill(startTime);
+  if (endDay !== startDay) {
+    await page.getByLabel('Geht über mehrere Tage').check();
+    await page.locator('#endDay').fill(endDay);
+  }
+  await page.locator('#endTime').fill(endTime);
+  await page.getByLabel('Veranstaltungsort *').fill(input.location);
+  await next();
 
   // Sale
   await expect(page.getByRole('heading', { name: 'Wie wird verkauft?' })).toBeVisible();
@@ -32,22 +47,18 @@ export async function fillEventWizard(page: Page, input: EventFormInput) {
   await categorySection.getByText(input.category, { exact: true }).click();
   await next();
 
-  // Fees, then registration
+  // Fees, registration, drop-off
   await expect(page.getByRole('heading', { name: 'Was kostet es die Verkäufer?' })).toBeVisible();
   await next();
   await expect(page.getByRole('heading', { name: 'Wer darf mitmachen?' })).toBeVisible();
   await next();
-
-  // Details at the end: date, place and contact
-  await page.getByLabel('Titel des Basars *').fill(input.title);
-  await page.locator('#description').fill(input.description);
-  await page.getByLabel('Veranstaltungsort *').fill(input.location);
-  await page.locator('#startDate').fill(input.start);
-  await page.locator('#endDate').fill(input.end);
-  await page.getByLabel('Kontaktdaten / Veranstalter-Info *').fill(input.contact);
+  await expect(page.getByRole('heading', { name: 'Abgabe und Abholung' })).toBeVisible();
   await next();
 
-  await expect(page.getByRole('heading', { name: 'Abgabe und Abholung' })).toBeVisible();
+  // Description and contact
+  await expect(page.getByRole('heading', { name: 'Beschreibung und Kontakt' })).toBeVisible();
+  await page.locator('#description').fill(input.description);
+  await page.getByLabel('Kontaktdaten / Veranstalter-Info *').fill(input.contact);
   await next();
 
   await expect(page.getByRole('heading', { name: 'So sieht dein Basar aus' })).toBeVisible();

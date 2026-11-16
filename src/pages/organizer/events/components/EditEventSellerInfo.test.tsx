@@ -31,12 +31,11 @@ function Form() {
 describe('EditEventSellerInfo', () => {
   it('previews the mail of the evening before with the entered times and note', () => {
     render(<Form />);
-    fireEvent.change(screen.getByLabelText('Abgabe ab (optional)'), {
-      target: { value: '2026-10-16T16:00' },
-    });
-    fireEvent.change(screen.getByLabelText('Abgabe bis (optional)'), {
-      target: { value: '2026-10-16T18:00' },
-    });
+    // A time first takes the event's day; the day before is picked after it
+    fireEvent.change(document.getElementById('dropoffFrom')!, { target: { value: '16:00' } });
+    expect(document.getElementById('dropoffDay')).toHaveValue('2026-10-17');
+    fireEvent.change(document.getElementById('dropoffTo')!, { target: { value: '18:00' } });
+    fireEvent.change(document.getElementById('dropoffDay')!, { target: { value: '2026-10-16' } });
     fireEvent.change(screen.getByLabelText('Hinweis für Verkäufer (optional)'), {
       target: { value: 'Eingang über den Hof' },
     });

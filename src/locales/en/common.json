@@ -235,5 +235,6 @@
     "label": "View",
     "grid": "Tiles",
     "list": "List"
-  }
+  },
+  "moreInfo": "Learn more"
 }

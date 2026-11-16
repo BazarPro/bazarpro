@@ -42,7 +42,7 @@ test.describe('event settings', () => {
     await expect(page.locator('#maxDiscountPercent')).toHaveValue('30');
     await expect(page.getByLabel('Preisvorschläge online')).toBeChecked();
     await expect(page.getByText('Der Basar läuft gerade.')).toBeVisible();
-    await expect(page.locator('#startDate')).toHaveAttribute('readonly', '');
+    await expect(page.locator('#startDay')).toHaveAttribute('readonly', '');
     await expect(page.locator('#commission')).toHaveAttribute('readonly', '');
 
     // Discounts from the next full hour, maximum 25 %

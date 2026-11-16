@@ -69,8 +69,15 @@
     "postalCode": "PLZ",
     "city": "Ort",
     "country": "Land",
-    "start": "Startdatum *",
-    "end": "Enddatum *"
+    "when": "Wann?",
+    "whenHint": "Wähle den Tag: Beginn und Ende sind dann schon eingetragen, du passt nur noch die Uhrzeit an. Abgabe und Abholung schlagen wir passend am selben Tag vor.",
+    "place": "Wo?",
+    "day": "Datum",
+    "firstDay": "Erster Tag",
+    "lastDay": "Letzter Tag",
+    "startTime": "Beginn",
+    "endTime": "Ende",
+    "multiDay": "Geht über mehrere Tage"
   },
   "map": {
     "createFailed": "Kategorie konnte nicht angelegt werden",
@@ -116,7 +123,9 @@
     "linkOnlyJoin": "Als Verkäufer anmelden kann sich nur, wer ein Konto hat und den Code eingibt.",
     "linkOnlyItems": "Die Angebote sehen nur angemeldete Verkäufer, dein Team und Administratoren. Besucher ohne Anmeldung sehen keine Artikel.",
     "limit": "Teilnehmerlimit für Verkäufer (optional)",
-    "limitPlaceholder": "z. B. 200"
+    "limitPlaceholder": "z. B. 200",
+    "visibilityHint": "Öffentliche Basare erscheinen nach einer kurzen Prüfung auf der Startseite von BazarPro. Mit einem Zugangscode kommt nur rein, wer den Code von dir bekommt.",
+    "limitHint": "Höchstzahl der Verkäufer. Leer lassen für unbegrenzt."
   },
   "features": {
     "title": "Funktionen",
@@ -170,7 +179,6 @@
     "directSale": "Direktverkauf: Käufer bezahlen beim Verkäufer",
     "directSaleText": "Käufer und Verkäufer einigen sich am Artikel, der Käufer bezahlt direkt beim Verkäufer. Danach scannt die Kasse das Etikett, bucht den Verkauf zum vereinbarten Preis und kassiert vom Verkäufer nur die Provision. Nach dem Markt gibt es keine Auszahlung, der Nachweis zeigt trotzdem jeden Verkauf.",
     "discountFromNeedsDates": "Wähle zuerst Beginn und Ende des Basars.",
-    "discountStartLater": "Ab wann die Rabatte gelten, legst du bei „Wann und wo?“ fest, sobald der Termin steht.",
     "registrationOpen": "Verkäufer können sich anmelden",
     "registrationOpenText": "Verkäufer melden sich selbst über die Basarseite an. Ausgeschaltet kommt nur noch hinein, wen du einlädst.",
     "registrationFrom": "Anmeldung ab (optional)",
@@ -182,15 +190,19 @@
   "logistics": {
     "title": "Abgabe & Abholung",
     "intro": "Verkäufer mit angemeldeten Artikeln bekommen am Vorabend um 18 Uhr eine Mail mit allen Infos. Alle, die noch nicht abgerechnet sind, bekommen eine Erinnerung an die Abholung: direkt nach dem Basar oder, wenn die Abholung später beginnt, 2 Stunden davor.",
-    "dropoffStart": "Abgabe ab (optional)",
-    "dropoffEnd": "Abgabe bis (optional)",
-    "pickupStart": "Abholung ab (optional)",
-    "pickupEnd": "Abholung bis (optional)",
     "note": "Hinweis für Verkäufer (optional)",
     "notePlaceholder": "z. B. Bitte Räder mit Schloss abgeben, Eingang über den Hof",
     "preview": "Vorschau der Mail am Vorabend",
     "example": "Beispiel mit Verkäufernummer 17 und 12 Artikeln.",
-    "subject": "Betreff: {{subject}}"
+    "subject": "Betreff: {{subject}}",
+    "dropoff": "Abgabe",
+    "pickup": "Abholung",
+    "day": "Tag",
+    "from": "Von",
+    "until": "Bis",
+    "untilDay": "Bis Tag",
+    "clear": "Leeren",
+    "noteHint": "Steht in der Mail am Vorabend, z. B. wo der Eingang ist."
   },
   "myEvents": {
     "rejected": "Abgelehnt",
@@ -852,42 +864,74 @@
     "steps": {
       "type": {
         "title": "Was für ein Basar wird's?",
-        "text": "Wähle eine Vorlage. Ändern kannst du später alles."
+        "text": "Wähle eine Vorlage – alles lässt sich später ändern."
       },
       "sale": {
         "title": "Wie wird verkauft?",
-        "text": "Was du einschaltest, zeigt die Vorschau."
+        "text": "Schalte ein, was dein Basar bieten soll."
       },
       "items": {
         "title": "Welche Artikel?",
-        "text": "Kategorien, Fotos und das Etikett für jedes Teil."
+        "text": "Kategorien, Fotos und Etiketten."
       },
       "fees": {
         "title": "Was kostet es die Verkäufer?",
-        "text": "Provision und, wenn du willst, eine Annahmegebühr pro Artikel."
+        "text": "Provision und, wenn du willst, eine Annahmegebühr."
       },
       "registration": {
         "title": "Wer darf mitmachen?",
-        "text": "Öffentliche Basare erscheinen nach einer kurzen Prüfung auf der Startseite von BazarPro. Mit einem Zugangscode kommt nur rein, wer den Code von dir bekommt."
+        "text": "Sichtbarkeit, Zugang und Anmeldung."
       },
       "basics": {
         "title": "Wann und wo?",
-        "text": "So steht dein Basar auf seiner Seite und in den Mails an Verkäufer."
+        "text": "Wähle den Tag – die übrigen Termine schlagen wir dir passend vor."
       },
       "logistics": {
         "title": "Abgabe und Abholung",
-        "text": "Wann bringen Verkäufer ihre Sachen, und wann holen sie Unverkauftes und ihr Geld ab?"
+        "text": "Schon passend zum Termin eingetragen – pass nur die Uhrzeiten an."
       },
       "preview": {
         "title": "So sieht dein Basar aus",
-        "text": "Das sehen Besucher und Verkäufer. Ändern kannst du danach noch alles."
+        "text": "Alles auf einen Blick. Ändern kannst du auch danach noch alles."
+      },
+      "details": {
+        "title": "Beschreibung und Kontakt",
+        "text": "Das lesen Besucher auf der Seite deines Basars."
       }
     },
     "summary": {
-      "title": "Titel",
-      "when": "Beginn",
       "where": "Ort",
-      "categories": "Kategorien"
+      "edit": "{{step}} bearbeiten",
+      "sale": "Verkauf",
+      "fees": "Gebühren",
+      "joining": "Mitmachen",
+      "dropoff": "Abgabe",
+      "pickup": "Abholung",
+      "open": "offen",
+      "commission": "{{percent}} % Provision",
+      "intakeFee": "+ {{fee}} € pro Artikel",
+      "registrationOpen": "Anmeldung offen",
+      "registrationClosed": "Nur mit Einladung",
+      "plain": "Klassisch an der Kasse",
+      "ready": "Bereit zum Anlegen",
+      "readyText": "Prüfe die Eckdaten – mit einem Klick springst du zurück zum passenden Schritt.",
+      "date": "Termin",
+      "items": "Artikel",
+      "logistics": "Abgabe & Abholung",
+      "contact": "Kontakt",
+      "categoryCount_one": "{{count}} Kategorie",
+      "categoryCount_other": "{{count}} Kategorien",
+      "maxItems_one": "max. {{count}} Artikel pro Verkäufer",
+      "maxItems_other": "max. {{count}} Artikel pro Verkäufer",
+      "feat": {
+        "directSale": "Direktverkauf",
+        "publicCatalog": "Online-Katalog",
+        "discounts": "Rabatte",
+        "discountsUpTo": "Rabatte bis {{percent}} %",
+        "priceOffers": "Preisvorschläge",
+        "minimumPrice": "VB",
+        "questions": "Fragen"
+      }
     },
     "fixErrors": "Bitte prüfe die markierten Angaben.",
     "guestCreate": "Konto anlegen und Basar erstellen",
@@ -971,11 +1015,12 @@
       "registration": "Mitmachen",
       "basics": "Termin & Ort",
       "logistics": "Abgabe",
-      "preview": "Vorschau"
+      "preview": "Vorschau",
+      "details": "Beschreibung"
     },
     "pictures": {
       "title": "Bilder",
-      "intro": "Mit Bild wirkt dein Basar gleich einladender. Du kannst alles später ändern.",
+      "intro": "Mit Bild wirkt dein Basar gleich einladender.",
       "cover": "Titelbild",
       "coverText": "Wähle eine Vorlage oder lade ein eigenes Bild hoch.",
       "coverPick": "Vorlage „{{name}}“ wählen",
@@ -990,7 +1035,7 @@
       "own": "Eigenes Bild",
       "map": "Lageplan",
       "mapText": "Zeigt Besuchern, wo sie Stände, Kasse und Eingang finden.",
-      "locked": "Eigene Bilder kannst du nach dem Anmelden hochladen. Dein Basar bleibt erhalten.",
+      "locked": "Eigenes Titelbild und Lageplan kannst du nach dem Anmelden hochladen – dein Basar bleibt erhalten.",
       "login": "Anmelden und hochladen",
       "noCover": "Kein Titelbild"
     }

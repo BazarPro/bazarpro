@@ -6,6 +6,7 @@ import { Textarea } from '../../../../components/ui/text-area';
 import { Input } from '../../../../components/ui/input';
 import { feeLockHint, type FeeLock } from '../../../../lib/sellerFees';
 import { useTranslation } from 'react-i18next';
+import { LabelWithInfo } from '../../../../components/ui/info-tip';
 
 /** In the wizard the commission belongs to the fees, the contact to the details at the end. */
 export type ContactPart = 'contact' | 'commission';
@@ -13,9 +14,12 @@ export type ContactPart = 'contact' | 'commission';
 export function EditEventContact({
   feeLock = null,
   parts = ['contact', 'commission'],
+  bare = false,
 }: {
   feeLock?: FeeLock;
   parts?: ContactPart[];
+  /** Without its own card, e.g. next to the intake fee */
+  bare?: boolean;
 }) {
   const { t } = useTranslation('organizer');
   const lockCommission = feeLock === 'running';
@@ -24,8 +28,8 @@ export function EditEventContact({
     formState: { errors },
   } = useFormContext();
 
-  return (
-    <FormSection title={parts.includes('contact') ? t('contact.title') : undefined}>
+  const content = (
+    <>
       {parts.includes('contact') && (
         <div className="space-y-2">
           <Label htmlFor="contactInfo">{t('contact.info')}</Label>
@@ -41,22 +45,36 @@ export function EditEventContact({
 
       {parts.includes('commission') && (
         <div className="space-y-2">
-          <Label htmlFor="commission">{t('contact.commission')}</Label>
-          <Input
-            id="commission"
-            type="number"
-            step="0.5"
-            readOnly={lockCommission}
-            aria-readonly={lockCommission}
-            className={lockCommission ? 'opacity-60 cursor-not-allowed' : undefined}
-            {...register('commission', { valueAsNumber: true })}
-          />
-          <p className="text-xs text-muted-foreground">
-            {feeLock ? feeLockHint(feeLock) : t('contact.commissionHint')}
-          </p>
+          <LabelWithInfo
+            htmlFor="commission"
+            info={feeLock ? feeLockHint(feeLock) : t('contact.commissionHint')}
+          >
+            {t('contact.commission')}
+          </LabelWithInfo>
+          <div className="relative max-w-40">
+            <Input
+              id="commission"
+              type="number"
+              step="0.5"
+              readOnly={lockCommission}
+              aria-readonly={lockCommission}
+              className={lockCommission ? 'pr-8 opacity-60 cursor-not-allowed' : 'pr-8'}
+              {...register('commission', { valueAsNumber: true })}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              %
+            </span>
+          </div>
+          {feeLock && <p className="text-xs text-muted-foreground">{feeLockHint(feeLock)}</p>}
           {errors.commission && <FieldError>{errors.commission.message as string}</FieldError>}
         </div>
       )}
+    </>
+  );
+  if (bare) return content;
+  return (
+    <FormSection title={parts.includes('contact') ? t('contact.title') : undefined}>
+      {content}
     </FormSection>
   );
 }

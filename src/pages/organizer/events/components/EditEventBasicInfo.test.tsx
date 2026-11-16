@@ -56,7 +56,32 @@ describe('EditEventBasicInfo', () => {
 
   it('locks the dates of a running event', () => {
     render(<Form lockDates />);
-    expect(document.getElementById('startDate')).toHaveAttribute('readonly');
-    expect(document.getElementById('endDate')).toHaveAttribute('readonly');
+    for (const id of ['startDay', 'startTime', 'endTime']) {
+      expect(document.getElementById(id)).toHaveAttribute('readonly');
+    }
+    expect(screen.queryByLabelText('Geht über mehrere Tage')).toBeNull();
+  });
+
+  it('fills in usual times for the picked day and keeps the length when the start moves', () => {
+    function Dates() {
+      const methods = useForm({ defaultValues: { startDate: '', endDate: '' } });
+      return (
+        <FormProvider {...methods}>
+          <EditEventBasicInfo parts={['when']} />
+          <output data-testid="values">
+            {methods.watch('startDate')}|{methods.watch('endDate')}
+          </output>
+        </FormProvider>
+      );
+    }
+    render(<Dates />);
+    fireEvent.change(document.getElementById('startDay')!, { target: { value: '2099-04-18' } });
+    expect(screen.getByTestId('values')).toHaveTextContent('2099-04-18T10:00|2099-04-18T14:00');
+    fireEvent.change(document.getElementById('startTime')!, { target: { value: '08:30' } });
+    expect(screen.getByTestId('values')).toHaveTextContent('2099-04-18T08:30|2099-04-18T12:30');
+    // Several days: the last day can be picked on its own
+    fireEvent.click(screen.getByLabelText('Geht über mehrere Tage'));
+    fireEvent.change(document.getElementById('endDay')!, { target: { value: '2099-04-19' } });
+    expect(screen.getByTestId('values')).toHaveTextContent('2099-04-18T08:30|2099-04-19T12:30');
   });
 });
