@@ -32,19 +32,13 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "eventSeller.unmarkVendorPayoutReceived" => unmark_vendor_payout_received);
 }
 
-/// Places taken toward the seller limit: sellers with the role, except those the organizer
-/// excluded, who keep the role only for the return of items they handed in. The free
-/// places in `docs::EVENT_COLUMNS` (`seller_count`) count the same way.
+/// Places taken toward the seller limit: sellers, without the excluded and the team
+/// (`docs::SELLER_PLACES_SQL`, shared with the free places shown in the lists).
 pub async fn seller_places_taken(conn: &mut PgConnection, event: Uuid) -> sqlx::Result<i64> {
-    sqlx::query_scalar(
-        "SELECT count(*) FROM event_roles r
-         WHERE r.event_id = $1 AND r.role = 'seller'
-           AND NOT EXISTS (SELECT 1 FROM event_exclusions x
-                           WHERE x.event_id = r.event_id AND x.user_id = r.user_id)",
-    )
-    .bind(event)
-    .fetch_one(conn)
-    .await
+    sqlx::query_scalar(docs::SELLER_PLACES_SQL)
+        .bind(event)
+        .fetch_one(conn)
+        .await
 }
 
 /// Whether the given code opens the event; without a code on the event anything does,
@@ -115,9 +109,9 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
         None => None,
     };
     // Organizer and helpers sell their own items at their bazaar whenever they like: the
-    // registration window, the code and the seller limit are for the public
-    let team =
-        event_roles::has_any_role_or_admin(ctx.conn(), event.id, user, &event_roles::TEAM).await?;
+    // registration window, the code and the seller limit are for the public. By role, not
+    // for platform administrators: they manage every bazaar but are not on its team
+    let team = event_roles::has_any_role(ctx.conn(), event.id, user, &event_roles::TEAM).await?;
     // Closed or outside its window: only an invitation lets new sellers in. Asked before
     // the code, so a code typed in vain does not count against the user.
     if invited_as_helper.is_none()
@@ -157,6 +151,7 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
         }
     }
     // A helper the organizer asked for, or one of the team, does not take a seller's place
+    // and is not counted either (`docs::SELLER_PLACES_SQL`)
     if let Some(limit) = event
         .vendor_limit
         .filter(|limit| *limit > 0 && invited_as_helper != Some(true) && !team)

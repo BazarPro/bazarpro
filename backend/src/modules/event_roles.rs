@@ -287,13 +287,26 @@ pub async fn require_team(ctx: &mut Ctx, event: Uuid) -> AppResult<Uuid> {
     Ok(user)
 }
 
-/// The bazaar lists show the places left for sellers: a seller joining or leaving moves them.
-fn touch_roles(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) {
-    ctx.touch(Topic::Event(event));
-    ctx.touch(Topic::User(user));
-    if role == Role::Seller {
+/// The bazaar lists show the places left for sellers of a bazaar with a seller limit: who
+/// joins, leaves, is excluded or changes sides with the team moves them. Other bazaars
+/// show no places, so their sellers do not make every open list load anew.
+pub async fn touch_seller_places(ctx: &mut Ctx, event: Uuid) -> sqlx::Result<()> {
+    let limited: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM events WHERE id = $1 AND vendor_limit > 0)",
+    )
+    .bind(event)
+    .fetch_one(ctx.conn())
+    .await?;
+    if limited {
         ctx.touch(Topic::Events);
     }
+    Ok(())
+}
+
+async fn touch_roles(ctx: &mut Ctx, event: Uuid, user: Uuid) -> sqlx::Result<()> {
+    ctx.touch(Topic::Event(event));
+    ctx.touch(Topic::User(user));
+    touch_seller_places(ctx, event).await
 }
 
 pub async fn add_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sqlx::Result<()> {
@@ -306,8 +319,7 @@ pub async fn add_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sql
     .bind(role.as_str())
     .execute(ctx.conn())
     .await?;
-    touch_roles(ctx, event, user, role);
-    Ok(())
+    touch_roles(ctx, event, user).await
 }
 
 pub async fn remove_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sqlx::Result<()> {
@@ -317,8 +329,7 @@ pub async fn remove_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> 
         .bind(role.as_str())
         .execute(ctx.conn())
         .await?;
-    touch_roles(ctx, event, user, role);
-    Ok(())
+    touch_roles(ctx, event, user).await
 }
 
 /// Once a seller is paid out, the settlement is final: no more sales, returns or undos

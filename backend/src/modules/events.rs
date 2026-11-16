@@ -19,6 +19,7 @@ use uuid::Uuid;
 use super::access::{active_admins, is_platform_admin, require_admin};
 use super::category_fields::requirable_fields;
 use super::docs::{self, Event};
+use super::event_exclusions::{exclusion, has_handed_in};
 use super::event_roles::{
     self, Permission, Role, TEAM, has_any_role_or_admin, has_role_or_admin, is_bystander,
     load_vendors_with_calculations, require_permission,
@@ -926,16 +927,24 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
         ),
     );
     let previous_time = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
-    let (registration_open, starts, ends) = match features.registration_open {
-        Some(open) => (
-            open,
-            features.registration_starts_at,
-            features.registration_ends_at,
-        ),
+    let sent_window = (
+        features.registration_starts_at,
+        features.registration_ends_at,
+    );
+    let previous_window = (
+        previous_time("registrationStartsAt"),
+        previous_time("registrationEndsAt"),
+    );
+    let (registration_open, (starts, ends)) = match features.registration_open {
+        Some(true) => (true, sent_window),
+        // Closed: the form hides the window and sends none. The stored one stays, like with
+        // the quick switch (`set_registration_open`), so opening again brings the deadline back
+        Some(false) if sent_window == (None, None) => (false, previous_window),
+        Some(false) => (false, sent_window),
+        // An older app sends none of it
         None => (
             previous_bool("registrationOpen").unwrap_or(true),
-            previous_time("registrationStartsAt"),
-            previous_time("registrationEndsAt"),
+            previous_window,
         ),
     };
     for (time, key) in [
@@ -952,15 +961,8 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
         return Err(AppError::bad_request("event.registrationWindow"));
     }
     put("registrationOpen", json!(registration_open));
-    // Closed for good: a window would only confuse
-    put(
-        "registrationStartsAt",
-        json!(starts.filter(|_| registration_open)),
-    );
-    put(
-        "registrationEndsAt",
-        json!(ends.filter(|_| registration_open)),
-    );
+    put("registrationStartsAt", json!(starts));
+    put("registrationEndsAt", json!(ends));
     Ok(Value::Object(stored))
 }
 
@@ -1509,20 +1511,16 @@ async fn leave_event(ctx: &mut Ctx, args: EventArgs) -> AppResult<()> {
     if event.end_date < Utc::now() {
         return Err(AppError::bad_request("leave.past"));
     }
+    // Excluded: already out. The seller row stays, so the organizer still finds the person
+    // in the seller list and can take the exclusion back, with the same number.
+    if exclusion(ctx.conn(), event.id, user).await?.is_some() {
+        return Err(AppError::bad_request("leave.excluded"));
+    }
     let seller = docs::event_seller(ctx.conn(), event.id, user).await?;
     if seller.as_ref().is_some_and(|s| s.payout_received) {
         return Err(AppError::bad_request("leave.paidOut"));
     }
-    let handed_in: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
-        "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
-                        WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status IN {})",
-        sales::ACCEPTED_STATUSES
-    )))
-    .bind(event.id)
-    .bind(user)
-    .fetch_one(ctx.conn())
-    .await?;
-    if handed_in {
+    if has_handed_in(ctx.conn(), event.id, user).await? {
         return Err(AppError::bad_request("leave.itemsHandledIn"));
     }
     // Rejected items stay: leaving and joining again does not announce them anew

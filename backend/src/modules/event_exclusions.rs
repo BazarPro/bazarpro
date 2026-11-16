@@ -203,7 +203,7 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
         // Their devices may keep the keys of the sellers' ID codes
         super::offline::renew_check_in_keys(ctx, event.id).await?;
     }
-    let handed_in = has_handed_in(ctx, event.id, user).await?;
+    let handed_in = has_handed_in(ctx.conn(), event.id, user).await?;
     // The seller row stays with number and settlement, so the team still finds them. With
     // items handed in the role stays too: the ID code, the bazaar in the seller's list and
     // the return depend on it, and the exclusion alone keeps new items out. It no longer
@@ -211,6 +211,8 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
     if !handed_in {
         event_roles::remove_role(ctx, event.id, user, Role::Seller).await?;
     }
+    // Also with the role kept: the place is free, as the bazaar lists show
+    event_roles::touch_seller_places(ctx, event.id).await?;
     let (title, contact, path) = (
         event.title.clone(),
         event.contact_info.clone(),
@@ -253,7 +255,7 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
 }
 
 /// Whether the seller has items at the bazaar: handed in, sold or returned.
-async fn has_handed_in(ctx: &mut Ctx, event: Uuid, user: Uuid) -> sqlx::Result<bool> {
+pub async fn has_handed_in(conn: &mut PgConnection, event: Uuid, user: Uuid) -> sqlx::Result<bool> {
     sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
         "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
                         WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status IN {})",
@@ -261,7 +263,7 @@ async fn has_handed_in(ctx: &mut Ctx, event: Uuid, user: Uuid) -> sqlx::Result<b
     )))
     .bind(event)
     .bind(user)
-    .fetch_one(ctx.conn())
+    .fetch_one(conn)
     .await
 }
 
@@ -290,14 +292,19 @@ struct ReadmitArgs {
 async fn readmit(ctx: &mut Ctx, args: ReadmitArgs) -> AppResult<Success> {
     let (event_id, user) = (args.event_id.0, args.user_id.0);
     let event = organizer_event(ctx, event_id).await?;
+    // Not excluded (any more): nothing to take back, whatever the limit says
+    if exclusion(ctx.conn(), event.id, user).await?.is_none() {
+        return Ok(Success { success: true });
+    }
     let now = Utc::now();
     let running = event.end_date >= now;
     let seller_row = docs::event_seller(ctx.conn(), event.id, user).await?;
-    let returns = running
-        && seller_row.is_some()
-        && !event_roles::has_role(ctx.conn(), event.id, user, Role::Seller).await?;
-    // The exclusion freed the place: someone else may have taken it meanwhile
-    if returns
+    let has_role = event_roles::has_role(ctx.conn(), event.id, user, Role::Seller).await?;
+    let returns = running && seller_row.is_some() && !has_role;
+    // The exclusion freed the place, also of a seller who kept the role for the return:
+    // someone else may have taken it meanwhile
+    if running
+        && (returns || has_role)
         && let Some(limit) = event.vendor_limit.filter(|limit| *limit > 0)
         && seller_places_taken(ctx.conn(), event.id).await? >= i64::from(limit)
     {
@@ -352,6 +359,8 @@ async fn readmit(ctx: &mut Ctx, args: ReadmitArgs) -> AppResult<Success> {
         )
         .await?;
     }
+    // Also with the role kept all along: the place is taken again
+    event_roles::touch_seller_places(ctx, event.id).await?;
     ctx.touch(Topic::Event(event.id));
     ctx.touch(Topic::User(user));
     Ok(Success { success: true })

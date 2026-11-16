@@ -286,7 +286,7 @@ async fn the_organizer_sets_the_registration_in_the_settings(db: PgPool) {
         )
         .await;
 
-    // Closed: the window goes with it
+    // Closed: the form sends no window, the stored one stays for opening again
     b.app
         .mutation(
             "events.editEvent",
@@ -296,7 +296,71 @@ async fn the_organizer_sets_the_registration_in_the_settings(db: PgPool) {
         .await;
     let stored = features().await;
     assert_eq!(stored["registrationOpen"], json!(false));
-    assert_eq!(stored.get("registrationStartsAt"), None);
+    assert_eq!(stored["registrationStartsAt"].as_f64(), Some(start as f64));
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn saving_settings_keeps_the_deadline_of_a_closed_registration(db: PgPool) {
+    let end = now_ms() + HOUR_MS;
+    let b = Bazaar::new(db, json!({ "registrationEndsAt": end })).await;
+    let reply = b
+        .app
+        .mutation(
+            "events.setRegistrationOpen",
+            json!({ "eventId": b.event, "open": false }),
+            Some(&b.as_organizer),
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    let event = b
+        .app
+        .query(
+            "events.getEvent",
+            json!({ "id": b.event }),
+            Some(&b.as_organizer),
+        )
+        .await
+        .body["value"]
+        .clone();
+    // The form of a closed registration, and an older app that knows nothing of it
+    for features in [json!({ "registrationOpen": false }), json!({})] {
+        let reply = b
+            .app
+            .mutation(
+                "events.editEvent",
+                json!({
+                    "id": b.event,
+                    "title": event["title"],
+                    "description": event["description"],
+                    "location": event["location"],
+                    "startDate": event["startDate"],
+                    "endDate": event["endDate"],
+                    "categories": [],
+                    "contactInfo": event["contactInfo"],
+                    "commission": event["commission"],
+                    "services": [],
+                    "visibility": event["visibility"],
+                    "features": features,
+                }),
+                Some(&b.as_organizer),
+            )
+            .await;
+        assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    }
+    b.app
+        .mutation(
+            "events.setRegistrationOpen",
+            json!({ "eventId": b.event, "open": true }),
+            Some(&b.as_organizer),
+        )
+        .await;
+    let stored: Value = sqlx::query_scalar("SELECT features FROM events WHERE id = $1")
+        .bind(b.event)
+        .fetch_one(&b.db)
+        .await
+        .unwrap();
+    assert_eq!(stored["registrationOpen"], json!(true));
+    assert_eq!(stored["registrationEndsAt"].as_f64(), Some(end as f64));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -550,6 +614,15 @@ async fn excluded_sellers_cannot_join_again_nor_announce(db: PgPool) {
         .execute(&b.db)
         .await
         .unwrap();
+    let invite = || {
+        b.app.mutation(
+            "eventInvitations.send",
+            json!({ "eventId": b.event, "email": "Sina@test.example", "helper": false }),
+            Some(&b.as_organizer),
+        )
+    };
+    // Invited before the exclusion
+    assert_eq!(invite().await.status, StatusCode::OK);
     b.exclude(b.seller, None, &b.as_organizer).await;
 
     let reply = b.join(b.seller, json!({ "accessCode": "GEHEIM" })).await;
@@ -565,20 +638,43 @@ async fn excluded_sellers_cannot_join_again_nor_announce(db: PgPool) {
         .await;
     assert_eq!(reply.body["code"], "join.excluded");
 
-    // Not with an invitation either
-    b.app
-        .mutation(
-            "eventInvitations.send",
-            json!({ "eventId": b.event, "email": "sina@test.example", "helper": false }),
-            Some(&b.as_organizer),
-        )
-        .await;
+    // Not with the invitation either
     let mails = b.mails().await;
-    let html = &mails.last().unwrap().2;
+    let html = &mails
+        .iter()
+        .find(|(_, _, html)| html.contains("/invite/"))
+        .unwrap()
+        .2;
     let start = html.find("/invite/").unwrap() + 8;
     let token = &html[start..start + html[start..].find('"').unwrap()];
     let reply = b.join(b.seller, json!({ "invitation": token })).await;
     assert_eq!(reply.body["code"], "join.excluded");
+    // And the organizer learns that a new one would lead nowhere
+    assert_eq!(invite().await.body["code"], "invitation.excluded");
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn an_excluded_seller_cannot_leave_and_stays_in_the_seller_list(db: PgPool) {
+    let b = Bazaar::new(db, json!({})).await;
+    b.exclude(b.seller, None, &b.as_organizer).await;
+    let reply = b
+        .app
+        .mutation(
+            "events.leaveEvent",
+            json!({ "eventId": b.event }),
+            Some(&b.as_seller),
+        )
+        .await;
+    assert_eq!(reply.body["code"], "leave.excluded", "{}", reply.body);
+    // The seller row stays: the organizer takes the exclusion back, with the same number
+    let number: Option<i32> =
+        sqlx::query_scalar("SELECT number FROM event_sellers WHERE event_id = $1 AND user_id = $2")
+            .bind(b.event)
+            .bind(b.seller)
+            .fetch_optional(&b.db)
+            .await
+            .unwrap();
+    assert_eq!(number, Some(1));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -642,8 +738,8 @@ async fn the_organizer_takes_an_exclusion_back(db: PgPool) {
 async fn taking_an_exclusion_back_respects_the_seller_limit(db: PgPool) {
     let b = Bazaar::new(db, json!({})).await;
     b.exclude(b.seller, None, &b.as_organizer).await;
-    // The freed place went to someone else
-    sqlx::query("UPDATE events SET vendor_limit = 2 WHERE id = $1")
+    // The freed place went to someone else (the helper is on the team and takes none)
+    sqlx::query("UPDATE events SET vendor_limit = 1 WHERE id = $1")
         .bind(b.event)
         .execute(&b.db)
         .await
@@ -661,7 +757,17 @@ async fn taking_an_exclusion_back_respects_the_seller_limit(db: PgPool) {
     assert_eq!(readmit().await.body["code"], "exclusion.vendorLimit");
     // Still excluded
     assert!(b.roles(b.seller).await.is_empty());
-    sqlx::query("UPDATE events SET vendor_limit = 3 WHERE id = $1")
+    // Not excluded: nothing to take back, so the full bazaar does not matter
+    let reply = b
+        .app
+        .mutation(
+            "eventExclusions.readmit",
+            json!({ "eventId": b.event, "userId": other }),
+            Some(&b.as_organizer),
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    sqlx::query("UPDATE events SET vendor_limit = 2 WHERE id = $1")
         .bind(b.event)
         .execute(&b.db)
         .await
@@ -1129,15 +1235,41 @@ async fn the_team_joins_as_sellers_while_the_registration_is_closed(db: PgPool) 
         json!({ "registrationOpen": false, "photosOptional": true }),
     )
     .await;
-    sqlx::query("UPDATE events SET access_code = 'GEHEIM', vendor_limit = 2 WHERE id = $1")
+    sqlx::query("UPDATE events SET access_code = 'GEHEIM', vendor_limit = 1 WHERE id = $1")
         .bind(b.event)
         .execute(&b.db)
         .await
         .unwrap();
+    let places = || async {
+        b.app
+            .query(
+                "events.getEvent",
+                json!({ "id": b.event }),
+                Some(&b.as_organizer),
+            )
+            .await
+            .body["value"]["sellerCount"]
+            .clone()
+    };
+    // The helper of the team sells too and takes no place
+    assert_eq!(places().await, 1);
     // Closed, with a code and all places taken: the organizer still gets in
     let reply = b.join(b.organizer, json!({})).await;
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
     assert!(b.roles(b.organizer).await.contains(&"seller".to_owned()));
+    assert_eq!(places().await, 1);
+    // An administrator of the platform is not on the team of the bazaar
+    let admin = fixtures::admin(&b.db, "Admin").await;
+    assert_eq!(b.join(admin, json!({})).await.body["code"], "join.closed");
+    b.set_features(json!({ "photosOptional": true })).await;
+    assert_eq!(
+        b.join(admin, json!({})).await.body["code"],
+        "join.invalidCode"
+    );
+    assert_eq!(
+        b.join(admin, json!({ "accessCode": "GEHEIM" })).await.body["code"],
+        "join.vendorLimit"
+    );
     let product = fixtures::product(&b.db, b.organizer, "Wippe", 5.0).await;
     let reply = b
         .app
@@ -1154,7 +1286,7 @@ async fn the_team_joins_as_sellers_while_the_registration_is_closed(db: PgPool) 
 async fn an_excluded_seller_who_handed_in_frees_the_place(db: PgPool) {
     let b = Bazaar::new(db, json!({})).await;
     b.item("Rad", "available").await;
-    sqlx::query("UPDATE events SET vendor_limit = 2 WHERE id = $1")
+    sqlx::query("UPDATE events SET vendor_limit = 1 WHERE id = $1")
         .bind(b.event)
         .execute(&b.db)
         .await
@@ -1176,9 +1308,24 @@ async fn an_excluded_seller_who_handed_in_frees_the_place(db: PgPool) {
             Some(&b.as_organizer),
         )
         .await;
-    assert_eq!(event.body["value"]["sellerCount"], 1, "{}", event.body);
+    assert_eq!(event.body["value"]["sellerCount"], 0, "{}", event.body);
     let reply = b.join(newcomer, json!({})).await;
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // The place is gone: taking the exclusion back would make it one seller too many
+    let readmit = || {
+        b.app.mutation(
+            "eventExclusions.readmit",
+            json!({ "eventId": b.event, "userId": b.seller }),
+            Some(&b.as_organizer),
+        )
+    };
+    assert_eq!(readmit().await.body["code"], "exclusion.vendorLimit");
+    sqlx::query("UPDATE events SET vendor_limit = 2 WHERE id = $1")
+        .bind(b.event)
+        .execute(&b.db)
+        .await
+        .unwrap();
+    assert_eq!(readmit().await.status, StatusCode::OK);
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]

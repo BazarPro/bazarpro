@@ -103,7 +103,8 @@
   "leave": {
     "itemsHandledIn": "You cannot withdraw while items are already accepted, sold or returned.",
     "paidOut": "You cannot leave: you have already been paid out.",
-    "past": "You cannot withdraw from past bazaars."
+    "past": "You cannot withdraw from past bazaars.",
+    "excluded": "The organizer has excluded you from this bazaar. You no longer take part."
   },
   "moderation": {
     "noBanAdmin": "Administrators cannot be suspended.",
@@ -231,7 +232,8 @@
     "invalid": "This invitation is no longer valid. Please ask the organizer for a new one.",
     "otherAccount": "This invitation is for a different email address. Please sign in with the invited address.",
     "invalidEmail": "Please enter a valid email address.",
-    "limit": "Enough invitations were sent today. Please try again tomorrow."
+    "limit": "Enough invitations were sent today. Please try again tomorrow.",
+    "excluded": "This person is excluded from this bazaar. Take the exclusion back first."
   },
   "helper": {
     "intake": "The organizer has not allowed you to do the intake.",
