@@ -337,7 +337,11 @@ export function SearchEventsPage() {
               )}
 
               <section aria-labelledby="new-events-heading" className="space-y-4">
-                <h2 id="new-events-heading" className="text-lg font-semibold">
+                {/* Only needed to tell it apart from the own bazaars above */}
+                <h2
+                  id="new-events-heading"
+                  className={myEvents.length > 0 ? 'text-lg font-semibold' : 'sr-only'}
+                >
                   {t('search.discover')}
                 </h2>
                 <EventFilters

@@ -31,6 +31,7 @@ import {
 } from '../ui/dropdown-menu';
 import { loginPath } from '../../lib/loginRedirect';
 import { useTranslation } from 'react-i18next';
+import { HEADER_STATUS_ID } from './OfflineNotice';
 import { UserAvatar } from '../ui/user-avatar';
 import { useLocale, useLocalizedPath } from '../../i18n/useLocale';
 import { LOCALES, LOCALE_NAMES } from '../../shared/constants';
@@ -197,6 +198,8 @@ export function Header() {
                 {user && (
                   <>
                     <div className="ml-4 flex gap-2">
+                      {/* The offline note sits here (OfflineNotice) */}
+                      <div id={HEADER_STATUS_ID} className="flex items-center empty:hidden" />
                       {role === 'organizer' && eventId && fixedSidebarOpen && (
                         <ScanButton eventId={eventId} />
                       )}

@@ -1,7 +1,7 @@
 {
   "title": "Account settings",
   "profile": {
-    "title": "Personal information & address",
+    "title": "Personal details",
     "firstName": "First name",
     "firstNamePlaceholder": "Your first name",
     "lastName": "Last name",
@@ -45,12 +45,13 @@
   "digitalId": {
     "title": "Digital ID",
     "hide": "Hide",
+    "show": "Show",
     "showId": "Show ID",
-    "onlyOnSite": "Only needed to identify yourself on site.",
-    "usage": "Use this QR code to identify yourself when handing in items or during stocktaking.",
+    "onlyOnSite": "To show at intake and pickup.",
+    "usage": "This QR code identifies you on site, e.g. when handing in and picking up items. It changes all the time.",
     "validFor": "Valid for {{seconds}}s",
     "refresh": "Refresh now",
-    "noScreenshot": "Security note: do not use a screenshot.",
+    "noScreenshot": "No screenshot – the code keeps changing.",
     "loadFailed": "The digital ID could not be loaded.",
     "offline": "Offline ID · new code every {{seconds}}s",
     "noOfflineKey": "Not available without internet: open the ID once with internet, then it works offline too."
@@ -86,7 +87,7 @@
     }
   },
   "danger": {
-    "title": "Privacy & danger zone",
+    "title": "Data and account",
     "intro": "Under the GDPR you have the right to receive a copy of the data we store about you or to delete your account permanently.",
     "export": "Export data (JSON)",
     "exporting": "Exporting…",

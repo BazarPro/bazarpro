@@ -3,12 +3,11 @@ import { useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useMutation, useQuery } from '../../../../lib/api/react';
 import { Trash2, X } from 'lucide-react';
-import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
+import { LabelWithInfo } from '../../../../components/ui/info-tip';
 import { api } from '../../../../lib/api/functions';
 import type { Doc, Id } from '../../../../lib/api/types';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
-import { Label } from '../../../../components/ui/label';
 import { ImageUpload } from '../../../../components/ui/ImageUpload';
 import { IMAGE_UPLOAD_MAX_HEIGHT, IMAGE_UPLOAD_MAX_WIDTH } from '../../../../lib/imageProcessing';
 import { toast } from 'sonner';
@@ -100,63 +99,62 @@ function ManagedLocationCategories({ eventId }: { eventId: Id<'events'> }) {
           {t('map.add')}
         </Button>
       </div>
-      <ul className="space-y-2">
-        {categories.map((c: Doc<'eventLocationCategories'>) => (
-          <li
-            key={c._id}
-            className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border p-2"
-          >
-            {editingId === c._id ? (
-              <>
-                <Input
-                  className="flex-1"
-                  value={editValue}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
-                />
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" onClick={() => void saveEdit()}>
-                    {t('map.save')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingId(null)}
-                  >
-                    {t('actions.cancel', { ns: 'common' })}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-sm">{c.label}</span>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => startEdit(c._id, c.label)}
-                  >
-                    {t('map.rename')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() => void remove(c._id)}
-                    aria-label={t('map.remove')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-      {categories.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t('map.emptyHint')}</p>
+      {categories.length > 0 && (
+        <ul className="space-y-2">
+          {categories.map((c: Doc<'eventLocationCategories'>) => (
+            <li
+              key={c._id}
+              className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border p-2"
+            >
+              {editingId === c._id ? (
+                <>
+                  <Input
+                    className="flex-1"
+                    value={editValue}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" onClick={() => void saveEdit()}>
+                      {t('map.save')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingId(null)}
+                    >
+                      {t('actions.cancel', { ns: 'common' })}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm">{c.label}</span>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => startEdit(c._id, c.label)}
+                    >
+                      {t('map.rename')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => void remove(c._id)}
+                      aria-label={t('map.remove')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -259,17 +257,8 @@ export function EditEventMapSection({
 
   return (
     <FormSection
-      title={
-        allowMapImage ? (
-          t('map.title')
-        ) : (
-          <span className="flex items-center gap-1">
-            {t('map.categories')}
-            <InfoTip>{`${t('map.emptyHint')} ${t('map.pendingHint')}`}</InfoTip>
-          </span>
-        )
-      }
-      description={allowMapImage ? t('map.intro') : undefined}
+      title={allowMapImage ? t('map.title') : t('map.categories')}
+      info={allowMapImage ? t('map.intro') : `${t('map.emptyHint')} ${t('map.pendingHint')}`}
     >
       {allowMapImage && (
         <div className="space-y-2">
@@ -291,7 +280,9 @@ export function EditEventMapSection({
       )}
 
       <div className="space-y-2">
-        {allowMapImage && <Label>{t('map.categories')}</Label>}
+        {allowMapImage && (
+          <LabelWithInfo info={t('map.emptyHint')}>{t('map.categories')}</LabelWithInfo>
+        )}
         {eventId ? (
           <ManagedLocationCategories eventId={eventId} />
         ) : (

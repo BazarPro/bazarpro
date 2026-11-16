@@ -41,9 +41,7 @@ export async function fillEventWizard(page: Page, input: EventFormInput) {
   await next();
 
   // Items
-  const categorySection = page
-    .locator('section')
-    .filter({ has: page.getByRole('heading', { name: 'Kategorien & Services' }) });
+  const categorySection = page.locator('section').filter({ hasText: 'Erlaubte Artikelkategorien' });
   await categorySection.getByText(input.category, { exact: true }).click();
   await next();
 

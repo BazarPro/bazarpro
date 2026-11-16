@@ -44,6 +44,8 @@ interface EditEventBasicInfoProps {
   afterDates?: ReactNode;
   /** The wizard asks for date and place first, for the description later */
   parts?: BasicInfoPart[];
+  /** More fields at the end of the card, e.g. the contact on the edit page */
+  children?: ReactNode;
 }
 
 export type BasicInfoPart = 'when' | 'description';
@@ -54,6 +56,7 @@ export function EditEventBasicInfo({
   allowCoverImage = true,
   afterDates,
   parts = ['when', 'description'],
+  children,
 }: EditEventBasicInfoProps) {
   const { t } = useTranslation('organizer');
   const {
@@ -248,7 +251,7 @@ export function EditEventBasicInfo({
   if (!parts.includes('when')) return descriptionEditor;
 
   return (
-    <FormSection title={parts.includes('description') ? t('basic.title') : undefined}>
+    <FormSection>
       <div className="space-y-2" data-onboarding-id="event-form-title">
         <Label htmlFor="title">{t('basic.eventTitle')}</Label>
         <Input id="title" {...register('title')} placeholder={t('basic.titlePlaceholder')} />
@@ -335,6 +338,7 @@ export function EditEventBasicInfo({
       </fieldset>
 
       {parts.includes('description') && descriptionEditor}
+      {children}
     </FormSection>
   );
 }

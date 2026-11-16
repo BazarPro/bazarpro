@@ -526,9 +526,8 @@ function EventSection({
   };
 }) {
   const feeLock = editing?.feeLock ?? null;
-  const contactAndMap = (
+  const map = (
     <>
-      <EditEventContact parts={['contact']} />
       <EditEventMapSection
         allowMapImage={!!editing}
         eventId={editing?.eventId}
@@ -545,8 +544,10 @@ function EventSection({
           <EditEventBasicInfo
             initialCoverImageUrl={editing.coverImageUrl ?? undefined}
             lockDates={editing.isRunning}
-          />
-          {contactAndMap}
+          >
+            <EditEventContact parts={['contact']} bare />
+          </EditEventBasicInfo>
+          {map}
         </>
       ) : (
         <EditEventBasicInfo allowCoverImage={false} parts={['when']} />

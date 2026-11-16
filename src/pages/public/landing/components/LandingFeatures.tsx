@@ -134,14 +134,14 @@ export function LandingFeatures() {
               aria-controls={`features-panel-${index}`}
               onClick={() => setActiveGroup(index)}
               className={cn(
-                'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold transition-colors',
+                'flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-1.5 py-2 text-[0.8125rem] font-semibold transition-colors sm:px-2 sm:text-sm',
                 index === activeGroup
                   ? cn('shadow-sm', group.iconBox)
                   : 'text-muted-foreground hover:bg-muted'
               )}
             >
-              <group.icon className="h-4 w-4 shrink-0" />
-              {t(`features.groups.${group.id}.short`)}
+              <group.icon className="hidden h-4 w-4 shrink-0 min-[400px]:block" />
+              <span className="truncate">{t(`features.groups.${group.id}.short`)}</span>
             </button>
           ))}
         </div>
