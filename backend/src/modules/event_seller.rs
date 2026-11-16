@@ -2,11 +2,14 @@
 
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::docs;
+use super::event_exclusions::assert_not_excluded;
 use super::event_invitations;
 use super::event_roles::{self, Permission, Role};
+use super::features::registration_unavailable;
 use super::offers::close_offers_for_event_product;
 use super::sales::{self, intake_fee_for_seller};
 use super::seller_numbers::next_seller_number;
@@ -27,6 +30,15 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "eventSeller.markVendorPayoutReceived" => mark_vendor_payout_received);
     register!(registry, Mutation "eventSeller.settleVendor" => settle_vendor);
     register!(registry, Mutation "eventSeller.unmarkVendorPayoutReceived" => unmark_vendor_payout_received);
+}
+
+/// Places taken toward the seller limit: sellers, without the excluded and the team
+/// (`docs::SELLER_PLACES_SQL`, shared with the free places shown in the lists).
+pub async fn seller_places_taken(conn: &mut PgConnection, event: Uuid) -> sqlx::Result<i64> {
+    sqlx::query_scalar(docs::SELLER_PLACES_SQL)
+        .bind(event)
+        .fetch_one(conn)
+        .await
 }
 
 /// Whether the given code opens the event; without a code on the event anything does,
@@ -90,11 +102,27 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     if event.end_date < chrono::Utc::now() {
         return Err(AppError::bad_request("join.past"));
     }
+    // Excluded by the organizer: no code or invitation gets them back in
+    assert_not_excluded(ctx.conn(), event.id, user).await?;
     let invited_as_helper = match args.invitation.as_deref() {
         Some(token) => Some(event_invitations::check(ctx, event.id, token, user).await?),
         None => None,
     };
+    // Organizer and helpers sell their own items at their bazaar whenever they like: the
+    // registration window, the code and the seller limit are for the public. By role, not
+    // for platform administrators: they manage every bazaar but are not on its team
+    let team = event_roles::has_any_role(ctx.conn(), event.id, user, &event_roles::TEAM).await?;
+    // Closed or outside its window: only an invitation lets new sellers in. Asked before
+    // the code, so a code typed in vain does not count against the user.
     if invited_as_helper.is_none()
+        && !team
+        && let Some(code) = registration_unavailable(&event, chrono::Utc::now())
+        && !event_roles::has_role(ctx.conn(), event.id, user, Role::Seller).await?
+    {
+        return Err(AppError::bad_request(code));
+    }
+    if invited_as_helper.is_none()
+        && !team
         && !verify_access_code(ctx, &event, args.access_code.as_deref()).await?
     {
         return Err(AppError::forbidden("join.invalidCode"));
@@ -122,20 +150,14 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
             return Err(AppError::bad_request("join.profileIncomplete"));
         }
     }
-    // A helper the organizer asked for does not take a seller's place
+    // A helper the organizer asked for, or one of the team, does not take a seller's place
+    // and is not counted either (`docs::SELLER_PLACES_SQL`)
     if let Some(limit) = event
         .vendor_limit
-        .filter(|limit| *limit > 0 && invited_as_helper != Some(true))
+        .filter(|limit| *limit > 0 && invited_as_helper != Some(true) && !team)
+        && seller_places_taken(ctx.conn(), event.id).await? >= i64::from(limit)
     {
-        let sellers: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM event_roles WHERE event_id = $1 AND role = 'seller'",
-        )
-        .bind(event.id)
-        .fetch_one(ctx.conn())
-        .await?;
-        if sellers >= i64::from(limit) {
-            return Err(AppError::bad_request("join.vendorLimit"));
-        }
+        return Err(AppError::bad_request("join.vendorLimit"));
     }
     let number = next_seller_number(ctx, event.id).await?;
     let id: Uuid = sqlx::query_scalar(
@@ -213,7 +235,8 @@ pub async fn remove_seller_and_coorganizer_roles_for_user(
         }
         let has_history: bool = sqlx::query_scalar(
             "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
-                            WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status <> 'announced')",
+                            WHERE ep.event_id = $1 AND p.vendor_id = $2
+                              AND ep.status NOT IN ('announced', 'rejected'))",
         )
         .bind(event_id)
         .bind(user)

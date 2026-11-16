@@ -166,6 +166,8 @@ pub struct Event {
     pub rejection_reason: Option<String>,
     pub access_code: Option<String>,
     pub vendor_limit: Option<i32>,
+    /// Places taken by sellers, only with a `vendor_limit`: sellers see how many are left
+    pub seller_count: Option<i64>,
     pub last_seller_number: Option<i32>,
     pub commission: Decimal,
     pub sale_fee_fixed: Option<Decimal>,
@@ -206,6 +208,7 @@ struct EventRow {
     rejection_reason: Option<String>,
     access_code: Option<String>,
     vendor_limit: Option<i32>,
+    seller_count: Option<i64>,
     last_seller_number: Option<i32>,
     commission: Decimal,
     sale_fee_fixed: Option<Decimal>,
@@ -271,6 +274,7 @@ impl From<EventRow> for Event {
             rejection_reason: row.rejection_reason,
             access_code: row.access_code,
             vendor_limit: row.vendor_limit,
+            seller_count: row.seller_count,
             last_seller_number: row.last_seller_number,
             commission: row.commission,
             sale_fee_fixed: row.sale_fee_fixed,
@@ -288,18 +292,46 @@ impl From<EventRow> for Event {
     }
 }
 
+/// Which rows of `event_roles r` take a place toward the seller limit: sellers, except those
+/// the organizer excluded (they keep the role only for the return of items handed in) and
+/// the team, who sell at their own bazaar without taking a place from the public. One rule
+/// for the limit when joining (`SELLER_PLACES_SQL`) and the free places shown
+/// (`seller_count` in `EVENT_COLUMNS`).
+macro_rules! seller_place {
+    () => {
+        "r.role = 'seller'
+         AND NOT EXISTS (SELECT 1 FROM event_exclusions x
+                         WHERE x.event_id = r.event_id AND x.user_id = r.user_id)
+         AND NOT EXISTS (SELECT 1 FROM event_roles t
+                         WHERE t.event_id = r.event_id AND t.user_id = r.user_id
+                           AND t.role IN ('organizer', 'coorganizer'))"
+    };
+}
+
+/// Places taken toward the seller limit of event `$1`.
+pub const SELLER_PLACES_SQL: &str = concat!(
+    "SELECT count(*) FROM event_roles r WHERE r.event_id = $1 AND ",
+    seller_place!()
+);
+
 /// SELECT list of the events table aliased `e`.
-pub const EVENT_COLUMNS: &str = "e.id, e.created_at, e.title, e.description, e.cover_image_id,
+pub const EVENT_COLUMNS: &str = concat!(
+    "e.id, e.created_at, e.title, e.description, e.cover_image_id,
     e.map_image_id, e.location, e.street, e.postal_code, e.city, e.country,
     e.start_date, e.end_date, e.contact_info,
     ARRAY(SELECT c.category_id FROM event_categories c WHERE c.event_id = e.id ORDER BY c.position)
       AS categories,
     e.services::text[] AS services, e.visibility::text AS visibility, e.is_approved,
     e.approval_status::text AS approval_status, e.approved_at, e.approved_by, e.rejected_at,
-    e.rejected_by, e.rejection_reason, e.access_code, e.vendor_limit, e.last_seller_number,
+    e.rejected_by, e.rejection_reason, e.access_code, e.vendor_limit,
+    CASE WHEN e.vendor_limit > 0 THEN (SELECT count(*) FROM event_roles r
+      WHERE r.event_id = e.id AND ",
+    seller_place!(),
+    ") END AS seller_count, e.last_seller_number,
     e.commission, e.sale_fee_fixed, e.sale_fee_percentage, e.features, e.dropoff_start,
     e.dropoff_end, e.pickup_start, e.pickup_end, e.logistics_note, e.reminder_day_before_sent_for,
-    e.reminder_pickup_sent_for, e.hidden_at, e.hidden_by, e.hidden_reason, e.organizer_id";
+    e.reminder_pickup_sent_for, e.hidden_at, e.hidden_by, e.hidden_reason, e.organizer_id"
+);
 
 pub async fn event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<Option<Event>> {
     let row: Option<EventRow> = sqlx::query_as(sqlx::AssertSqlSafe(format!(

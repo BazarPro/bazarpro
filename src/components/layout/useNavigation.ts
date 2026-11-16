@@ -29,13 +29,7 @@ import { useQuery } from '../../lib/api/react';
 import type { Id } from '../../lib/api/types';
 import type { HelperPermission } from '../../shared/constants';
 
-export type BadgeKind =
-  | 'notifications'
-  | 'sales'
-  | 'reports'
-  | 'approvals'
-  | 'messages'
-  | 'organizerMessages';
+export type BadgeKind = 'notifications' | 'sales' | 'reports' | 'approvals' | 'messages';
 
 export interface NavItem {
   icon: LucideIcon;
@@ -115,8 +109,9 @@ export function useNavigation({
       label: isSingle ? t('menu.currentBazaar') : t('menu.events'),
       tabLabel: t('menu.events'),
       page: '/browse-events',
-      badge: notices?.messages ?? 0,
-      badgeLabel: 'organizerMessages',
+      // Messages of organizers and being excluded from a bazaar
+      badge: (notices?.messages ?? 0) + (notices?.participation ?? 0),
+      badgeLabel: 'notifications',
       tab: true,
       onboardingId: 'sidebar-events-search',
     },
@@ -215,7 +210,10 @@ export function useNavigation({
         : participantItems;
 
   const participantNotices =
-    (notices?.products ?? 0) + (notices?.sales ?? 0) + (notices?.messages ?? 0);
+    (notices?.products ?? 0) +
+    (notices?.sales ?? 0) +
+    (notices?.messages ?? 0) +
+    (notices?.participation ?? 0);
   const organizerNotices = notices?.events ?? 0;
 
   return {

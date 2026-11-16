@@ -19,6 +19,7 @@ use uuid::Uuid;
 use super::access::{active_admins, is_platform_admin, require_admin};
 use super::category_fields::requirable_fields;
 use super::docs::{self, Event};
+use super::event_exclusions::{exclusion, has_handed_in};
 use super::event_roles::{
     self, Permission, Role, TEAM, has_any_role_or_admin, has_role_or_admin, is_bystander,
     load_vendors_with_calculations, require_permission,
@@ -75,6 +76,7 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "events.saveEventDraft" => save_event_draft);
     register!(registry, Mutation "events.deleteEventDraft" => delete_event_draft);
     register!(registry, Mutation "events.editEvent" => edit_event);
+    register!(registry, Mutation "events.setRegistrationOpen" => set_registration_open);
     register!(registry, Mutation "events.deleteEvent" => delete_event);
     register!(registry, Query "events.getMyRegisteredEvents" => get_my_registered_events);
     register!(registry, Mutation "events.leaveEvent" => leave_event);
@@ -216,7 +218,7 @@ struct ListArgs {
     include_past: Option<bool>,
 }
 
-fn time_condition(include_past: Option<bool>) -> &'static str {
+pub(crate) fn time_condition(include_past: Option<bool>) -> &'static str {
     if include_past == Some(true) {
         "true"
     } else {
@@ -748,6 +750,10 @@ struct FeaturesArgs {
     intake_fee: Option<f64>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
+    /// Absent (older apps): switch and window stay as stored
+    registration_open: Option<bool>,
+    registration_starts_at: Option<f64>,
+    registration_ends_at: Option<f64>,
 }
 
 fn sanitize_item_limit(limit: Option<f64>) -> AppResult<Option<f64>> {
@@ -920,6 +926,43 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
                 .unwrap_or(false)
         ),
     );
+    let previous_time = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
+    let sent_window = (
+        features.registration_starts_at,
+        features.registration_ends_at,
+    );
+    let previous_window = (
+        previous_time("registrationStartsAt"),
+        previous_time("registrationEndsAt"),
+    );
+    let (registration_open, (starts, ends)) = match features.registration_open {
+        Some(true) => (true, sent_window),
+        // Closed: the form hides the window and sends none. The stored one stays, like with
+        // the quick switch (`set_registration_open`), so opening again brings the deadline back
+        Some(false) if sent_window == (None, None) => (false, previous_window),
+        Some(false) => (false, sent_window),
+        // An older app sends none of it
+        None => (
+            previous_bool("registrationOpen").unwrap_or(true),
+            previous_window,
+        ),
+    };
+    for (time, key) in [
+        (starts, "registrationStartsAt"),
+        (ends, "registrationEndsAt"),
+    ] {
+        if time.is_some_and(|ms| from_ms(ms).is_none()) {
+            return Err(invalid(key));
+        }
+    }
+    if let (Some(starts), Some(ends)) = (starts, ends)
+        && ends <= starts
+    {
+        return Err(AppError::bad_request("event.registrationWindow"));
+    }
+    put("registrationOpen", json!(registration_open));
+    put("registrationStartsAt", json!(starts));
+    put("registrationEndsAt", json!(ends));
     Ok(Value::Object(stored))
 }
 
@@ -1362,6 +1405,51 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     Ok(())
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RegistrationArgs {
+    event_id: Id,
+    open: bool,
+}
+
+/// The quick switch on the sellers page (organizer only). Closing keeps the window, so
+/// opening again brings a deadline back. Opening means now: a planned start goes, as
+/// does a deadline already passed.
+async fn set_registration_open(ctx: &mut Ctx, args: RegistrationArgs) -> AppResult<()> {
+    let user = ctx.require_user()?;
+    let event = load(ctx, args.event_id.0).await?;
+    let now = Utc::now();
+    if event.end_date < now {
+        return Err(AppError::bad_request("event.pastNoEdit"));
+    }
+    if !has_role_or_admin(ctx.conn(), event.id, user, Role::Organizer).await? {
+        return Err(AppError::forbidden("auth.forbidden"));
+    }
+    let mut features = match event.features {
+        Some(Value::Object(features)) => features,
+        _ => Map::new(),
+    };
+    features.insert("registrationOpen".to_owned(), json!(args.open));
+    if args.open {
+        features.remove("registrationStartsAt");
+        let passed = features
+            .get("registrationEndsAt")
+            .and_then(Value::as_f64)
+            .and_then(from_ms)
+            .is_some_and(|end| end <= now);
+        if passed {
+            features.remove("registrationEndsAt");
+        }
+    }
+    sqlx::query("UPDATE events SET features = $2 WHERE id = $1")
+        .bind(event.id)
+        .bind(Value::Object(features))
+        .execute(ctx.conn())
+        .await?;
+    touch_event(ctx, event.id);
+    Ok(())
+}
+
 /// Deletes an upcoming or running event (organizer only); not when it has sales.
 async fn delete_event(ctx: &mut Ctx, args: IdArgs) -> AppResult<()> {
     let user = ctx.require_user()?;
@@ -1423,25 +1511,23 @@ async fn leave_event(ctx: &mut Ctx, args: EventArgs) -> AppResult<()> {
     if event.end_date < Utc::now() {
         return Err(AppError::bad_request("leave.past"));
     }
+    // Excluded: already out. The seller row stays, so the organizer still finds the person
+    // in the seller list and can take the exclusion back, with the same number.
+    if exclusion(ctx.conn(), event.id, user).await?.is_some() {
+        return Err(AppError::bad_request("leave.excluded"));
+    }
     let seller = docs::event_seller(ctx.conn(), event.id, user).await?;
     if seller.as_ref().is_some_and(|s| s.payout_received) {
         return Err(AppError::bad_request("leave.paidOut"));
     }
-    let handed_in: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
-        "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
-                        WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status IN {})",
-        sales::ACCEPTED_STATUSES
-    )))
-    .bind(event.id)
-    .bind(user)
-    .fetch_one(ctx.conn())
-    .await?;
-    if handed_in {
+    if has_handed_in(ctx.conn(), event.id, user).await? {
         return Err(AppError::bad_request("leave.itemsHandledIn"));
     }
+    // Rejected items stay: leaving and joining again does not announce them anew
     let products: Vec<Uuid> = sqlx::query_scalar(
         "DELETE FROM event_products ep USING products p
          WHERE ep.product_id = p.id AND ep.event_id = $1 AND p.vendor_id = $2
+           AND ep.status <> 'rejected'
          RETURNING ep.product_id",
     )
     .bind(event.id)
@@ -1465,9 +1551,10 @@ async fn get_my_product_count_for_event(ctx: &mut Ctx, args: EventArgs) -> AppRe
     let Some(user) = ctx.user else { return Ok(0) };
     ctx.read(Topic::Event(args.event_id.0));
     ctx.read(Topic::User(user));
+    // Like the item limit: a rejected item takes no place
     Ok(sqlx::query_scalar(
         "SELECT count(*) FROM event_products ep JOIN products p ON p.id = ep.product_id
-         WHERE ep.event_id = $1 AND p.vendor_id = $2",
+         WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status <> 'rejected'",
     )
     .bind(args.event_id.0)
     .bind(user)
@@ -1578,21 +1665,24 @@ async fn count_pending_approvals(ctx: &mut Ctx, _: NoArgs) -> AppResult<i64> {
     .await?)
 }
 
-/// The events whose start, end or discount start lies in `(from, to]`.
+/// The events whose start, end, discount start or registration window (opening or
+/// closing) lies in `(from, to]`.
 pub async fn events_crossing_time_boundaries(
     conn: &mut sqlx::PgConnection,
     from: DateTime<Utc>,
     to: DateTime<Utc>,
 ) -> sqlx::Result<Vec<Uuid>> {
-    // discountStartsAt is kept in milliseconds, like every time in `features`
+    // Times in `features` are kept in milliseconds
     sqlx::query_scalar(
         "SELECT id FROM events,
-           LATERAL (SELECT CASE WHEN jsonb_typeof(features->'discountStartsAt') = 'number'
-             THEN to_timestamp((features->>'discountStartsAt')::double precision / 1000)
-           END AS discount_start) d
+           LATERAL (SELECT ARRAY(
+             SELECT to_timestamp((features->>key)::double precision / 1000)
+             FROM unnest(ARRAY['discountStartsAt', 'registrationStartsAt', 'registrationEndsAt']) key
+             WHERE jsonb_typeof(features->key) = 'number'
+           ) AS times) f
          WHERE (start_date > $1 AND start_date <= $2)
             OR (end_date > $1 AND end_date <= $2)
-            OR (discount_start > $1 AND discount_start <= $2)",
+            OR EXISTS (SELECT 1 FROM unnest(f.times) t WHERE t > $1 AND t <= $2)",
     )
     .bind(from)
     .bind(to)

@@ -66,8 +66,7 @@
       "sales": "{{count}} neue Verkäufe",
       "reports": "{{count}} offene Meldungen",
       "approvals": "{{count}} Basare warten auf Freigabe",
-      "messages": "{{count}} offene Kontaktanfragen",
-      "organizerMessages": "{{count}} neue Nachrichten vom Veranstalter"
+      "messages": "{{count}} offene Kontaktanfragen"
     },
     "categories": "Kategorien",
     "allBazaars": "Alle Basare",
