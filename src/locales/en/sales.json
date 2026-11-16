@@ -11,7 +11,8 @@
     "salePrice": "Sale price",
     "fee": "Bazaar fee",
     "feePercent": "Bazaar fee ({{percent}} %)",
-    "payout": "Payout to the seller"
+    "payout": "Payout to the seller",
+    "receivedDirectly": "Kept by the seller (received directly from the buyer)"
   },
   "mySales": {
     "invoiceFailed": "The private invoice could not be created",

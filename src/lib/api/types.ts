@@ -565,6 +565,8 @@ export type VendorWithCalculations = {
   commission: number;
   intakeFee: IntakeFee;
   payout: number;
+  /** Direct sales: what the seller got from the buyers and keeps; not in the payout */
+  receivedDirectly: number;
   paid: boolean;
   grossRevenue: number;
   totalDiscount: number;
@@ -2549,6 +2551,8 @@ export interface Api {
           deskSaleId: string;
           soldAt: number;
           buyerEmail?: string | undefined;
+          /** How the desk sold: it took only the commission. Booked that way */
+          directSale?: boolean | undefined;
           items: {
             eventProductId: Id<'eventProducts'>;
             productId: Id<'products'>;

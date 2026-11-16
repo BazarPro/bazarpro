@@ -11,7 +11,8 @@
     "salePrice": "Verkaufspreis",
     "fee": "Bazar-Gebühr",
     "feePercent": "Bazar-Gebühr ({{percent}} %)",
-    "payout": "Auszahlung an den Verkäufer"
+    "payout": "Auszahlung an den Verkäufer",
+    "receivedDirectly": "Bleibt beim Verkäufer (direkt vom Käufer erhalten)"
   },
   "mySales": {
     "invoiceFailed": "Privatrechnung konnte nicht erstellt werden",

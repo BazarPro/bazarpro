@@ -149,7 +149,28 @@ export function playScanBeep(): void {
   }
 }
 
-/** The commission of a sale as the backend books it, rounded to cents. */
+/**
+ * The commission of a sale as the backend books it (purchases.rs, book): the percentage
+ * of the price in cents, halves rounded up. In whole numbers, because floats put e.g.
+ * 15 % of 4,10 € just below the half cent.
+ */
 export function commissionOf(price: number, percent: number): number {
-  return Math.round(price * percent) / 100;
+  // Prices have two decimals; six for the percentage are more than any event has
+  const SCALE = 1_000_000;
+  const cents = Math.round(price * 100);
+  const scaled = cents * Math.round(percent * SCALE);
+  const divisor = 100 * SCALE;
+  return Math.floor((scaled + divisor / 2) / divisor) / 100;
+}
+
+/**
+ * What the cash desk takes for items sold at `prices`: the prices, at a direct sale the
+ * commission of each. The backend's rule is desk_takes (backend/src/modules/docs.rs).
+ */
+export function deskTakes(prices: number[], directSale: boolean, percent: number): number {
+  const cents = prices.reduce(
+    (sum, price) => sum + Math.round((directSale ? commissionOf(price, percent) : price) * 100),
+    0
+  );
+  return cents / 100;
 }

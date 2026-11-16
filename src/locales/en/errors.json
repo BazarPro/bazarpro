@@ -78,6 +78,7 @@
     "rejectionReasonRequired": "Please give a reason for the rejection.",
     "runningNoDate": "The date cannot be changed during the bazaar.",
     "runningNoFees": "Commission and intake fee cannot be changed during the bazaar.",
+    "directSaleLocked": "Sales are already booked. Direct sale can no longer be switched on or off.",
     "runningNoVisibility": "The visibility cannot be changed during the bazaar.",
     "accessCodeRequired": "This visibility needs an access code.",
     "sellerNoteTooLong": "The note for sellers may have at most {{max}} characters.",

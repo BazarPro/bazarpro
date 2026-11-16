@@ -35,6 +35,7 @@ import { PageSkeleton } from '../../../../components/ui/loading';
 import {
   clearCachedCart,
   commissionOf,
+  deskTakes,
   getCheckoutCameraEnabled,
   getCheckoutSoundEnabled,
   loadCachedCart,
@@ -261,13 +262,11 @@ function CashDesk() {
   const lines = cart.map((entry) => resolved[entry.productId]);
   const allReady = cart.length > 0 && lines.every((line) => line?.ok);
   const total = lines.reduce((sum, line) => sum + (line?.ok ? line.price : 0), 0);
-  // What the desk takes: the prices, at a direct sale the commission of each
-  const taken = directSale
-    ? lines.reduce(
-        (sum, line) => sum + (line?.ok ? commissionOf(line.price, commissionPercent) : 0),
-        0
-      )
-    : total;
+  const taken = deskTakes(
+    lines.flatMap((line) => (line?.ok ? [line.price] : [])),
+    directSale,
+    commissionPercent
+  );
   const emailValid = buyerEmail.trim() === '' || EMAIL_PATTERN.test(buyerEmail.trim());
   const saleKey = `${cart.map((entry) => entry.productId).join()}:${total}`;
   const moneyReceived = paidFor === saleKey;
@@ -286,6 +285,8 @@ function CashDesk() {
       deskSaleId,
       soldAt: Date.now(),
       buyerEmail: buyerEmail.trim() || undefined,
+      // The desk took the money this way; it is booked so even if the event changes
+      directSale,
       items: ready.map((line) => ({
         eventProductId: line.request.eventProductId,
         productId: line.productId,

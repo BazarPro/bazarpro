@@ -1310,6 +1310,24 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         Some(features) => sanitize_features(features, event.features.as_ref())?,
         None => event.features.clone().unwrap_or_else(|| json!({})),
     };
+    // A sale is booked the way the event was set when it was made. Switching afterwards
+    // would leave one cash summary with both kinds, and desks selling the old way
+    let direct = |features: Option<&Value>| {
+        features
+            .and_then(|f| f.get("directSale"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    };
+    if direct(Some(&features)) != direct(event.features.as_ref()) {
+        let sold: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM purchases WHERE event_id = $1)")
+                .bind(event.id)
+                .fetch_one(ctx.conn())
+                .await?;
+        if sold {
+            return Err(AppError::bad_request("event.directSaleLocked"));
+        }
+    }
     if fees_locked(ctx, &event).await? {
         let fee = |features: Option<&Value>| {
             features
@@ -1628,21 +1646,19 @@ async fn get_event_financial_summary(
         .filter(|p| p.direct_sale)
         .map(|p| p.commission_amount)
         .sum();
-    // What came into the till: the price, at a direct sale only the commission
-    let taken: Decimal = purchases
-        .iter()
-        .map(|p| {
-            if p.direct_sale {
-                p.commission_amount
-            } else {
-                p.total_amount
-            }
-        })
-        .sum();
+    let taken: Decimal = purchases.iter().map(docs::Purchase::taken).sum();
 
     let vendors = load_vendors_with_calculations(ctx, event).await?;
     // A seller whose sales do not cover the intake fee pays in instead of getting paid out
     let owes = |payout: Decimal| payout < Decimal::new(-5, 3);
+    // At a direct-sale event a seller without money either way has nothing to settle; the
+    // progress counts only those who have, or who were settled anyway
+    let direct_event = docs::event(ctx.conn(), event)
+        .await?
+        .is_some_and(|event| event.resolved_features().direct_sale);
+    let to_settle = |v: &&event_roles::VendorWithCalculations| {
+        !direct_event || v.paid || v.payout.abs() >= Decimal::new(5, 3)
+    };
     let sum = |paid: bool, owing: bool| -> Decimal {
         vendors
             .iter()
@@ -1684,7 +1700,7 @@ async fn get_event_financial_summary(
         cash_in_hand_soll: taken - paid_out + fees_collected,
         sales_count: purchases.len(),
         vendors_paid_count: vendors.iter().filter(|v| v.paid).count(),
-        vendors_total_count: vendors.len(),
+        vendors_total_count: vendors.iter().filter(to_settle).count(),
     })
 }
 

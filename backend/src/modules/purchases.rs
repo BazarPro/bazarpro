@@ -84,11 +84,7 @@ struct SoldItem {
 impl SoldItem {
     /// What the cash desk took for the item: the price, or the commission at a direct sale
     fn taken(&self) -> Decimal {
-        if self.direct {
-            self.commission
-        } else {
-            self.total
-        }
+        docs::desk_takes(self.direct, self.total, self.commission)
     }
 }
 
@@ -178,7 +174,8 @@ async fn online_price(ctx: &mut Ctx, item: &Sellable, request: &SaleRequest) -> 
         let Some(minimum) = minimum else {
             return Err(AppError::bad_request("checkout.noNegotiation"));
         };
-        if minimum >= list_price {
+        // The guard is about the seller's minimum; a direct sale has none
+        if !features.direct_sale && minimum >= list_price {
             return Err(AppError::bad_request("checkout.labelAtMinimum"));
         }
         let price = money(negotiated).filter(|price| *price >= minimum && *price <= list_price);
@@ -224,6 +221,7 @@ async fn book(
     item: Sellable,
     price: Price,
     desk_sale: Option<DeskSale>,
+    direct: bool,
 ) -> AppResult<(Event, SoldItem)> {
     let Sellable {
         relation,
@@ -237,7 +235,6 @@ async fn book(
         / Decimal::ONE_HUNDRED;
     let commission = commission.cents();
     // Direct sale: the seller has the money already and pays the commission at the desk
-    let direct = event.resolved_features().direct_sale;
     let payout = if direct {
         Decimal::ZERO
     } else {
@@ -342,7 +339,8 @@ async fn sell_event_product(
 ) -> AppResult<(Event, SoldItem)> {
     let item = sellable(ctx, event, request.event_product_id.0).await?;
     let price = online_price(ctx, &item, request).await?;
-    book(ctx, item, price, desk_sale).await
+    let direct = item.event.resolved_features().direct_sale;
+    book(ctx, item, price, desk_sale, direct).await
 }
 
 /// A sale of one cash desk (desk_sales): the ID comes from the app, so the same sale sent
@@ -678,18 +676,12 @@ async fn sell_products(ctx: &mut Ctx, args: CartArgs) -> AppResult<CartResult> {
                 sold_at: Utc::now(),
             };
             if let Claim::Booked(purchase_ids) = claim_desk_sale(ctx, sale, event_id, user).await? {
-                let (total, taken): (Decimal, Decimal) = sqlx::query_as(
-                    "SELECT COALESCE(sum(total_amount), 0),
-                       COALESCE(sum(CASE WHEN direct_sale THEN commission_amount ELSE total_amount END), 0)
-                     FROM purchases WHERE desk_sale_id = $1",
-                )
-                .bind(sale.id)
-                .fetch_one(ctx.conn())
-                .await?;
+                let booked =
+                    docs::purchases_where(ctx.conn(), "desk_sale_id = $1", sale.id).await?;
                 return Ok(CartResult {
                     purchase_ids,
-                    total,
-                    taken,
+                    total: booked.iter().map(|p| p.total_amount).sum(),
+                    taken: booked.iter().map(docs::Purchase::taken).sum(),
                 });
             }
             Some(sale)
@@ -935,6 +927,9 @@ struct OfflineSale {
     sold_at: DateTime<Utc>,
     items: Vec<OfflineItem>,
     buyer_email: Option<String>,
+    /// How the desk sold: it took only the commission. The money changed hands that way,
+    /// so it counts whatever the event says by now. Absent (older apps): as the event says
+    direct_sale: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -1048,7 +1043,12 @@ async fn sync_offline_sales(ctx: &mut Ctx, args: SyncArgs) -> AppResult<Vec<Sync
                 Err(err) => Err(err.code().ok_or(err)?),
             };
             match checked {
-                Ok((item, price)) => sold.push(book(ctx, item, price, Some(desk_sale)).await?.1),
+                Ok((item, price)) => {
+                    let direct = sale
+                        .direct_sale
+                        .unwrap_or_else(|| item.event.resolved_features().direct_sale);
+                    sold.push(book(ctx, item, price, Some(desk_sale), direct).await?.1)
+                }
                 Err(reason) => {
                     record_conflict(ctx, desk_sale.id, event_id, request, reason).await?;
                     conflicts.push(request.product_id.0);

@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { downloadPrivateInvoiceForProduct } from '../../../lib/privateInvoice';
-import { priceSourceLabel, type InvoiceCopy } from '../../../lib/saleBreakdown';
+import { priceSourceLabel, sellerKeeps, type InvoiceCopy } from '../../../lib/saleBreakdown';
 import { getUserFacingErrorMessage } from '../../../lib/errors';
 import { formatPriceDE } from '../../../lib/utils';
 import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
@@ -68,7 +68,7 @@ export function MySalesPage() {
           // Direct sales: the buyer paid the seller, who paid the commission at the desk
           const keptDirectly = group.items
             .filter((item) => item.sale.directSale)
-            .reduce((sum, item) => sum + item.sale.totalAmount - item.sale.commission, 0);
+            .reduce((sum, item) => sum + sellerKeeps(item.sale), 0);
           return (
             <section
               key={group.event._id}
@@ -165,12 +165,7 @@ export function MySalesPage() {
                                 : t('mySales.forYou')}
                             </dt>
                             <dd className="font-semibold text-primary">
-                              {formatPriceDE(
-                                item.sale.directSale
-                                  ? item.sale.totalAmount - item.sale.commission
-                                  : item.sale.payout
-                              )}{' '}
-                              €
+                              {formatPriceDE(sellerKeeps(item.sale))} €
                             </dd>
                           </div>
                         </dl>

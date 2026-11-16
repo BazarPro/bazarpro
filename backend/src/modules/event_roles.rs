@@ -415,6 +415,8 @@ pub struct VendorWithCalculations {
     pub intake_fee: IntakeFee,
     /// Sales minus commission and intake fee; negative when the seller owes the bazaar
     pub payout: Decimal,
+    /// Direct sales: what the seller got from the buyers and keeps, so it is not in the payout
+    pub received_directly: Decimal,
     pub paid: bool,
     pub gross_revenue: Decimal,
     pub total_discount: Decimal,
@@ -489,6 +491,7 @@ pub async fn load_vendors_with_calculations(
         let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
         let sales_payout: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
         let gross_revenue: Decimal = purchases.iter().map(|p| sales::list_price(p)).sum();
+        let received_directly: Decimal = purchases.iter().map(|p| p.received_directly()).sum();
         let seller = docs::event_seller(ctx.conn(), event_id, vendor).await?;
         if (over || user.status.as_deref() == Some("deleted"))
             && let Some(snapshot) = seller.as_ref().and_then(|s| s.seller_snapshot.as_ref())
@@ -515,6 +518,7 @@ pub async fn load_vendors_with_calculations(
             commission,
             intake_fee,
             payout: sales_payout - intake_fee.total,
+            received_directly,
             paid: seller.as_ref().is_some_and(|seller| seller.payout_received),
             gross_revenue,
             total_discount: gross_revenue - total_revenue,

@@ -20,6 +20,16 @@ export function feePercent(sale: Pick<SaleInfo, 'commission' | 'totalAmount'>): 
   return Math.round((sale.commission / sale.totalAmount) * 1000) / 10;
 }
 
+/**
+ * What the seller has from a sale: the payout of the bazaar, or at a direct sale the
+ * price the buyer paid them less the commission they paid at the desk.
+ */
+export function sellerKeeps(
+  sale: Pick<SaleInfo, 'directSale' | 'totalAmount' | 'commission' | 'payout'>
+): number {
+  return sale.directSale ? sale.totalAmount - sale.commission : sale.payout;
+}
+
 /** Short label for how the paid price came about. */
 export function priceSourceLabel(sale: SaleInfo): string | null {
   if (sale.priceSource === 'offer') return text('price.offer');
@@ -34,7 +44,7 @@ function text(key: string, values?: Record<string, unknown>): string {
 
 /**
  * How the price came about, from the label price to what the buyer paid. The seller's
- * copy goes on to the bazaar fee and the payout.
+ * copy goes on to the bazaar fee and the payout, or what they keep of a direct sale.
  */
 export function buildPriceLines(sale: SaleInfo, copy: InvoiceCopy): PriceLine[] {
   const lines: PriceLine[] = [{ label: text('price.label'), amount: sale.listPrice, kind: 'base' }];
@@ -63,7 +73,12 @@ export function buildPriceLines(sale: SaleInfo, copy: InvoiceCopy): PriceLine[] 
       amount: -sale.commission,
       kind: 'deduction',
     });
-    lines.push({ label: text('price.payout'), amount: sale.payout, kind: 'total' });
+    // A direct sale pays nothing out: the seller has the money from the buyer
+    lines.push({
+      label: text(sale.directSale ? 'price.receivedDirectly' : 'price.payout'),
+      amount: sellerKeeps(sale),
+      kind: 'total',
+    });
   }
   return lines;
 }
