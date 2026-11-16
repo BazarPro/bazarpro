@@ -59,6 +59,7 @@ import { HELPER_PERMISSIONS, type HelperPermission } from '../../../../shared/co
 import { InviteDialog } from '../../../../components/invitations/InviteDialog';
 import { OpenInvitations } from '../../../../components/invitations/OpenInvitations';
 import { ExcludedBadge } from '../../../../components/participation/ExcludedBadge';
+import { RegistrationPanel } from '../../../../components/participation/RegistrationPanel';
 import { Trans, useTranslation } from 'react-i18next';
 
 const NO_LABELS: Id<'products'>[] = [];
@@ -270,6 +271,8 @@ export function SellerManagementPage() {
           </div>
         }
       />
+
+      {event && <RegistrationPanel event={event} canSwitch={canBroadcast} />}
 
       {clashingCodes.size > 0 && (
         <p

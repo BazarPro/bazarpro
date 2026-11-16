@@ -202,8 +202,8 @@ export function ProductManagementPage() {
   const canReject = can('intake') && !!event && event.endDate >= now;
   const dropoffOver = dropoffEnd !== undefined && dropoffEnd < now;
   const canRejectAll = !selectedVendor && canReject && notHandedIn.length > 0;
-  // After the drop-off a notice asks for it; before, the button waits in the header
-  const showRejectNotice = canRejectAll && (dropoffOver || activeTab === 'announced');
+  // After the drop-off a notice asks for it; before, the button waits in the header menu
+  const showRejectNotice = canRejectAll && dropoffOver;
   // Organizer only, like helpers; sellers without an account belong to the bazaar anyway
   const canExclude =
     canLead &&
@@ -926,7 +926,7 @@ export function ProductManagementPage() {
         </div>
       )}
 
-      {/* After the drop-off, or while looking at the open items: turn down the rest at once */}
+      {/* After the drop-off: turn down the rest at once */}
       {showRejectNotice && (
         <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3 text-sm">

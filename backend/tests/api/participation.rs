@@ -300,6 +300,73 @@ async fn the_organizer_sets_the_registration_in_the_settings(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_organizer_switches_the_registration_on_the_sellers_page(db: PgPool) {
+    let end = now_ms() + HOUR_MS;
+    let b = Bazaar::new(
+        db,
+        json!({ "registrationStartsAt": now_ms() + HOUR_MS / 2, "registrationEndsAt": end }),
+    )
+    .await;
+    let switch = |open: bool, session: &str| {
+        let session = session.to_owned();
+        let app = &b.app;
+        let event = b.event;
+        async move {
+            app.mutation(
+                "events.setRegistrationOpen",
+                json!({ "eventId": event, "open": open }),
+                Some(&session),
+            )
+            .await
+        }
+    };
+    let features = || async {
+        sqlx::query_scalar::<_, Value>("SELECT features FROM events WHERE id = $1")
+            .bind(b.event)
+            .fetch_one(&b.db)
+            .await
+            .unwrap()
+    };
+
+    // Helpers and sellers cannot
+    assert_eq!(
+        switch(false, &b.as_helper).await.status,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(
+        switch(false, &b.as_seller).await.status,
+        StatusCode::FORBIDDEN
+    );
+
+    // Closing keeps the window for later
+    let reply = switch(false, &b.as_organizer).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    let stored = features().await;
+    assert_eq!(stored["registrationOpen"], json!(false));
+    assert_eq!(stored["registrationEndsAt"].as_f64(), Some(end as f64));
+    let newcomer = fixtures::user(&b.db, "Neu").await;
+    assert_eq!(
+        b.join(newcomer, json!({})).await.body["code"],
+        "join.closed"
+    );
+
+    // Opening is now: the planned start goes, the deadline stays
+    switch(true, &b.as_organizer).await;
+    let stored = features().await;
+    assert_eq!(stored["registrationOpen"], json!(true));
+    assert_eq!(stored.get("registrationStartsAt"), None);
+    assert_eq!(stored["registrationEndsAt"].as_f64(), Some(end as f64));
+    let reply = b.join(newcomer, json!({})).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+
+    // A deadline already passed would keep it closed: it goes
+    b.set_features(json!({ "registrationEndsAt": now_ms() - HOUR_MS }))
+        .await;
+    switch(true, &b.as_organizer).await;
+    assert_eq!(features().await.get("registrationEndsAt"), None);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn opening_and_closing_registration_reaches_open_pages(db: PgPool) {
     let b = Bazaar::new(db, json!({ "registrationEndsAt": now_ms() - 30_000 })).await;
     let mut conn = b.db.acquire().await.unwrap();

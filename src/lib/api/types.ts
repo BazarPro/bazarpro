@@ -117,6 +117,9 @@ export interface Docs {
           intakeFee?: number | undefined;
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
+          registrationOpen?: boolean | undefined;
+          registrationStartsAt?: number | undefined;
+          registrationEndsAt?: number | undefined;
         }
       | undefined;
     sellerLogistics?:
@@ -1704,6 +1707,12 @@ export interface Api {
         visibility: string;
         commission: number;
       },
+      null
+    >;
+    /** Organizer's quick switch: opening means now, closing keeps the window */
+    setRegistrationOpen: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; open: boolean },
       null
     >;
     deleteEvent: FunctionReference<'mutation', { id: Id<'events'> }, null>;

@@ -75,6 +75,7 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "events.saveEventDraft" => save_event_draft);
     register!(registry, Mutation "events.deleteEventDraft" => delete_event_draft);
     register!(registry, Mutation "events.editEvent" => edit_event);
+    register!(registry, Mutation "events.setRegistrationOpen" => set_registration_open);
     register!(registry, Mutation "events.deleteEvent" => delete_event);
     register!(registry, Query "events.getMyRegisteredEvents" => get_my_registered_events);
     register!(registry, Mutation "events.leaveEvent" => leave_event);
@@ -1398,6 +1399,51 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     if making_public {
         notify_admins_about_pending_event(ctx, event.id, user).await?;
     }
+    touch_event(ctx, event.id);
+    Ok(())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RegistrationArgs {
+    event_id: Id,
+    open: bool,
+}
+
+/// The quick switch on the sellers page (organizer only). Closing keeps the window, so
+/// opening again brings a deadline back. Opening means now: a planned start goes, as
+/// does a deadline already passed.
+async fn set_registration_open(ctx: &mut Ctx, args: RegistrationArgs) -> AppResult<()> {
+    let user = ctx.require_user()?;
+    let event = load(ctx, args.event_id.0).await?;
+    let now = Utc::now();
+    if event.end_date < now {
+        return Err(AppError::bad_request("event.pastNoEdit"));
+    }
+    if !has_role_or_admin(ctx.conn(), event.id, user, Role::Organizer).await? {
+        return Err(AppError::forbidden("auth.forbidden"));
+    }
+    let mut features = match event.features {
+        Some(Value::Object(features)) => features,
+        _ => Map::new(),
+    };
+    features.insert("registrationOpen".to_owned(), json!(args.open));
+    if args.open {
+        features.remove("registrationStartsAt");
+        let passed = features
+            .get("registrationEndsAt")
+            .and_then(Value::as_f64)
+            .and_then(from_ms)
+            .is_some_and(|end| end <= now);
+        if passed {
+            features.remove("registrationEndsAt");
+        }
+    }
+    sqlx::query("UPDATE events SET features = $2 WHERE id = $1")
+        .bind(event.id)
+        .bind(Value::Object(features))
+        .execute(ctx.conn())
+        .await?;
     touch_event(ctx, event.id);
     Ok(())
 }
