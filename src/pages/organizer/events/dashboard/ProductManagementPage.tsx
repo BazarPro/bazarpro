@@ -36,6 +36,12 @@ import {
   ChevronUp,
   MapPin,
   Package,
+  Ban,
+  PackageX,
+  MoreHorizontal,
+  UserCheck,
+  ShieldCheck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
@@ -44,6 +50,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../../../components/ui/dropdown-menu';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
@@ -67,6 +74,17 @@ import { SellerIdCheck } from '../../../../components/sellers/SellerIdCheck';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { matchingVendors, productMatcher } from '../../../../lib/productSearch';
 import { addToCachedCart } from '../../../../lib/checkout';
+import {
+  HelperRoleDialog,
+  type HelperAction,
+} from '../../../../components/helpers/HelperRoleDialog';
+import { ExcludedBadge } from '../../../../components/participation/ExcludedBadge';
+import {
+  ExclusionDialog,
+  type ExclusionMode,
+} from '../../../../components/participation/ExclusionDialog';
+import { formatDateTimeDE } from '../../../../lib/utils';
+import { useNowPassing } from '../../../../hooks/useNowPassing';
 
 /** Pause after typing before the search goes into the URL (back button, links) */
 const URL_SEARCH_DELAY_MS = 300;
@@ -107,6 +125,13 @@ export function ProductManagementPage() {
   const [editingWalkIn, setEditingWalkIn] = useState<ProductWithStatus | null>(null);
   const [deletingWalkIn, setDeletingWalkIn] = useState<ProductWithStatus | null>(null);
   const deleteWalkInProduct = useMutation(api.walkInSellers.deleteWalkInProduct);
+  // Turning down what was not handed in on time: of one seller or of the whole bazaar
+  const rejectNotHandedIn = useMutation(api.eventProducts.rejectNotHandedIn);
+  const undoRejection = useMutation(api.eventProducts.undoRejection);
+  const [rejectScope, setRejectScope] = useState<'event' | 'vendor' | null>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
+  // Taking the selected seller out of the bazaar, or back in
+  const [exclusionMode, setExclusionMode] = useState<ExclusionMode | null>(null);
   // Typing stays instant; filtering thousands of items may lag behind a little
   const deferredSearchTerm = useDeferredValue(localSearchTerm);
   // The search last written to the URL, to tell our own writes from the back button
@@ -115,7 +140,7 @@ export function ProductManagementPage() {
   const lastAutoSwitchedVendorId = useRef<Id<'users'> | null>(null);
 
   // Queries
-  const { isLoading: rolesLoading, canManage, can } = useEventAccess(eventId);
+  const { isLoading: rolesLoading, canManage, canLead, can } = useEventAccess(eventId);
 
   const products = useQuery(
     api.eventProducts.getProductsForEventManagement,
@@ -166,12 +191,48 @@ export function ProductManagementPage() {
     [products, selectedVendorId]
   );
 
+  // Announced items nobody handed in, of sellers not paid out yet (their settlement is done)
+  const notHandedIn = useMemo(
+    () => products?.filter((p) => p.status === 'announced' && !paidVendorIds.has(p.vendorId)) ?? [],
+    [products, paidVendorIds]
+  );
+  const rejectTargets =
+    rejectScope === 'vendor'
+      ? notHandedIn.filter((p) => p.vendorId === selectedVendorId)
+      : rejectScope === 'event'
+        ? notHandedIn
+        : [];
+  const rejectSellerCount = new Set(rejectTargets.map((p) => p.vendorId)).size;
+  // Turning down is for the time before the bazaar ends; after the drop-off it is the moment
+  const dropoffEnd = event?.sellerLogistics?.dropoffEnd;
+  const now = useNowPassing([event?.endDate, dropoffEnd]);
+  const canReject = can('intake') && !!event && event.endDate >= now;
+  const dropoffOver = dropoffEnd !== undefined && dropoffEnd < now;
+  const canRejectAll = !selectedVendor && canReject && notHandedIn.length > 0;
+  // After the drop-off a notice asks for it; before, the button waits in the header menu
+  const showRejectNotice = canRejectAll && dropoffOver;
+  // Organizer only, like helpers; sellers without an account belong to the bazaar anyway
+  const canExclude =
+    canLead &&
+    !!selectedVendor &&
+    !selectedVendor.managedByEventId &&
+    event?.organizerId !== selectedVendor._id;
+
+  // Appointing helpers and their rights: organizer only, sellers with an account
+  const canManageHelper =
+    canLead &&
+    !!selectedVendor &&
+    !selectedVendor.managedByEventId &&
+    event?.organizerId !== selectedVendor._id;
+  const [helperAction, setHelperAction] = useState<HelperAction | null>(null);
+
   const stats = useMemo(() => {
     const announced = vendorProducts.filter((p) => p.status === 'announced').length;
     const available = vendorProducts.filter((p) => p.status === 'available').length;
     const sold = vendorProducts.filter((p) => p.status === 'sold').length;
     const returned = vendorProducts.filter((p) => p.status === 'returned').length;
-    return { announced, available, sold, returned };
+    const rejected = vendorProducts.filter((p) => p.status === 'rejected').length;
+    return { announced, available, sold, returned, rejected };
   }, [vendorProducts]);
 
   // Auto-switch to payout mode if all products are already accepted upon vendor selection
@@ -337,7 +398,8 @@ export function ProductManagementPage() {
     void downloadSellerPrintout(kind, {
       event,
       seller: selectedVendor,
-      items: vendorProducts as SellerPrintoutItem[],
+      // Rejected items never took part: neither the item list nor the settlement shows them
+      items: vendorProducts.filter((p) => p.status !== 'rejected') as SellerPrintoutItem[],
       categories,
     }).catch((e: unknown) => toast.error(getUserFacingErrorMessage(e)));
   };
@@ -420,6 +482,35 @@ export function ProductManagementPage() {
     });
     if (queued) toast.success(t('products.offline.saved'));
     return success;
+  };
+
+  const handleRejectNotHandedIn = async (e: React.MouseEvent) => {
+    // Open while saving, so a double click does not ask twice
+    e.preventDefault();
+    if (rejectTargets.length === 0) return;
+    setIsRejecting(true);
+    try {
+      const { rejectedCount } = await rejectNotHandedIn({
+        eventId,
+        vendorId: rejectScope === 'vendor' ? (selectedVendorId ?? undefined) : undefined,
+        productIds: rejectTargets.map((p) => p._id),
+      });
+      toast.success(t('products.notHandedInRejected', { count: rejectedCount }));
+      setRejectScope(null);
+    } catch (error) {
+      toast.error(getUserFacingErrorMessage(error));
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const handleUndoRejection = async (product: ProductWithStatus) => {
+    try {
+      await undoRejection({ eventProductId: product.eventProductId });
+      toast.success(t('products.rejectionUndone', { title: product.title }));
+    } catch (error) {
+      toast.error(getUserFacingErrorMessage(error));
+    }
   };
 
   if (rolesLoading) return <PageSkeleton variant="list" />;
@@ -517,6 +608,29 @@ export function ProductManagementPage() {
           >
             <QrCode className="h-5 w-5" />
           </Button>
+          {/* Rarely needed before the drop-off ends: kept out of the way like the seller menu */}
+          {canRejectAll && !showRejectNotice && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 shadow-sm"
+                  aria-label={t('products.moreActions')}
+                >
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-w-xs">
+                <DropdownMenuItem onSelect={() => setRejectScope('event')}>
+                  <PackageX /> {t('products.rejectNotHandedIn')}
+                  <span className="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">
+                    {notHandedIn.length}
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -547,6 +661,7 @@ export function ProductManagementPage() {
                   </h2>
                   <SellerNumberBadge number={selectedVendor.sellerNumber} />
                   {selectedVendor.managedByEventId && <WalkInBadge />}
+                  {selectedVendor.excluded && <ExcludedBadge exclusion={selectedVendor.excluded} />}
                 </div>
                 <button
                   onClick={() => setIsContactExpanded(!isContactExpanded)}
@@ -602,8 +717,88 @@ export function ProductManagementPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              {(canManageHelper || (canExclude && !selectedVendor.excluded)) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label={t('sellers.moreFor', { name: selectedVendor.name })}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-w-xs">
+                    {canManageHelper && selectedVendor.isHelper && (
+                      <DropdownMenuItem
+                        onSelect={() => setHelperAction({ mode: 'edit', vendor: selectedVendor })}
+                      >
+                        <SlidersHorizontal /> {t('sellers.editPermissions')}
+                      </DropdownMenuItem>
+                    )}
+                    {canManageHelper && !selectedVendor.isHelper && !selectedVendor.excluded && (
+                      <DropdownMenuItem
+                        onSelect={() => setHelperAction({ mode: 'add', vendor: selectedVendor })}
+                      >
+                        <ShieldCheck /> {t('sellers.appointHelper')}
+                      </DropdownMenuItem>
+                    )}
+                    {canExclude && !selectedVendor.excluded && (
+                      <>
+                        {canManageHelper && <DropdownMenuSeparator />}
+                        {/* Announced items would be lost: the team rejects them first */}
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={!event || event.endDate < now || stats.announced > 0}
+                          onSelect={() => setExclusionMode('exclude')}
+                        >
+                          <Ban />
+                          <span className="flex flex-col">
+                            {t('sellers.exclude')}
+                            {stats.announced > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                {t('sellers.excludeHasItems', { count: stats.announced })}
+                              </span>
+                            )}
+                          </span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
+
+          {selectedVendor.excluded && (
+            <div className="mb-4 flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-start gap-2">
+                <Ban className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <div className="space-y-1">
+                  <p>
+                    {t('products.excludedNotice', {
+                      time: formatDateTimeDE(selectedVendor.excluded.excludedAt),
+                    })}
+                  </p>
+                  {selectedVendor.excluded.reason && (
+                    <p className="text-muted-foreground">
+                      {t('participation.reasonQuoted', { reason: selectedVendor.excluded.reason })}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {canExclude && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-2 self-start bg-background sm:self-auto"
+                  onClick={() => setExclusionMode('readmit')}
+                >
+                  <UserCheck className="h-4 w-4" /> {t('sellers.readmit')}
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Collapsible Contact Info */}
           {isContactExpanded && (
@@ -709,6 +904,10 @@ export function ProductManagementPage() {
                               stats.returned,
                               t('products.countReturned', { count: stats.returned }),
                             ],
+                            [
+                              stats.rejected,
+                              t('products.countRejected', { count: stats.rejected }),
+                            ],
                           ]
                             .filter(([count]) => count !== 0)
                             .map(([, label]) => label)
@@ -726,6 +925,16 @@ export function ProductManagementPage() {
                           onClick={() => setWalkInProductOpen(true)}
                         >
                           <Package className="h-4 w-4" /> {t('products.addItem')}
+                        </Button>
+                      )}
+                      {canReject && stats.announced > 0 && !selectedVendor.paid && (
+                        <Button
+                          variant="outline"
+                          className="h-11 gap-2"
+                          disabled={isBulkSubmitting}
+                          onClick={() => setRejectScope('vendor')}
+                        >
+                          <PackageX className="h-4 w-4" /> {t('products.rejectNotHandedIn')}
                         </Button>
                       )}
                       <Button
@@ -760,6 +969,34 @@ export function ProductManagementPage() {
         </div>
       )}
 
+      {/* After the drop-off: turn down the rest at once */}
+      {showRejectNotice && (
+        <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 text-sm">
+            <PackageX className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            <p>
+              {dropoffOver && dropoffEnd !== undefined && (
+                <span className="font-medium">
+                  {t('products.dropoffEnded', { time: formatDateTimeDE(dropoffEnd) })}{' '}
+                </span>
+              )}
+              <span className="text-muted-foreground">
+                {dropoffOver
+                  ? t('products.notHandedIn', { count: notHandedIn.length })
+                  : t('products.notHandedInYet', { count: notHandedIn.length })}
+              </span>
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="shrink-0 gap-2"
+            onClick={() => setRejectScope('event')}
+          >
+            <PackageX className="h-4 w-4" /> {t('products.rejectNotHandedIn')}
+          </Button>
+        </div>
+      )}
+
       <ProductManagementList
         products={filteredProducts}
         resolveVendorName={(id) => vendorNameById.get(id) ?? '-'}
@@ -786,6 +1023,7 @@ export function ProductManagementPage() {
         onSelectVendor={setSelectedVendorId}
         onEditWalkInProduct={setEditingWalkIn}
         onDeleteWalkInProduct={setDeletingWalkIn}
+        onUndoRejection={(product) => void handleUndoRejection(product)}
         filterKey={`${deferredSearchTerm}|${selectedVendorId ?? ''}`}
       />
 
@@ -819,6 +1057,34 @@ export function ProductManagementPage() {
         }}
         destructive
       />
+
+      <ConfirmDialog
+        open={!!rejectScope}
+        onOpenChange={(open) => !open && !isRejecting && setRejectScope(null)}
+        title={t('products.rejectTitle', { count: rejectTargets.length })}
+        description={t('products.rejectText')}
+        confirmLabel={t('products.rejectConfirm')}
+        destructive
+        loading={isRejecting}
+        disabled={rejectTargets.length === 0}
+        onConfirm={handleRejectNotHandedIn}
+      >
+        <p className="text-sm text-muted-foreground">
+          {t('products.rejectMail', { count: rejectSellerCount })} {t('products.rejectUndoHint')}
+        </p>
+      </ConfirmDialog>
+
+      <HelperRoleDialog eventId={eventId} action={helperAction} onActionChange={setHelperAction} />
+
+      {selectedVendor && (
+        <ExclusionDialog
+          key={selectedVendor._id}
+          eventId={eventId}
+          seller={selectedVendor}
+          mode={exclusionMode}
+          onOpenChange={(open) => !open && setExclusionMode(null)}
+        />
+      )}
 
       <TeamScanner eventId={eventId} open={isScannerOpen} onOpenChange={setIsScannerOpen} />
 

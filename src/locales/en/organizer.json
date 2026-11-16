@@ -170,7 +170,14 @@
     "directSale": "Direct sale: buyers pay the seller",
     "directSaleText": "Buyer and seller agree at the item, the buyer pays the seller directly. Then the cash desk scans the label, books the sale at the agreed price and takes only the commission from the seller. Nothing is paid out after the bazaar, and the record still shows every sale.",
     "discountFromNeedsDates": "Choose the start and end of the bazaar first.",
-    "discountStartLater": "You set when the discounts start under “When and where?”, once the date is fixed."
+    "discountStartLater": "You set when the discounts start under “When and where?”, once the date is fixed.",
+    "registrationOpen": "Sellers can register",
+    "registrationOpenText": "Sellers register themselves on the bazaar page. Switched off, only the people you invite get in.",
+    "registrationFrom": "Registration from (optional)",
+    "registrationUntil": "Registration until (optional)",
+    "registrationWindowHint": "Leave empty if registration opens right away and stays open until the bazaar ends. Invitations work outside this time too.",
+    "registrationClosedHint": "Registration is closed. New sellers only get in with an invitation.",
+    "registrationWindow": "Registration must end after it begins."
   },
   "logistics": {
     "title": "Drop-off & pickup",
@@ -294,7 +301,11 @@
     "requiredFields": "Required details: {{fields}}",
     "privateSellers": "Private sellers only",
     "fixedData": "Fixed data for the record",
-    "directSale": "Direct sale, the cash desk takes only the commission"
+    "directSale": "Direct sale, the cash desk takes only the commission",
+    "registration": "Registration",
+    "registrationOpen": "Open until the bazaar ends",
+    "registrationClosed": "Closed, by invitation only",
+    "untilTime": "until {{time}}"
   },
   "sellers": {
     "sortSheets": "Sorting sheets",
@@ -356,7 +367,22 @@
       "return": "Return: give items back to sellers",
       "payout": "Settle and pay out sellers",
       "cashSummary": "See the cash summary and the settlement export"
-    }
+    },
+    "exclude": "Exclude from the bazaar",
+    "excludeTitle": "Exclude {{name}} from the bazaar?",
+    "excludeNoReturn": "The person cannot register again, not even with the access code or an invitation.",
+    "excludeItems": "Items already handed in go back in the usual return; sales and the settlement remain.",
+    "excludeMail": "The seller gets an email. You can take the exclusion back later.",
+    "excludeHasItems_one": "Not possible: {{count}} announced item",
+    "excludeHasItems_other": "Not possible: {{count}} announced items",
+    "excludeConfirm": "Exclude",
+    "excludeReasonPlaceholder": "e.g. did not pick up their items last time",
+    "excluded": "{{name}} is excluded from the bazaar",
+    "readmit": "Take exclusion back",
+    "readmitTitle": "Take back the exclusion of {{name}}?",
+    "readmitText": "The person is a seller again with their previous number and gets an email.",
+    "readmitted": "{{name}} is back in",
+    "moreFor": "More actions for {{name}}"
   },
   "settle": {
     "seller": "Seller",
@@ -476,7 +502,26 @@
       "replayed_other": "{{count}} offline actions done",
       "refused_one": "{{count}} offline action was refused – see settlement.",
       "refused_other": "{{count}} offline actions were refused – see settlement."
-    }
+    },
+    "countRejected": "{{count}} rejected",
+    "rejectText": "They no longer appear online, cannot be sold at the cash desk and cannot be registered for this bazaar again.",
+    "rejectConfirm": "Reject",
+    "rejectionUndone": "“{{title}}” is registered again",
+    "excludedNotice": "Excluded from the bazaar on {{time}}. Handed-in items go back in the usual return.",
+    "rejectTitle_one": "Reject the item not handed in?",
+    "rejectTitle_other": "Reject {{count}} items not handed in?",
+    "rejectMail_one": "The seller gets one email listing their items.",
+    "rejectMail_other": "Each of the {{count}} sellers gets one email listing their items.",
+    "rejectUndoHint": "You can take back single rejections in the “Rejected” tab.",
+    "moreActions": "More actions",
+    "rejectNotHandedIn": "Reject items not handed in",
+    "dropoffEnded": "Drop-off ended on {{time}}.",
+    "notHandedIn_one": "One registered item was not handed in.",
+    "notHandedIn_other": "{{count}} registered items were not handed in.",
+    "notHandedInYet_one": "One registered item has not been handed in yet.",
+    "notHandedInYet_other": "{{count}} registered items have not been handed in yet.",
+    "notHandedInRejected_one": "{{count}} item rejected, the seller is informed by email",
+    "notHandedInRejected_other": "{{count}} items rejected, the sellers are informed by email"
   },
   "list": {
     "all": "All",
@@ -495,7 +540,9 @@
     "cancelSale": "Cancel sale",
     "undo": "Undo",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "rejected": "Rejected",
+    "undoRejection": "Take back"
   },
   "confirm": {
     "undoSaleTitle": "Really cancel the sale?",
@@ -1174,5 +1221,41 @@
       }
     },
     "footer": "All details on {{site}}"
+  },
+  "participation": {
+    "reason": "Reason (optional)",
+    "reasonHint": "The seller sees the reason in the app and in the email.",
+    "reasonQuoted": "Reason: {{reason}}",
+    "excluded": "Excluded",
+    "excludedSince": "Excluded on {{time}}"
+  },
+  "registrationPanel": {
+    "title": "Registration",
+    "open": "Open",
+    "full": "Fully booked",
+    "notYet": "Not open yet",
+    "closed": "Closed",
+    "opensAt": "Opens {{time}}",
+    "until": "Until {{time}}",
+    "noDeadline": "No deadline, until the bazaar",
+    "invitationOnly": "New sellers only join by invitation",
+    "close": "Close registration",
+    "reopen": "Open registration",
+    "openNow": "Open now",
+    "closedToast": "Registration closed – new sellers only join by invitation",
+    "openedToast": "Registration is open",
+    "places": "Places",
+    "left_one": "One place left",
+    "left_other": "{{count}} places left",
+    "noneLeft": "All places taken",
+    "unlimited": "No limit",
+    "unlimitedHint": "Any number of sellers can register",
+    "access": "Access",
+    "noCode": "No code",
+    "noCodeHint": "Anyone with an account can register",
+    "codeNeeded": "Sellers need this code to register",
+    "copyCode": "Copy code",
+    "copyFailed": "Copying failed",
+    "edit": "Change"
   }
 }

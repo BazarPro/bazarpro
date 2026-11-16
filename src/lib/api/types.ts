@@ -6,7 +6,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { HelperPermission } from '../../shared/constants';
+import type { EventProductStatus, HelperPermission } from '../../shared/constants';
 
 export type TableName =
   | '_storage'
@@ -93,6 +93,8 @@ export interface Docs {
     rejectionReason?: string | undefined;
     accessCode?: string | undefined;
     vendorLimit?: number | undefined;
+    /** Places taken by sellers, only with a vendorLimit */
+    sellerCount?: number | undefined;
     lastSellerNumber?: number | undefined;
     saleFeeFixed?: number | undefined;
     saleFeePercentage?: number | undefined;
@@ -116,6 +118,9 @@ export interface Docs {
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
           directSale?: boolean | undefined;
+          registrationOpen?: boolean | undefined;
+          registrationStartsAt?: number | undefined;
+          registrationEndsAt?: number | undefined;
         }
       | undefined;
     sellerLogistics?:
@@ -169,7 +174,7 @@ export interface Docs {
     discountPercent?: number | undefined;
     locationCategoryId?: Id<'eventLocationCategories'> | undefined;
     internalNote?: string | undefined;
-    status: 'sold' | 'announced' | 'available' | 'returned';
+    status: EventProductStatus;
     eventId: Id<'events'>;
     productId: Id<'products'>;
   };
@@ -386,6 +391,9 @@ export type EventFeatures = {
   privateSellersOnly: boolean;
   fixedSellerData: boolean;
   directSale: boolean;
+  registrationOpen?: boolean | undefined;
+  registrationStartsAt?: number | undefined;
+  registrationEndsAt?: number | undefined;
 };
 
 export type IntakeFee = { perItem: number; items: number; total: number };
@@ -568,6 +576,19 @@ export type VendorWithCalculations = {
   sortCode?: number | undefined;
   /** Bazaars with fixedSellerData: name and address are recorded (first item accepted) */
   detailsRecorded?: boolean | undefined;
+  /** The organizer took the seller out of the bazaar */
+  excluded?: Exclusion | undefined;
+};
+
+/** The organizer took a seller out of the bazaar (#252) */
+export type Exclusion = { excludedAt: number; reason?: string | undefined };
+
+/** The seller's own item the team turned down at a bazaar: not handed in on time */
+export type MyRejection = {
+  productId: Id<'products'>;
+  title: string;
+  image?: Id<'_storage'> | undefined;
+  rejectedAt: number;
 };
 
 export interface FunctionReference<Kind extends 'query' | 'mutation', Args = any, Returns = any> {
@@ -709,7 +730,7 @@ export interface Api {
       { eventId: Id<'events'> },
       {
         productId: Id<'products'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         discountPercent: number | undefined;
       }[]
     >;
@@ -724,7 +745,7 @@ export interface Api {
       { eventId: Id<'events'> },
       {
         eventProductId: Id<'eventProducts'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         discountPercent: number | undefined;
         locationCategoryId: Id<'eventLocationCategories'> | undefined;
         locationLabel: string | undefined;
@@ -750,7 +771,7 @@ export interface Api {
       { eventId: Id<'events'> },
       {
         eventProductId: Id<'eventProducts'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         discountPercent: number | undefined;
         locationCategoryId: Id<'eventLocationCategories'> | undefined;
         locationLabel: string | undefined;
@@ -844,7 +865,7 @@ export interface Api {
         discountPercent?: number | undefined;
         locationCategoryId?: Id<'eventLocationCategories'> | undefined;
         internalNote?: string | undefined;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         eventId: Id<'events'>;
         productId: Id<'products'>;
       } | null
@@ -872,7 +893,7 @@ export interface Api {
       'mutation',
       {
         locationCategoryId?: Id<'eventLocationCategories'> | undefined;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         eventProductId: Id<'eventProducts'>;
         /** The status the team saw; refused if the item has moved on since */
         fromStatus?: 'sold' | 'announced' | 'available' | 'returned' | undefined;
@@ -902,6 +923,28 @@ export interface Api {
       { eventProductId: Id<'eventProducts'> },
       { success: boolean }
     >;
+    /**
+     * Turns down announced items the sellers did not hand in on time (only the given ones,
+     * optionally of one seller); each seller gets one mail. They cannot be announced there
+     * again.
+     */
+    rejectNotHandedIn: FunctionReference<
+      'mutation',
+      {
+        eventId: Id<'events'>;
+        vendorId?: Id<'users'> | undefined;
+        productIds: Id<'products'>[];
+      },
+      { rejectedCount: number; sellerCount: number }
+    >;
+    /** The item is announced again, as before */
+    undoRejection: FunctionReference<
+      'mutation',
+      { eventProductId: Id<'eventProducts'> },
+      { success: boolean }
+    >;
+    /** The signed-in seller's items turned down at this bazaar, newest first */
+    getMyRejections: FunctionReference<'query', { eventId: Id<'events'> }, MyRejection[]>;
   };
   eventRoles: {
     isOrganizerOfAnyProductEvent: FunctionReference<
@@ -975,6 +1018,26 @@ export interface Api {
       } | null
     >;
   };
+  eventExclusions: {
+    exclude: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; userId: Id<'users'>; reason?: string | undefined },
+      { success: boolean }
+    >;
+    readmit: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; userId: Id<'users'> },
+      { success: boolean }
+    >;
+    /** Whether the organizer excluded the signed-in user, and why */
+    getMine: FunctionReference<'query', { eventId: Id<'events'> }, Exclusion | null>;
+    /** The bazaars the organizer excluded the signed-in user from, for "Meine Basare" */
+    getMyExcludedEvents: FunctionReference<
+      'query',
+      { includePast?: boolean | undefined },
+      { event: Doc<'events'>; exclusion: Exclusion }[]
+    >;
+  };
   eventSeller: {
     joinEvent: FunctionReference<
       'mutation',
@@ -1045,6 +1108,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1115,6 +1180,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1187,6 +1254,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1259,6 +1328,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1339,6 +1410,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1412,6 +1485,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1482,6 +1557,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1541,6 +1618,8 @@ export interface Api {
         eventMapImage?: Id<'_storage'> | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         features?:
           | {
               questions?: boolean | undefined;
@@ -1595,6 +1674,8 @@ export interface Api {
         eventMapImage?: Id<'_storage'> | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         features?:
           | {
               questions?: boolean | undefined;
@@ -1646,6 +1727,12 @@ export interface Api {
       },
       null
     >;
+    /** Organizer's quick switch: opening means now, closing keeps the window */
+    setRegistrationOpen: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; open: boolean },
+      null
+    >;
     deleteEvent: FunctionReference<'mutation', { id: Id<'events'> }, null>;
     getMyRegisteredEvents: FunctionReference<
       'query',
@@ -1665,6 +1752,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -2076,11 +2165,14 @@ export interface Api {
     getUnreadNoticeCounts: FunctionReference<
       'query',
       EmptyObject,
-      { events: number; messages: number; products: number; sales: number }
+      { events: number; messages: number; participation: number; products: number; sales: number }
     >;
     markNoticesSeen: FunctionReference<
       'mutation',
-      { eventId?: Id<'events'> | undefined; area: 'events' | 'messages' | 'products' | 'sales' },
+      {
+        eventId?: Id<'events'> | undefined;
+        area: 'events' | 'messages' | 'participation' | 'products' | 'sales';
+      },
       null
     >;
     getMyNotificationPrefs: FunctionReference<
@@ -2429,7 +2521,7 @@ export interface Api {
         productId: Id<'products'>;
         title: string;
         image: Id<'_storage'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         price: number;
         discountPercent: number | undefined;
         listPrice: number;

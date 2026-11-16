@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { WalkInBadge } from '../../../../components/walkIn/WalkInBadge';
 import { SellerNumberBadge } from '../../../../components/sellers/SellerNumberBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
-import { useQuery, useMutation } from '../../../../lib/api/react';
+import { useQuery } from '../../../../lib/api/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../../lib/api/functions';
 import type { Id } from '../../../../lib/api/types';
@@ -28,7 +28,6 @@ import {
   Phone,
   ChevronRight,
   UserPlus,
-  UserMinus,
   ShieldCheck,
   Crown,
   Megaphone,
@@ -42,7 +41,6 @@ import { Tabs, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
 import { Button } from '../../../../components/ui/button';
 import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
-import { ConfirmDialog } from '../../../../components/ui/confirm-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,28 +52,17 @@ import { WalkInSellerDialog } from '../../../../components/walkIn/WalkInSellerDi
 import { BroadcastDialog } from '../../../../components/broadcasts/BroadcastDialog';
 import { BroadcastList } from '../../../../components/broadcasts/BroadcastList';
 import { HelperPickerDialog } from '../../../../components/helpers/HelperPickerDialog';
-import { HelperPermissionsFields } from '../../../../components/helpers/HelperPermissionsFields';
-import { HELPER_PERMISSIONS, type HelperPermission } from '../../../../shared/constants';
+import {
+  HelperRoleDialog,
+  type HelperAction,
+} from '../../../../components/helpers/HelperRoleDialog';
 import { InviteDialog } from '../../../../components/invitations/InviteDialog';
 import { OpenInvitations } from '../../../../components/invitations/OpenInvitations';
-import { Trans, useTranslation } from 'react-i18next';
+import { ExcludedBadge } from '../../../../components/participation/ExcludedBadge';
+import { RegistrationPanel } from '../../../../components/participation/RegistrationPanel';
+import { useTranslation } from 'react-i18next';
 
 const NO_LABELS: Id<'products'>[] = [];
-
-/** Texts of the helper dialog by what it does */
-const HELPER_DIALOG = {
-  add: {
-    title: 'sellers.appointHelper',
-    text: 'sellers.appointText',
-    confirm: 'sellers.appoint',
-  },
-  edit: {
-    title: 'sellers.editPermissions',
-    text: 'sellers.editPermissionsText',
-    confirm: 'sellers.savePermissions',
-  },
-  remove: { title: 'sellers.revoke', text: 'sellers.revokeText', confirm: 'sellers.revoke' },
-} as const;
 
 type SellerFilter = 'all' | 'open' | 'paid' | 'helpers';
 
@@ -95,23 +82,7 @@ export function SellerManagementPage() {
     allLabelsOpen ? { eventId: eventId as Id<'events'> } : 'skip'
   );
 
-  // State for Helper Dialogs
-  const [helperAction, setHelperAction] = useState<{
-    mode: 'add' | 'edit' | 'remove';
-    vendor: VendorWithCalculations;
-  } | null>(null);
-  // What the helper may do, chosen in the dialog for 'add' and 'edit'
-  const [helperPermissions, setHelperPermissions] = useState<HelperPermission[]>([
-    ...HELPER_PERMISSIONS,
-  ]);
-  const openHelperDialog = (mode: 'add' | 'edit' | 'remove', vendor: VendorWithCalculations) => {
-    setHelperPermissions(
-      mode === 'edit'
-        ? (vendor.helperPermissions ?? [...HELPER_PERMISSIONS])
-        : [...HELPER_PERMISSIONS]
-    );
-    setHelperAction({ mode, vendor });
-  };
+  const [helperAction, setHelperAction] = useState<HelperAction | null>(null);
 
   const event = useQuery(api.events.getEvent, { id: eventId as Id<'events'> });
   // Writing to all sellers and appointing helpers stays with the organizer (and admins),
@@ -137,10 +108,7 @@ export function SellerManagementPage() {
   // Baskets that differ by the extra letter only
   const clashingCodes = clashingSortCodes(sortSheetSellers.map((seller) => seller.sortCode));
 
-  const addHelper = useMutation(api.eventRoles.addCoOrganizerForEvent);
   useAssignMissingSellerNumbers(eventId as Id<'events'>, vendors, canManage);
-  const removeHelper = useMutation(api.eventRoles.removeCoOrganizerForEvent);
-  const setPermissions = useMutation(api.eventRoles.setHelperPermissions);
 
   const filteredVendors = useMemo(() => {
     if (!vendors) return [];
@@ -168,31 +136,6 @@ export function SellerManagementPage() {
 
   const handleSelectVendor = (vendorId: Id<'users'>) => {
     navigate(`/events/view/${eventId}/products?vendor=${vendorId}`);
-  };
-
-  const executeToggleHelper = async () => {
-    if (!helperAction) return;
-    const { mode, vendor } = helperAction;
-    const eId = eventId as Id<'events'>;
-
-    try {
-      if (mode === 'remove') {
-        await removeHelper({ eventId: eId, userId: vendor._id });
-        toast.success(t('sellers.helperRemoved', { name: vendor.name }));
-      } else if (mode === 'edit') {
-        await setPermissions({ eventId: eId, userId: vendor._id, permissions: helperPermissions });
-        toast.success(t('sellers.permissionsSaved', { name: vendor.name }));
-      } else {
-        await addHelper({ eventId: eId, userId: vendor._id, permissions: helperPermissions });
-        toast.success(t('sellers.helperAdded', { name: vendor.name }));
-      }
-    } catch (error) {
-      toast.error(t('sellers.actionFailed'), {
-        description: error instanceof Error ? error.message : t('sellers.unknownError'),
-      });
-    } finally {
-      setHelperAction(null);
-    }
   };
 
   if (rolesLoading) return <PageSkeleton />;
@@ -269,6 +212,8 @@ export function SellerManagementPage() {
           </div>
         }
       />
+
+      {event && <RegistrationPanel event={event} canSwitch={canBroadcast} />}
 
       {clashingCodes.size > 0 && (
         <p
@@ -347,6 +292,7 @@ export function SellerManagementPage() {
                               <span className="font-medium">{v.name}</span>
                               <SellerNumberBadge number={v.sellerNumber} />
                               {v.managedByEventId && <WalkInBadge />}
+                              {v.excluded && <ExcludedBadge exclusion={v.excluded} />}
                               {v.isHelper && !isOwner && (
                                 <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
                               )}
@@ -395,7 +341,7 @@ export function SellerManagementPage() {
                             {canManageHelpers && (
                               <EditPermissionsButton
                                 iconOnly
-                                onClick={() => openHelperDialog('edit', v)}
+                                onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
                               />
                             )}
                           </span>
@@ -442,6 +388,7 @@ export function SellerManagementPage() {
                           <span className="break-words font-medium">{v.name}</span>
                           <SellerNumberBadge number={v.sellerNumber} />
                           {v.managedByEventId && <WalkInBadge />}
+                          {v.excluded && <ExcludedBadge exclusion={v.excluded} />}
                           {isOwner && <Crown className="h-3.5 w-3.5 text-primary" />}
                           {v.isHelper && !isOwner && (
                             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -470,7 +417,9 @@ export function SellerManagementPage() {
 
                   {canManageHelpers && !isOwner && v.isHelper && (
                     <div className="mt-auto">
-                      <EditPermissionsButton onClick={() => openHelperDialog('edit', v)} />
+                      <EditPermissionsButton
+                        onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
+                      />
                     </div>
                   )}
                 </div>
@@ -497,7 +446,7 @@ export function SellerManagementPage() {
           onOpenChange={setHelperPickerOpen}
           onPick={(vendor) => {
             setHelperPickerOpen(false);
-            openHelperDialog('add', vendor);
+            setHelperAction({ mode: 'add', vendor });
           }}
         />
       )}
@@ -516,7 +465,6 @@ export function SellerManagementPage() {
         onCreated={(sellerId) => navigate(`/events/view/${eventId}/products?vendor=${sellerId}`)}
       />
 
-      {/* Helper Confirmation Dialogs */}
       <LabelPrintDialog
         open={allLabelsOpen}
         onOpenChange={setAllLabelsOpen}
@@ -524,37 +472,11 @@ export function SellerManagementPage() {
         eventId={eventId}
       />
 
-      <ConfirmDialog
-        open={!!helperAction}
-        onOpenChange={(open) => !open && setHelperAction(null)}
-        title={t(HELPER_DIALOG[helperAction?.mode ?? 'add'].title)}
-        description={
-          <Trans
-            i18nKey={HELPER_DIALOG[helperAction?.mode ?? 'add'].text}
-            ns="organizer"
-            values={{ name: helperAction?.vendor.name }}
-            components={{ b: <b /> }}
-          />
-        }
-        confirmLabel={t(HELPER_DIALOG[helperAction?.mode ?? 'add'].confirm)}
-        destructive={helperAction?.mode === 'remove'}
-        onConfirm={executeToggleHelper}
-      >
-        {helperAction && helperAction.mode !== 'remove' && (
-          <HelperPermissionsFields value={helperPermissions} onChange={setHelperPermissions} />
-        )}
-        {/* Taking the role back lives here, so each helper needs just one button */}
-        {helperAction?.mode === 'edit' && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-mt-2 justify-self-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => setHelperAction({ mode: 'remove', vendor: helperAction.vendor })}
-          >
-            <UserMinus className="h-4 w-4" /> {t('sellers.removeHelper')}
-          </Button>
-        )}
-      </ConfirmDialog>
+      <HelperRoleDialog
+        eventId={eventId as Id<'events'>}
+        action={helperAction}
+        onActionChange={setHelperAction}
+      />
     </div>
   );
 }
