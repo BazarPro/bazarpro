@@ -1262,7 +1262,9 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                   }
                   void handleSubmit(isGuest ? onGuestSubmit : onSubmit, showFirstInvalidStep)(e);
                 }}
-                className="space-y-6"
+                // At least as tall as the screen: the bar with back and next stays at its lower edge
+                // also when a step is short
+                className="flex min-h-[calc(100svh-69px-1rem)] flex-col space-y-6 md:min-h-[calc(100svh-69px-1.5rem)] lg:min-h-[calc(100svh-69px-2rem)]"
               >
                 {draftRestored !== undefined && (
                   <Alert>
@@ -1383,6 +1385,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                   )}
                 </div>
 
+                <div aria-hidden className="flex-1" />
                 <StickyActionBar>
                   {/*
                     Guests keep their draft in the browser anyway, until they sign up. On

@@ -667,7 +667,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, core: &CoreUsers) -> anyhow:
     Ok(())
 }
 
-/// Running right now, like a bike flea market of a cycling club: every seller sells at
+/// Running right now, like a bike flea market of a cycling club: every seller stays with
 /// their own bike and the buyer pays them (direct sale); the info stand checks the bikes
 /// in against the frame number and books each sale, taking only the 20 % commission.
 /// The record for the police lists every bike. One seller has not come by yet, so the
@@ -682,12 +682,14 @@ async fn bike_flea_market(demo: &mut Demo<'_>, people: &People) -> anyhow::Resul
                 organizer,
                 title: BIKE_MARKET_TITLE,
                 description: t(
-                    "Gebrauchte Fahrräder von privat an privat. Jeder verkauft selbst an seinem Rad, \
-                     der Preis steht am Rad. Nach dem Verkauf geht ihr gemeinsam zum Infostand: \
+                    "Gebrauchte Fahrräder von privat an privat. Jeder Verkäufer steht bei seinem Rad, \
+                     der Preis hängt am Rad, bezahlt wird direkt beim Verkäufer. \
+                     Nach dem Verkauf geht ihr gemeinsam zum Infostand: \
                      Dort wird der Verkauf gebucht und die Provision von 20 % bezahlt. \
                      Anmeldung vorab mit bis zu 5 Rädern und Rahmennummer.",
-                    "Used bikes from private sellers. Every seller sells at their own bike, \
-                     the price is on the bike. After the sale, go to the info stand together: \
+                    "Used bikes from private sellers. Every seller stays with their bike, \
+                     the price is on the bike, and you pay the seller directly. \
+                     After the sale, go to the info stand together: \
                      the sale is booked there and the 20 % commission paid. \
                      Register up to 5 bikes with their frame numbers beforehand.",
                 ),

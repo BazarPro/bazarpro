@@ -3,6 +3,7 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { Input } from '../../../../components/ui/input';
+import { TimeInput } from '../../../../components/ui/time-input';
 import { Label } from '../../../../components/ui/label';
 import { InfoTip } from '../../../../components/ui/info-tip';
 import { joinLocal, splitLocal } from '../../../../lib/eventDates';
@@ -115,22 +116,20 @@ export function TimeRangeFields({
           <Label htmlFor={`${id}From`} className="text-xs text-muted-foreground">
             {t('logistics.from')}
           </Label>
-          <Input
+          <TimeInput
             id={`${id}From`}
-            type="time"
             value={draft.from}
-            onChange={(e) => commit({ ...draft, from: e.target.value })}
+            onChange={(v) => commit({ ...draft, from: v })}
           />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={`${id}To`} className="text-xs text-muted-foreground">
             {t('logistics.until')}
           </Label>
-          <Input
+          <TimeInput
             id={`${id}To`}
-            type="time"
             value={draft.to}
-            onChange={(e) => commit({ ...draft, to: e.target.value })}
+            onChange={(v) => commit({ ...draft, to: v })}
           />
         </div>
         {draft.toDay && (

@@ -115,7 +115,7 @@
     "questionsDuringEvent": "During the bazaar, buyers can ask public questions about your items",
     "privateSellers": "Private persons only: you confirm when registering that you do not sell commercially",
     "fixedData": "Bring your ID: the organizer checks your name and address on site. Once your first item is accepted, they are fixed, and so are the details of accepted items. The organizer keeps a record of them",
-    "directSale": "Direct sale: you sell at your item yourself and get the money from the buyer. Then the cash desk books the sale, where you pay the commission"
+    "directSale": "Direct sale: you stay with your item, buyers agree on the price with you and pay you directly. Then the cash desk books the sale at the agreed price, where you only pay the commission"
   },
   "sidebar": {
     "details": "Bazaar details",

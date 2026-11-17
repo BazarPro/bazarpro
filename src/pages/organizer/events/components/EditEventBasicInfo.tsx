@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Input } from '../../../../components/ui/input';
+import { TimeInput } from '../../../../components/ui/time-input';
 import { Label } from '../../../../components/ui/label';
 import { Textarea } from '../../../../components/ui/text-area';
 import { Button } from '../../../../components/ui/button';
@@ -446,11 +447,10 @@ function EventDateFields({ lockDates }: { lockDates: boolean }) {
           <Label htmlFor="startTime" className="text-xs text-muted-foreground">
             {t('basic.startTime')}
           </Label>
-          <Input
+          <TimeInput
             id="startTime"
-            type="time"
             value={draft.startTime}
-            onChange={(e) => changeStartTime(e.target.value)}
+            onChange={(v) => changeStartTime(v)}
             {...lockProps}
           />
         </div>
@@ -458,11 +458,10 @@ function EventDateFields({ lockDates }: { lockDates: boolean }) {
           <Label htmlFor="endTime" className="text-xs text-muted-foreground">
             {t('basic.endTime')}
           </Label>
-          <Input
+          <TimeInput
             id="endTime"
-            type="time"
             value={draft.endTime}
-            onChange={(e) => commit({ ...draft, endTime: e.target.value })}
+            onChange={(v) => commit({ ...draft, endTime: v })}
             {...lockProps}
           />
         </div>
