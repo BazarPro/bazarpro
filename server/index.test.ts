@@ -128,6 +128,23 @@ describe('static files', () => {
     expect(wasm.response.headers.get('content-encoding')).toBe('gzip');
   });
 
+  it('serves hashed assets with Brotli or gzip from a copy compressed once', async () => {
+    const load = (encoding: string) =>
+      fetch(`${baseUrl}/assets/app-123.js`, { headers: { 'Accept-Encoding': encoding } });
+    const brotli = await load('gzip, deflate, br');
+    expect(brotli.headers.get('content-encoding')).toBe('br');
+    expect(await brotli.text()).toBe('console.log("app");');
+    // With a length, unlike a stream compressed while it is sent
+    const [first, second] = [await load('gzip'), await load('gzip')];
+    expect(first.headers.get('content-encoding')).toBe('gzip');
+    expect(Number(first.headers.get('content-length'))).toBeGreaterThan(0);
+    expect(second.headers.get('content-length')).toBe(first.headers.get('content-length'));
+    expect(await second.text()).toBe('console.log("app");');
+    const plain = await load('identity');
+    expect(plain.headers.get('content-encoding')).toBeNull();
+    expect(await plain.text()).toBe('console.log("app");');
+  });
+
   it('serves hashed assets as immutable and 404s missing ones', async () => {
     const asset = await get('/assets/app-123.js');
     expect(asset.response.headers.get('cache-control')).toContain('immutable');

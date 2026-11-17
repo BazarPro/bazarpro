@@ -4,7 +4,8 @@ import { createServer as createHttpServer, type IncomingMessage, type Server } f
 import type { ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createGzip } from 'node:zlib';
+import { promisify } from 'node:util';
+import { brotliCompress, constants as zlib, createGzip, gzip } from 'node:zlib';
 import { createBackendClient, type BackendQueryClient } from './backend.ts';
 import { isDynamicRoute, resolvePage, resolveSiteName, resolveSitemap } from './pages.ts';
 import {
@@ -103,15 +104,70 @@ function send(
   stream.end(body);
 }
 
+const compressBrotli = promisify(brotliCompress);
+const compressGzip = promisify(gzip);
+
+type Encoding = 'br' | 'gzip';
+
+/** Brotli where the browser takes it: the main script is an eighth smaller than with gzip. */
+function assetEncoding(req: IncomingMessage): Encoding | null {
+  const accepted = String(req.headers['accept-encoding'] ?? '');
+  if (/\bbr\b/.test(accepted)) return 'br';
+  return /\bgzip\b/.test(accepted) ? 'gzip' : null;
+}
+
+/**
+ * Compressed copies of the hashed assets, made once per file and encoding and kept in
+ * memory: the files never change and there are only those of the build. Compressing the
+ * main script for every request cost 75 ms CPU, so 20 new visitors per second kept both
+ * cores of the server busy (load test of 16.11.2026).
+ */
+type AssetCache = Map<string, Promise<Buffer>>;
+
+function compressedAsset(cache: AssetCache, filePath: string, encoding: Encoding) {
+  const key = `${encoding}:${filePath}`;
+  let copy = cache.get(key);
+  if (!copy) {
+    copy = readFile(filePath).then((raw) =>
+      encoding === 'br'
+        ? compressBrotli(raw, {
+            params: {
+              // 11 would save another 8 % but takes seconds, which the first visitor waits
+              [zlib.BROTLI_PARAM_QUALITY]: 9,
+              [zlib.BROTLI_PARAM_SIZE_HINT]: raw.length,
+            },
+          })
+        : compressGzip(raw, { level: 9 })
+    );
+    copy.catch(() => cache.delete(key));
+    cache.set(key, copy);
+  }
+  return copy;
+}
+
 async function sendFile(
   req: IncomingMessage,
   res: ServerResponse,
   filePath: string,
   size: number,
-  cacheControl: string
+  cacheControl: string,
+  assets: AssetCache | null
 ) {
   const contentType = contentTypeFor(filePath);
-  const gzip = COMPRESSIBLE.test(contentType) && acceptsGzip(req);
+  const compressible = COMPRESSIBLE.test(contentType);
+  const encoding = compressible && assets ? assetEncoding(req) : null;
+  if (encoding && assets) {
+    const body = await compressedAsset(assets, filePath, encoding);
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'Cache-Control': cacheControl,
+      Vary: 'Accept-Encoding',
+      'Content-Encoding': encoding,
+      'Content-Length': body.length,
+    });
+    return res.end(req.method === 'HEAD' ? undefined : body);
+  }
+  const gzip = compressible && acceptsGzip(req);
   res.writeHead(200, {
     'Content-Type': contentType,
     'Cache-Control': cacheControl,
@@ -167,6 +223,8 @@ export async function createServer({
     ),
     runtime
   );
+
+  const assets: AssetCache = new Map();
 
   return createHttpServer(async (req, res) => {
     try {
@@ -240,7 +298,8 @@ export async function createServer({
 
       const file = await findFile(resolveInDist(root, pathname));
       if (file) {
-        const cacheControl = pathname.startsWith('/assets/') ? IMMUTABLE : REVALIDATE;
+        const hashed = pathname.startsWith('/assets/');
+        const cacheControl = hashed ? IMMUTABLE : REVALIDATE;
         const ext = path.extname(file.path).toLowerCase();
         if (!pathname.startsWith('/assets/') && REWRITTEN.has(ext)) {
           const text = await readFile(file.path, 'utf8');
@@ -249,7 +308,7 @@ export async function createServer({
           send(req, res, 200, contentTypeFor(file.path), cacheControl, body);
           return;
         }
-        await sendFile(req, res, file.path, file.size, cacheControl);
+        await sendFile(req, res, file.path, file.size, cacheControl, hashed ? assets : null);
         return;
       }
 

@@ -4,7 +4,7 @@ import { check } from 'k6';
 
 export const BASE = __ENV.BASE || 'http://127.0.0.1:3000/api';
 /** Written by prepare.mjs: event, products and cashier sessions. */
-export const DATA = JSON.parse(open('/bench/.data.json'));
+export const DATA = JSON.parse(open('./.data.json'));
 
 /** `params.expected`: error codes that are a normal outcome, e.g. an item sold meanwhile. */
 export function call(type, name, args, params = {}) {
