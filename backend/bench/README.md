@@ -4,12 +4,15 @@ k6-Szenarien gegen ein laufendes Backend, so wie die App es benutzt: Abfragen ü
 Live-Updates über `/api/ws`. Wie `src/lib/api/client.ts` lädt eine geänderte Abfrage nach
 bis zu 300 ms und höchstens einmal pro Sekunde neu; ändert sich das im Client, hier mit.
 
-| Skript      | Was passiert                                                                                                                                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `browse.js` | Lesekapazität: Besucher laden die öffentliche Eventseite ohne Pause (`VUS`, `DURATION`)                                                                                                                                                                                  |
-| `bazaar.js` | Basartag: `CASHIERS` Kassen scannen, verkaufen und stornieren (damit der Artikel verkaufbar bleibt), dazu `VISITORS` Besucher, die die Eventseite `STAY` Sekunden mit Live-Updates offen haben (`DURATION`, `CASH_THINK`), davon der Anteil `SIGNED_IN` (0–1) angemeldet |
+| Skript          | Was passiert                                                                                                                                                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `browse.js`     | Lesekapazität: Besucher laden die öffentliche Eventseite ohne Pause (`VUS`, `DURATION`)                                                                                                                                                                                  |
+| `firstvisit.js` | Erstaufruf: `RATE` neue Besucher pro Sekunde laden Seite, Skript und Styles über eine neue Verbindung, wie ein Browser ohne Cache (`DURATION`)                                                                                                                           |
+| `bazaar.js`     | Basartag: `CASHIERS` Kassen scannen, verkaufen und stornieren (damit der Artikel verkaufbar bleibt), dazu `VISITORS` Besucher, die die Eventseite `STAY` Sekunden mit Live-Updates offen haben (`DURATION`, `CASH_THINK`), davon der Anteil `SIGNED_IN` (0–1) angemeldet |
 
-**Nie gegen die Review-Apps oder Produktion:** Sie laufen auf demselben Server wie bazarpro.de.
+**Nie mit den Kassen gegen die Review-Apps oder Produktion:** `prepare.mjs` schaltet die
+Mail-Bestätigung ab und macht seine Accounts zu Admins, `bazaar.js` verkauft. Für Messungen
+auf dem Produktionsserver gibt es einen eigenen Stack, siehe „Auf dem Produktionsserver“.
 
 ## Ablauf
 
@@ -120,3 +123,73 @@ Nachher bekommen Angemeldete ohne Rolle an der Veranstaltung die Antworten der B
 (`registry.share`), der Verkauf liegt bei 35 ms (Median) / 111 ms (p95). Was bleibt, ist pro
 Anfrage die Session und die Rollenprüfung sowie `users.viewer`; bei 1000 Angemeldeten
 Verkauf 63 / 153 ms.
+
+## Auf dem Produktionsserver
+
+Was der Server trägt, zeigt nur eine Messung über denselben Weg wie die Produktion (Proxy,
+Traefik, TLS). `remote/` enthält dafür einen Stack mit eigener Datenbank und Demo-Daten
+unter `lasttest.<domain>` (der Wildcard-Eintrag im DNS deckt ihn ab) und Skripte, die
+während eines Laufs auf dem Server messen. Die Last bremst die Produktion: nur außerhalb
+von Veranstaltungen, und danach wieder abbauen.
+
+```sh
+ssh bazarpro mkdir -p /root/lasttest
+scp backend/bench/remote/{docker-compose.yml,measure.sh,probe.sh,big-event.sql} bazarpro:/root/lasttest/
+ssh bazarpro 'cd /root/lasttest && docker compose -p lasttest up -d'
+# Für ein großes Event (2025 statt 75 Artikel):
+ssh bazarpro 'cd /root/lasttest && docker exec -i lasttest-postgres-1 psql -U bazarpro -v ON_ERROR_STOP=1 < big-event.sql && docker restart lasttest-backend-1'
+
+DATABASE_URL=remote BACKEND_BIN=backend/bench/remote/cli.sh \
+  BASE=https://lasttest.bazarpro.de/api node backend/bench/prepare.mjs
+backend/bench/remote/run.sh bazaar.js tag1000 -e VISITORS=1000     # k6 lokal installiert
+
+ssh bazarpro 'cd /root/lasttest && docker compose -p lasttest down -v'
+```
+
+`run.sh` gibt neben den Latenzen aus: CPU-Zeit je Container, CPU und RAM des Servers,
+Sockets, offene Dateien von Traefik, Conntrack, TCP-Zähler und drei Sonden vom Server aus
+(Backend direkt, über Traefik ohne den Proxy, Produktion über den Proxy). Die Sonden
+trennen, welche Schicht bremst, und hängen nicht am Netz des Lastrechners.
+
+## Messung vom 16.11.2026: Produktionsserver, v2.5.1 (#227, #229)
+
+Server Kiros (2 vCPUs, 4 GB), daneben Produktion, vier Review-Apps und Plausible. k6 auf
+einem Rechner mit 12 Kernen hinter einem Privatanschluss, 25 ms entfernt. Basartag mit
+20 Kassen, Besucher bleiben 30 s.
+
+| Lauf                       | Eventseite Median / p95 (k6) | Server-CPU Mittel | Traefik / Backend / Postgres (Kerne) | Produktion vom Server aus, Mittel / Max |
+| -------------------------- | ---------------------------- | ----------------- | ------------------------------------ | --------------------------------------- |
+| Leerlauf                   | –                            | –                 | –                                    | 23 / 29 ms                              |
+| 75 Artikel, 1000 Besucher  | 1,3 / 13,5 s                 | 72 %              | 0,48 / 0,27 / 0,07                   | 89 / 856 ms                             |
+| 75 Artikel, 2000 Besucher  | 2,3 / 51 s                   | 74 %              | 0,58 / 0,32 / 0,06                   | nicht gemessen                          |
+| 2025 Artikel, 200 Besucher | 1,3 / 4,0 s                  | 69 %              | 0,21 / 0,39 / 0,16                   | 36 / 168 ms                             |
+| 2025 Artikel, 500 Besucher | 4,9 / 11,7 s                 | 64 %              | 0,26 / 0,31 / 0,10                   | 35 / 391 ms                             |
+
+- **Die Latenzen von k6 sind ab 1000 Besuchern die des Lastrechners.** Bei 1000 Besuchern
+  antwortete das Backend dem Server direkt in 7 ms, über Traefik in 95 ms; k6 maß im
+  Median 304 ms pro Abfrage und sah die Produktion mit bis zu 9 s, vom Server aus waren es
+  höchstens 0,86 s und kein Fehler. Bei 2000 Besuchern stieg der Durchsatz nicht mehr
+  (572 statt 535 Requests/s). Für diese Größen braucht es Lastrechner in einem
+  Rechenzentrum, am besten mehrere.
+- **Kein Limit von Kernel oder Dateien**, wie am 30.10.: höchstens 5952 offene Dateien bei
+  Traefik, 14 460 Conntrack-Einträge, keine `ListenOverflows`.
+- **Traefik kostet am meisten.** Reines Lesen gegen die Produktion (`browse.js`, 200
+  Besucher): 2841 Requests/s bei 94 % Server-CPU, davon Traefik 1,04 Kerne, das Backend
+  0,21. Pro Request 0,37 ms CPU in Traefik und 0,07 ms im Backend.
+- **Ein großes Event trägt ein Fünftel der Besucher (#229).** Die Liste von 2025 Artikeln
+  ist 1,26 MB JSON, 136 KB mit gzip (die Kopien der Demo-Artikel komprimieren besser als
+  echte). Neu berechnet braucht sie 70–86 ms, und das nach jedem Verkauf. 200 Besucher
+  luden in zwei Minuten 774 MB und lasteten den Server so aus wie 1000 beim kleinen Event;
+  bei 500 kam k6 mit dem Entpacken nicht mehr nach (912 MB). Ein Telefon lüde jede Sekunde
+  136 KB und läse 1,26 MB JSON.
+
+### Erstaufruf: Skripte einmal komprimiert
+
+`firstvisit.js`: Das Hauptskript ist 1,76 MB groß. Der Web-Server komprimierte es für jede
+Anfrage neu, 75 ms CPU pro Erstaufruf. Jetzt hält er von den Dateien unter `/assets/` je
+eine Kopie mit Brotli und gzip im Speicher (453 statt 518 KB für das Hauptskript).
+
+| Neue Besucher pro Sekunde | vorher: Antwort Median / p95, CPU Web-Server | nachher           |
+| ------------------------- | -------------------------------------------- | ----------------- |
+| 20                        | 1,3 / 10,1 s, 1,13 Kerne (Server bei 98 %)   | 73 / 120 ms, 0,16 |
+| 50                        | 4,4 / 30,7 s, 1,15 Kerne (schafft ~16/s)     | 83 / 130 ms, 0,34 |
