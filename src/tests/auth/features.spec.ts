@@ -233,6 +233,10 @@ test.describe('discounts and editing rules', () => {
 
     const slider = page.locator('#discount-slider');
     await expect(slider).toHaveAttribute('max', '30');
+    // The dialog slides in; measure the track only once it has settled
+    await page
+      .getByRole('dialog')
+      .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
     // Drag the thumb across the track
     const box = (await slider.boundingBox())!;
     await page.mouse.move(box.x + 2, box.y + box.height / 2);
@@ -244,6 +248,9 @@ test.describe('discounts and editing rules', () => {
     await page.getByRole('button', { name: 'Rabatt speichern' }).click();
     await page.getByRole('button', { name: 'Ja, Rabatt anwenden' }).click();
     await expectToast(page, 'Rabatt erfolgreich aktualisiert');
+    // The toast fires before both dialogs have closed; they also show the new price.
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByText('-20% Rabatt')).toBeVisible();
     await expect(page.getByText('304,00 €')).toBeVisible();
   });
