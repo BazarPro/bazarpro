@@ -46,6 +46,7 @@ const printout = (overrides: Partial<SellerPrintout> = {}): SellerPrintout => ({
     commission: 2,
     receivedDirectly: 0,
     intakeFee: { perItem: 0.5, items: 3, total: 1.5 },
+    feeCapCredit: 0,
     payout: 16.5,
     paid: false,
   },
@@ -82,6 +83,12 @@ describe('seller printouts', () => {
       ['Annahmegebühr (3 × 0,50 €)', '-1,50 €'],
     ]);
     expect(settlementTotal(printout())).toEqual(['Auszahlung', '16,50 €']);
+  });
+
+  it('gives back the fees above the cap', () => {
+    const base = printout();
+    const seller = { ...base.seller, totalRevenue: 230, commission: 23, feeCapCredit: 4.5 };
+    expect(settlementRows({ ...base, seller }).at(-1)).toEqual(['Gebühren-Deckel', '+4,50 €']);
   });
 
   it('leaves out an intake fee of nothing', () => {

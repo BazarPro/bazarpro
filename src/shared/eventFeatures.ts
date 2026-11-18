@@ -38,6 +38,11 @@ export interface EventFeatures {
   requiredFields?: string[];
   /** Upper bound of items a seller may register for this event; unset means no limit. */
   maxItemsPerSeller?: number;
+  /**
+   * Upper bound of items of all sellers together, e.g. what the hall holds; unset means no
+   * limit. Items already registered stay when it is lowered.
+   */
+  maxItemsTotal?: number;
   /** Label sheet sellers print for this event. */
   labelFormat: LabelFormat;
   /** Print the price on labels; only takes effect while discounts are off. */
@@ -49,6 +54,11 @@ export interface EventFeatures {
   labelMark: LabelMark;
   /** Fixed fee in € per accepted item (sold or not), kept from the payout; unset means none. */
   intakeFee?: number;
+  /**
+   * Upper bound in € of all fees a seller pays at this event, commission and intake fee
+   * together (src/shared/feeCap.ts); unset means no cap.
+   */
+  maxFeesPerSeller?: number;
   /** Sellers confirm when joining that they sell as private persons, not as traders. */
   privateSellersOnly: boolean;
   /**

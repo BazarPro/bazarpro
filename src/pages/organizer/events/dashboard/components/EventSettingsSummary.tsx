@@ -171,10 +171,22 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
               title={t('summary.maxItems', { count: features.maxItemsPerSeller })}
             />
           )}
+          {features.maxItemsTotal !== undefined && (
+            <Feature
+              on={true}
+              title={t('summary.maxItemsTotal', { count: features.maxItemsTotal })}
+            />
+          )}
           {features.intakeFee !== undefined && (
             <Feature
               on={true}
               title={t('summary.intakeFee', { amount: formatPriceDE(features.intakeFee) })}
+            />
+          )}
+          {features.maxFeesPerSeller !== undefined && (
+            <Feature
+              on={true}
+              title={t('summary.maxFees', { amount: formatPriceDE(features.maxFeesPerSeller) })}
             />
           )}
           <Feature

@@ -1,4 +1,5 @@
 import type { Id } from './api/types';
+import { cappedCommission } from '../shared/feeCap';
 
 export type PriceChoice = 'list' | 'negotiated' | Id<'productOffers'>;
 
@@ -173,4 +174,28 @@ export function deskTakes(prices: number[], directSale: boolean, percent: number
     0
   );
   return cents / 100;
+}
+
+/** A line of the cart as far as the commission of a direct sale needs it. */
+export interface CommissionLine {
+  price: number;
+  sellerId?: string;
+  /** What is left of the seller's fee cap before this cart; unset without a cap */
+  feeCapLeft?: number;
+}
+
+/**
+ * The commission of each line of a direct sale, as the backend books the cart: lines of
+ * the same seller share the rest of the fee cap in cart order.
+ */
+export function deskCommissions(lines: CommissionLine[], percent: number): number[] {
+  const paid = new Map<string, number>();
+  return lines.map(({ price, sellerId, feeCapLeft }) => {
+    const commission = commissionOf(price, percent);
+    if (feeCapLeft === undefined || sellerId === undefined) return commission;
+    const before = paid.get(sellerId) ?? 0;
+    const capped = cappedCommission(commission, before, feeCapLeft);
+    paid.set(sellerId, Math.round((before + capped) * 100) / 100);
+    return capped;
+  });
 }

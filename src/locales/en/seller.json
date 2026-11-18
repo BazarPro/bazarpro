@@ -40,7 +40,10 @@
     "createForEvent": "Create item for bazaar",
     "soldHidden_one": "1 sold item is hidden.",
     "soldHidden_other": "{{count}} sold items are hidden.",
-    "showAllOrSales": "<all>Show all</all> or <sales>go to My sales</sales>"
+    "showAllOrSales": "<all>Show all</all> or <sales>go to My sales</sales>",
+    "placesLeft_one": "{{count}} place left",
+    "placesLeft_other": "{{count}} places left",
+    "marketFull": "bazaar full"
   },
   "header": {
     "title": "My items",

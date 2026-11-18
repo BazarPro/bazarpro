@@ -152,6 +152,12 @@ export function MyProductsPage() {
   const isEventSelectionMode = !!eventSelectionEventId;
   const bulkSelectionEnabled = isEventSelectionMode || isBulkSelectionEnabled;
   const filteredEvent = events?.find((event) => event._id === filterEvent);
+  // A market with a limit of all items: how many places are still free while choosing
+  const chosenEvent = useQuery(
+    api.events.getEvent,
+    eventSelectionEventId ? { id: eventSelectionEventId } : 'skip'
+  );
+  const placesLeft = chosenEvent?.itemPlacesLeft;
 
   // Discounts are set at the bazaar running now: the filtered one, else the item's own
   const runningEventIds = useMemo(() => {
@@ -708,7 +714,16 @@ export function MyProductsPage() {
             {isEventSelectionMode && (
               <SelectionBar
                 title={filteredEvent?.title ?? t('myProducts.event')}
-                text={t('myProducts.selectedCount', { count: selectedProducts.length })}
+                text={[
+                  t('myProducts.selectedCount', { count: selectedProducts.length }),
+                  placesLeft === undefined
+                    ? undefined
+                    : placesLeft === 0
+                      ? t('myProducts.marketFull')
+                      : t('myProducts.placesLeft', { count: placesLeft }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
                 selectAll={selectAll}
               >
                 <Button

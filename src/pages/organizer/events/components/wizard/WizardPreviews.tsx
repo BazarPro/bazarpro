@@ -27,6 +27,7 @@ import {
   Tag,
   Truck,
   Users,
+  Warehouse,
 } from 'lucide-react';
 import { Badge } from '../../../../../components/ui/badge';
 import { ItemPhoto } from '../../../../../components/illustrations/ItemIllustrations';
@@ -87,10 +88,12 @@ interface WizardValues {
     publicCatalog?: boolean;
     requiredFields?: string[];
     maxItemsPerSeller?: number;
+    maxItemsTotal?: number;
     labelFormat?: 'standard' | 'small';
     priceOnLabel?: boolean;
     labelMark?: LabelMark;
     intakeFee?: number;
+    maxFeesPerSeller?: number;
     privateSellersOnly?: boolean;
     fixedSellerData?: boolean;
     directSale?: boolean;
@@ -418,6 +421,7 @@ export function ItemsPreview({ type }: { type?: EventType }) {
     .filter((field) => features.requiredFields?.includes(field.key))
     .map((field) => categoryFieldText(field, 'label') ?? field.label);
   const limit = given(features.maxItemsPerSeller);
+  const total = given(features.maxItemsTotal);
   const small = features.labelFormat === 'small';
   const showPrice = !!features.priceOnLabel && !features.discounts;
   const mark = resolveEventFeatures({ features: features as StoredEventFeatures }).labelMark;
@@ -450,6 +454,11 @@ export function ItemsPreview({ type }: { type?: EventType }) {
           <Note icon={<Package className="h-3.5 w-3.5" />}>
             {limit ? t('wizard.preview.maxItems', { count: limit }) : t('wizard.preview.unlimited')}
           </Note>
+          {total && (
+            <Note icon={<Warehouse className="h-3.5 w-3.5" />}>
+              {t('wizard.preview.maxItemsTotal', { count: total })}
+            </Note>
+          )}
           {required.length > 0 && (
             <Note icon={<ClipboardCheck className="h-3.5 w-3.5" />}>
               {t('wizard.preview.requiredFields', { fields: required.join(', ') })}
@@ -501,11 +510,13 @@ export function FeesPreview({ type }: { type?: EventType }) {
   const price = items[0].price;
   const commission = Math.min(Math.max(given(values.commission) ?? 0, 0), 100);
   const intakeFee = Math.max(given(values.features?.intakeFee) ?? 0, 0);
-  const kept = Math.round(price * commission) / 100;
+  const cap = given(values.features?.maxFeesPerSeller);
+  const fullCommission = Math.round(price * commission) / 100;
+  const kept = cap === undefined ? fullCommission : Math.min(fullCommission, Math.max(cap, 0));
   const sellerGets = Math.max(price - kept, 0);
   const sellerShare = price > 0 ? (sellerGets / price) * 100 : 100;
   // The worked example sellers also see in the conditions
-  const { example } = describeSellerFees({ commission, intakeFee });
+  const { example } = describeSellerFees({ commission, intakeFee, maxFeesPerSeller: cap });
 
   return (
     <PreviewCanvas caption={t('wizard.preview.sellerView')}>
@@ -543,6 +554,12 @@ export function FeesPreview({ type }: { type?: EventType }) {
             {t('wizard.preview.intakePerItem', { fee: `${formatPriceDE(intakeFee)} €` })}
           </p>
         )}
+        {cap !== undefined && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 animate-in fade-in duration-300 dark:text-emerald-400">
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+            {t('wizard.preview.feeCap', { fee: `${formatPriceDE(cap)} €` })}
+          </p>
+        )}
         {kept === 0 && intakeFee === 0 && (
           <p className="text-xs text-emerald-700 dark:text-emerald-400">
             {t('wizard.preview.free')}
@@ -554,7 +571,13 @@ export function FeesPreview({ type }: { type?: EventType }) {
           <p className="text-xs text-muted-foreground">{example.intro}</p>
           <dl className="space-y-1">
             {example.rows.map((row) => (
-              <div key={row.label} className="flex justify-between gap-3">
+              <div
+                key={row.label}
+                className={cn(
+                  'flex justify-between gap-3',
+                  row.credit && 'font-medium text-emerald-700 dark:text-emerald-400'
+                )}
+              >
                 <dt>{row.label}</dt>
                 <dd className="tabular-nums">{formatSignedEuro(row.amount)}</dd>
               </div>

@@ -38,7 +38,8 @@
     "paidFee": "Bezahlt",
     "payFee": "Annahmegebühr beim Veranstalter bezahlen",
     "nothingSold": "Hier wurde nichts verkauft. Die Annahmegebühr fällt für jeden angenommenen Artikel an.",
-    "youPay": "Du zahlst"
+    "youPay": "Du zahlst",
+    "feeCap": "Gebühren-Deckel"
   },
   "invoice": {
     "title": "Privatrechnung",

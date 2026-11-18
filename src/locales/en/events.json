@@ -118,7 +118,13 @@
     "questionsDuringEvent": "During the bazaar, buyers can ask public questions about your items",
     "privateSellers": "Private persons only: you confirm when registering that you do not sell commercially",
     "fixedData": "Bring your ID: the organizer checks your name and address on site. Once your first item is accepted, they are fixed, and so are the details of accepted items. The organizer keeps a record of them",
-    "directSale": "Direct sale: you stay with your item, buyers agree on the price with you and pay you directly. Then the cash desk books the sale at the agreed price, where you only pay the commission"
+    "directSale": "Direct sale: you stay with your item, buyers agree on the price with you and pay you directly. Then the cash desk books the sale at the agreed price, where you only pay the commission",
+    "feeCapLine": "You pay at most {{fee}} € of fees, all together",
+    "exampleFeeCap": "Fee cap {{fee}} €",
+    "maxItemsTotal": "At most {{max}} items at the whole bazaar",
+    "placesLeft_one": "At most {{max}} items at the whole bazaar, {{count}} place left",
+    "placesLeft_other": "At most {{max}} items at the whole bazaar, {{count}} places left",
+    "marketFull": "The bazaar is full: all {{max}} places for items are taken"
   },
   "sidebar": {
     "details": "Bazaar details",

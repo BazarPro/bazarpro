@@ -33,6 +33,7 @@ export function SellerConditions({
   const { lines, example } = describeSellerFees({
     commission: event.commission,
     intakeFee: resolveEventFeatures(event).intakeFee,
+    maxFeesPerSeller: resolveEventFeatures(event).maxFeesPerSeller,
   });
   const fieldDefinitions = useCategoryFieldDefinitions();
   const rules = describeSellerRules(event, fieldDefinitions).filter(
@@ -71,7 +72,8 @@ export function SellerConditions({
                       <td
                         className={cn(
                           'py-0.5 text-right whitespace-nowrap',
-                          row.amount < 0 && 'text-red-600 dark:text-red-400'
+                          row.amount < 0 && 'text-red-600 dark:text-red-400',
+                          row.credit && 'text-emerald-700 dark:text-emerald-400'
                         )}
                       >
                         {formatSignedEuro(row.amount)}

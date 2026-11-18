@@ -226,6 +226,12 @@ export function MySalesPage() {
                       <dd>−{formatPriceDE(group.totals.intakeFee.total)} €</dd>
                     </div>
                   )}
+                  {group.totals.feeCapCredit > 0 && (
+                    <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                      <dt>{t('mySales.feeCap')}</dt>
+                      <dd>+{formatPriceDE(group.totals.feeCapCredit)} €</dd>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t pt-2 text-base font-bold">
                     <dt>
                       {owes

@@ -44,7 +44,9 @@
     "postalCodeInvalid": "Please enter a valid postal code",
     "cityRequired": "Please add the town to the postal code",
     "addressTooLong": "Too long",
-    "unsaved": "Unsaved changes"
+    "unsaved": "Unsaved changes",
+    "feeCapMax": "At most €10,000",
+    "registeredMaxFeeCap": "Sellers have registered: at most {{fee}} €"
   },
   "basic": {
     "title": "Basic information",
@@ -193,7 +195,13 @@
     "registrationUntil": "Registration until (optional)",
     "registrationWindowHint": "Leave empty if registration opens right away and stays open until the bazaar ends. Invitations work outside this time too.",
     "registrationClosedHint": "Registration is closed. New sellers only get in with an invitation.",
-    "registrationWindow": "Registration must end after it begins."
+    "registrationWindow": "Registration must end after it begins.",
+    "maxItemsTotal": "Items in total (optional)",
+    "maxItemsTotalHint": "Limits the items of all sellers together, e.g. to what fits into the hall. Sellers see how many places are left. If you lower the limit, registered items stay.",
+    "maxFees": "Fee cap per seller in € (optional)",
+    "noCap": "no cap",
+    "maxFeesHint": "A seller pays at most this much commission and intake fee in total, e.g. €20 for expensive bikes. Whatever is above it goes back to them with the settlement. At a direct sale the cash desk then takes no more commission.",
+    "maxFeesLater": "Once the first seller has registered, you can only lower it."
   },
   "logistics": {
     "title": "Drop-off & pickup",
@@ -330,7 +338,9 @@
     "registration": "Registration",
     "registrationOpen": "Open until the bazaar ends",
     "registrationClosed": "Closed, by invitation only",
-    "untilTime": "until {{time}}"
+    "untilTime": "until {{time}}",
+    "maxItemsTotal": "At most {{count}} items in total",
+    "maxFees": "At most €{{amount}} of fees per seller"
   },
   "sellers": {
     "sortSheets": "Sorting sheets",
@@ -445,7 +455,8 @@
     "confirmTitle": "Settlement for {{name}}",
     "returnedItems": "{{count}} unsold items returned",
     "saving": "Saving…",
-    "done": "Done, finish"
+    "done": "Done, finish",
+    "feeCap": "Fee cap"
   },
   "cash": {
     "title": "Settlement",
@@ -473,7 +484,8 @@
     "feesCollected": "Intake fee paid",
     "feesOpen": "Intake fee still to collect",
     "sellersToCollect": "These sellers sold less than the intake fee costs and pay at settlement:",
-    "sellerNumber": "No. {{number}}"
+    "sellerNumber": "No. {{number}}",
+    "capSplit": "− {{amount}} € back through the fee cap"
   },
   "products": {
     "sellerFound": "Participant {{name}} found",
@@ -784,7 +796,9 @@
       "received": "{{total}} € commission received from the seller",
       "commission": "Commission {{amount}} €",
       "agreed": "Agreed price",
-      "agreedPrice": "Agreed price"
+      "agreedPrice": "Agreed price",
+      "commissionCapped": "Commission {{amount}} € · cap",
+      "capReached": "Fee cap reached, no commission"
     }
   },
   "proof": {
@@ -869,7 +883,8 @@
     "fileName": "Settlement",
     "fileNameSellers": "Settlement-sellers",
     "fileNameSales": "Settlement-sales",
-    "direct": "paid directly"
+    "direct": "paid directly",
+    "feeCap": "Fee cap (€)"
   },
   "wizard": {
     "back": "Back",
@@ -953,7 +968,10 @@
         "priceOffers": "Price offers",
         "minimumPrice": "Negotiable",
         "questions": "Questions"
-      }
+      },
+      "maxItemsTotal_one": "max. {{count}} item in total",
+      "maxItemsTotal_other": "max. {{count}} items in total",
+      "maxFees": "at most €{{fee}} per seller"
     },
     "fixErrors": "Please check the marked details.",
     "guestCreate": "Sign up and create bazaar",
@@ -1030,7 +1048,10 @@
       "mapExample": "Just an example: your own plan appears here once you upload it.",
       "mapRow": "Row {{row}}",
       "mapCashDesk": "Cash desk",
-      "mapEntrance": "Entrance"
+      "mapEntrance": "Entrance",
+      "maxItemsTotal": "{{count}} places for items in total",
+      "feeCap": "At most {{fee}} of fees per seller",
+      "feeCapExample": "Fee cap {{fee}}"
     },
     "short": {
       "type": "Kind",
