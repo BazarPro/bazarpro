@@ -99,13 +99,15 @@ impl<'a> UserSpec<'a> {
 }
 
 impl Seeder {
-    /// Makes sure the default categories exist in the language of the demo.
+    /// Makes sure the default categories exist in the language of the demo, with their
+    /// sub-categories, as an instance gets them on its first start.
     pub async fn load(
         ctx: &mut Ctx,
         locale: Locale,
         images: HashMap<&'static str, Uuid>,
         product_images: Option<Vec<Uuid>>,
     ) -> AppResult<Self> {
+        crate::modules::categories::insert_default_tree(ctx, locale == Locale::En).await?;
         let mut categories = HashMap::new();
         for (cat, names) in CATEGORIES {
             let label = names.get(locale);

@@ -428,13 +428,28 @@ pub const DEFAULT_CATEGORIES: [DefaultCategory; 72] = [
 ];
 
 async fn seed_categories(ctx: &mut Ctx, _: NoArgs) -> AppResult<&'static str> {
+    insert_default_tree(ctx, false).await?;
+    Ok("Categories seeded successfully")
+}
+
+/// Adds the missing default categories with their main categories. `english`: an English
+/// instance or demo, labelled with the English names and without translations.
+pub async fn insert_default_tree(ctx: &mut Ctx, english: bool) -> sqlx::Result<()> {
+    let name = |german: &'static str| {
+        let english_name = DEFAULT_CATEGORIES
+            .iter()
+            .find(|c| c.label == german)
+            .map_or(german, |c| c.en);
+        if english { english_name } else { german }
+    };
     for (position, category) in DEFAULT_CATEGORIES.iter().enumerate() {
-        if find_by_label(ctx, category.label).await?.is_some() {
+        let label = name(category.label);
+        if find_by_label(ctx, label).await?.is_some() {
             continue;
         }
         // Main categories come first; a renamed or deleted one leaves the sub-category on top
         let parent = match category.parent {
-            Some(parent) => find_by_label(ctx, parent).await?,
+            Some(parent) => find_by_label(ctx, name(parent)).await?,
             None => None,
         };
         // Lists follow the creation time, and one run is one transaction with one now()
@@ -442,17 +457,17 @@ async fn seed_categories(ctx: &mut Ctx, _: NoArgs) -> AppResult<&'static str> {
             "INSERT INTO categories (label, parent_id, translations, created_at)
              VALUES ($1, $2, $3, now() + $4 * interval '1 millisecond')",
         )
-        .bind(category.label)
+        .bind(label)
         .bind(parent)
         .bind(Json(Translations {
-            en: Some(category.en.to_owned()),
+            en: (!english).then(|| category.en.to_owned()),
         }))
         .bind(position as f64)
         .execute(ctx.conn())
         .await?;
     }
     ctx.touch(TOPIC);
-    Ok("Categories seeded successfully")
+    Ok(())
 }
 
 /// On every start of the server: without categories no bazaar can be created, and the app

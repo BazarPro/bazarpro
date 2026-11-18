@@ -53,6 +53,19 @@ async fn bazaars_in_every_state(db: PgPool) {
     let app = TestApp::new(db.clone());
     demo::run(&app.state, options(Locale::De)).await.unwrap();
 
+    // The whole default tree, as on a fresh instance: main categories with sub-categories
+    assert_eq!(count(&db, "SELECT count(*) FROM categories").await, 72);
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM categories c JOIN categories p ON p.id = c.parent_id
+             WHERE c.label = 'Lastenräder' AND p.label = 'Fahrräder'
+               AND c.translations->>'en' = 'Cargo bikes'"
+        )
+        .await,
+        1
+    );
+
     // The accounts of the end-to-end tests and of the demo people sign in with 123456
     sign_in(&app, "user1@bazarpro.de").await;
     let admin = sign_in(&app, "admin@bazarpro.de").await;
@@ -366,6 +379,17 @@ async fn english_demo_for_screenshots(db: PgPool) {
         )
         .await,
         0
+    );
+    // The default tree in English, labelled with the English names
+    assert_eq!(count(&db, "SELECT count(*) FROM categories").await, 72);
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM categories c JOIN categories p ON p.id = c.parent_id
+             WHERE c.label = 'Cargo bikes' AND p.label = 'Bikes' AND c.translations = '{}'"
+        )
+        .await,
+        1
     );
     sign_in(&app, "sarah.miller@example.org").await;
     let titles: Vec<String> = sqlx::query_scalar("SELECT title FROM events ORDER BY title")
