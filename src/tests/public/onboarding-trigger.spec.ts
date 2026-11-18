@@ -135,7 +135,7 @@ async function fillAndCreateProduct(page: Page, eventTitle: string, productTitle
   await page.getByRole('radio', { name: 'Gebraucht, wie neu' }).click();
 
   await page.getByLabel('Kategorie *').click();
-  await page.getByRole('option', { name: 'Sport' }).click();
+  await page.getByRole('option', { name: 'Sport', exact: true }).click();
 
   await page.getByLabel('Preis (€) *').fill('25');
 

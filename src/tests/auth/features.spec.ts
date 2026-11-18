@@ -279,7 +279,7 @@ test.describe('organizer tools', () => {
     await dialog.getByLabel('Titel *').fill(itemTitle);
     await dialog.getByRole('radio', { name: 'Gebraucht', exact: true }).click();
     await dialog.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Fahrräder' }).click();
+    await page.getByRole('option', { name: 'Fahrräder', exact: true }).click();
     await dialog.getByLabel('Rahmennummer').fill('BAT 123');
     await dialog.getByLabel('Preis (€) *').fill('140');
     await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
@@ -320,14 +320,14 @@ test.describe('category fields', () => {
     await login(page, SELLER);
     await page.goto('/products/new');
     await page.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Fahrräder' }).click();
+    await page.getByRole('option', { name: 'Fahrräder', exact: true }).click();
     await expect(page.getByLabel('Rahmennummer')).toBeVisible();
     await expect(page.getByText(/Nicht gefunden\? Schreib „nicht gefunden“ hinein/)).toBeVisible();
     await page.getByRole('button', { name: 'Nicht gefunden' }).click();
     await expect(page.getByLabel('Rahmennummer')).toHaveValue('nicht gefunden');
 
     await page.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Bücher' }).click();
+    await page.getByRole('option', { name: 'Bücher', exact: true }).click();
     await expect(page.getByLabel('Rahmennummer')).toHaveCount(0);
   });
 });

@@ -151,7 +151,7 @@ async function createProductWithEvent(
   await expect(page.getByRole('radio', { name: 'Gebraucht, wie neu' })).toBeChecked();
 
   await page.getByLabel('Kategorie *').click();
-  await page.getByRole('option', { name: 'Sport' }).click();
+  await page.getByRole('option', { name: 'Sport', exact: true }).click();
   await expect(page.locator('#categoryId')).toContainText('Sport');
 
   await page.getByLabel('Preis (€) *').fill('25');
