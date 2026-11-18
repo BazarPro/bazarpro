@@ -126,7 +126,6 @@
     "placesLeft_other": "At most {{max}} items at the whole bazaar, {{count}} places left",
     "marketFull": "The bazaar is full: all {{max}} places for items are taken",
     "groupsTitle": "Own fees for",
-    "groupCommission": "{{percent}} % commission",
     "groupCommissionInstead": "{{percent}} % commission instead of {{base}} %",
     "groupIntakeFee": "{{fee}} € per item",
     "groupNoIntakeFee": "no intake fee",
@@ -147,7 +146,9 @@
     "choiceNone": "No, I pay the regular fees",
     "choiceHint": "The team checks it at the drop-off. Without proof the regular fees apply.",
     "choiceDialogTitle": "Your fee group",
-    "choiceSave": "Save"
+    "choiceSave": "Save",
+    "groupIntakeFeeInstead": "{{fee}} € per item instead of {{base}} €",
+    "groupSame": "same fees as everyone"
   },
   "sidebar": {
     "details": "Bazaar details",

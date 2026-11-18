@@ -978,7 +978,7 @@
       "maxItemsTotal_one": "max. {{count}} item in total",
       "maxItemsTotal_other": "max. {{count}} items in total",
       "maxFees": "at most €{{fee}} per seller",
-      "feeGroup": "{{label}}: {{percent}} %"
+      "feeGroup": "{{label}}: {{advantages}}"
     },
     "fixErrors": "Please check the marked details.",
     "guestCreate": "Sign up and create bazaar",
@@ -1059,7 +1059,7 @@
       "maxItemsTotal": "{{count}} places for items in total",
       "feeCap": "At most {{fee}} of fees per seller",
       "feeCapExample": "Fee cap {{fee}}",
-      "feeGroup": "{{label}}: {{percent}} %"
+      "feeGroup": "{{label}}: {{advantages}}"
     },
     "short": {
       "type": "Kind",
@@ -1383,7 +1383,7 @@
     "labelPlaceholder": "e.g. Club members",
     "assignmentLabel": "Who belongs to it?",
     "assignment": {
-      "selfDeclared": "Sellers say so when registering",
+      "selfDeclared": "Given at registration",
       "helpers": "Helpers of the bazaar",
       "selfDeclaredShort": "Given at registration",
       "helpersShort": "Helpers",
@@ -1404,12 +1404,6 @@
     "cheapest": "Who belongs to several groups pays the cheapest fees.",
     "remove": "Remove group",
     "add": "Add fee group",
-    "summaryCommission": "{{percent}} % commission",
-    "summaryIntakeFee": "{{fee}} € per item",
-    "summaryNoIntakeFee": "no intake fee",
-    "summaryCap": "at most {{fee}} €",
-    "summaryItems_one": "{{count}} item",
-    "summaryItems_other": "{{count}} items",
     "labelRequired": "Give the group a name.",
     "labelTwice": "Another group already has this name.",
     "registeredMax": "Sellers registered with this group: at most {{value}}.",

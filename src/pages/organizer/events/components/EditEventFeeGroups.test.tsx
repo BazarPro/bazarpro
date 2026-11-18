@@ -61,7 +61,7 @@ describe('EditEventFeeGroups', () => {
     render(<Form groups={[members]} />);
     expect(
       screen.getByText(
-        '5 % Provision · 1,00 € pro Artikel · höchstens 15,00 € · 30 Artikel · Angabe bei der Anmeldung'
+        '5 % Provision statt 10 % · 1,00 € pro Artikel · höchstens 15,00 € Gebühren · bis zu 30 Artikel · Angabe bei der Anmeldung'
       )
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Vereinsmitglieder/ }));
@@ -94,7 +94,7 @@ describe('EditEventFeeGroups', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText('Name fehlt')).toBeInTheDocument();
     expect(
-      screen.getByText('5 % Provision · keine Annahmegebühr · Angabe bei der Anmeldung')
+      screen.getByText('5 % Provision statt 10 % · Angabe bei der Anmeldung')
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Provision')).toHaveAttribute('readonly');
   });

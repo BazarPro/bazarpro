@@ -43,7 +43,9 @@ import {
   describeSellerFees,
   formatSignedEuro,
   type SellerConditionsEvent,
+  formGroupAdvantages,
 } from '../../../../../lib/sellerFees';
+import type { FeeGroup } from '../../../../../shared/feeGroups';
 import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
 import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
@@ -94,7 +96,7 @@ interface WizardValues {
     labelMark?: LabelMark;
     intakeFee?: number;
     maxFeesPerSeller?: number;
-    feeGroups?: { id: string; label: string; commission: number }[];
+    feeGroups?: FeeGroup[];
     privateSellersOnly?: boolean;
     fixedSellerData?: boolean;
     directSale?: boolean;
@@ -577,7 +579,7 @@ export function FeesPreview({ type }: { type?: EventType }) {
               <Users className="h-3.5 w-3.5 shrink-0" />
               {t('wizard.preview.feeGroup', {
                 label: group.label.trim(),
-                percent: given(group.commission) ?? 0,
+                advantages: formGroupAdvantages(values, group),
               })}
             </p>
           ))}

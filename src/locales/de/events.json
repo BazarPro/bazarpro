@@ -126,7 +126,6 @@
     "placesLeft_other": "Höchstens {{max}} Artikel auf dem ganzen Basar, noch {{count}} Plätze frei",
     "marketFull": "Der Basar ist voll: Alle {{max}} Plätze für Artikel sind vergeben",
     "groupsTitle": "Eigene Gebühren für",
-    "groupCommission": "{{percent}} % Provision",
     "groupCommissionInstead": "{{percent}} % Provision statt {{base}} %",
     "groupIntakeFee": "{{fee}} € pro Artikel",
     "groupNoIntakeFee": "keine Annahmegebühr",
@@ -147,7 +146,9 @@
     "choiceNone": "Nein, ich zahle die normalen Gebühren",
     "choiceHint": "Das Team prüft deine Angabe bei der Abgabe. Ohne Nachweis gelten die normalen Gebühren.",
     "choiceDialogTitle": "Deine Gebührengruppe",
-    "choiceSave": "Speichern"
+    "choiceSave": "Speichern",
+    "groupIntakeFeeInstead": "{{fee}} € pro Artikel statt {{base}} €",
+    "groupSame": "gleiche Gebühren wie alle"
   },
   "sidebar": {
     "details": "Basar-Details",

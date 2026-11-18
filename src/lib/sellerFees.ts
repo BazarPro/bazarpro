@@ -134,44 +134,86 @@ export interface FeeGroupTerms {
 }
 
 /**
- * The fee groups as sellers read them (#302): each with its own fees next to the bazaar's,
- * so it is clear what changes ("5 % instead of 10 %").
+ * What a group changes against the bazaar's fees, in short: only its advantages, e.g.
+ * "5 % Provision statt 10 %" or just "bis zu 40 Artikel" when the fees are the same.
  */
-export function describeFeeGroups(event: SellerConditionsEvent): FeeGroupTerms[] {
-  const groups = event.features?.feeGroups ?? [];
+export function feeGroupAdvantages(event: SellerConditionsEvent, group: FeeGroup): string[] {
   const base = eventFees(event);
-  return groups.map((group) => {
-    const fees = groupFees(event, group);
-    const parts = [
-      fees.commission === base.commission
-        ? text('groupCommission', { percent: formatPercent(fees.commission) })
-        : text('groupCommissionInstead', {
-            percent: formatPercent(fees.commission),
-            base: formatPercent(base.commission),
-          }),
-      fees.intakeFee
-        ? text('groupIntakeFee', { fee: formatPriceDE(fees.intakeFee) })
-        : base.intakeFee
-          ? text('groupNoIntakeFee')
-          : undefined,
-      fees.maxFeesPerSeller !== undefined && fees.maxFeesPerSeller !== base.maxFeesPerSeller
-        ? text('groupCap', { fee: formatPriceDE(fees.maxFeesPerSeller) })
-        : undefined,
-      fees.maxItemsPerSeller !== undefined && fees.maxItemsPerSeller !== base.maxItemsPerSeller
-        ? text('groupItems', { count: fees.maxItemsPerSeller })
-        : undefined,
-    ];
-    return {
-      group,
-      fees: parts.filter(Boolean).join(' · '),
-      how:
-        group.assignment === 'helpers'
-          ? text('groupHelpers')
-          : group.proofHint
-            ? text('groupProof', { hint: group.proofHint })
-            : text('groupChecked'),
-    };
-  });
+  const fees = groupFees(event, group);
+  const parts = [
+    fees.commission !== base.commission
+      ? text('groupCommissionInstead', {
+          percent: formatPercent(fees.commission),
+          base: formatPercent(base.commission),
+        })
+      : undefined,
+    fees.intakeFee !== base.intakeFee
+      ? fees.intakeFee
+        ? base.intakeFee
+          ? text('groupIntakeFeeInstead', {
+              fee: formatPriceDE(fees.intakeFee),
+              base: formatPriceDE(base.intakeFee),
+            })
+          : text('groupIntakeFee', { fee: formatPriceDE(fees.intakeFee) })
+        : text('groupNoIntakeFee')
+      : undefined,
+    fees.maxFeesPerSeller !== undefined && fees.maxFeesPerSeller !== base.maxFeesPerSeller
+      ? text('groupCap', { fee: formatPriceDE(fees.maxFeesPerSeller) })
+      : undefined,
+    fees.maxItemsPerSeller !== undefined && fees.maxItemsPerSeller !== base.maxItemsPerSeller
+      ? text('groupItems', { count: fees.maxItemsPerSeller })
+      : undefined,
+  ].filter((part): part is string => !!part);
+  // The same as everyone: say so rather than nothing
+  return parts.length > 0 ? parts : [text('groupSame')];
+}
+
+const givenNumber = (value: number | undefined) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+/**
+ * `feeGroupAdvantages` from the values of the event form, where empty numbers are NaN,
+ * e.g. "5 % Provision statt 10 % · bis zu 40 Artikel".
+ */
+export function formGroupAdvantages(
+  values: {
+    commission?: number;
+    features?: { intakeFee?: number; maxFeesPerSeller?: number; maxItemsPerSeller?: number };
+  },
+  group: FeeGroup
+): string {
+  const features = values.features ?? {};
+  return feeGroupAdvantages(
+    {
+      commission: givenNumber(values.commission) ?? 0,
+      features: {
+        intakeFee: givenNumber(features.intakeFee),
+        maxFeesPerSeller: givenNumber(features.maxFeesPerSeller),
+        maxItemsPerSeller: givenNumber(features.maxItemsPerSeller),
+      },
+    },
+    {
+      ...group,
+      commission: givenNumber(group.commission) ?? 0,
+      intakeFee: givenNumber(group.intakeFee),
+      maxFeesPerSeller: givenNumber(group.maxFeesPerSeller),
+      maxItemsPerSeller: givenNumber(group.maxItemsPerSeller),
+    }
+  ).join(' · ');
+}
+
+/** The fee groups as sellers read them (#302): each with its advantages and how to get in. */
+export function describeFeeGroups(event: SellerConditionsEvent): FeeGroupTerms[] {
+  return (event.features?.feeGroups ?? []).map((group) => ({
+    group,
+    fees: feeGroupAdvantages(event, group).join(' · '),
+    how:
+      group.assignment === 'helpers'
+        ? text('groupHelpers')
+        : group.proofHint
+          ? text('groupProof', { hint: group.proofHint })
+          : text('groupChecked'),
+  }));
 }
 
 export interface SellerRule {

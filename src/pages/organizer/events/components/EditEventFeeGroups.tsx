@@ -8,7 +8,7 @@ import { NativeSelect } from '../../../../components/ui/native-select';
 import { FieldError } from '../../../../components/ui/field-error';
 import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
 import { cn, formatPriceDE } from '../../../../lib/utils';
-import type { FeeLock } from '../../../../lib/sellerFees';
+import { feeGroupAdvantages, type FeeLock } from '../../../../lib/sellerFees';
 import {
   MAX_FEE_GROUPS,
   newFeeGroupId,
@@ -109,6 +109,7 @@ export function EditEventFeeGroups({
   const eventItems = useWatch({ control, name: 'features.maxItemsPerSeller' }) as
     | number
     | undefined;
+  const eventIntakeFee = useWatch({ control, name: 'features.intakeFee' }) as number | undefined;
   const [open, setOpen] = useState<string | null>(null);
   const running = feeLock === 'running';
   const groupErrors = (
@@ -130,22 +131,28 @@ export function EditEventFeeGroups({
     setOpen(id);
   };
 
+  // Only what the group changes against the bazaar, as sellers will read it
+  const bazaar = {
+    commission: given(commission) ? commission : 0,
+    features: {
+      intakeFee: given(eventIntakeFee) ? eventIntakeFee : undefined,
+      maxFeesPerSeller: given(eventCap) ? eventCap : undefined,
+      maxItemsPerSeller: given(eventItems) ? eventItems : undefined,
+    },
+  };
   const summary = (group: FeeGroupForm) =>
     [
-      t('feeGroups.summaryCommission', { percent: given(group.commission) ? group.commission : 0 }),
-      given(group.intakeFee) && group.intakeFee > 0
-        ? t('feeGroups.summaryIntakeFee', { fee: formatPriceDE(group.intakeFee) })
-        : t('feeGroups.summaryNoIntakeFee'),
-      given(group.maxFeesPerSeller)
-        ? t('feeGroups.summaryCap', { fee: formatPriceDE(group.maxFeesPerSeller) })
-        : undefined,
-      given(group.maxItemsPerSeller)
-        ? t('feeGroups.summaryItems', { count: group.maxItemsPerSeller })
-        : undefined,
+      ...feeGroupAdvantages(bazaar, {
+        id: group.id,
+        label: group.label,
+        commission: given(group.commission) ? group.commission : 0,
+        intakeFee: given(group.intakeFee) ? group.intakeFee : undefined,
+        maxFeesPerSeller: given(group.maxFeesPerSeller) ? group.maxFeesPerSeller : undefined,
+        maxItemsPerSeller: given(group.maxItemsPerSeller) ? group.maxItemsPerSeller : undefined,
+        assignment: group.assignment,
+      }),
       t(`feeGroups.assignment.${group.assignment}Short`),
-    ]
-      .filter(Boolean)
-      .join(' · ');
+    ].join(' · ');
 
   return (
     <div className="space-y-3 border-t pt-5 sm:col-span-2">
@@ -190,7 +197,7 @@ export function EditEventFeeGroups({
                     >
                       {group.label.trim() || t('feeGroups.unnamed')}
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">
+                    <span className="block text-xs text-muted-foreground sm:truncate">
                       {summary(group)}
                     </span>
                   </span>
@@ -239,7 +246,7 @@ export function EditEventFeeGroups({
                         </NativeSelect>
                       </Field>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-4 lg:grid-cols-4">
                       <Field
                         htmlFor={`${domId}-commission`}
                         label={t('feeGroups.commission')}

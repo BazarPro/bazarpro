@@ -49,6 +49,8 @@ import {
   eventDraftTitle,
   loadEventDraft,
   saveEventDraft,
+  draftJson,
+  withoutNulls,
 } from '../../../lib/eventDraft';
 
 /** Fees and item limit sellers registered with; they may only get better for sellers. */
@@ -615,11 +617,16 @@ function WizardHeader({
   step,
   onGoTo,
   onCancel,
+  onContinueLater,
+  savingLater,
   disabled,
 }: {
   step: number;
   onGoTo: (step: number) => void;
   onCancel: () => void;
+  /** Signed in: keeps the bazaar in the account to finish later */
+  onContinueLater?: () => void;
+  savingLater?: boolean;
   disabled: boolean;
 }) {
   const { t } = useTranslation('organizer');
@@ -635,10 +642,35 @@ function WizardHeader({
         <span className="whitespace-nowrap text-sm text-muted-foreground lg:hidden">
           {t('wizard.progress', { step: step + 1, total: WIZARD_STEPS.length })}
         </span>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={disabled}>
-          <X className="h-4 w-4" />
-          {t('actions.cancel', { ns: 'common' })}
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          {/* Up here, not in the bar at the bottom: on phones it would take a row of its own */}
+          {onContinueLater && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onContinueLater}
+              loading={savingLater}
+              disabled={disabled || savingLater}
+            >
+              <Bookmark className="h-4 w-4" />
+              {t('form.continueLater')}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            disabled={disabled}
+            aria-label={t('actions.cancel', { ns: 'common' })}
+          >
+            <X className="h-4 w-4" />
+            <span className={onContinueLater ? 'hidden sm:inline' : undefined}>
+              {t('actions.cancel', { ns: 'common' })}
+            </span>
+          </Button>
+        </div>
       </div>
       <ol className="flex gap-1">
         {WIZARD_STEPS.map((candidate, index) => (
@@ -1026,6 +1058,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
 
   // Creating goes through a wizard that explains each group of settings
   const [step, setStep] = useState(0);
+  const stepRef = useRef(step);
+  stepRef.current = step;
   // Every new step starts at the top: after it rendered, so a shorter step cannot stop
   // the scrolling half way (on phones the buttons sit far below the start)
   const shownStep = useRef(step);
@@ -1077,6 +1111,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     }
     toast.error(t('wizard.fixErrors'));
   };
+  const [continuedDraftAt, setContinuedDraftAt] = useState<number>();
   const keepDraft = (draftStep: number, submitted = false) =>
     saveEventDraft<DraftValues>({
       values: draftValues(methods.getValues()),
@@ -1084,6 +1119,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       eventType,
       step: draftStep,
       submitted,
+      continues: continuedDraftAt,
     });
   // Signed in, a bazaar can wait on the server with gaps; it comes back on the start
   // page (DashboardPage) and when the wizard opens again
@@ -1091,7 +1127,6 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
   // There is only one saved draft: saving another bazaar over it asks first. That is the
   // case when the wizard did not continue it (e.g. started from the landing page) or it
   // changed elsewhere meanwhile.
-  const [continuedDraftAt, setContinuedDraftAt] = useState<number>();
   const [confirmReplace, setConfirmReplace] = useState(false);
   const replacesOtherDraft = !!serverDraft && serverDraft.updatedAt !== continuedDraftAt;
   const continueLater = async () => {
@@ -1099,13 +1134,14 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     setSavingDraft(true);
     try {
       await saveServerDraft({
-        draft: {
+        // As JSON keeps them: empty numbers (NaN) would come back as null
+        draft: draftJson({
           values: draftValues(methods.getValues()),
           pendingLocationCategories,
           eventType,
           step,
           savedAt: Date.now(),
-        },
+        }),
       });
       clearEventDraft();
       toast.success(t('form.draftSaved'), { description: t('form.draftSavedHint') });
@@ -1121,7 +1157,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       const fields = WIZARD_STEPS[step].fields;
       if (fields.length > 0 && !(await methods.trigger(fields as never))) return;
     }
-    if (isGuest) keepDraft(next);
+    if (next > 0) keepDraft(next);
     setStep(next);
   };
 
@@ -1191,7 +1227,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     const saved = serverDraft?.draft as Omit<EventDraft<DraftValues>, 'savedAt'> | undefined;
     const continuesSaved =
       !!saved && !!serverDraft && (!local || serverDraft.updatedAt > local.savedAt);
-    if (continuesSaved) setContinuedDraftAt(serverDraft.updatedAt);
+    // A draft kept in this browser may continue the saved one as well
+    setContinuedDraftAt(continuesSaved ? serverDraft.updatedAt : local?.continues);
     const draft = continuesSaved ? { ...saved, savedAt: serverDraft.updatedAt } : local;
     if (!draft) {
       // The link of the confirmation mail may open in another browser than the wizard
@@ -1204,7 +1241,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       ...current,
       ...draft.values,
       coverTemplate: draft.values.coverTemplate ?? undefined,
-      features: { ...current.features, ...draft.values.features },
+      features: { ...current.features, ...withoutNulls(draft.values.features) },
     });
     setPendingLocationCategories(draft.pendingLocationCategories);
     setEventType(findEventType(draft.eventType)?.id);
@@ -1216,6 +1253,26 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when auth and categories are known
   }, [isEditing, isAuthLoading, categories, isAuthenticated, serverDraft]);
+  // Every change waits in this browser (also for signed-in organizers), so a reload or a
+  // closed tab loses nothing; "continue later" keeps it in the account
+  const keepDraftRef = useRef(keepDraft);
+  keepDraftRef.current = keepDraft;
+  useEffect(() => {
+    if (isEditing) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const subscription = methods.watch(() => {
+      if (!draftHandled.current) return;
+      clearTimeout(timer);
+      // Not on the first step: nothing is typed yet, and a discarded draft stays gone
+      timer = setTimeout(() => {
+        if (stepRef.current > 0) keepDraftRef.current(stepRef.current);
+      }, 600);
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
+  }, [isEditing, methods]);
   // Next render: onSubmit then sees the restored storage locations
   useEffect(() => {
     if (!creatingDraft) return;
@@ -1518,6 +1575,12 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                     clearEventDraft();
                     navigate('/');
                   }}
+                  onContinueLater={
+                    !isGuest && step > 0
+                      ? () => (replacesOtherDraft ? setConfirmReplace(true) : void continueLater())
+                      : undefined
+                  }
+                  savingLater={savingDraft}
                   disabled={isSubmitting}
                 />
                 <div
@@ -1590,26 +1653,6 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
 
                 <div aria-hidden className="flex-1" />
                 <StickyActionBar>
-                  {/*
-                    Guests keep their draft in the browser anyway, until they sign up. On
-                    phones the label needs its own row below back and next: an icon alone
-                    does not say that the bazaar is kept for later
-                  */}
-                  {!isGuest && step > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="order-last w-full sm:order-none sm:w-auto"
-                      onClick={() =>
-                        replacesOtherDraft ? setConfirmReplace(true) : void continueLater()
-                      }
-                      loading={savingDraft}
-                      disabled={isSubmitting || savingDraft}
-                    >
-                      <Bookmark className="h-4 w-4" />
-                      {t('form.continueLater')}
-                    </Button>
-                  )}
                   {step > 0 && (
                     <Button
                       type="button"

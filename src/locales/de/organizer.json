@@ -978,7 +978,7 @@
       "maxItemsTotal_one": "max. {{count}} Artikel insgesamt",
       "maxItemsTotal_other": "max. {{count}} Artikel insgesamt",
       "maxFees": "höchstens {{fee}} € pro Verkäufer",
-      "feeGroup": "{{label}}: {{percent}} %"
+      "feeGroup": "{{label}}: {{advantages}}"
     },
     "fixErrors": "Bitte prüfe die markierten Angaben.",
     "guestCreate": "Konto anlegen und Basar erstellen",
@@ -1059,7 +1059,7 @@
       "maxItemsTotal": "{{count}} Plätze für Artikel insgesamt",
       "feeCap": "Höchstens {{fee}} Gebühren pro Verkäufer",
       "feeCapExample": "Gebühren-Deckel {{fee}}",
-      "feeGroup": "{{label}}: {{percent}} %"
+      "feeGroup": "{{label}}: {{advantages}}"
     },
     "short": {
       "type": "Art",
@@ -1383,7 +1383,7 @@
     "labelPlaceholder": "z. B. Vereinsmitglieder",
     "assignmentLabel": "Wer gehört dazu?",
     "assignment": {
-      "selfDeclared": "Verkäufer geben es bei der Anmeldung an",
+      "selfDeclared": "Angabe bei der Anmeldung",
       "helpers": "Helfer des Basars",
       "selfDeclaredShort": "Angabe bei der Anmeldung",
       "helpersShort": "Helfer",
@@ -1392,7 +1392,7 @@
     },
     "commission": "Provision",
     "intakeFee": "Annahmegebühr",
-    "cap": "Gebühren-Deckel",
+    "cap": "Deckel",
     "capHint": "Leer: Es gilt der Deckel des Basars.",
     "items": "Max. Artikel",
     "itemsHint": "Leer: Es gilt die Grenze des Basars. Die Grenze für den ganzen Markt gilt für alle.",
@@ -1404,12 +1404,6 @@
     "cheapest": "Wer zu mehreren Gruppen gehört, zahlt die günstigsten Gebühren.",
     "remove": "Gruppe entfernen",
     "add": "Gebührengruppe hinzufügen",
-    "summaryCommission": "{{percent}} % Provision",
-    "summaryIntakeFee": "{{fee}} € pro Artikel",
-    "summaryNoIntakeFee": "keine Annahmegebühr",
-    "summaryCap": "höchstens {{fee}} €",
-    "summaryItems_one": "{{count}} Artikel",
-    "summaryItems_other": "{{count}} Artikel",
     "labelRequired": "Gib der Gruppe einen Namen.",
     "labelTwice": "Diesen Namen hat schon eine andere Gruppe.",
     "registeredMax": "Verkäufer haben sich mit dieser Gruppe angemeldet: höchstens {{value}}.",
