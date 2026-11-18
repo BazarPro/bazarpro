@@ -751,6 +751,7 @@ struct FeaturesArgs {
     intake_fee: Option<f64>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
+    card_payments: Option<bool>,
     direct_sale: Option<bool>,
     /// Absent (older apps): switch and window stay as stored
     registration_open: Option<bool>,
@@ -925,6 +926,15 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
             features
                 .fixed_seller_data
                 .or(previous_bool("fixedSellerData"))
+                .unwrap_or(false)
+        ),
+    );
+    put(
+        "cardPayments",
+        json!(
+            features
+                .card_payments
+                .or(previous_bool("cardPayments"))
                 .unwrap_or(false)
         ),
     );
@@ -1624,6 +1634,9 @@ struct FinancialSummary {
     total_fees_to_collect: Decimal,
     sellers_to_collect: Vec<SellerToCollect>,
     cash_in_hand_soll: Decimal,
+    /// Paid by card: part of the revenue, but on the organizer's account, not in the cash box
+    total_card_revenue: Decimal,
+    card_sales_count: i64,
     sales_count: usize,
     vendors_paid_count: usize,
     vendors_total_count: usize,
@@ -1642,6 +1655,15 @@ async fn get_event_financial_summary(
     let net: Decimal = purchases.iter().map(|p| p.total_amount).sum();
     let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
     let payout_soll: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
+    let (card_sales, card): (i64, Decimal) = sqlx::query_as(
+        // What the desk took by card: at a direct sale only the commission
+        "SELECT count(*),
+           COALESCE(sum(CASE WHEN direct_sale THEN commission_amount ELSE total_amount END), 0)
+         FROM purchases WHERE event_id = $1 AND payment_method = 'card'",
+    )
+    .bind(event)
+    .fetch_one(ctx.conn())
+    .await?;
     let direct: Decimal = purchases
         .iter()
         .filter(|p| p.direct_sale)
@@ -1703,7 +1725,10 @@ async fn get_event_financial_summary(
         total_fees_collected: fees_collected,
         total_fees_to_collect: to_collect.iter().map(|s| s.amount).sum(),
         sellers_to_collect: to_collect,
-        cash_in_hand_soll: taken - paid_out + fees_collected,
+        // Payouts are made in cash, so with many card payments this can be negative
+        cash_in_hand_soll: taken - card - paid_out + fees_collected,
+        total_card_revenue: card,
+        card_sales_count: card_sales,
         sales_count: purchases.len(),
         vendors_paid_count: vendors.iter().filter(|v| v.paid).count(),
         vendors_total_count: vendors.iter().filter(to_settle).count(),

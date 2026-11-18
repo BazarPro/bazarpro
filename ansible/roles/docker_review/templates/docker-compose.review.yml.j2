@@ -36,6 +36,15 @@ services:
       - AUTH_SMTP_PORT=1025
       - AUTH_SMTP_SECURE=false
       - AUTH_SMTP_STARTTLS=false
+{% if sumup_client_id and sumup_client_secret %}
+      # SumUp sandbox merchant: card payments at the desk without real money
+      - SUMUP_CLIENT_ID={{ sumup_client_id }}
+      - SUMUP_CLIENT_SECRET={{ sumup_client_secret }}
+{% if sumup_scopes %}
+      # Scopes SumUp has enabled for the sandbox app, e.g. without `payments` until it is
+      - SUMUP_SCOPES={{ sumup_scopes }}
+{% endif %}
+{% endif %}
     volumes:
       - files:/data/files
     labels:

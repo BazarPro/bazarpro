@@ -13,8 +13,11 @@ import { getCategoryFields, REQUIRABLE_FIELDS } from '../../../../shared/categor
 import { feeLockHint, type FeeLock } from '../../../../lib/sellerFees';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useTranslation } from 'react-i18next';
+import type { Id } from '../../../../lib/api/types';
+import { SumUpConnectionSettings } from './SumUpConnectionSettings';
 import {
   BadgeEuro,
+  CreditCard,
   Globe,
   HandCoins,
   Handshake,
@@ -42,7 +45,8 @@ type FeatureKey =
   | 'privateSellersOnly'
   | 'fixedSellerData'
   | 'directSale'
-  | 'registrationOpen';
+  | 'registrationOpen'
+  | 'cardPayments';
 
 const FEATURE_ICONS: Record<FeatureKey, LucideIcon> = {
   discounts: Percent,
@@ -56,6 +60,7 @@ const FEATURE_ICONS: Record<FeatureKey, LucideIcon> = {
   fixedSellerData: ShieldCheck,
   directSale: HandCoins,
   registrationOpen: UserPlus,
+  cardPayments: CreditCard,
 };
 
 /**
@@ -308,8 +313,11 @@ export function EditEventFeatures({
   parts = ALL_PARTS,
   showHeader = true,
   bare = false,
+  eventId,
 }: {
   feeLock?: FeeLock;
+  /** An event that is already there: its SumUp account can be connected */
+  eventId?: Id<'events'>;
   parts?: FeaturePart[];
   showHeader?: boolean;
   /** Without its own card, e.g. the intake fee next to the commission */
@@ -403,6 +411,14 @@ export function EditEventFeatures({
               title={t('features.questionsDuringEvent')}
               description={t('features.questionsDuringEventText')}
             />
+          </FeatureToggle>
+
+          <FeatureToggle
+            name="cardPayments"
+            title={t('features.cardPayments')}
+            description={t('features.cardPaymentsText')}
+          >
+            {eventId && <SumUpConnectionSettings eventId={eventId} />}
           </FeatureToggle>
         </>
       )}

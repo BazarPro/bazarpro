@@ -34,5 +34,6 @@ mod sale_snapshots;
 mod seed;
 mod site_pages;
 mod storage;
+mod sumup;
 mod users;
 mod walk_in_sellers;

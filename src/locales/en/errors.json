@@ -259,5 +259,23 @@
   "upload": {
     "quotaExceeded": "You have uploaded too many images that are not saved yet. Please save first or try again later.",
     "tooMany": "You have uploaded a lot of images. Please try again later."
+  },
+  "sumup": {
+    "notConfigured": "This server is not connected to SumUp.",
+    "notConnected": "The organizer has not connected a SumUp account. They can connect it under “Card payments”.",
+    "cardPaymentsOff": "This bazaar does not take card payments.",
+    "unreachable": "SumUp cannot be reached right now. Please try again in a moment.",
+    "failed": "Connecting SumUp did not work. Please try again.",
+    "cancelled": "Connecting SumUp was cancelled.",
+    "expired": "The link has expired. Please start connecting SumUp again.",
+    "organizerOnly": "Only the organizer can pair or remove card readers of their SumUp account.",
+    "readerOffline": "The SumUp Solo is not online. Please check that it is on and connected to Wi-Fi or mobile data.",
+    "readerBusy": "A payment is already running on the SumUp Solo. Please finish it or wait a minute.",
+    "readerNotFound": "This SumUp Solo is no longer paired with the account. Please choose another one or pair it again.",
+    "reconnect": "SumUp does not let BazarPro use the card terminals of this account yet. Disconnect SumUp under “Card payments” and connect it again. If that does not help, SumUp has to enable the access for BazarPro.",
+    "refused": "SumUp refused the request. Please try again.",
+    "pairingCode": "The code has 8 or 9 characters. You find it on the Solo under Connections → API → Connect.",
+    "pairingFailed": "The Solo could not be paired. The code is valid for five minutes only, and the Solo must be logged out of its SumUp account.",
+    "amount": "SumUp takes cards from 1 € only."
   }
 }

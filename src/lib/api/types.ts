@@ -117,6 +117,7 @@ export interface Docs {
           intakeFee?: number | undefined;
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
+          cardPayments?: boolean | undefined;
           directSale?: boolean | undefined;
           registrationOpen?: boolean | undefined;
           registrationStartsAt?: number | undefined;
@@ -372,6 +373,62 @@ export type DiscountRules = {
 
 export type EmptyObject = { [x: string]: never };
 
+/** How a buyer paid at the cash desk; a card payment runs over the organizer's own terminal */
+export type PaymentMethod = 'cash' | 'card';
+
+/** The SumUp account a desk charges (backend/src/modules/sumup.rs) */
+export type SumUpConnection = {
+  /** The server connects SumUp with OAuth; without it each device logs in itself */
+  oauth: boolean;
+  connected: boolean;
+  merchantCode?: string;
+  /** The signed-in user's own account, which they may connect and disconnect */
+  mine: boolean;
+  connectedAt?: number;
+};
+
+/** A SumUp Solo of the organizer's account (backend/src/modules/sumup_solo.rs) */
+export type SumUpReader = {
+  id: string;
+  name: string;
+  /** `solo`, or `virtual-solo` in SumUp's sandbox */
+  model?: string;
+  /** `processing` until the Solo has confirmed its pairing code */
+  status: 'paired' | 'processing';
+  /** Missing when SumUp did not say */
+  online?: boolean;
+};
+
+/** Where a payment on the Solo stands */
+export type SumUpReaderPayment = {
+  status: 'pending' | 'successful' | 'failed' | 'cancelled';
+  /** SumUp's code of the payment, once SumUp has its transaction */
+  transactionCode?: string;
+  cardType?: string;
+  lastFour?: string;
+};
+
+/** `/api/sumup/<path>`: arguments and answer of each call for the Solo */
+export type SumUpSoloCalls = {
+  readers: [{ eventId: Id<'events'> }, { readers: SumUpReader[]; mayPair: boolean }];
+  'readers/pair': [{ eventId: Id<'events'>; pairingCode: string; name?: string }, SumUpReader];
+  'readers/remove': [{ eventId: Id<'events'>; readerId: string }, { success: boolean }];
+  checkout: [
+    { eventId: Id<'events'>; readerId: string; amountCents: number; deskSaleId: string },
+    { checkoutId?: string; clientTransactionId: string },
+  ];
+  'checkout/status': [
+    {
+      eventId: Id<'events'>;
+      readerId: string;
+      checkoutId?: string;
+      clientTransactionId: string;
+    },
+    SumUpReaderPayment,
+  ];
+  'checkout/cancel': [{ eventId: Id<'events'>; readerId: string }, { success: boolean }];
+};
+
 export type EventFeatures = {
   discounts: boolean;
   discountStartsAt?: number | undefined;
@@ -390,6 +447,7 @@ export type EventFeatures = {
   intakeFee?: number | undefined;
   privateSellersOnly: boolean;
   fixedSellerData: boolean;
+  cardPayments: boolean;
   directSale: boolean;
   registrationOpen?: boolean | undefined;
   registrationStartsAt?: number | undefined;
@@ -1134,6 +1192,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1206,6 +1265,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1280,6 +1340,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1354,6 +1415,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1436,6 +1498,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1511,6 +1574,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1583,6 +1647,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1641,6 +1706,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1697,6 +1763,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1778,6 +1845,7 @@ export interface Api {
               intakeFee?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              cardPayments?: boolean | undefined;
               directSale?: boolean | undefined;
             }
           | undefined;
@@ -1829,6 +1897,9 @@ export interface Api {
         totalFeesToCollect: number;
         sellersToCollect: { name: string; sellerNumber: number | undefined; amount: number }[];
         cashInHandSoll: number;
+        /** Paid by card: on the organizer's account, not in the cash box */
+        totalCardRevenue: number;
+        cardSalesCount: number;
         salesCount: number;
         vendorsPaidCount: number;
         vendorsTotalCount: number;
@@ -2485,6 +2556,17 @@ export interface Api {
       null
     >;
   };
+  sumup: {
+    /** The event organizer's account (desks of the team), or the own one without eventId */
+    getConnection: FunctionReference<'query', { eventId?: Id<'events'> }, SumUpConnection>;
+    /** A link to SumUp's consent page; valid once, for ten minutes */
+    startConnect: FunctionReference<
+      'mutation',
+      { app?: boolean; redirectTo?: string },
+      { url: string }
+    >;
+    disconnect: FunctionReference<'mutation', EmptyObject, { success: boolean }>;
+  };
   purchases: {
     sellProduct: FunctionReference<
       'mutation',
@@ -2507,6 +2589,10 @@ export interface Api {
         }[];
         /** From the app: a retry after a lost reply returns the first sale */
         deskSaleId?: string | undefined;
+        /** Cash when left out; kept with `deskSaleId` only */
+        paymentMethod?: PaymentMethod | undefined;
+        /** SumUp's code of the card payment; dropped for cash or when it is no code */
+        cardTransactionCode?: string | undefined;
       },
       {
         purchaseIds: Id<'purchase'>[];
@@ -2551,6 +2637,8 @@ export interface Api {
           deskSaleId: string;
           soldAt: number;
           buyerEmail?: string | undefined;
+          paymentMethod?: PaymentMethod | undefined;
+          cardTransactionCode?: string | undefined;
           /** How the desk sold: it took only the commission. Booked that way */
           directSale?: boolean | undefined;
           items: {
@@ -2581,6 +2669,9 @@ export interface Api {
         reason: string;
         soldAt: number;
         cashier?: string;
+        /** `card`: a refund goes back over the card terminal */
+        paymentMethod: PaymentMethod;
+        cardTransactionCode?: string;
         resolvedAt?: number;
       }[]
     >;

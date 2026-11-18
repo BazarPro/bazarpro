@@ -58,6 +58,11 @@ export interface EventFeatures {
    */
   fixedSellerData: boolean;
   /**
+   * The cash desk can mark a sale as paid by card. The payment itself runs over the
+   * organizer's own terminal; the cash summary then keeps card and cash apart.
+   */
+  cardPayments: boolean;
+  /**
    * Direct sale: buyers pay the seller at the item. The cash desk books the sale at the
    * agreed price and takes only the commission from the seller; nothing is paid out later.
    */
@@ -90,6 +95,7 @@ export const DEFAULT_EVENT_FEATURES: EventFeatures = {
   labelMark: 'universal',
   privateSellersOnly: false,
   fixedSellerData: false,
+  cardPayments: false,
   directSale: false,
   registrationOpen: true,
 };

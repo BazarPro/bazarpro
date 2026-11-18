@@ -166,6 +166,8 @@
     "priceOnLabelText": "Hilft an der Kasse ohne Scanner. Der Preis auf dem Etikett ist fest – bei Rabatten wird er deshalb nicht gedruckt.",
     "priceOnLabelDiscounts": "Rabatte sind eingeschaltet, deshalb erscheint kein Preis auf den Etiketten.",
     "payOnSite": "Bezahlt wird weiterhin vor Ort an der Kasse.",
+    "cardPayments": "Kartenzahlung an der Kasse",
+    "cardPaymentsText": "Die Kasse kann einen Verkauf als „mit Karte bezahlt“ buchen. In der BazarPro-App kassiert sie mit deinem SumUp-Konto direkt am Kartenleser oder per Tap to Pay; sonst wird am eigenen Kartengerät kassiert und nur gebucht. Gebühren des Kartenanbieters trägst du, Käufer zahlen den Preis auf dem Etikett. Die Abrechnung trennt Karte und Bargeld, damit der Kassenbestand stimmt.",
     "maxItemsLocked": "Verkäufer haben sich mit diesem Limit angemeldet: Du kannst es nur noch erhöhen.",
     "maxItemsLater": "Sobald sich der erste Verkäufer angemeldet hat, kannst du es nur noch erhöhen.",
     "questionsDuringEvent": "Erst während des Basars",
@@ -186,7 +188,28 @@
     "registrationUntil": "Anmeldung bis (optional)",
     "registrationWindowHint": "Leer lassen, wenn die Anmeldung sofort und bis zum Ende des Basars offen ist. Einladungen gelten auch außerhalb dieser Zeit.",
     "registrationClosedHint": "Die Anmeldung ist geschlossen. Neue Verkäufer kommen nur über eine Einladung hinein.",
-    "registrationWindow": "Das Ende der Anmeldung muss nach ihrem Beginn liegen."
+    "registrationWindow": "Das Ende der Anmeldung muss nach ihrem Beginn liegen.",
+    "sumup": {
+      "connectText": "Verbinde dein SumUp-Konto einmal, dann kassiert jede Kasse deines Teams damit, ohne dass sich Helfer bei SumUp anmelden. Das Geld landet auf deinem SumUp-Konto, die Gebühren trägst du.",
+      "connect": "Mit SumUp verbinden",
+      "saveFirst": "Bitte speichere zuerst deine Änderungen.",
+      "organizerConnects": "Der Veranstalter hat noch kein SumUp-Konto verbunden. Er kann es hier verbinden.",
+      "connectedToast": "SumUp ist verbunden.",
+      "disconnect": "Trennen",
+      "disconnectTitle": "SumUp trennen?",
+      "disconnectText": "Die Kassen deines Teams kassieren dann nicht mehr mit deinem SumUp-Konto, bis du es wieder verbindest. Den Zugriff von BazarPro kannst du auch in SumUp selbst widerrufen.",
+      "keep": "Verbunden lassen",
+      "soloTitle": "Kartenterminals im Browser",
+      "soloText": "Für Kassen am PC oder im Browser ohne App: Der SumUp Solo ist selbst per WLAN oder Mobilfunk online und bekommt den Betrag direkt von BazarPro. Kopple ihn hier einmal, dann kann jede Kasse deines Teams ihn wählen. Andere Kartenleser (Air, 3G) gehen nur in der App.",
+      "linked": "Verbunden",
+      "notLinked": "Nicht verbunden",
+      "appText": "Am Handy oder Tablet kassiert die App mit einem SumUp-Kartenleser per Bluetooth (z. B. Air oder Solo) oder per Tap to Pay auf dem iPhone. Den Kartenleser verbindest du an der Kasse unter „Karte“.",
+      "merchant": "Händlerkonto {{merchant}}",
+      "connectedText": "Dein SumUp-Konto ist verbunden.",
+      "connectShort": "Einmal verbinden, dann kassieren alle Kassen deines Teams damit.",
+      "soloNone": "Noch kein SumUp Solo gekoppelt.",
+      "appShort": "In der BazarPro-App verbindest du Kartenleser per Bluetooth direkt an der Kasse."
+    }
   },
   "logistics": {
     "title": "Abgabe & Abholung",
@@ -323,7 +346,8 @@
     "registration": "Anmeldung",
     "registrationOpen": "Offen bis zum Ende des Basars",
     "registrationClosed": "Geschlossen, nur mit Einladung",
-    "untilTime": "bis {{time}} Uhr"
+    "untilTime": "bis {{time}} Uhr",
+    "cardPayments": "Kartenzahlung an der Kasse"
   },
   "sellers": {
     "sortSheets": "Sortierblätter",
@@ -453,6 +477,11 @@
     "directSales": "Direktverkäufe: beim Verkäufer bezahlt, nur die Provision kam in die Kasse",
     "paidOut": "Bereits an Verkäufer ausgezahlt",
     "inCash": "In der Kasse",
+    "card_one": "Davon mit Karte bezahlt ({{count}} Verkauf)",
+    "card_other": "Davon mit Karte bezahlt ({{count}} Verkäufe)",
+    "cardTile": "Mit Karte bezahlt (auf deinem Konto)",
+    "cardNote": "Kartenzahlungen landen auf deinem Konto, nicht in der Kasse. Vergleiche die {{amount}} € mit der Abrechnung deines Kartengeräts; dessen Gebühren sind hier nicht abgezogen.",
+    "cashShort": "Die Kasse reicht für die Auszahlungen nicht aus, weil mehr mit Karte bezahlt wurde. Es fehlen {{amount}} € Bargeld.",
     "discounts": "Gegenüber den Etikettenpreisen ({{gross}} €) wurden {{discounts}} € an Rabatten und Preisnachlässen gewährt.",
     "settlements": "Abrechnungen",
     "progress": "{{paid}} von {{total}} Verkäufern abgerechnet",
@@ -767,6 +796,12 @@
       "conflicts_other": "{{count}} Artikel konnten nicht gebucht werden – siehe Abrechnung."
     },
     "received": "{{total}} € erhalten",
+    "receivedCard": "{{total}} € mit Karte bezahlt",
+    "payment": "Zahlungsart",
+    "cash": "Bar",
+    "card": "Karte",
+    "cardHint": "Betrag am Kartengerät eingeben und warten, bis die Zahlung bestätigt ist.",
+    "paidByCard": "Mit Karte bezahlt.",
     "cameraOn": "Kamera einschalten",
     "cameraOff": "Kamera ausschalten",
     "invoice": "Rechnung erstellen",
@@ -778,6 +813,62 @@
       "commission": "Provision {{amount}} €",
       "agreed": "Vereinbarter Preis",
       "agreedPrice": "Vereinbarter Preis"
+    },
+    "sumup": {
+      "checking": "SumUp wird geprüft…",
+      "loggedOut": "Mit deinem SumUp-Konto geht der Betrag direkt an den Kartenleser. Ohne Anmeldung: Betrag am eigenen Kartengerät eingeben.",
+      "login": "Bei SumUp anmelden",
+      "connected": "SumUp verbunden · {{merchant}}",
+      "logout": "Abmelden",
+      "device": "Kartenzahlung mit",
+      "reader": "Kartenleser",
+      "readerSettings": "Kartenleser verbinden",
+      "charge": "Mit Karte kassieren",
+      "charging": "Zahlung läuft…",
+      "minimum": "SumUp nimmt Karten erst ab {{min}} €. Bitte bar kassieren.",
+      "conflict": "Die Karte ist belastet, aber nicht alles ließ sich buchen ({{error}}). Der Verkauf wird nachgebucht; was nicht geht, steht unter „Offline-Vorgänge“ in der Kassenabrechnung – dort per SumUp erstatten.",
+      "notSaved": "Die Karte ist belastet, der Verkauf aber nicht gespeichert. Bitte notieren und in SumUp prüfen: {{code}}",
+      "unclearTitle": "Zahlung unklar",
+      "unclearText": "SumUp konnte nicht bestätigen, ob die {{total}} € bezahlt sind. Schau in der SumUp-App unter „Umsätze“ nach, bevor du den Verkauf buchst oder neu kassierst.",
+      "paid": "Ist bezahlt – Verkauf buchen",
+      "notPaid": "Nicht bezahlt",
+      "failed": {
+        "cancelled": "Zahlung abgebrochen.",
+        "notLoggedIn": "Die Anmeldung bei SumUp ist abgelaufen. Bitte neu anmelden.",
+        "permission": "SumUp braucht Standort und Bluetooth, um Karten anzunehmen. Bitte in den Einstellungen erlauben.",
+        "noConnectivity": "Keine Verbindung zu SumUp. Bitte Internet prüfen.",
+        "tapToPayActivation": "Tap to Pay ist auf diesem iPhone noch nicht eingerichtet.",
+        "other": "Die Zahlung ist fehlgeschlagen."
+      },
+      "notConnected": "Der Veranstalter hat noch kein SumUp-Konto verbunden. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "tokenFailed": "Die Anmeldung mit dem SumUp-Konto des Veranstalters hat nicht geklappt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "retry": "Erneut versuchen"
+    },
+    "solo": {
+      "title": "SumUp Solo",
+      "refresh": "Aktualisieren",
+      "online": "online",
+      "offline": "offline",
+      "processing": "wird gekoppelt…",
+      "none": "Der Veranstalter hat noch keinen SumUp Solo gekoppelt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "noneOrganizer": "Noch kein SumUp Solo gekoppelt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "code": "Code vom Solo",
+      "name": "Name des Solo",
+      "namePlaceholder": "Name, z. B. Kasse 1",
+      "pair": "Koppeln",
+      "paired": "Der Solo ist gekoppelt.",
+      "remove": "{{reader}} entfernen",
+      "payOnReader": "Bitte am {{reader}} mit Karte oder Handy bezahlen…",
+      "cancel": "Abbrechen",
+      "pairTitle": "SumUp Solo koppeln",
+      "toSettings": "Einstellungen",
+      "notConnected": "SumUp ist noch nicht verbunden. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "choose": "Solo wählen",
+      "pairButton": "Solo koppeln",
+      "pairIntro": "Einmal koppeln, dann kann jede Kasse deines Teams im Browser damit kassieren.",
+      "step1": "Den Solo einschalten und mit WLAN oder Mobilfunk verbinden.",
+      "step2": "Falls angemeldet: auf dem Solo vom SumUp-Konto abmelden.",
+      "step3": "Auf dem Solo Verbindungen → API → Verbinden öffnen und den Code hier eingeben. Er gilt fünf Minuten."
     }
   },
   "proof": {
@@ -1096,7 +1187,7 @@
   "conflicts": {
     "title_one": "{{count}} Offline-Vorgang braucht eure Klärung",
     "title_other": "{{count}} Offline-Vorgänge brauchen eure Klärung",
-    "text": "Das wurde ohne Internet erledigt, ließ sich danach aber nicht buchen. Bei Verkäufen liegt das Geld in der Kasse. Bitte klären (z. B. Geld zurückgeben, Artikel prüfen) und als erledigt markieren – am besten vor den Auszahlungen.",
+    "text": "Das wurde ohne Internet erledigt oder mit Karte bezahlt, ließ sich danach aber nicht buchen. Das Geld liegt in der Kasse, bei Kartenzahlung auf deinem Konto. Bitte klären (z. B. Geld zurückgeben, per SumUp erstatten, Artikel prüfen) und als erledigt markieren – am besten vor den Auszahlungen.",
     "resolve": "Erledigt",
     "reason": {
       "sold": "An einer anderen Kasse schon verkauft",
@@ -1105,7 +1196,9 @@
       "other": "Nicht buchbar"
     },
     "action": "Offline-Aktion",
-    "actionRefused": "Annahme abgelehnt: {{reason}}"
+    "actionRefused": "Annahme abgelehnt: {{reason}}",
+    "card": "Karte",
+    "cardCode": "Karte, SumUp {{code}}"
   },
   "offlineReady": {
     "preparing": "Basar wird für offline geladen…",

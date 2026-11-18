@@ -178,6 +178,7 @@ const buildEventSchema = (
         labelMark: z.enum(LABEL_MARKS),
         privateSellersOnly: z.boolean(),
         fixedSellerData: z.boolean(),
+        cardPayments: z.boolean(),
         directSale: z.boolean(),
         registrationOpen: z.boolean(),
         registrationStartsAt: z.string(),
@@ -312,6 +313,7 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
     intakeFee: features.intakeFee,
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
+    cardPayments: features.cardPayments,
     directSale: features.directSale,
     registrationOpen: features.registrationOpen,
     registrationStartsAt: features.registrationStartsAt
@@ -353,6 +355,7 @@ function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
         : undefined,
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
+    cardPayments: features.cardPayments,
     directSale: features.directSale,
     // Sent in full: without a time the window is gone
     registrationOpen: features.registrationOpen,
@@ -580,7 +583,7 @@ function EventSection({
         </>
       );
     case 'sale':
-      return <EditEventFeatures parts={['sale']} showHeader={false} />;
+      return <EditEventFeatures parts={['sale']} showHeader={false} eventId={editing?.eventId} />;
     case 'items':
       return (
         <>

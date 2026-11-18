@@ -36,6 +36,8 @@ pub mod seller_numbers;
 pub mod seller_records;
 pub mod settlement;
 pub mod site_pages;
+pub mod sumup;
+pub mod sumup_solo;
 pub mod users;
 pub mod walk_in_sellers;
 
@@ -73,6 +75,7 @@ pub fn register_all() -> Registry {
     seller_records::register(&mut registry);
     settlement::register(&mut registry);
     site_pages::register(&mut registry);
+    sumup::register(&mut registry);
     users::register(&mut registry);
     walk_in_sellers::register(&mut registry);
     registry

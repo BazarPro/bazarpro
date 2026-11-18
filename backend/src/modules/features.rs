@@ -33,6 +33,7 @@ struct Stored {
     intake_fee: Option<f64>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
+    card_payments: Option<bool>,
     direct_sale: Option<bool>,
     registration_open: Option<bool>,
     registration_starts_at: Option<f64>,
@@ -62,6 +63,8 @@ pub struct EventFeatures {
     pub intake_fee: Option<Decimal>,
     pub private_sellers_only: bool,
     pub fixed_seller_data: bool,
+    /// The cash desk can mark a sale as paid by card (the organizer's own terminal)
+    pub card_payments: bool,
     /// Buyers pay the seller at the item; the cash desk books the sale and takes only the
     /// commission from the seller, so nothing is paid out after the bazaar
     pub direct_sale: bool,
@@ -107,6 +110,7 @@ pub fn resolve(features: Option<&Value>) -> EventFeatures {
             .map(|fee| fee.cents()),
         private_sellers_only: stored.private_sellers_only.unwrap_or(false),
         fixed_seller_data: stored.fixed_seller_data.unwrap_or(false),
+        card_payments: stored.card_payments.unwrap_or(false),
         direct_sale: stored.direct_sale.unwrap_or(false),
         registration_open: stored.registration_open.unwrap_or(true),
         registration_starts_at: stored.registration_starts_at.and_then(from_ms),

@@ -259,5 +259,23 @@
   "upload": {
     "quotaExceeded": "Du hast zu viele Bilder hochgeladen, die noch nicht gespeichert sind. Bitte speichere zuerst oder versuche es später noch einmal.",
     "tooMany": "Du hast sehr viele Bilder hochgeladen. Bitte versuche es später noch einmal."
+  },
+  "sumup": {
+    "notConfigured": "Dieser Server ist nicht mit SumUp verbunden.",
+    "notConnected": "Der Veranstalter hat kein SumUp-Konto verbunden. Er kann es unter „Kartenzahlung“ verbinden.",
+    "cardPaymentsOff": "Dieser Basar nimmt keine Kartenzahlungen an.",
+    "unreachable": "SumUp ist gerade nicht erreichbar. Bitte versuche es gleich noch einmal.",
+    "failed": "Die Verbindung mit SumUp hat nicht geklappt. Bitte versuche es noch einmal.",
+    "cancelled": "Die Verbindung mit SumUp wurde abgebrochen.",
+    "expired": "Der Link ist abgelaufen. Bitte starte die Verbindung mit SumUp noch einmal.",
+    "organizerOnly": "Nur der Veranstalter kann Kartenleser mit seinem SumUp-Konto koppeln oder entfernen.",
+    "readerOffline": "Der SumUp Solo ist nicht online. Bitte prüfe, ob er eingeschaltet und mit WLAN oder Mobilfunk verbunden ist.",
+    "readerBusy": "Auf dem SumUp Solo läuft schon eine Zahlung. Bitte schließe sie ab oder warte eine Minute.",
+    "readerNotFound": "Dieser SumUp Solo ist nicht mehr mit dem Konto gekoppelt. Bitte wähle einen anderen oder kopple ihn neu.",
+    "reconnect": "SumUp lässt BazarPro noch nicht auf die Kartenterminals dieses Kontos zugreifen. Trenne SumUp unter „Kartenzahlung“ und verbinde es neu. Hilft das nicht, muss SumUp den Zugriff für BazarPro freischalten.",
+    "refused": "SumUp hat die Anfrage abgelehnt. Bitte versuche es noch einmal.",
+    "pairingCode": "Der Code hat 8 oder 9 Zeichen. Du findest ihn auf dem Solo unter Verbindungen → API → Verbinden.",
+    "pairingFailed": "Der Solo ließ sich nicht koppeln. Der Code gilt nur fünf Minuten, und der Solo muss vom SumUp-Konto abgemeldet sein.",
+    "amount": "SumUp nimmt Karten erst ab 1 €."
   }
 }
