@@ -140,10 +140,20 @@ export const REQUIRABLE_FIELDS: CategoryField[] = (() => {
 
 export const REQUIRABLE_FIELD_KEYS = REQUIRABLE_FIELDS.map((field) => field.key);
 
-/** Fields for a single category label, without looking at parent categories. */
+/**
+ * Fields for a single category label, without looking at parent categories; undefined
+ * when no rule speaks about it. A label a rule excludes on purpose ("Fahrradanhänger") has
+ * no fields: as a sub-category of "Fahrräder" it must not inherit the frame number.
+ */
 export function getFieldsForLabel(label: string): CategoryField[] | undefined {
   const name = label.trim();
-  return FIELD_RULES.find((rule) => rule.match.test(name) && !rule.exclude?.test(name))?.fields;
+  let excluded = false;
+  for (const rule of FIELD_RULES) {
+    if (!rule.match.test(name)) continue;
+    if (!rule.exclude?.test(name)) return rule.fields;
+    excluded = true;
+  }
+  return excluded ? [] : undefined;
 }
 
 type CategoryLike = { _id: string; label: string; parentCategory?: string };

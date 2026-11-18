@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { serviceLabel } from '../../../../../i18n/services';
 import { REQUIRABLE_FIELDS } from '../../../../../shared/categoryFields';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
-import { categoryNames } from '../../../../../i18n/categories';
+import { eventCategoryNames } from '../../../../../i18n/categories';
 import { api } from '../../../../../lib/api/functions';
 import { useQuery } from '../../../../../lib/api/react';
 import { formatEventPlace } from '../../../../../shared/eventJsonLd';
@@ -120,11 +120,13 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
       </Row>
       <Row label={t('summary.categories')}>
         <div className="flex flex-wrap gap-1">
-          {(categoryNames(event.categories, categoryList) ?? event.categoryLabels).map((label) => (
-            <Badge key={label} variant="outline">
-              {label}
-            </Badge>
-          ))}
+          {(eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels).map(
+            (label) => (
+              <Badge key={label} variant="outline">
+                {label}
+              </Badge>
+            )
+          )}
         </div>
       </Row>
       <Row label={t('summary.services')}>

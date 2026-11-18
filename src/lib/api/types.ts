@@ -643,7 +643,13 @@ export interface Api {
     >;
     updateCategory: FunctionReference<
       'mutation',
-      { categoryId: Id<'categories'>; label: string; translations: CategoryTranslations },
+      {
+        categoryId: Id<'categories'>;
+        label: string;
+        translations: CategoryTranslations;
+        /** Unset: a main category */
+        parentCategory?: Id<'categories'> | undefined;
+      },
       null
     >;
     deleteCategory: FunctionReference<'mutation', { categoryId: Id<'categories'> }, null>;

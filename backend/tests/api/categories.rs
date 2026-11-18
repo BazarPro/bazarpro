@@ -168,7 +168,7 @@ async fn parallel_mutations_are_serialized_and_retried(db: PgPool) {
             .fetch_one(&db)
             .await
             .unwrap();
-    assert_eq!((count, distinct), (21, 21));
+    assert_eq!((count, distinct), (22, 22));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -189,9 +189,9 @@ async fn the_start_of_the_server_only_fills_an_empty_table(db: PgPool) {
 
     // A new instance gets the defaults, and a second start adds nothing
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 21);
+    assert_eq!(labels().await.len(), 22);
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 21);
+    assert_eq!(labels().await.len(), 22);
 
     // An instance with categories of its own does not get the defaults back
     sqlx::query("DELETE FROM categories WHERE label <> 'Kleidung'")
@@ -390,6 +390,97 @@ async fn the_default_categories_come_with_their_english_names(db: PgPool) {
         .find(|c| c["label"] == "Fahrräder")
         .unwrap();
     assert_eq!(bikes["translations"]["en"], "Bikes");
+
+    // One level of sub-categories, the main category with them
+    let parent_of = |label: &str| {
+        let list = list.body["value"].as_array().unwrap();
+        let child = list.iter().find(|c| c["label"] == label).unwrap();
+        let parent = child.get("parentCategory")?;
+        list.iter()
+            .find(|c| &c["_id"] == parent)
+            .map(|c| c["label"].as_str().unwrap().to_owned())
+    };
+    assert_eq!(parent_of("Fahrradanhänger").as_deref(), Some("Fahrräder"));
+    assert_eq!(parent_of("Laufräder").as_deref(), Some("Kinderfahrzeuge"));
+    assert_eq!(parent_of("Fahrräder"), None);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn admins_move_categories_one_level_deep(db: PgPool) {
+    let app = app(&db).await;
+    let admin = app.user_session("admin@example.org", true).await;
+    let create = |args: Value| {
+        let (app, admin) = (&app, &admin);
+        async move {
+            app.mutation("categories.createCategory", args, Some(admin))
+                .await
+        }
+    };
+    let id = |response: common::Reply| response.body["value"].as_str().unwrap().to_owned();
+    let bikes = id(create(json!({ "label": "Fahrräder" })).await);
+    let kids = id(create(json!({ "label": "Kinderfahrräder", "parentCategory": bikes })).await);
+    let trailers = id(create(json!({ "label": "Fahrradanhänger" })).await);
+    let update = |category: &str, label: &str, parent: Option<&str>| {
+        let (app, admin) = (&app, &admin);
+        let args = json!({
+            "categoryId": category,
+            "label": label,
+            "translations": {},
+            "parentCategory": parent,
+        });
+        async move {
+            app.mutation("categories.updateCategory", args, Some(admin))
+                .await
+        }
+    };
+    let parent_of = |category: String| {
+        let db = &db;
+        async move {
+            sqlx::query_scalar::<_, Option<uuid::Uuid>>(
+                "SELECT parent_id FROM categories WHERE id = $1",
+            )
+            .bind(uuid::Uuid::parse_str(&category).unwrap())
+            .fetch_one(db)
+            .await
+            .unwrap()
+            .map(|id| id.to_string())
+        }
+    };
+
+    // A main category gets a sub-category, and it can go back to the top
+    let moved = update(&trailers, "Fahrradanhänger", Some(&bikes)).await;
+    assert_eq!(moved.status, StatusCode::OK, "{:?}", moved.body);
+    assert_eq!(parent_of(trailers.clone()).await, Some(bikes.clone()));
+    update(&trailers, "Fahrradanhänger", None).await;
+    assert_eq!(parent_of(trailers.clone()).await, None);
+
+    // No second level, no loop, and no main category with sub-categories below another
+    assert_eq!(
+        update(&trailers, "Fahrradanhänger", Some(&kids)).await.body["code"],
+        "category.parentNotMain"
+    );
+    assert_eq!(
+        create(json!({ "label": "Laufräder", "parentCategory": kids }))
+            .await
+            .body["code"],
+        "category.parentNotMain"
+    );
+    assert_eq!(
+        update(&bikes, "Fahrräder", Some(&bikes)).await.body["code"],
+        "category.parentNotMain"
+    );
+    assert_eq!(
+        update(&bikes, "Fahrräder", Some(&trailers)).await.body["code"],
+        "category.hasSubcategories"
+    );
+    let gone = uuid::Uuid::new_v4().to_string();
+    assert_eq!(
+        update(&trailers, "Fahrradanhänger", Some(&gone))
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(parent_of(bikes).await, None);
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]

@@ -120,15 +120,20 @@ pub fn requirable_fields() -> Vec<CategoryField> {
         .collect()
 }
 
+/// The fields of a label, None when no rule speaks about it. A label a rule excludes on
+/// purpose ("Fahrradanhänger") has no fields: as a sub-category of "Fahrräder" it must not
+/// inherit the frame number.
 pub fn fields_for_label(label: &str) -> Option<&'static [CategoryField]> {
     let name = label.trim();
-    RULES
-        .iter()
-        .find(|rule| {
-            rule.matches.is_match(name)
-                && !rule.exclude.as_ref().is_some_and(|ex| ex.is_match(name))
-        })
-        .map(|rule| rule.fields)
+    let mut excluded = false;
+    for rule in RULES.iter().filter(|rule| rule.matches.is_match(name)) {
+        if rule.exclude.as_ref().is_some_and(|ex| ex.is_match(name)) {
+            excluded = true;
+        } else {
+            return Some(rule.fields);
+        }
+    }
+    excluded.then_some(&[])
 }
 
 /// A category with its parent, for the inheritance of fields.
@@ -288,19 +293,45 @@ mod tests {
         }
     }
 
+    /// With the inheritance from the main category, as the default tree is seeded
     #[test]
     fn every_default_category_is_matched_on_purpose() {
-        for (label, _) in crate::modules::categories::DEFAULT_CATEGORIES {
-            let has_frame_number = keys(label).contains(&"frameNumber");
+        let defaults = &crate::modules::categories::DEFAULT_CATEGORIES;
+        let id = |label: &str| {
+            let index = defaults.iter().position(|c| c.label == label).unwrap();
+            Uuid::from_u128(index as u128 + 1)
+        };
+        let tree: Vec<CategoryRef> = defaults
+            .iter()
+            .map(|c| CategoryRef {
+                id: id(c.label),
+                label: c.label.into(),
+                parent: c.parent.map(id),
+            })
+            .collect();
+        for category in defaults {
+            let fields = category_fields(id(category.label), &tree);
+            let has_frame_number = fields.iter().any(|f| f.key == "frameNumber");
             let bike = matches!(
-                label,
+                category.label,
                 "Fahrräder"
                     | "Kinderfahrräder"
                     | "Laufräder"
                     | "Lastenräder"
                     | "E-Bikes & Pedelecs"
             );
-            assert_eq!(has_frame_number, bike, "{label}");
+            assert_eq!(has_frame_number, bike, "{}", category.label);
+            // One level: a main category is listed before its sub-categories
+            if let Some(parent) = category.parent {
+                let main = defaults.iter().position(|c| c.label == parent).unwrap();
+                assert!(defaults[main].parent.is_none(), "{parent}");
+                assert!(
+                    main < defaults
+                        .iter()
+                        .position(|c| c.label == category.label)
+                        .unwrap()
+                );
+            }
         }
     }
 
@@ -334,6 +365,36 @@ mod tests {
             },
         ];
         assert_eq!(category_fields(kids, &categories).len(), 5);
+    }
+
+    #[test]
+    fn excluded_sub_categories_do_not_inherit_the_frame_number() {
+        let bikes = Uuid::new_v4();
+        let trailers = Uuid::new_v4();
+        let clothes = Uuid::new_v4();
+        let categories = vec![
+            CategoryRef {
+                id: bikes,
+                label: "Fahrräder".into(),
+                parent: None,
+            },
+            CategoryRef {
+                id: trailers,
+                label: "Fahrradanhänger".into(),
+                parent: Some(bikes),
+            },
+            CategoryRef {
+                id: clothes,
+                label: "Fahrradbekleidung".into(),
+                parent: Some(bikes),
+            },
+        ];
+        assert!(category_fields(trailers, &categories).is_empty());
+        let keys: Vec<_> = category_fields(clothes, &categories)
+            .iter()
+            .map(|f| f.key)
+            .collect();
+        assert_eq!(keys, ["size", "brand", "color"]);
     }
 
     #[test]

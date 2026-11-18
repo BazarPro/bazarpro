@@ -431,6 +431,7 @@ export function MyProductsPage() {
         sortBy,
         minPrice,
         maxPrice,
+        categories: categoryList,
       })
     : [];
 

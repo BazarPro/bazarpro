@@ -39,6 +39,8 @@
     "labelEmpty": "Please enter a name.",
     "labelTaken": "A category with this name already exists.",
     "inUse": "This category is still in use and cannot be deleted.",
+    "parentNotMain": "A sub-category can only be placed under a main category.",
+    "hasSubcategories": "This category has sub-categories of its own and therefore cannot become a sub-category.",
     "lastOne": "The last category cannot be deleted."
   },
   "common": {

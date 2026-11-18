@@ -22,7 +22,7 @@ export interface EventType {
 
 const BIKES = /fahrr|räder|\brad\b|rad$|bike|pedelec|\bmtb\b|bmx/i;
 /** Ridden by children, sold at children's bazaars and at bike sales */
-const KIDS_VEHICLES = /laufr|roller|scooter|einr[aä]d|bobby|rutsch/i;
+const KIDS_VEHICLES = /kinderfahrz|laufr|roller|scooter|einr[aä]d|bobby|rutsch/i;
 
 export const EVENT_TYPES: EventType[] = [
   {

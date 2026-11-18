@@ -15,6 +15,13 @@ import {
 import { EmptyState } from '../../components/ui/empty-state';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
 import { TableRowsSkeleton } from '../../components/ui/loading';
 import { PageHeader } from '../../components/ui/page-header';
 import {
@@ -28,7 +35,7 @@ import {
 import { categoryFieldText } from '../../i18n/categoryFields';
 import { api } from '../../lib/api/functions';
 import { useMutation, useQuery } from '../../lib/api/react';
-import type { FunctionReturnType } from '../../lib/api/types';
+import type { FunctionReturnType, Id } from '../../lib/api/types';
 import { getUserFacingErrorMessage } from '../../lib/errors';
 import {
   getCategoryFields,
@@ -37,6 +44,9 @@ import {
 } from '../../shared/categoryFields';
 
 type AdminCategory = FunctionReturnType<typeof api.categories.listForAdmin>[number];
+/** Value of the parent select for a main category */
+const NO_PARENT = 'none';
+
 /** What the dialog works on: a category, or null for a new one. */
 type Editing = { category: AdminCategory | null };
 
@@ -77,17 +87,23 @@ function CategoryDialog({
   const update = useMutation(api.categories.updateCategory);
   const [label, setLabel] = useState(category?.label ?? '');
   const [nameEn, setNameEn] = useState(category?.translations.en ?? '');
+  const [parent, setParent] = useState(category?.parentCategory ?? NO_PARENT);
+  // One level: only main categories can take sub-categories, and one with its own stays on top
+  const mainCategories = categories.filter(
+    (other) => !other.parentCategory && other._id !== category?._id
+  );
+  const hasChildren = (category?.childCount ?? 0) > 0;
   const [saving, setSaving] = useState(false);
 
   const name = label.trim();
-  const fieldsFor = (candidate: string) =>
+  const fieldsFor = (candidate: string, parentId: string | undefined) =>
     getFieldsForLabel(candidate) ??
-    (category?.parentCategory ? getCategoryFields(category.parentCategory, categories) : []);
-  const fields = fieldNames(fieldsFor(name));
+    (parentId && parentId !== NO_PARENT ? getCategoryFields(parentId, categories) : []);
+  const fields = fieldNames(fieldsFor(name, parent));
   const fieldsChange =
     !!category &&
     (category.productCount > 0 || category.eventCount > 0) &&
-    fields.join() !== fieldNames(fieldsFor(category.label)).join();
+    fields.join() !== fieldNames(fieldsFor(category.label, category.parentCategory)).join();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -101,8 +117,12 @@ function CategoryDialog({
     setSaving(true);
     try {
       const translations = { en: nameEn.trim() || undefined };
-      if (category) await update({ categoryId: category._id, label: name, translations });
-      else await create({ label: name, translations });
+      const parentCategory = parent === NO_PARENT ? undefined : (parent as Id<'categories'>);
+      if (category) {
+        await update({ categoryId: category._id, label: name, translations, parentCategory });
+      } else {
+        await create({ label: name, translations, parentCategory });
+      }
       toast.success(t('categories.saved'));
       onClose();
     } catch (error) {
@@ -140,6 +160,25 @@ function CategoryDialog({
             {fieldsChange && (
               <p className="text-sm text-destructive">{t('categories.fieldsChange')}</p>
             )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="category-parent">{t('categories.parent')}</Label>
+            <Select value={parent} onValueChange={setParent} disabled={hasChildren}>
+              <SelectTrigger id="category-parent">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_PARENT}>{t('categories.noParent')}</SelectItem>
+                {mainCategories.map((main) => (
+                  <SelectItem key={main._id} value={main._id}>
+                    {main.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {t(hasChildren ? 'categories.parentLocked' : 'categories.parentHint')}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="category-name-en">{t('categories.nameEn')}</Label>

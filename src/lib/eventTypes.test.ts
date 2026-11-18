@@ -65,6 +65,7 @@ describe('event types', () => {
       'Roller & Scooter',
       'Einräder',
       'Bobbycars & Rutschfahrzeuge',
+      'Kinderfahrzeuge',
     ]) {
       expect(match('kidsBazaar', label), label).toBe(true);
       expect(match('bikeExchange', label), label).toBe(true);

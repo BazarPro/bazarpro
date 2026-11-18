@@ -39,6 +39,8 @@
     "labelEmpty": "Bitte gib einen Namen ein.",
     "labelTaken": "Eine Kategorie mit diesem Namen gibt es schon.",
     "inUse": "Diese Kategorie wird noch verwendet und kann nicht gelöscht werden.",
+    "parentNotMain": "Eine Unterkategorie kann nur unter einer Hauptkategorie stehen.",
+    "hasSubcategories": "Diese Kategorie hat selbst Unterkategorien und kann deshalb keine Unterkategorie werden.",
     "lastOne": "Die letzte Kategorie kann nicht gelöscht werden."
   },
   "common": {

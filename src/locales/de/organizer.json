@@ -101,6 +101,8 @@
   "categories": {
     "title": "Kategorien & Services",
     "allowed": "Erlaubte Artikelkategorien *",
+    "subcategories": "Unterkategorien von {{name}}",
+    "groupHint": "Eine Hauptkategorie wählt ihre Unterkategorien mit. Über den Pfeil wählst du sie einzeln.",
     "services": "Zusätzliche Services"
   },
   "contact": {

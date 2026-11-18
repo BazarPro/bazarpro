@@ -96,16 +96,10 @@ async fn create_category(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     if let Some(existing) = find_by_label(ctx, &label).await? {
         return Ok(existing);
     }
-    // A parent that does not exist is left out
-    let parent: Option<Uuid> = match args.parent_category {
-        Some(parent) => {
-            sqlx::query_scalar("SELECT id FROM categories WHERE id = $1")
-                .bind(parent.0)
-                .fetch_optional(ctx.conn())
-                .await?
-        }
-        None => None,
-    };
+    let parent = args.parent_category.map(|parent| parent.0);
+    if let Some(parent) = parent {
+        check_parent(ctx, None, parent).await?;
+    }
     let id = sqlx::query_scalar(
         "INSERT INTO categories (label, parent_id, translations) VALUES ($1, $2, $3) RETURNING id",
     )
@@ -124,6 +118,36 @@ struct UpdateArgs {
     category_id: Id,
     label: String,
     translations: Translations,
+    /// The main category; none makes it a main category itself
+    #[serde(default)]
+    parent_category: Option<Id>,
+}
+
+/// Categories have one level of sub-categories, so lists stay short and grouped: the parent
+/// must be a main category, and a category with sub-categories cannot become one itself.
+async fn check_parent(ctx: &mut Ctx, category: Option<Uuid>, parent: Uuid) -> AppResult<()> {
+    let parent_of_parent: Option<Option<Uuid>> =
+        sqlx::query_scalar("SELECT parent_id FROM categories WHERE id = $1")
+            .bind(parent)
+            .fetch_optional(ctx.conn())
+            .await?;
+    let Some(parent_of_parent) = parent_of_parent else {
+        return Err(AppError::not_found("notFound.category"));
+    };
+    if Some(parent) == category || parent_of_parent.is_some() {
+        return Err(AppError::bad_request("category.parentNotMain"));
+    }
+    if let Some(category) = category {
+        let has_children: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM categories WHERE parent_id = $1)")
+                .bind(category)
+                .fetch_one(ctx.conn())
+                .await?;
+        if has_children {
+            return Err(AppError::bad_request("category.hasSubcategories"));
+        }
+    }
+    Ok(())
 }
 
 /// Admins only. Items and bazaars point to the id and follow; sales keep the name they had.
@@ -140,12 +164,18 @@ async fn update_category(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
     if taken {
         return Err(AppError::bad_request("category.labelTaken"));
     }
+    let parent = args.parent_category.map(|parent| parent.0);
+    if let Some(parent) = parent {
+        check_parent(ctx, Some(args.category_id.0), parent).await?;
+    }
     let updated = sqlx::query(
-        "UPDATE categories SET label = $2, translations = $3, updated_at = now() WHERE id = $1",
+        "UPDATE categories SET label = $2, translations = $3, parent_id = $4, updated_at = now()
+         WHERE id = $1",
     )
     .bind(args.category_id.0)
     .bind(&label)
     .bind(Json(args.translations.trimmed()))
+    .bind(parent)
     .execute(ctx.conn())
     .await?;
     if updated.rows_affected() == 0 {
@@ -268,44 +298,85 @@ async fn get_category_id(ctx: &mut Ctx, args: IdArgs) -> AppResult<Option<Uuid>>
     Ok(find_by_label(ctx, &args.category_label).await?)
 }
 
-/// The default categories (German label, English name); adds the missing ones, safe to run
-/// repeatedly: `bazarpro-backend run categories.seedCategories`
-pub const DEFAULT_CATEGORIES: [(&str, &str); 21] = [
-    ("Kleidung", "Clothing"),
-    ("Schuhe", "Shoes"),
-    ("Sport", "Sports"),
-    ("Fahrräder", "Bikes"),
-    // For bike sales and children's bazaars (#300); same list in migration 0032
-    ("Kinderfahrräder", "Children's bikes"),
-    ("Laufräder", "Balance bikes"),
-    ("Roller & Scooter", "Scooters"),
-    ("Einräder", "Unicycles"),
-    ("Bobbycars & Rutschfahrzeuge", "Ride-on toys"),
-    ("Lastenräder", "Cargo bikes"),
-    ("E-Bikes & Pedelecs", "E-bikes"),
-    ("Fahrradanhänger", "Bike trailers"),
-    ("Fahrrad-Kindersitze", "Child bike seats"),
-    ("Fahrradzubehör", "Bike accessories"),
-    ("Elektronik", "Electronics"),
-    ("Bücher", "Books"),
-    ("Spielzeug", "Toys"),
-    ("Möbel", "Furniture"),
-    ("Haushalt", "Household"),
-    ("Accessoires", "Accessories"),
-    ("Sonstiges", "Other"),
+/// A default category: German label, English name and the label of its main category.
+pub struct DefaultCategory {
+    pub label: &'static str,
+    pub en: &'static str,
+    pub parent: Option<&'static str>,
+}
+
+const fn main(label: &'static str, en: &'static str) -> DefaultCategory {
+    DefaultCategory {
+        label,
+        en,
+        parent: None,
+    }
+}
+
+const fn sub(parent: &'static str, label: &'static str, en: &'static str) -> DefaultCategory {
+    DefaultCategory {
+        label,
+        en,
+        parent: Some(parent),
+    }
+}
+
+/// The default categories, main categories before their sub-categories; adds the missing
+/// ones, safe to run repeatedly: `bazarpro-backend run categories.seedCategories`.
+/// Same tree as migration 0032.
+pub const DEFAULT_CATEGORIES: [DefaultCategory; 22] = [
+    main("Kleidung", "Clothing"),
+    main("Schuhe", "Shoes"),
+    main("Sport", "Sports"),
+    main("Fahrräder", "Bikes"),
+    sub("Fahrräder", "Kinderfahrräder", "Children's bikes"),
+    sub("Fahrräder", "Lastenräder", "Cargo bikes"),
+    sub("Fahrräder", "E-Bikes & Pedelecs", "E-bikes"),
+    sub("Fahrräder", "Fahrradanhänger", "Bike trailers"),
+    sub("Fahrräder", "Fahrrad-Kindersitze", "Child bike seats"),
+    sub("Fahrräder", "Fahrradzubehör", "Bike accessories"),
+    // Ridden by children, sold at children's bazaars and bike sales (#300)
+    main("Kinderfahrzeuge", "Children's vehicles"),
+    sub("Kinderfahrzeuge", "Laufräder", "Balance bikes"),
+    sub("Kinderfahrzeuge", "Roller & Scooter", "Scooters"),
+    sub("Kinderfahrzeuge", "Einräder", "Unicycles"),
+    sub(
+        "Kinderfahrzeuge",
+        "Bobbycars & Rutschfahrzeuge",
+        "Ride-on toys",
+    ),
+    main("Elektronik", "Electronics"),
+    main("Bücher", "Books"),
+    main("Spielzeug", "Toys"),
+    main("Möbel", "Furniture"),
+    main("Haushalt", "Household"),
+    main("Accessoires", "Accessories"),
+    main("Sonstiges", "Other"),
 ];
 
 async fn seed_categories(ctx: &mut Ctx, _: NoArgs) -> AppResult<&'static str> {
-    for (label, en) in DEFAULT_CATEGORIES {
-        if find_by_label(ctx, label).await?.is_none() {
-            sqlx::query("INSERT INTO categories (label, translations) VALUES ($1, $2)")
-                .bind(label)
-                .bind(Json(Translations {
-                    en: Some(en.to_owned()),
-                }))
-                .execute(ctx.conn())
-                .await?;
+    for (position, category) in DEFAULT_CATEGORIES.iter().enumerate() {
+        if find_by_label(ctx, category.label).await?.is_some() {
+            continue;
         }
+        // Main categories come first; a renamed or deleted one leaves the sub-category on top
+        let parent = match category.parent {
+            Some(parent) => find_by_label(ctx, parent).await?,
+            None => None,
+        };
+        // Lists follow the creation time, and one run is one transaction with one now()
+        sqlx::query(
+            "INSERT INTO categories (label, parent_id, translations, created_at)
+             VALUES ($1, $2, $3, now() + $4 * interval '1 millisecond')",
+        )
+        .bind(category.label)
+        .bind(parent)
+        .bind(Json(Translations {
+            en: Some(category.en.to_owned()),
+        }))
+        .bind(position as f64)
+        .execute(ctx.conn())
+        .await?;
     }
     ctx.touch(TOPIC);
     Ok("Categories seeded successfully")

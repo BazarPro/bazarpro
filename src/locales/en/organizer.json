@@ -101,6 +101,8 @@
   "categories": {
     "title": "Categories & services",
     "allowed": "Allowed item categories *",
+    "subcategories": "Sub-categories of {{name}}",
+    "groupHint": "A main category selects its sub-categories too. Use the arrow to pick them one by one.",
     "services": "Additional services"
   },
   "contact": {

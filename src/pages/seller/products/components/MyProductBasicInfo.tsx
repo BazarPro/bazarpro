@@ -1,13 +1,11 @@
 import { FieldError } from '../../../../components/ui/field-error';
 import { useFormContext } from 'react-hook-form';
-import { categoryName } from '../../../../i18n/categories';
 import { Label } from '../../../../components/ui/label';
 import { Input } from '../../../../components/ui/input';
 import { Textarea } from '../../../../components/ui/text-area';
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from '../../../../components/ui/select';
@@ -15,9 +13,9 @@ import { CONDITION_OPTIONS } from '../../../../constants/records';
 import { PRODUCT_CONDITIONS } from '../../../../shared/constants';
 import { api } from '../../../../lib/api/functions';
 import { useQuery } from '../../../../lib/api/react';
-import type { Doc } from '../../../../lib/api/types';
 import { cn } from '../../../../lib/utils';
 import { MyProductCategoryFields, MyProductNegotiation } from './MyProductExtras';
+import { CategorySelectItems } from '../../../../components/products/CategorySelectItems';
 import { useTranslation } from 'react-i18next';
 import { FormSkeleton, Loading } from '../../../../components/ui/loading';
 import type { ReactNode } from 'react';
@@ -116,11 +114,7 @@ export function MyProductBasicInfo({
               <SelectValue placeholder={t('form.chooseCategory')} />
             </SelectTrigger>
             <SelectContent>
-              {categoryList.map((c: Doc<'categories'>) => (
-                <SelectItem key={c._id} value={c._id}>
-                  {categoryName(c)}
-                </SelectItem>
-              ))}
+              <CategorySelectItems categories={categoryList} />
             </SelectContent>
           </Select>
           {errors.categoryId && <FieldError>{errors.categoryId.message as string}</FieldError>}

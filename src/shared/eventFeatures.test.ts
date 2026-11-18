@@ -54,7 +54,25 @@ describe('category fields by keyword', () => {
     'Fahrradanhänger',
     'Fahrrad-Kindersitze',
   ])('"%s" gets no bike fields', (label) => {
-    expect(keys(label)).toBeUndefined();
+    expect(keys(label) ?? []).toEqual([]);
+  });
+
+  test('excluded on purpose means no fields, also below "Fahrräder"', () => {
+    expect(keys('Fahrradanhänger')).toEqual([]);
+    expect(keys('Radio & HiFi')).toBeUndefined();
+    const categories = [
+      { _id: 'bikes', label: 'Fahrräder' },
+      { _id: 'trailers', label: 'Fahrradanhänger', parentCategory: 'bikes' },
+      { _id: 'clothes', label: 'Fahrradbekleidung', parentCategory: 'bikes' },
+      { _id: 'kids', label: 'Für Kinder', parentCategory: 'bikes' },
+    ];
+    expect(getCategoryFields('trailers', categories)).toEqual([]);
+    expect(getCategoryFields('clothes', categories).map((f) => f.key)).toEqual([
+      'size',
+      'brand',
+      'color',
+    ]);
+    expect(getCategoryFields('kids', categories).map((f) => f.key)).toEqual(BIKE_KEYS);
   });
 
   test('cycling clothes count as clothing, sports shoes as shoes', () => {

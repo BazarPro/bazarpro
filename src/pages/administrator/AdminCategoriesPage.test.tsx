@@ -109,4 +109,33 @@ describe('AdminCategoriesPage', () => {
       })
     );
   });
+
+  it('moves a category under a main category, one level deep', async () => {
+    render(<AdminCategoriesPage />);
+    fireEvent.click(within(row('Sonstiges')).getByRole('button', { name: 'Bearbeiten' }));
+    // The hidden native select of the dialog: only main categories to choose from
+    const parent = document.querySelector('select') as HTMLSelectElement;
+    const options = [...parent.options].map((option) => option.value);
+    expect(options).toEqual(['none', 'bikes']);
+    fireEvent.change(parent, { target: { value: 'bikes' } });
+    // Without fields of its own it takes those of the main category
+    expect(screen.getByText(/Zusatzfelder mit diesem Namen: Rahmennummer/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() =>
+      expect(mutations['categories.updateCategory']).toHaveBeenCalledWith({
+        categoryId: 'misc',
+        label: 'Sonstiges',
+        translations: { en: undefined },
+        parentCategory: 'bikes',
+      })
+    );
+  });
+
+  it('keeps a category with sub-categories on top', () => {
+    vi.mocked(useQuery).mockReturnValue([{ ...bikes, childCount: 1 }, kids, misc] as never);
+    render(<AdminCategoriesPage />);
+    fireEvent.click(within(row('Fahrräder')).getByRole('button', { name: 'Bearbeiten' }));
+    expect(screen.getByText(/bleibt deshalb Hauptkategorie/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Hauptkategorie' })).toBeDisabled();
+  });
 });
