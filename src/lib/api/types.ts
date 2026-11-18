@@ -6,7 +6,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { EventProductStatus, HelperPermission } from '../../shared/constants';
+import type { EventProductStatus, EventServices, HelperPermission } from '../../shared/constants';
 
 export type TableName =
   | '_storage'
@@ -145,7 +145,7 @@ export interface Docs {
     startDate: number;
     endDate: number;
     contactInfo: string;
-    services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+    services: EventServices[];
     visibility: 'public' | 'logged-in' | 'approved';
     commission: number;
     organizerId: Id<'users'>;
@@ -1158,7 +1158,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1230,7 +1230,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1304,7 +1304,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1378,7 +1378,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1460,7 +1460,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1535,7 +1535,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1607,7 +1607,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1802,7 +1802,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;

@@ -37,6 +37,7 @@ import {
 } from '../../../lib/productDisplay';
 import { cn } from '../../../lib/utils';
 import { useNowPassing } from '../../../hooks/useNowPassing';
+import { isEventRunning } from '../../../shared/eventPhase';
 
 /**
  *  Public Event Product List showing all products for a public event
@@ -111,7 +112,7 @@ export function PublicEventProductsPage() {
       status: string;
     }
     const productList = (products as ProductWithDiscount[] | undefined) ?? [];
-    const isRunning = !!event && event.startDate <= now && now <= event.endDate;
+    const isRunning = !!event && isEventRunning(event, now);
 
     let result = productList.filter((p: ProductWithDiscount) => {
       const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());

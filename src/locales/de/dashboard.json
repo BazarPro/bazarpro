@@ -3,7 +3,6 @@
   "greetingAnonymous": "Willkommen zurück!",
   "nextBazaar": {
     "title": "Dein nächster Basar",
-    "running": "Läuft gerade",
     "products_one": "{{count}} Artikel angemeldet",
     "products_other": "{{count}} Artikel angemeldet",
     "noProducts": "Noch keine Artikel angemeldet",
@@ -21,7 +20,7 @@
     "noSales": "Noch nichts verkauft"
   },
   "organizer": {
-    "current": "Dein aktueller Basar",
+    "current": "Ausgewählter Basar",
     "later": "Weitere Basare",
     "none": "Keine weiteren anstehenden Basare.",
     "showAll": "Alle {{count}} anzeigen",
@@ -36,8 +35,12 @@
     "registered": "Für den Basar angemeldet",
     "products": "Artikel anlegen",
     "labels": "Etiketten drucken und abgeben",
+    "labelsDirect": "Etiketten drucken und zum Aufbau mitbringen",
     "labelsText": "Den Abgabetermin nennt dir der Veranstalter",
+    "labelsTextDirect": "Den Aufbautermin nennt dir der Veranstalter",
     "dropoff": "Abgabe ab {{date}}",
-    "payout": "Verkauf und Auszahlung"
+    "setup": "Aufbau ab {{date}}",
+    "payout": "Verkauf und Auszahlung",
+    "payoutDirect": "Verkauf und Abrechnung"
   }
 }

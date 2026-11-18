@@ -322,7 +322,9 @@ test.describe('category fields', () => {
     await page.locator('#categoryId').click();
     await page.getByRole('option', { name: 'Fahrräder' }).click();
     await expect(page.getByLabel('Rahmennummer')).toBeVisible();
-    await expect(page.getByText('Bei Rädern ab ca. 500 € dringend empfohlen.')).toBeVisible();
+    await expect(page.getByText(/Nicht gefunden\? Schreib „nicht gefunden“ hinein/)).toBeVisible();
+    await page.getByRole('button', { name: 'Nicht gefunden' }).click();
+    await expect(page.getByLabel('Rahmennummer')).toHaveValue('nicht gefunden');
 
     await page.locator('#categoryId').click();
     await page.getByRole('option', { name: 'Bücher' }).click();

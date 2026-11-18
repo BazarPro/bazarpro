@@ -191,6 +191,7 @@
   "logistics": {
     "title": "Abgabe & Abholung",
     "intro": "Verkäufer mit angemeldeten Artikeln bekommen am Vorabend um 18 Uhr eine Mail mit allen Infos. Alle, die noch nicht abgerechnet sind, bekommen eine Erinnerung an die Abholung: direkt nach dem Basar oder, wenn die Abholung später beginnt, 2 Stunden davor.",
+    "introDirect": "Beim Direktverkauf stehen die Verkäufer selbst an ihren Artikeln: Die Zeiten gelten für Aufbau und Abbau. Verkäufer mit angemeldeten Artikeln bekommen am Vorabend um 18 Uhr eine Mail mit allen Infos. Alle, die noch nicht abgerechnet sind, bekommen eine Erinnerung an den Abbau: direkt nach dem Basar oder, wenn der Abbau später beginnt, 2 Stunden davor.",
     "note": "Hinweis für Verkäufer (optional)",
     "notePlaceholder": "z. B. Bitte Räder mit Schloss abgeben, Eingang über den Hof",
     "preview": "Vorschau der Mail am Vorabend",
@@ -198,6 +199,8 @@
     "subject": "Betreff: {{subject}}",
     "dropoff": "Abgabe",
     "pickup": "Abholung",
+    "setup": "Aufbau",
+    "teardown": "Abbau",
     "day": "Tag",
     "from": "Von",
     "until": "Bis",
@@ -293,6 +296,8 @@
     "unlimited": "Unbegrenzt",
     "dropoff": "Abgabe",
     "pickup": "Abholung",
+    "setup": "Aufbau",
+    "teardown": "Abbau",
     "notGiven": "Nicht angegeben",
     "categories": "Kategorien",
     "services": "Services",
@@ -900,6 +905,10 @@
       "details": {
         "title": "Beschreibung und Kontakt",
         "text": "Das lesen Besucher auf der Seite deines Basars."
+      },
+      "logisticsDirect": {
+        "title": "Aufbau und Abbau",
+        "text": "Wann bauen die Verkäufer ihre Stände auf und wieder ab? Schon passend zum Termin eingetragen – pass nur die Uhrzeiten an."
       }
     },
     "summary": {
@@ -910,6 +919,8 @@
       "joining": "Mitmachen",
       "dropoff": "Abgabe",
       "pickup": "Abholung",
+      "setup": "Aufbau",
+      "teardown": "Abbau",
       "open": "offen",
       "commission": "{{percent}} % Provision",
       "intakeFee": "+ {{fee}} € pro Artikel",
@@ -921,6 +932,7 @@
       "date": "Termin",
       "items": "Artikel",
       "logistics": "Abgabe & Abholung",
+      "logisticsDirect": "Aufbau & Abbau",
       "contact": "Kontakt",
       "categoryCount_one": "{{count}} Kategorie",
       "categoryCount_other": "{{count}} Kategorien",
@@ -995,9 +1007,12 @@
       "dateOpen": "Termin folgt",
       "placeOpen": "Ort folgt",
       "descriptionOpen": "Hier steht deine Beschreibung – was es gibt, wo man parkt, ob es Kaffee und Kuchen gibt.",
+      "contactOpen": "Hier stehen deine Kontaktdaten für Fragen von Verkäufern und Besuchern.",
       "dropoff": "Abgabe",
       "sale": "Basar",
       "pickup": "Abholung",
+      "setup": "Aufbau",
+      "teardown": "Abbau",
       "open": "noch offen",
       "browserUrl": "bazarpro.de/basar",
       "offersTitle": "Angebote",
@@ -1018,6 +1033,7 @@
       "registration": "Mitmachen",
       "basics": "Termin & Ort",
       "logistics": "Abgabe",
+      "logisticsDirect": "Aufbau",
       "preview": "Vorschau",
       "details": "Beschreibung"
     },
@@ -1235,7 +1251,8 @@
       "offer": {
         "title": "Das gibt es",
         "food": "Mit {{services}} vor Ort",
-        "skiService": "Skiservice vor Ort"
+        "skiService": "Skiservice vor Ort",
+        "bikeCoding": "Fahrradcodierung vor Ort"
       },
       "sell": {
         "title": "So verkaufst du",
@@ -1247,6 +1264,10 @@
         "dropoffAt": "Abgabe: {{time}}",
         "pickup": "Unverkauftes und Geld abholen",
         "pickupAt": "Abholung und Auszahlung: {{time}}",
+        "setup": "Stand vor Ort aufbauen",
+        "setupAt": "Aufbau: {{time}}",
+        "teardown": "Stand abbauen und abrechnen",
+        "teardownAt": "Abbau und Abrechnung: {{time}}",
         "terms": "{{commission}} % vom Erlös gehen an den Veranstalter.",
         "termsWithFee": "{{commission}} % vom Erlös und {{fee}} € Annahmegebühr pro Artikel gehen an den Veranstalter."
       },

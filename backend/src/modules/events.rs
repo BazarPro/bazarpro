@@ -44,9 +44,10 @@ pub const TIME_BOUNDARIES_JOB: &str = "events.touchTimeBoundaries";
 /// covers its minute. A boundary seen twice only costs one more refetch.
 const TIME_BOUNDARY_WINDOW: Duration = Duration::minutes(2);
 const MAX_SELLER_NOTE: usize = 2000;
-const SERVICES: [&str; 5] = [
+const SERVICES: [&str; 6] = [
     "Parkplatz",
     "Skiservice",
+    "Fahrradcodierung",
     "Gastronomie",
     "Imbiss",
     "Getränke",

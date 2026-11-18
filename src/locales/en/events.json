@@ -90,6 +90,7 @@
     "youPay": "You pay",
     "itemsAndPrices": "Items & prices",
     "schedule": "Hand-in & pickup",
+    "scheduleDirect": "Setup & teardown",
     "commissionLine": "{{percent}} % commission on the sale price of every item sold",
     "intakeFeeLine": "{{fee}} € intake fee per accepted item, even if it is not sold",
     "exampleSold": "{{sold}} × {{price}} € sold",
@@ -111,6 +112,8 @@
     "questions": "Buyers can ask public questions about your items",
     "dropoff": "Hand-in",
     "pickup": "Pickup",
+    "setup": "Setup",
+    "teardown": "Teardown",
     "requiredFields": "Required for every item: {{fields}}",
     "questionsDuringEvent": "During the bazaar, buyers can ask public questions about your items",
     "privateSellers": "Private persons only: you confirm when registering that you do not sell commercially",
@@ -197,5 +200,10 @@
     "title_other": "{{count}} items not handed in",
     "hint_one": "You did not hand in this item on time. It is not offered at this bazaar and cannot be registered again.",
     "hint_other": "You did not hand in these items on time. They are not offered at this bazaar and cannot be registered again."
+  },
+  "phase": {
+    "upcoming": "Upcoming",
+    "running": "Happening now",
+    "ended": "Ended"
   }
 }

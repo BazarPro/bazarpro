@@ -10,6 +10,7 @@ import {
 import { Button } from '../../../../components/ui/button';
 import { createGoogleCalendarUrl, downloadIcsEvent } from '../../../../lib/calendar';
 import { SellerConditions } from '../../../../components/events/SellerConditions';
+import { EventContactCard } from '../../../../components/events/EventContactCard';
 import type { SellerConditionsEvent } from '../../../../lib/sellerFees';
 import { dateLocale } from '../../../../i18n/format';
 import { toAbsoluteUrl } from '../../../../lib/seo';
@@ -226,10 +227,7 @@ export function EventPageSidebar({ event, conditions }: EventPageSidebarProps) {
         <SellerConditions event={conditions} className="bg-card rounded-xl border p-6" compact />
       )}
 
-      <div className="bg-card rounded-xl border p-6">
-        <h3 className="mb-4 text-lg font-semibold">{t('sidebar.contact')}</h3>
-        <p className="text-sm text-muted-foreground whitespace-pre-line">{event.contactInfo}</p>
-      </div>
+      <EventContactCard contact={event.contactInfo} />
     </div>
   );
 }

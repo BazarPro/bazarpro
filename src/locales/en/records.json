@@ -67,7 +67,9 @@
     "frameNumber": {
       "label": "Frame number",
       "placeholder": "e.g. WBK123456",
-      "hint": "Strongly recommended for bikes from about €500."
+      "hint": "Can't find it? Enter “not found” – we'll look for it together on site.",
+      "notFound": "Not found",
+      "notFoundValue": "not found"
     },
     "frameSize": {
       "label": "Frame size",
@@ -103,6 +105,7 @@
   "service": {
     "Parkplatz": "Parking",
     "Skiservice": "Ski service",
+    "Fahrradcodierung": "Bike coding",
     "Gastronomie": "Restaurant",
     "Imbiss": "Snacks",
     "Getränke": "Drinks"

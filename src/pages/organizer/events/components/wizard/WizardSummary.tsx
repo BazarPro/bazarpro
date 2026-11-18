@@ -113,6 +113,8 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
   const values = useFormContext().watch() as SummaryValues;
   const features = values.features ?? {};
   const logistics = values.sellerLogistics ?? {};
+  // Sellers stand at their items: hand-in and pickup are setup and teardown (#299)
+  const direct = !!features.directSale;
   const openText = t('wizard.summary.open');
 
   const start = localTime(values.startDate);
@@ -174,13 +176,22 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
     return `${label} ${last ? t('time.range', { ns: 'common', start: first, end: last }) : first}`;
   };
   const logisticsText = [
-    span(t('wizard.summary.dropoff'), logistics.dropoffStart, logistics.dropoffEnd),
-    span(t('wizard.summary.pickup'), logistics.pickupStart, logistics.pickupEnd),
+    span(
+      t(direct ? 'wizard.summary.setup' : 'wizard.summary.dropoff'),
+      logistics.dropoffStart,
+      logistics.dropoffEnd
+    ),
+    span(
+      t(direct ? 'wizard.summary.teardown' : 'wizard.summary.pickup'),
+      logistics.pickupStart,
+      logistics.pickupEnd
+    ),
   ]
     .filter(Boolean)
     .join(' · ');
 
-  const step = (id: SummaryStep) => t(`wizard.short.${id}`);
+  const step = (id: SummaryStep) =>
+    t(`wizard.short.${id === 'logistics' && direct ? 'logisticsDirect' : id}`);
   const edit = (id: SummaryStep) => ({
     onEdit: () => onEdit(id),
     editLabel: t('wizard.summary.edit', { step: step(id) }),
@@ -239,7 +250,7 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
         </Fact>
         <Fact
           icon={<Truck className="h-4 w-4" />}
-          label={t('wizard.summary.logistics')}
+          label={t(direct ? 'wizard.summary.logisticsDirect' : 'wizard.summary.logistics')}
           open={!logisticsText}
           {...edit('logistics')}
         >

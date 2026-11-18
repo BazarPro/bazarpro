@@ -240,6 +240,8 @@ pub fn day_before_info(
 ) -> Content {
     let logistics = event.seller_logistics.clone().unwrap_or_default();
     let dropoff = range(t, logistics.dropoff_start, logistics.dropoff_end);
+    // Direct sale: sellers stand at their items, so it is setup, not hand-in (#299)
+    let direct = event.resolved_features().direct_sale;
     let mut details = vec![
         Detail {
             label: t.t("reminder.bazaar", &[]),
@@ -252,7 +254,14 @@ pub fn day_before_info(
     ];
     if let Some(dropoff) = &dropoff {
         details.push(Detail {
-            label: t.t("reminder.dropoff", &[]),
+            label: t.t(
+                if direct {
+                    "reminder.setup"
+                } else {
+                    "reminder.dropoff"
+                },
+                &[],
+            ),
             value: dropoff.clone(),
         });
     }
@@ -268,9 +277,23 @@ pub fn day_before_info(
     });
     let mut paragraphs = vec![t.count("reminder.dayBefore.items", item_count, &[])];
     if let Some(dropoff) = &dropoff {
-        paragraphs.push(t.t("reminder.dayBefore.dropoff", &[("dropoff", dropoff)]));
+        paragraphs.push(t.t(
+            if direct {
+                "reminder.dayBefore.setup"
+            } else {
+                "reminder.dayBefore.dropoff"
+            },
+            &[("dropoff", dropoff)],
+        ));
     }
-    paragraphs.push(t.t("reminder.dayBefore.digitalId", &[]));
+    paragraphs.push(t.t(
+        if direct {
+            "reminder.dayBefore.digitalIdSetup"
+        } else {
+            "reminder.dayBefore.digitalId"
+        },
+        &[],
+    ));
     paragraphs.extend(note_paragraphs(event));
     paragraphs.extend(contact_paragraph(event, t));
     Content {
@@ -294,6 +317,8 @@ pub fn pickup_reminder(
 ) -> Content {
     let logistics = event.seller_logistics.clone().unwrap_or_default();
     let pickup = range(t, logistics.pickup_start, logistics.pickup_end);
+    // Direct sale: sellers take down their stand and take the rest back (#299)
+    let direct = event.resolved_features().direct_sale;
     let mut listed = unsold
         .iter()
         .take(MAX_LISTED_ITEMS)
@@ -310,12 +335,23 @@ pub fn pickup_reminder(
     let euro = notifications::format_euro(payout.abs());
     let mut paragraphs = vec![t.count("reminder.pickup.over", sold, &[("event", &event.title)])];
     if !unsold.is_empty() {
-        paragraphs.push(t.t("reminder.pickup.toPickUp", &[("items", &listed)]));
+        paragraphs.push(t.t(
+            if direct {
+                "reminder.pickup.toTakeBack"
+            } else {
+                "reminder.pickup.toPickUp"
+            },
+            &[("items", &listed)],
+        ));
     }
     let place = event.place();
     paragraphs.push(match &pickup {
         Some(pickup) => t.t(
-            "reminder.pickup.when",
+            if direct {
+                "reminder.pickup.whenTeardown"
+            } else {
+                "reminder.pickup.when"
+            },
             &[("pickup", pickup), ("location", &place)],
         ),
         None => t.t("reminder.pickup.where", &[("location", &place)]),
@@ -323,8 +359,22 @@ pub fn pickup_reminder(
     paragraphs.extend(note_paragraphs(event));
     paragraphs.extend(contact_paragraph(event, t));
     Content {
-        subject: t.t("reminder.pickup.subject", &[("event", &event.title)]),
-        heading: t.t("reminder.pickup.heading", &[]),
+        subject: t.t(
+            if direct {
+                "reminder.pickup.subjectTeardown"
+            } else {
+                "reminder.pickup.subject"
+            },
+            &[("event", &event.title)],
+        ),
+        heading: t.t(
+            if direct {
+                "reminder.pickup.headingTeardown"
+            } else {
+                "reminder.pickup.heading"
+            },
+            &[],
+        ),
         paragraphs,
         details: vec![
             Detail {
@@ -343,7 +393,14 @@ pub fn pickup_reminder(
                 value: euro,
             },
             Detail {
-                label: t.t("reminder.pickup.unsold", &[]),
+                label: t.t(
+                    if direct {
+                        "reminder.pickup.unsoldTeardown"
+                    } else {
+                        "reminder.pickup.unsold"
+                    },
+                    &[],
+                ),
                 value: t.count("common.items", unsold.len() as i64, &[]),
             },
         ],

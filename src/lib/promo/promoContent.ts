@@ -52,7 +52,12 @@ export interface PromoEvent {
   services: string[];
   commission: number;
   categoryLabels: string[];
-  features?: { labelMark?: string; intakeFee?: number; maxItemsPerSeller?: number };
+  features?: {
+    labelMark?: string;
+    intakeFee?: number;
+    maxItemsPerSeller?: number;
+    directSale?: boolean;
+  };
   sellerLogistics?: {
     dropoffStart?: number;
     dropoffEnd?: number;
@@ -104,7 +109,9 @@ export function promoPlaceLine(event: PromoEvent): string {
 }
 
 function blockTexts(event: PromoEvent): Record<PromoBlockId, BlockText> {
-  const food = event.services.filter((s) => s !== 'Parkplatz' && s !== 'Skiservice');
+  const food = event.services.filter(
+    (s) => s !== 'Parkplatz' && s !== 'Skiservice' && s !== 'Fahrradcodierung'
+  );
   const offerLines = [
     event.categoryLabels.length > 0
       ? event.categoryLabels.join(' · ')
@@ -114,19 +121,24 @@ function blockTexts(event: PromoEvent): Record<PromoBlockId, BlockText> {
     offerLines.push(t('offer.food', { services: food.map(serviceLabel).join(', ') }));
   }
   if (event.services.includes('Skiservice')) offerLines.push(t('offer.skiService'));
+  if (event.services.includes('Fahrradcodierung')) offerLines.push(t('offer.bikeCoding'));
 
   const { dropoffStart, dropoffEnd, pickupStart, pickupEnd } = event.sellerLogistics ?? {};
   const max = event.features?.maxItemsPerSeller;
+  const direct = !!event.features?.directSale;
   const sellSteps = [
     t('sell.register'),
     max ? t('sell.itemsMax', { count: max }) : t('sell.items'),
     t('sell.labels'),
+    // Direct sale: sellers set up and take down their own stand (#299)
     dropoffStart
-      ? t('sell.dropoffAt', { time: timeRange(dropoffStart, dropoffEnd) })
-      : t('sell.dropoff'),
+      ? t(direct ? 'sell.setupAt' : 'sell.dropoffAt', {
+          time: timeRange(dropoffStart, dropoffEnd),
+        })
+      : t(direct ? 'sell.setup' : 'sell.dropoff'),
     pickupStart
-      ? t('sell.pickupAt', { time: timeRange(pickupStart, pickupEnd) })
-      : t('sell.pickup'),
+      ? t(direct ? 'sell.teardownAt' : 'sell.pickupAt', { time: timeRange(pickupStart, pickupEnd) })
+      : t(direct ? 'sell.teardown' : 'sell.pickup'),
   ];
   const fee = event.features?.intakeFee;
   const terms = fee
