@@ -16,8 +16,13 @@ export interface EventType {
   examplePrices: [number, number, number];
   commission: number;
   features: StoredEventFeatures;
-  /** Categories preselected by name, e.g. all bike categories */
+  /**
+   * Categories preselected by name, e.g. all bike categories. A main category that matches
+   * brings its sub-categories along.
+   */
   categoryMatch?: RegExp;
+  /** Not preselected, even below a main category that matches, e.g. women's clothes */
+  categoryExclude?: RegExp;
 }
 
 const BIKES = /fahrr|räder|\brad\b|rad$|bike|pedelec|\bmtb\b|bmx/i;
@@ -44,7 +49,8 @@ export const EVENT_TYPES: EventType[] = [
       labelMark: 'universal',
       priceOnLabel: false,
     },
-    categoryMatch: new RegExp(`kind|baby|spiel|kleid|schuh|buch|${KIDS_VEHICLES.source}`, 'i'),
+    categoryMatch: new RegExp(`kind|baby|spiel|kleid|schuh|b[uü]ch|${KIDS_VEHICLES.source}`, 'i'),
+    categoryExclude: /damen|herren|roman|sachb|kochb|comic|video|konsole/i,
   },
   {
     // Second-hand for everyone, e.g. a women's clothing bazaar or a flea market
@@ -65,7 +71,7 @@ export const EVENT_TYPES: EventType[] = [
       labelMark: 'universal',
       priceOnLabel: false,
     },
-    categoryMatch: /kleid|schuh|accessoir|haushalt|buch|spiel/i,
+    categoryMatch: /kleid|schuh|accessoir|haushalt|b[uü]ch|spiel/i,
   },
   {
     // Fewer, pricier items: a negotiable price and questions about size and condition
@@ -107,10 +113,33 @@ export const EVENT_TYPES: EventType[] = [
       priceOnLabel: true,
     },
     categoryMatch: new RegExp(`${BIKES.source}|${KIDS_VEHICLES.source}`, 'i'),
+    // Pushed, not ridden
+    categoryExclude: /kinderwagen|buggy/i,
   },
 ];
 
 /** The type of a draft or of the picker; drafts from before may name a removed one. */
 export function findEventType(id: string | undefined): EventType | undefined {
   return EVENT_TYPES.find((type) => type.id === id);
+}
+
+/**
+ * The categories a kind of bazaar preselects: those whose name matches, and the
+ * sub-categories of a main category that matches, unless the kind excludes them.
+ */
+export function preselectedCategories(
+  type: Pick<EventType, 'categoryMatch' | 'categoryExclude'>,
+  categories: readonly { _id: string; label: string; parentCategory?: string }[]
+): string[] {
+  const { categoryMatch: match, categoryExclude: exclude } = type;
+  if (!match) return [];
+  const byId = new Map(categories.map((category) => [category._id, category]));
+  return categories
+    .filter((category) => {
+      if (exclude?.test(category.label)) return false;
+      if (match.test(category.label)) return true;
+      const parent = category.parentCategory ? byId.get(category.parentCategory) : undefined;
+      return !!parent && !parent.parentCategory && match.test(parent.label);
+    })
+    .map((category) => category._id);
 }

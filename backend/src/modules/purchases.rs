@@ -523,7 +523,7 @@ async fn send_receipt(
 ) -> AppResult<()> {
     let title = event.title.clone();
     if let [item] = items {
-        let fields = fields_of(ctx.conn(), item.product.product_category).await?;
+        let fields = &fields_of(ctx.conn(), item.product.product_category).await?;
         let attributes =
             category_fields::describe_attributes(fields, item.product.attributes.as_ref());
         let (product, total, path) = (
@@ -786,7 +786,7 @@ async fn get_checkout_item(
         .await?
         .is_some_and(|seller| seller.payout_received);
     let list_price = current_list_price(&product, &relation);
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     let minimum_price = product
         .minimum_price
         .filter(|minimum| event.resolved_features().minimum_price && *minimum < list_price);
@@ -885,7 +885,7 @@ async fn get_checkout_snapshot(ctx: &mut Ctx, args: EventIdArgs) -> AppResult<Ch
                     .filter(|minimum| minimum_allowed && *minimum < list_price),
                 seller_paid_out: paid_out.contains(&product.vendor_id),
                 attributes: category_fields::describe_attributes(
-                    fields,
+                    &fields,
                     product.attributes.as_ref(),
                 ),
                 internal_note: relation.internal_note,

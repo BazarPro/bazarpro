@@ -66,7 +66,7 @@ async fn generate_upload_url(ctx: &mut Ctx, _: NoArgs) -> AppResult<String> {
 /// Rejects values longer than their field allows, e.g. sizes that would not fit on the
 /// labels. Only sizes are that short; other fields are cut at 120 characters.
 pub(super) fn check_attribute_lengths(
-    fields: &'static [category_fields::CategoryField],
+    fields: &[category_fields::CategoryField],
     attributes: Option<&BTreeMap<String, String>>,
 ) -> AppResult<()> {
     match category_fields::too_long(fields, attributes) {
@@ -88,7 +88,7 @@ pub(super) async fn normalize_extras(
     attributes: Option<&BTreeMap<String, String>>,
     minimum_price: Option<f64>,
 ) -> AppResult<(Option<BTreeMap<String, String>>, Option<Decimal>)> {
-    let fields = fields_of(conn, category).await?;
+    let fields = &fields_of(conn, category).await?;
     check_attribute_lengths(fields, attributes)?;
     let minimum = match minimum_price {
         Some(minimum) if !minimum.is_finite() || minimum < 0.0 => {
@@ -269,7 +269,7 @@ async fn own_unlocked_product(ctx: &mut Ctx, id: Uuid) -> AppResult<Product> {
 /// An edit must not remove what an upcoming event of the item requires, e.g. its last
 /// photo or a required field like the frame number.
 async fn assert_ready_for_upcoming_events(ctx: &mut Ctx, product: &Product) -> AppResult<()> {
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     let now = Utc::now();
     for relation in relations_of_product(ctx.conn(), product.id).await? {
         let Some(event) = docs::event(ctx.conn(), relation.event_id).await? else {
@@ -413,7 +413,7 @@ struct AttributesArgs {
 /// Fills in category fields, e.g. the frame number an event requires; keeps the others.
 async fn add_product_attributes(ctx: &mut Ctx, args: AttributesArgs) -> AppResult<()> {
     let product = own_unlocked_product(ctx, args.product_id.0).await?;
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     check_attribute_lengths(fields, Some(&args.attributes))?;
     let mut merged: BTreeMap<String, String> = product
         .attributes
@@ -764,7 +764,7 @@ async fn get_product(ctx: &mut Ctx, args: ProductArgs) -> AppResult<Option<Produ
             return Ok(None);
         }
     }
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     let listing = pick_active_listing(ctx.conn(), &relations, &mut events, now).await?;
     let mut indexable = relations.is_empty();
     for relation in relations.iter().filter(|r| r.status != "rejected") {

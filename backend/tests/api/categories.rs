@@ -168,7 +168,7 @@ async fn parallel_mutations_are_serialized_and_retried(db: PgPool) {
             .fetch_one(&db)
             .await
             .unwrap();
-    assert_eq!((count, distinct), (22, 22));
+    assert_eq!((count, distinct), (72, 72));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -189,9 +189,9 @@ async fn the_start_of_the_server_only_fills_an_empty_table(db: PgPool) {
 
     // A new instance gets the defaults, and a second start adds nothing
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 22);
+    assert_eq!(labels().await.len(), 72);
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 22);
+    assert_eq!(labels().await.len(), 72);
 
     // An instance with categories of its own does not get the defaults back
     sqlx::query("DELETE FROM categories WHERE label <> 'Kleidung'")
@@ -512,4 +512,76 @@ async fn feature_flags(db: PgPool) {
         all.body["value"]["is_create_products_on_signup_enabled"],
         false
     );
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn admins_pick_the_extra_fields(db: PgPool) {
+    let app = app(&db).await;
+    let admin = app.user_session("admin@example.org", true).await;
+    let create = |args: Value| {
+        let (app, admin) = (&app, &admin);
+        async move {
+            app.mutation("categories.createCategory", args, Some(admin))
+                .await
+        }
+    };
+    let fields_of = |label: &'static str| {
+        let app = &app;
+        async move {
+            let list = app
+                .query("categories.getAllCategories", json!({}), None)
+                .await;
+            list.body["value"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["label"] == label)
+                .unwrap()
+                .get("fields")
+                .cloned()
+        }
+    };
+
+    // Picked fields are stored in the order of the list, without doubles
+    let created =
+        create(json!({ "label": "Kinderwagen", "fields": ["color", "brand", "color"] })).await;
+    assert_eq!(created.status, StatusCode::OK, "{:?}", created.body);
+    assert_eq!(
+        fields_of("Kinderwagen").await,
+        Some(json!(["brand", "color"]))
+    );
+    // Without a choice the name decides, as before
+    create(json!({ "label": "Fahrräder" })).await;
+    assert_eq!(fields_of("Fahrräder").await, None);
+
+    assert_eq!(
+        create(json!({ "label": "Mäntel", "fields": ["clothingSize", "shoeSize"] }))
+            .await
+            .body["code"],
+        "category.oneSize"
+    );
+    assert_eq!(
+        create(json!({ "label": "Mäntel", "fields": ["height"] }))
+            .await
+            .body["code"],
+        "category.unknownField"
+    );
+
+    // An empty choice means none at all; leaving it out goes back to the name
+    let id = created.body["value"].as_str().unwrap().to_owned();
+    let update = |fields: Option<Value>| {
+        let (app, admin, id) = (&app, &admin, id.clone());
+        let mut args = json!({ "categoryId": id, "label": "Kinderwagen", "translations": {} });
+        if let Some(fields) = fields {
+            args["fields"] = fields;
+        }
+        async move {
+            app.mutation("categories.updateCategory", args, Some(admin))
+                .await
+        }
+    };
+    assert_eq!(update(Some(json!([]))).await.status, StatusCode::OK);
+    assert_eq!(fields_of("Kinderwagen").await, Some(json!([])));
+    update(None).await;
+    assert_eq!(fields_of("Kinderwagen").await, None);
 }

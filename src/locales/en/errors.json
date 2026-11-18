@@ -41,6 +41,8 @@
     "inUse": "This category is still in use and cannot be deleted.",
     "parentNotMain": "A sub-category can only be placed under a main category.",
     "hasSubcategories": "This category has sub-categories of its own and therefore cannot become a sub-category.",
+    "unknownField": "This extra field does not exist.",
+    "oneSize": "Please choose at most one kind of size.",
     "lastOne": "The last category cannot be deleted."
   },
   "common": {

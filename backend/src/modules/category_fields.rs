@@ -1,5 +1,6 @@
 //! Extra item fields per category, e.g. frame number for bikes.
-//! Category names are free text, so the fields are matched by keywords.
+//! Admins pick them from a fixed list per category; otherwise they follow the name, matched
+//! by keywords, since category names are free text.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::LazyLock;
@@ -65,6 +66,42 @@ const ELECTRONICS: &[CategoryField] = &[
     field("model", "model", "Modell"),
 ];
 
+/// The fields an admin can pick for a category, by `text`; one size at most, since all
+/// sizes share the key. Same list as SELECTABLE_FIELDS in src/shared/categoryFields.ts.
+pub const SELECTABLE: &[CategoryField] = &[
+    field("frameNumber", "frameNumber", "Rahmennummer"),
+    field("frameSize", "frameSize", "Rahmengröße"),
+    field("wheelSize", "wheelSize", "Laufradgröße"),
+    field("brand", "brand", "Marke"),
+    field("color", "color", "Farbe"),
+    size("clothingSize", "Größe"),
+    size("shoeSize", "Größe (EU)"),
+    size("sportSize", "Größe / Länge"),
+    field("model", "model", "Modell"),
+];
+
+fn selectable(id: &str) -> Option<CategoryField> {
+    SELECTABLE.iter().find(|field| field.text == id).copied()
+}
+
+/// The fields an admin picked, in the order of the list; the error code when one is
+/// unknown or two share a key (two sizes).
+pub fn checked_selection(ids: &[String]) -> Result<Vec<String>, &'static str> {
+    let mut keys = HashSet::new();
+    let mut chosen = HashSet::new();
+    for id in ids {
+        let field = selectable(id).ok_or("category.unknownField")?;
+        if chosen.insert(field.text) && !keys.insert(field.key) {
+            return Err("category.oneSize");
+        }
+    }
+    Ok(SELECTABLE
+        .iter()
+        .filter(|field| chosen.contains(field.text))
+        .map(|field| field.text.to_owned())
+        .collect())
+}
+
 struct Rule {
     matches: Regex,
     exclude: Option<Regex>,
@@ -113,9 +150,9 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
 /// Fields an organizer can make required, one per key.
 pub fn requirable_fields() -> Vec<CategoryField> {
     let mut seen = HashSet::new();
-    RULES
+    SELECTABLE
         .iter()
-        .flat_map(|rule| rule.fields.iter().copied())
+        .copied()
         .filter(|field| seen.insert(field.key))
         .collect()
 }
@@ -141,10 +178,13 @@ pub struct CategoryRef {
     pub id: Uuid,
     pub label: String,
     pub parent: Option<Uuid>,
+    /// Picked by an admin; None: by the name
+    pub fields: Option<Vec<String>>,
 }
 
-/// Fields of a category; sub-categories without their own set inherit the parent's.
-pub fn category_fields(category: Uuid, categories: &[CategoryRef]) -> &'static [CategoryField] {
+/// Fields of a category: the ones an admin picked, else those of its name; sub-categories
+/// without either inherit the parent's.
+pub fn category_fields(category: Uuid, categories: &[CategoryRef]) -> Vec<CategoryField> {
     let by_id: HashMap<Uuid, &CategoryRef> = categories.iter().map(|c| (c.id, c)).collect();
     let mut seen = HashSet::new();
     let mut current = by_id.get(&category).copied();
@@ -152,30 +192,44 @@ pub fn category_fields(category: Uuid, categories: &[CategoryRef]) -> &'static [
         if !seen.insert(cat.id) {
             break;
         }
+        if let Some(ids) = &cat.fields {
+            return ids.iter().filter_map(|id| selectable(id)).collect();
+        }
         if let Some(fields) = fields_for_label(&cat.label) {
-            return fields;
+            return fields.to_vec();
         }
         current = cat.parent.and_then(|parent| by_id.get(&parent).copied());
     }
-    &[]
+    Vec::new()
 }
 
 pub async fn load_categories(conn: &mut sqlx::PgConnection) -> sqlx::Result<Vec<CategoryRef>> {
-    let rows: Vec<(Uuid, String, Option<Uuid>)> =
-        sqlx::query_as("SELECT id, label, parent_id FROM categories")
-            .fetch_all(conn)
-            .await?;
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        id: Uuid,
+        label: String,
+        parent_id: Option<Uuid>,
+        fields: Option<Vec<String>>,
+    }
+    let rows: Vec<Row> = sqlx::query_as("SELECT id, label, parent_id, fields FROM categories")
+        .fetch_all(conn)
+        .await?;
     Ok(rows
         .into_iter()
-        .map(|(id, label, parent)| CategoryRef { id, label, parent })
+        .map(|row| CategoryRef {
+            id: row.id,
+            label: row.label,
+            parent: row.parent_id,
+            fields: row.fields,
+        })
         .collect())
 }
 
 /// The first field of the category whose trimmed value is longer than allowed.
-pub fn too_long(
-    fields: &'static [CategoryField],
+pub fn too_long<'a>(
+    fields: &'a [CategoryField],
     attributes: Option<&BTreeMap<String, String>>,
-) -> Option<&'static CategoryField> {
+) -> Option<&'a CategoryField> {
     let attributes = attributes?;
     fields.iter().find(|field| {
         attributes
@@ -307,6 +361,7 @@ mod tests {
                 id: id(c.label),
                 label: c.label.into(),
                 parent: c.parent.map(id),
+                fields: None,
             })
             .collect();
         for category in defaults {
@@ -357,11 +412,13 @@ mod tests {
                 id: bikes,
                 label: "Fahrräder".into(),
                 parent: None,
+                fields: None,
             },
             CategoryRef {
                 id: kids,
                 label: "Für Kinder".into(),
                 parent: Some(bikes),
+                fields: None,
             },
         ];
         assert_eq!(category_fields(kids, &categories).len(), 5);
@@ -377,16 +434,19 @@ mod tests {
                 id: bikes,
                 label: "Fahrräder".into(),
                 parent: None,
+                fields: None,
             },
             CategoryRef {
                 id: trailers,
                 label: "Fahrradanhänger".into(),
                 parent: Some(bikes),
+                fields: None,
             },
             CategoryRef {
                 id: clothes,
                 label: "Fahrradbekleidung".into(),
                 parent: Some(bikes),
+                fields: None,
             },
         ];
         assert!(category_fields(trailers, &categories).is_empty());
@@ -395,6 +455,60 @@ mod tests {
             .map(|f| f.key)
             .collect();
         assert_eq!(keys, ["size", "brand", "color"]);
+    }
+
+    #[test]
+    fn admins_pick_fields_that_override_the_name() {
+        let pick = |ids: &[&str]| {
+            checked_selection(&ids.iter().map(|id| id.to_string()).collect::<Vec<_>>())
+        };
+        assert_eq!(
+            pick(&["model", "brand", "brand"]),
+            Ok(vec!["brand".into(), "model".into()])
+        );
+        assert_eq!(pick(&["shoeSize", "sportSize"]), Err("category.oneSize"));
+        assert_eq!(pick(&["bikeBrand"]), Err("category.unknownField"));
+        // Every field a name can bring can be picked as well, by its key
+        for rule in RULES.iter() {
+            for field in rule.fields {
+                assert!(
+                    SELECTABLE.iter().any(|s| s.key == field.key),
+                    "{}",
+                    field.key
+                );
+            }
+        }
+
+        let (bikes, trailers, kids) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+        let categories = vec![
+            CategoryRef {
+                id: bikes,
+                label: "Räder".into(),
+                parent: None,
+                fields: Some(vec!["frameNumber".into(), "color".into()]),
+            },
+            CategoryRef {
+                id: trailers,
+                label: "Fahrradanhänger".into(),
+                parent: Some(bikes),
+                fields: Some(vec!["brand".into()]),
+            },
+            CategoryRef {
+                id: kids,
+                label: "Für Kinder".into(),
+                parent: Some(bikes),
+                fields: None,
+            },
+        ];
+        let keys = |id| -> Vec<_> {
+            category_fields(id, &categories)
+                .iter()
+                .map(|f| f.key)
+                .collect()
+        };
+        assert_eq!(keys(bikes), ["frameNumber", "color"]);
+        assert_eq!(keys(trailers), ["brand"]);
+        assert_eq!(keys(kids), ["frameNumber", "color"]);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EVENT_TYPES, findEventType } from './eventTypes';
+import { EVENT_TYPES, findEventType, preselectedCategories } from './eventTypes';
 import { resolveEventFeatures, showsPriceOnLabel } from '../shared/eventFeatures';
 import { REQUIRABLE_FIELD_KEYS } from '../shared/categoryFields';
 import i18n from '../i18n';
@@ -80,6 +80,37 @@ describe('event types', () => {
       expect(match('kidsBazaar', label), label).toBe(false);
     }
     expect(match('bikeExchange', 'Einrichtung')).toBe(false);
+  });
+
+  it('a main category brings its sub-categories, unless the kind excludes them', () => {
+    const tree = [
+      { _id: 'clothes', label: 'Kleidung' },
+      { _id: 'kidsClothes', label: 'Kinderkleidung', parentCategory: 'clothes' },
+      { _id: 'women', label: 'Damenkleidung', parentCategory: 'clothes' },
+      { _id: 'maternity', label: 'Umstandsmode', parentCategory: 'clothes' },
+      { _id: 'books', label: 'Bücher' },
+      { _id: 'novels', label: 'Romane', parentCategory: 'books' },
+      { _id: 'kidsBooks', label: 'Kinderbücher', parentCategory: 'books' },
+      { _id: 'bikes', label: 'Fahrräder' },
+      { _id: 'cargo', label: 'Lastenräder', parentCategory: 'bikes' },
+      { _id: 'vehicles', label: 'Kinderfahrzeuge' },
+      { _id: 'scooters', label: 'Roller & Scooter', parentCategory: 'vehicles' },
+      { _id: 'prams', label: 'Kinderwagen & Buggys', parentCategory: 'vehicles' },
+      { _id: 'electronics', label: 'Elektronik' },
+      { _id: 'games', label: 'Konsolen & Videospiele', parentCategory: 'electronics' },
+    ];
+    const chosen = (id: string) => preselectedCategories(findEventType(id)!, tree);
+    expect(chosen('kidsBazaar')).toEqual([
+      'clothes',
+      'kidsClothes',
+      'maternity',
+      'books',
+      'kidsBooks',
+      'vehicles',
+      'scooters',
+      'prams',
+    ]);
+    expect(chosen('bikeExchange')).toEqual(['bikes', 'cargo', 'vehicles', 'scooters']);
   });
 
   it('the bike sale follows the guide: frame number required and an intake fee', () => {

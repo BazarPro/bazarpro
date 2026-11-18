@@ -27,6 +27,15 @@ const kids = {
 const mutations: Record<string, ReturnType<typeof vi.fn>> = {};
 
 beforeEach(() => {
+  // jsdom has no ResizeObserver; switch and checkbox use it
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
   for (const name of Object.keys(mutations)) delete mutations[name];
   vi.mocked(useQuery).mockReturnValue([bikes, kids, misc] as never);
   vi.mocked(useMutation).mockImplementation(((fn: unknown) => {
@@ -119,7 +128,7 @@ describe('AdminCategoriesPage', () => {
     expect(options).toEqual(['none', 'bikes']);
     fireEvent.change(parent, { target: { value: 'bikes' } });
     // Without fields of its own it takes those of the main category
-    expect(screen.getByText(/Zusatzfelder mit diesem Namen: Rahmennummer/)).toBeInTheDocument();
+    expect(screen.getByText(/Zusatzfelder: Rahmennummer/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     await waitFor(() =>
       expect(mutations['categories.updateCategory']).toHaveBeenCalledWith({
@@ -127,6 +136,7 @@ describe('AdminCategoriesPage', () => {
         label: 'Sonstiges',
         translations: { en: undefined },
         parentCategory: 'bikes',
+        fields: undefined,
       })
     );
   });
@@ -137,5 +147,37 @@ describe('AdminCategoriesPage', () => {
     fireEvent.click(within(row('Fahrräder')).getByRole('button', { name: 'Bearbeiten' }));
     expect(screen.getByText(/bleibt deshalb Hauptkategorie/)).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Hauptkategorie' })).toBeDisabled();
+  });
+
+  it('lets admins pick the extra fields instead of the name', async () => {
+    render(<AdminCategoriesPage />);
+    fireEvent.click(within(row('Sonstiges')).getByRole('button', { name: 'Bearbeiten' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Zusatzfelder selbst wählen' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Marke' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Größe (Kleidung)' }));
+    // One size at most: the shoe size replaces the clothing size
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Größe (Schuhe, EU)' }));
+    expect(screen.getByRole('checkbox', { name: 'Größe (Kleidung)' })).not.toBeChecked();
+    expect(screen.getByText('Zusatzfelder: Marke, Größe (EU)')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() =>
+      expect(mutations['categories.updateCategory']).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: 'misc', fields: ['brand', 'shoeSize'] })
+      )
+    );
+  });
+
+  it('starts the choice from the fields of the name and marks picked ones', () => {
+    vi.mocked(useQuery).mockReturnValue([bikes, kids, { ...misc, fields: ['model'] }] as never);
+    render(<AdminCategoriesPage />);
+    expect(within(row('Sonstiges')).getByText('Selbst gewählt')).toBeInTheDocument();
+    expect(within(row('Sonstiges')).getByText('Modell')).toBeInTheDocument();
+
+    fireEvent.click(within(row('Fahrräder')).getByRole('button', { name: 'Bearbeiten' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Zusatzfelder selbst wählen' }));
+    expect(screen.getByRole('checkbox', { name: 'Rahmennummer' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Marke' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Modell' })).not.toBeChecked();
   });
 });

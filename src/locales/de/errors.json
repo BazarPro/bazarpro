@@ -41,6 +41,8 @@
     "inUse": "Diese Kategorie wird noch verwendet und kann nicht gelöscht werden.",
     "parentNotMain": "Eine Unterkategorie kann nur unter einer Hauptkategorie stehen.",
     "hasSubcategories": "Diese Kategorie hat selbst Unterkategorien und kann deshalb keine Unterkategorie werden.",
+    "unknownField": "Dieses Zusatzfeld gibt es nicht.",
+    "oneSize": "Bitte wähle höchstens eine Art von Größe.",
     "lastOne": "Die letzte Kategorie kann nicht gelöscht werden."
   },
   "common": {

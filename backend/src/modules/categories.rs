@@ -9,6 +9,7 @@ use sqlx::types::Json;
 use uuid::Uuid;
 
 use super::access::require_admin;
+use super::category_fields;
 use crate::error::{AppError, AppResult};
 use crate::realtime::Topic;
 use crate::register;
@@ -64,6 +65,8 @@ pub struct Category {
     #[serde(with = "ms")]
     pub updated_at: DateTime<Utc>,
     pub translations: Json<Translations>,
+    /// Extra fields an admin picked (category_fields::SELECTABLE); unset: by the name
+    pub fields: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -72,6 +75,14 @@ struct CreateArgs {
     label: String,
     parent_category: Option<Id>,
     translations: Option<Translations>,
+    fields: Option<Vec<String>>,
+}
+
+/// The extra fields an admin picked, checked; None leaves them to the name.
+fn checked_fields(fields: Option<Vec<String>>) -> AppResult<Option<Vec<String>>> {
+    fields
+        .map(|ids| category_fields::checked_selection(&ids).map_err(AppError::bad_request))
+        .transpose()
 }
 
 fn clean_label(label: &str) -> AppResult<String> {
@@ -93,6 +104,7 @@ async fn find_by_label(ctx: &mut Ctx, label: &str) -> sqlx::Result<Option<Uuid>>
 async fn create_category(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     require_admin(ctx).await?;
     let label = clean_label(&args.label)?;
+    let fields = checked_fields(args.fields)?;
     if let Some(existing) = find_by_label(ctx, &label).await? {
         return Ok(existing);
     }
@@ -101,11 +113,13 @@ async fn create_category(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
         check_parent(ctx, None, parent).await?;
     }
     let id = sqlx::query_scalar(
-        "INSERT INTO categories (label, parent_id, translations) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO categories (label, parent_id, translations, fields) VALUES ($1, $2, $3, $4)
+         RETURNING id",
     )
     .bind(&label)
     .bind(parent)
     .bind(Json(args.translations.unwrap_or_default().trimmed()))
+    .bind(fields)
     .fetch_one(ctx.conn())
     .await?;
     ctx.touch(TOPIC);
@@ -121,6 +135,9 @@ struct UpdateArgs {
     /// The main category; none makes it a main category itself
     #[serde(default)]
     parent_category: Option<Id>,
+    /// The extra fields; none leaves them to the name
+    #[serde(default)]
+    fields: Option<Vec<String>>,
 }
 
 /// Categories have one level of sub-categories, so lists stay short and grouped: the parent
@@ -154,6 +171,7 @@ async fn check_parent(ctx: &mut Ctx, category: Option<Uuid>, parent: Uuid) -> Ap
 async fn update_category(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
     require_admin(ctx).await?;
     let label = clean_label(&args.label)?;
+    let fields = checked_fields(args.fields)?;
     let taken: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM categories WHERE lower(label) = lower($1) AND id <> $2)",
     )
@@ -169,13 +187,15 @@ async fn update_category(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
         check_parent(ctx, Some(args.category_id.0), parent).await?;
     }
     let updated = sqlx::query(
-        "UPDATE categories SET label = $2, translations = $3, parent_id = $4, updated_at = now()
+        "UPDATE categories SET label = $2, translations = $3, parent_id = $4, fields = $5,
+           updated_at = now()
          WHERE id = $1",
     )
     .bind(args.category_id.0)
     .bind(&label)
     .bind(Json(args.translations.trimmed()))
     .bind(parent)
+    .bind(fields)
     .execute(ctx.conn())
     .await?;
     if updated.rows_affected() == 0 {
@@ -239,7 +259,7 @@ async fn list_for_admin(ctx: &mut Ctx, _: NoArgs) -> AppResult<Vec<AdminCategory
     require_admin(ctx).await?;
     ctx.read(TOPIC);
     Ok(sqlx::query_as(
-        "SELECT c.id, c.created_at, c.label, c.parent_id, c.updated_at, c.translations,
+        "SELECT c.id, c.created_at, c.label, c.parent_id, c.updated_at, c.translations, c.fields,
            (SELECT count(*) FROM products p WHERE p.category_id = c.id) AS product_count,
            (SELECT count(*) FROM event_categories e WHERE e.category_id = c.id) AS event_count,
            (SELECT count(*) FROM categories s WHERE s.parent_id = c.id) AS child_count
@@ -264,7 +284,7 @@ fn same_for_everybody<'a>(
 async fn get_all_categories(ctx: &mut Ctx, _: NoArgs) -> AppResult<Vec<Category>> {
     ctx.read(TOPIC);
     Ok(sqlx::query_as(
-        "SELECT c.id, c.created_at, c.label, c.parent_id, c.updated_at, c.translations
+        "SELECT c.id, c.created_at, c.label, c.parent_id, c.updated_at, c.translations, c.fields
          FROM categories c ORDER BY c.created_at",
     )
     .fetch_all(ctx.conn())
@@ -324,10 +344,26 @@ const fn sub(parent: &'static str, label: &'static str, en: &'static str) -> Def
 /// The default categories, main categories before their sub-categories; adds the missing
 /// ones, safe to run repeatedly: `bazarpro-backend run categories.seedCategories`.
 /// Same tree as migration 0032.
-pub const DEFAULT_CATEGORIES: [DefaultCategory; 22] = [
+pub const DEFAULT_CATEGORIES: [DefaultCategory; 72] = [
     main("Kleidung", "Clothing"),
+    sub("Kleidung", "Babykleidung", "Baby clothes"),
+    sub("Kleidung", "Kinderkleidung", "Children's clothes"),
+    sub("Kleidung", "Damenkleidung", "Women's clothes"),
+    sub("Kleidung", "Herrenkleidung", "Men's clothes"),
+    sub("Kleidung", "Umstandsmode", "Maternity wear"),
     main("Schuhe", "Shoes"),
+    sub("Schuhe", "Kinderschuhe", "Children's shoes"),
+    sub("Schuhe", "Damenschuhe", "Women's shoes"),
+    sub("Schuhe", "Herrenschuhe", "Men's shoes"),
+    sub("Schuhe", "Sportschuhe", "Sports shoes"),
     main("Sport", "Sports"),
+    sub("Sport", "Ski & Snowboard", "Skis & snowboards"),
+    sub("Sport", "Skischuhe", "Ski boots"),
+    sub("Sport", "Sportbekleidung", "Sportswear"),
+    sub("Sport", "Helme & Protektoren", "Helmets & protectors"),
+    sub("Sport", "Ballsport", "Ball sports"),
+    sub("Sport", "Fitness", "Fitness"),
+    sub("Sport", "Camping & Outdoor", "Camping & outdoor"),
     main("Fahrräder", "Bikes"),
     sub("Fahrräder", "Kinderfahrräder", "Children's bikes"),
     sub("Fahrräder", "Lastenräder", "Cargo bikes"),
@@ -335,7 +371,6 @@ pub const DEFAULT_CATEGORIES: [DefaultCategory; 22] = [
     sub("Fahrräder", "Fahrradanhänger", "Bike trailers"),
     sub("Fahrräder", "Fahrrad-Kindersitze", "Child bike seats"),
     sub("Fahrräder", "Fahrradzubehör", "Bike accessories"),
-    // Ridden by children, sold at children's bazaars and bike sales (#300)
     main("Kinderfahrzeuge", "Children's vehicles"),
     sub("Kinderfahrzeuge", "Laufräder", "Balance bikes"),
     sub("Kinderfahrzeuge", "Roller & Scooter", "Scooters"),
@@ -345,13 +380,51 @@ pub const DEFAULT_CATEGORIES: [DefaultCategory; 22] = [
         "Bobbycars & Rutschfahrzeuge",
         "Ride-on toys",
     ),
+    sub("Kinderfahrzeuge", "Kinderwagen & Buggys", "Prams & buggies"),
     main("Elektronik", "Electronics"),
+    sub("Elektronik", "Handys & Smartphones", "Mobile phones"),
+    sub("Elektronik", "Computer & Tablets", "Computers & tablets"),
+    sub("Elektronik", "Foto & Kamera", "Photo & camera"),
+    sub(
+        "Elektronik",
+        "Konsolen & Videospiele",
+        "Consoles & video games",
+    ),
+    sub("Elektronik", "Audio & HiFi", "Audio & hi-fi"),
     main("Bücher", "Books"),
+    sub("Bücher", "Kinderbücher", "Children's books"),
+    sub("Bücher", "Romane", "Novels"),
+    sub("Bücher", "Sachbücher", "Non-fiction"),
+    sub("Bücher", "Kochbücher", "Cookbooks"),
+    sub("Bücher", "Comics", "Comics"),
     main("Spielzeug", "Toys"),
+    sub("Spielzeug", "Babyspielzeug", "Baby toys"),
+    sub("Spielzeug", "Puppen & Plüsch", "Dolls & plush"),
+    sub("Spielzeug", "Lego & Bausteine", "Lego & building blocks"),
+    sub("Spielzeug", "Brett- & Kartenspiele", "Board & card games"),
+    sub("Spielzeug", "Outdoor-Spielzeug", "Outdoor toys"),
     main("Möbel", "Furniture"),
+    sub("Möbel", "Kindermöbel", "Children's furniture"),
+    sub("Möbel", "Wohnzimmermöbel", "Living room"),
+    sub("Möbel", "Schlafzimmermöbel", "Bedroom"),
+    sub("Möbel", "Büromöbel", "Office furniture"),
+    sub("Möbel", "Gartenmöbel", "Garden furniture"),
     main("Haushalt", "Household"),
+    sub("Haushalt", "Küche & Kochen", "Kitchen & cooking"),
+    sub("Haushalt", "Dekoration", "Decoration"),
+    sub("Haushalt", "Heimtextilien", "Home textiles"),
+    sub("Haushalt", "Werkzeug & Garten", "Tools & garden"),
     main("Accessoires", "Accessories"),
+    sub("Accessoires", "Taschen & Rucksäcke", "Bags & backpacks"),
+    sub("Accessoires", "Schmuck & Uhren", "Jewellery & watches"),
+    sub("Accessoires", "Mützen & Schals", "Hats & scarves"),
+    sub("Accessoires", "Sonnenbrillen", "Sunglasses"),
+    sub("Accessoires", "Gürtel", "Belts"),
     main("Sonstiges", "Other"),
+    sub("Sonstiges", "Musikinstrumente", "Musical instruments"),
+    sub("Sonstiges", "Filme & Musik", "Films & music"),
+    sub("Sonstiges", "Basteln & Handarbeit", "Crafts & needlework"),
+    sub("Sonstiges", "Sammeln", "Collectibles"),
 ];
 
 async fn seed_categories(ctx: &mut Ctx, _: NoArgs) -> AppResult<&'static str> {

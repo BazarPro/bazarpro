@@ -14,7 +14,9 @@ import {
 } from '../../components/ui/dialog';
 import { EmptyState } from '../../components/ui/empty-state';
 import { Input } from '../../components/ui/input';
+import { Checkbox } from '../../components/ui/checkbox';
 import { Label } from '../../components/ui/label';
+import { Switch } from '../../components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -40,6 +42,8 @@ import { getUserFacingErrorMessage } from '../../lib/errors';
 import {
   getCategoryFields,
   getFieldsForLabel,
+  SELECTABLE_FIELDS,
+  selectableIds,
   type CategoryField,
 } from '../../shared/categoryFields';
 
@@ -49,6 +53,8 @@ const NO_PARENT = 'none';
 
 /** What the dialog works on: a category, or null for a new one. */
 type Editing = { category: AdminCategory | null };
+
+const fieldKey = (id: string) => SELECTABLE_FIELDS.find((field) => field.text === id)?.key;
 
 const fieldNames = (fields: CategoryField[]) =>
   fields.map((field) => categoryFieldText(field, 'label') ?? field.label);
@@ -93,17 +99,30 @@ function CategoryDialog({
     (other) => !other.parentCategory && other._id !== category?._id
   );
   const hasChildren = (category?.childCount ?? 0) > 0;
+  // Picked extra fields (ids of SELECTABLE_FIELDS); undefined: they follow the name
+  const [picked, setPicked] = useState<string[] | undefined>(category?.fields);
   const [saving, setSaving] = useState(false);
 
   const name = label.trim();
-  const fieldsFor = (candidate: string, parentId: string | undefined) =>
+  const byName = (candidate: string) =>
     getFieldsForLabel(candidate) ??
-    (parentId && parentId !== NO_PARENT ? getCategoryFields(parentId, categories) : []);
-  const fields = fieldNames(fieldsFor(name, parent));
+    (parent !== NO_PARENT ? getCategoryFields(parent, categories) : []);
+  const fields = fieldNames(
+    picked ? SELECTABLE_FIELDS.filter((field) => picked.includes(field.text)) : byName(name)
+  );
   const fieldsChange =
     !!category &&
     (category.productCount > 0 || category.eventCount > 0) &&
-    fields.join() !== fieldNames(fieldsFor(category.label, category.parentCategory)).join();
+    fields.join() !== fieldNames(getCategoryFields(category._id, categories)).join();
+
+  const pickOwn = (own: boolean) => setPicked(own ? selectableIds(byName(name)) : undefined);
+  const togglePicked = (field: CategoryField, on: boolean) =>
+    setPicked((current = []) =>
+      on
+        ? // One size at most: all sizes share the key
+          [...current.filter((id) => fieldKey(id) !== field.key), field.text]
+        : current.filter((id) => id !== field.text)
+    );
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -118,11 +137,9 @@ function CategoryDialog({
     try {
       const translations = { en: nameEn.trim() || undefined };
       const parentCategory = parent === NO_PARENT ? undefined : (parent as Id<'categories'>);
-      if (category) {
-        await update({ categoryId: category._id, label: name, translations, parentCategory });
-      } else {
-        await create({ label: name, translations, parentCategory });
-      }
+      const args = { label: name, translations, parentCategory, fields: picked };
+      if (category) await update({ categoryId: category._id, ...args });
+      else await create(args);
       toast.success(t('categories.saved'));
       onClose();
     } catch (error) {
@@ -149,17 +166,6 @@ function CategoryDialog({
               required
               autoFocus
             />
-            <p className="text-sm text-muted-foreground">{t('categories.fieldsHint')}</p>
-            {name && (
-              <p className="text-sm">
-                {fields.length
-                  ? t('categories.fieldsPreview', { fields: fields.join(', ') })
-                  : t('categories.noFieldsPreview')}
-              </p>
-            )}
-            {fieldsChange && (
-              <p className="text-sm text-destructive">{t('categories.fieldsChange')}</p>
-            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="category-parent">{t('categories.parent')}</Label>
@@ -191,6 +197,43 @@ function CategoryDialog({
             />
             <p className="text-sm text-muted-foreground">{t('categories.nameEnHint')}</p>
           </div>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">{t('categories.fields')}</legend>
+            <div className="flex items-center gap-2">
+              <Switch id="category-pick-fields" checked={!!picked} onCheckedChange={pickOwn} />
+              <Label htmlFor="category-pick-fields" className="font-normal">
+                {t('categories.pickFields')}
+              </Label>
+            </div>
+            {picked ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {SELECTABLE_FIELDS.map((field) => (
+                  <div key={field.text} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`category-field-${field.text}`}
+                      checked={picked.includes(field.text)}
+                      onCheckedChange={(on) => togglePicked(field, on === true)}
+                    />
+                    <Label htmlFor={`category-field-${field.text}`} className="font-normal">
+                      {t(`categories.fieldNames.${field.text}` as never)}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('categories.fieldsHint')}</p>
+            )}
+            {name && (
+              <p className="text-sm">
+                {fields.length
+                  ? t('categories.fieldsPreview', { fields: fields.join(', ') })
+                  : t('categories.noFieldsPreview')}
+              </p>
+            )}
+            {fieldsChange && (
+              <p className="text-sm text-destructive">{t('categories.fieldsChange')}</p>
+            )}
+          </fieldset>
           <DialogFooter>
             <Button type="submit" disabled={saving || !name}>
               {t('categories.save')}
@@ -272,6 +315,11 @@ export function AdminCategoriesPage() {
                       </TableCell>
                       <TableCell>{category.translations.en ?? '—'}</TableCell>
                       <TableCell className="min-w-[10rem]">
+                        {category.fields && (
+                          <div className="mb-1 text-xs text-muted-foreground">
+                            {t('categories.fieldsPicked')}
+                          </div>
+                        )}
                         {fields.length ? (
                           <div className="flex flex-wrap gap-1">
                             {fields.map((field) => (

@@ -253,7 +253,7 @@ pub fn missing_label(info: &str, fields: &[CategoryField]) -> String {
 pub async fn fields_of(
     conn: &mut PgConnection,
     category: Uuid,
-) -> sqlx::Result<&'static [CategoryField]> {
+) -> sqlx::Result<Vec<CategoryField>> {
     let categories = category_fields::load_categories(conn).await?;
     Ok(category_fields::category_fields(category, &categories))
 }
@@ -264,7 +264,7 @@ async fn assert_ready_for_event(
     product: &Product,
     event: &Event,
 ) -> AppResult<()> {
-    let fields = fields_of(conn, product.product_category).await?;
+    let fields = &fields_of(conn, product.product_category).await?;
     let missing = missing_for_event(product, event, fields);
     if missing.is_empty() {
         return Ok(());

@@ -185,6 +185,8 @@ export interface Docs {
     parentCategory?: Id<'categories'> | undefined;
     updatedAt: number;
     label: string;
+    /** Extra fields an admin picked (ids of SELECTABLE_FIELDS); unset: by the name */
+    fields?: string[] | undefined;
   };
   eventLocationCategories: {
     _id: Id<'eventLocationCategories'>;
@@ -638,6 +640,7 @@ export interface Api {
         parentCategory?: Id<'categories'> | undefined;
         label: string;
         translations?: CategoryTranslations | undefined;
+        fields?: string[] | undefined;
       },
       Id<'categories'>
     >;
@@ -649,6 +652,8 @@ export interface Api {
         translations: CategoryTranslations;
         /** Unset: a main category */
         parentCategory?: Id<'categories'> | undefined;
+        /** Unset: by the name */
+        fields?: string[] | undefined;
       },
       null
     >;

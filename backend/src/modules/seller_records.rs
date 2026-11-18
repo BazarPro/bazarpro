@@ -421,7 +421,7 @@ fn attributes(
 ) -> Vec<Attribute> {
     match category {
         Some(category) => category_fields::describe_attributes(
-            category_fields::category_fields(category, categories),
+            &category_fields::category_fields(category, categories),
             attributes,
         ),
         None => Vec::new(),
