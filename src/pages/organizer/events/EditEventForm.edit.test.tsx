@@ -49,9 +49,10 @@ interface Setup {
   event?: ReturnType<typeof storedEvent> | null;
   feeLocked?: boolean;
   flags?: Record<string, boolean>;
+  admin?: boolean;
 }
 
-function mockBackend({ event, feeLocked = false, flags = {} }: Setup) {
+function mockBackend({ event, feeLocked = false, flags = {}, admin = false }: Setup) {
   vi.mocked(useQuery).mockImplementation(((ref: Parameters<typeof getFunctionName>[0]) => {
     const name = getFunctionName(ref);
     if (name === 'categories.getAllCategories')
@@ -65,6 +66,7 @@ function mockBackend({ event, feeLocked = false, flags = {} }: Setup) {
     if (name === 'events.getFeeLock') return { locked: feeLocked };
     if (name === 'eventLocationCategories.listForEvent') return [];
     if (name === 'featureFlags.get') return flags;
+    if (name === 'users.viewer') return { systemRole: admin ? 'admin' : 'user' };
     return undefined;
   }) as typeof useQuery);
   vi.mocked(useMutation).mockImplementation(((ref: Parameters<typeof getFunctionName>[0]) => {
@@ -160,6 +162,21 @@ describe('editing an event', () => {
     mockBackend({ event: storedEvent(Date.now() - HOUR) });
     renderAt('/events/edit/event1');
     expect(await screen.findByText(/Der Basar läuft gerade/)).toBeInTheDocument();
+  });
+
+  it('lets the platform admin change what is locked for organizers', async () => {
+    mockBackend({ event: storedEvent(Date.now() - HOUR), feeLocked: true, admin: true });
+    renderAt('/events/edit/event1');
+    expect(await screen.findByText(/Du bist Admin/)).toBeInTheDocument();
+    expect(screen.queryByText(/Der Basar läuft gerade/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Beginn')).not.toHaveAttribute('readonly');
+    const commission = screen.getByLabelText(/Provision/);
+    await waitFor(() => expect(commission).toHaveValue(15));
+    fireEvent.change(commission, { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(editEvent).toHaveBeenCalledTimes(1));
+    expect(editEvent.mock.calls[0][0]).toMatchObject({ commission: 25 });
   });
 
   it('tells when the event does not exist', () => {

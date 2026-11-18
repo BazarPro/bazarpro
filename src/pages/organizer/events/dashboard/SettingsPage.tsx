@@ -25,7 +25,7 @@ export function SettingsPage() {
 
   const deleteEvent = useMutation(api.events.deleteEvent);
   const event = useQuery(api.events.getEvent, { id: eventId });
-  const { isLoading, canManage, isOrganizer } = useEventAccess(eventId);
+  const { isLoading, canManage, isOrganizer, isAdmin } = useEventAccess(eventId);
 
   useEffect(() => {
     if (!isLoading && !canManage) {
@@ -91,8 +91,9 @@ export function SettingsPage() {
     </FormSection>
   );
 
-  // Who may change the settings changes them right here; everybody else reads them
-  if (isOrganizer && event.endDate >= Date.now()) {
+  // Who may change the settings changes them right here; everybody else reads them.
+  // The platform admin also after the end, to correct mistakes
+  if (isOrganizer && (event.endDate >= Date.now() || isAdmin)) {
     return (
       <EditEventForm
         after={
