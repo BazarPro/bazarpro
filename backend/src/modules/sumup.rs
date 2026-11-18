@@ -515,7 +515,11 @@ async fn connect(state: &AppState, user: Uuid, code: &str) -> anyhow::Result<()>
         .filter(|wanted| tokens.scope.is_some() && !granted.contains(wanted))
         .collect();
     if !missing.is_empty() {
-        tracing::warn!(?missing, ?merchant, "SumUp granted fewer scopes than asked for");
+        tracing::warn!(
+            ?missing,
+            ?merchant,
+            "SumUp granted fewer scopes than asked for"
+        );
     }
 
     let mut tx = state.db.begin().await?;
