@@ -86,10 +86,12 @@ import { PageSkeleton } from '../../../components/ui/loading';
  * @param getOriginalStartDate start date of the event being edited (datetime-local string);
  *   an unchanged start date is not checked against "tomorrow", so running events can be saved.
  * @param getRegisteredTerms set once sellers registered: fees may only go down, the limit up.
+ * @param getIsAdmin the platform admin may set any start, also one in the past.
  */
 const buildEventSchema = (
   getOriginalStartDate: () => string | undefined,
-  getRegisteredTerms: () => RegisteredTerms | undefined
+  getRegisteredTerms: () => RegisteredTerms | undefined,
+  getIsAdmin: () => boolean = () => false
 ) =>
   z
     .object({
@@ -120,7 +122,7 @@ const buildEventSchema = (
         )
         .refine(
           (val) => {
-            if (val === getOriginalStartDate()) return true;
+            if (val === getOriginalStartDate() || getIsAdmin()) return true;
             const d = new Date(val);
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -664,11 +666,16 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     !isEditing && isAuthenticated ? {} : 'skip'
   );
 
+  // The platform admin may change every setting, the locks below are for organizers
+  const viewer = useQuery(api.users.viewer);
+  const isAdmin = isEditing && viewer?.systemRole === 'admin';
+  const isAdminRef = useRef(isAdmin);
+  isAdminRef.current = isAdmin;
   const now = Date.now();
-  const isRunning = !!event && event.startDate <= now && now <= event.endDate;
+  const isRunning = !isAdmin && !!event && event.startDate <= now && now <= event.endDate;
   // Sellers registered with these fees: they may only go down, the item limit only up
   const feeLockState = useQuery(api.events.getFeeLock, eventId ? { eventId } : 'skip');
-  const feeLock = isRunning ? 'running' : feeLockState?.locked ? 'sellers' : null;
+  const feeLock = isAdmin ? null : isRunning ? 'running' : feeLockState?.locked ? 'sellers' : null;
 
   const originalStartDate = useRef<string | undefined>(undefined);
   originalStartDate.current = event ? formatForDateTimeLocal(event.startDate) : undefined;
@@ -685,7 +692,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     () =>
       buildEventSchema(
         () => originalStartDate.current,
-        () => registeredTerms.current
+        () => registeredTerms.current,
+        () => isAdminRef.current
       ),
     []
   );
@@ -1195,6 +1203,11 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                 {isRunning && (
                   <Alert>
                     <AlertDescription>{t('form.running')}</AlertDescription>
+                  </Alert>
+                )}
+                {isAdmin && (
+                  <Alert>
+                    <AlertDescription>{t('form.adminUnlocked')}</AlertDescription>
                   </Alert>
                 )}
                 {/* Long page: its parts are one tap away, in the order of the wizard */}

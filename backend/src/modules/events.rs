@@ -1273,11 +1273,14 @@ struct EditArgs {
 
 /// Edits an event (organizer only). A running event keeps its dates, commission and
 /// visibility; once sellers registered, fees only go down and the item limit only up.
+/// The platform admin may change everything, also of events that are over, e.g. to
+/// correct a mistake.
 async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     let user = ctx.require_user()?;
     let event = load(ctx, args.id.0).await?;
     let now = Utc::now();
-    if event.end_date < now {
+    let admin = is_platform_admin(ctx.conn(), Some(user)).await?;
+    if event.end_date < now && !admin {
         return Err(AppError::bad_request("event.pastNoEdit"));
     }
     if !has_role_or_admin(ctx.conn(), event.id, user, Role::Organizer).await? {
@@ -1292,7 +1295,7 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     let mut start = time_arg(args.start_date, "startDate")?;
     let mut end = time_arg(args.end_date, "endDate")?;
     let commission = money(args.commission, "commission")?;
-    let running = event.start_date <= now && now <= event.end_date;
+    let running = !admin && event.start_date <= now && now <= event.end_date;
     if running {
         // datetime-local inputs drop seconds, so an unchanged date may differ slightly
         let changed =
@@ -1318,7 +1321,7 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
             .and_then(Value::as_bool)
             .unwrap_or(false)
     };
-    if direct(Some(&features)) != direct(event.features.as_ref()) {
+    if !admin && direct(Some(&features)) != direct(event.features.as_ref()) {
         let sold: bool =
             sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM purchases WHERE event_id = $1)")
                 .bind(event.id)
@@ -1328,7 +1331,7 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
             return Err(AppError::bad_request("event.directSaleLocked"));
         }
     }
-    if fees_locked(ctx, &event).await? {
+    if !admin && fees_locked(ctx, &event).await? {
         let fee = |features: Option<&Value>| {
             features
                 .and_then(|f| f.get("intakeFee"))
@@ -1353,7 +1356,9 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
             return Err(AppError::bad_request("event.limitOnlyHigher"));
         }
     }
-    let making_public = event.visibility != "public"
+    // The admin approves anyway: no request to themselves
+    let making_public = !admin
+        && event.visibility != "public"
         && args.visibility == "public"
         && ctx.state.config.mode != InstanceMode::Single;
     let logistics = args.seller_logistics.map(sanitize_logistics).transpose()?;

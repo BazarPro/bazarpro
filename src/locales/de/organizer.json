@@ -29,6 +29,7 @@
     "chooseTemplate": "Vorlage wählen…",
     "creationDisabled": "Die Erstellung neuer Basare ist derzeit deaktiviert.",
     "running": "Der Basar läuft gerade. Datum, Provision und Sichtbarkeit sind bis zum Ende gesperrt, damit Abrechnung und Freigabe stimmen. Alles andere kannst du weiter anpassen, zum Beispiel ab wann Rabatte möglich sind.",
+    "adminUnlocked": "Du bist Admin: Du kannst alle Einstellungen ändern, auch die, die für Veranstalter gesperrt sind (z. B. Datum, Provision und Gebühren während des Basars oder nach der Anmeldung der ersten Verkäufer). Prüfe Änderungen an Gebühren und Direktverkauf gut, sie wirken sich auf die Abrechnung aus.",
     "creating": "Wird erstellt…",
     "draftSaved": "Entwurf gespeichert",
     "draftSavedHint": "Du findest ihn auf deiner Startseite und machst dort weiter, wo du aufgehört hast.",
