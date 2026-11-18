@@ -135,6 +135,7 @@
     "atTime": "{{date}}, {{time}} Uhr",
     "location": "Ort",
     "limit": "Plätze für Verkäufer",
+    "itemLimit": "Plätze für Artikel",
     "spots": "{{count}} Plätze",
     "calendar": "Kalender",
     "ics": "Als ICS herunterladen",

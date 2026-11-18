@@ -135,6 +135,7 @@
     "atTime": "{{date}}, {{time}}",
     "location": "Location",
     "limit": "Places for sellers",
+    "itemLimit": "Places for items",
     "spots": "{{count}} spots",
     "calendar": "Calendar",
     "ics": "Download as ICS",

@@ -4,6 +4,7 @@ import {
   CalendarPlus,
   Download,
   MapPin,
+  Package,
   Users,
   Clock,
 } from 'lucide-react';
@@ -39,6 +40,8 @@ export interface EventPageSidebarEvent {
   vendorLimit?: number;
   /** Places taken; sent with a `vendorLimit` */
   sellerCount?: number;
+  /** Places for items left on the whole market; sent with `maxItemsTotal` */
+  itemPlacesLeft?: number;
   contactInfo: string;
   features?: StoredEventFeatures;
 }
@@ -66,6 +69,11 @@ export function EventPageSidebar({ event, conditions }: EventPageSidebarProps) {
   const now = useNowPassing([event.endDate, ...registrationTimes(event)]);
   const isPast = event.endDate < now;
   const registration = isPast ? undefined : registrationText(event, now, t);
+  const maxItemsTotal = event.features?.maxItemsTotal;
+  const itemsTaken =
+    maxItemsTotal && event.itemPlacesLeft !== undefined
+      ? Math.max(0, maxItemsTotal - event.itemPlacesLeft)
+      : undefined;
 
   const eventUrl =
     typeof window !== 'undefined' ? toAbsoluteUrl(window.location.pathname) : undefined;
@@ -182,6 +190,31 @@ export function EventPageSidebar({ event, conditions }: EventPageSidebarProps) {
                     </div>
                     <Progress
                       value={Math.min(100, (event.sellerCount / event.vendorLimit) * 100)}
+                      className="mt-1.5 h-1.5"
+                      aria-hidden
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          {maxItemsTotal != null && maxItemsTotal > 0 && (
+            <div className="flex items-start gap-2 text-sm">
+              <Package className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-muted-foreground">{t('sidebar.itemLimit')}</div>
+                {itemsTaken === undefined ? (
+                  <div>{t('sidebar.spots', { count: maxItemsTotal })}</div>
+                ) : (
+                  <>
+                    <div>
+                      {t('sidebar.taken', {
+                        count: Math.min(itemsTaken, maxItemsTotal),
+                        limit: maxItemsTotal,
+                      })}
+                    </div>
+                    <Progress
+                      value={Math.min(100, (itemsTaken / maxItemsTotal) * 100)}
                       className="mt-1.5 h-1.5"
                       aria-hidden
                     />
