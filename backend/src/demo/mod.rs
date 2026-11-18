@@ -58,6 +58,8 @@ pub struct Seeder {
     images: HashMap<&'static str, Uuid>,
     product_images: Vec<Uuid>,
     categories: HashMap<Cat, Uuid>,
+    /// Default categories by German label
+    subs: HashMap<&'static str, Uuid>,
 }
 
 pub struct UserSpec<'a> {
@@ -99,13 +101,15 @@ impl<'a> UserSpec<'a> {
 }
 
 impl Seeder {
-    /// Makes sure the default categories exist in the language of the demo.
+    /// Makes sure the default categories exist in the language of the demo, with their
+    /// sub-categories, as an instance gets them on its first start.
     pub async fn load(
         ctx: &mut Ctx,
         locale: Locale,
         images: HashMap<&'static str, Uuid>,
         product_images: Option<Vec<Uuid>>,
     ) -> AppResult<Self> {
+        crate::modules::categories::insert_default_tree(ctx, locale == Locale::En).await?;
         let mut categories = HashMap::new();
         for (cat, names) in CATEGORIES {
             let label = names.get(locale);
@@ -134,6 +138,21 @@ impl Seeder {
             };
             categories.insert(*cat, id);
         }
+        // Items go into the sub-categories of the default tree
+        let english = locale == Locale::En;
+        let mut subs = HashMap::new();
+        for category in &crate::modules::categories::DEFAULT_CATEGORIES {
+            let label = crate::modules::categories::default_label(category.label, english);
+            let id: Option<Uuid> = sqlx::query_scalar(
+                "SELECT id FROM categories WHERE label = $1 ORDER BY created_at LIMIT 1",
+            )
+            .bind(label)
+            .fetch_optional(ctx.conn())
+            .await?;
+            if let Some(id) = id {
+                subs.insert(category.label, id);
+            }
+        }
         ctx.touch(crate::realtime::Topic::Table("categories"));
         let product_images = product_images.unwrap_or_else(|| {
             PRODUCT_IMAGE_KEYS
@@ -150,6 +169,7 @@ impl Seeder {
             images,
             product_images,
             categories,
+            subs,
         })
     }
 
@@ -165,8 +185,14 @@ impl Seeder {
         self.product_images.clone()
     }
 
+    /// The main category, e.g. for the categories a bazaar allows.
     pub fn category(&self, cat: Cat) -> Uuid {
         self.categories[&cat]
+    }
+
+    /// The sub-category of an item, by the words of its title (catalog::sub_label).
+    pub fn item_category(&self, cat: Cat, title: &str) -> Uuid {
+        self.subs[catalog::sub_label(cat, title)]
     }
 
     /// The user with this email, created with a password account if missing.

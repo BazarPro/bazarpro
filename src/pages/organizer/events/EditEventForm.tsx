@@ -67,6 +67,7 @@ import { placeFromLocation, type EventPlace } from '../../../shared/eventJsonLd'
 import {
   EVENT_TYPES,
   findEventType,
+  preselectedCategories,
   type EventType,
   type EventTypeId,
 } from '../../../lib/eventTypes';
@@ -868,9 +869,10 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     const type = EVENT_TYPES.find((candidate) => candidate.id === id);
     if (!type) return;
     const current = methods.getValues();
-    const matching = (categories ?? [])
-      .filter((category) => type.categoryMatch?.test(category.label))
-      .map((category) => category._id as string);
+    const matching = preselectedCategories(
+      type,
+      (categories ?? []).map((category) => ({ ...category, _id: category._id as string }))
+    );
     reset({
       ...current,
       // A start for the title; the organizer adds town or year in "When and where?"

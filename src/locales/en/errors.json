@@ -39,6 +39,10 @@
     "labelEmpty": "Please enter a name.",
     "labelTaken": "A category with this name already exists.",
     "inUse": "This category is still in use and cannot be deleted.",
+    "parentNotMain": "A sub-category can only be placed under a main category.",
+    "hasSubcategories": "This category has sub-categories of its own and therefore cannot become a sub-category.",
+    "unknownField": "This extra field does not exist.",
+    "oneSize": "Please choose at most one kind of size.",
     "lastOne": "The last category cannot be deleted."
   },
   "common": {
@@ -122,7 +126,8 @@
     "product": "Item not found.",
     "question": "Question not found.",
     "report": "Report not found.",
-    "user": "User not found."
+    "user": "User not found.",
+    "categoryField": "Extra field not found."
   },
   "offline": {
     "failed": "The action could not be replayed. Please do it by hand.",
@@ -181,7 +186,9 @@
     "rejected": "The item was rejected. Take the rejection back first.",
     "rejectedNoRemove": "Rejected items stay on record at the bazaar and cannot be removed.",
     "notRegistered": "Register as a seller for this bazaar first.",
-    "rejectedHere": "“{{title}}” was rejected at “{{event}}” and cannot be registered there again."
+    "rejectedHere": "“{{title}}” was rejected at “{{event}}” and cannot be registered there again.",
+    "chooseSubcategory": "Please choose a sub-category, for example the kind of bike under “Bikes”.",
+    "categoryNotAllowed": "This category is not allowed at “{{event}}”."
   },
   "profile": {
     "nameRequired": "Please enter your first and last name.",
@@ -259,5 +266,8 @@
   "upload": {
     "quotaExceeded": "You have uploaded too many images that are not saved yet. Please save first or try again later.",
     "tooMany": "You have uploaded a lot of images. Please try again later."
+  },
+  "categoryField": {
+    "inUse": "Categories still use this extra field. Remove it there first."
   }
 }

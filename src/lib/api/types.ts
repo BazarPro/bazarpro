@@ -6,6 +6,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import type { CategoryField, DescribedAttribute } from '../../shared/categoryFields';
 import type { EventProductStatus, EventServices, HelperPermission } from '../../shared/constants';
 
 export type TableName =
@@ -185,6 +186,10 @@ export interface Docs {
     parentCategory?: Id<'categories'> | undefined;
     updatedAt: number;
     label: string;
+    /** Ids of the extra fields an admin picked; unset: those of the main category */
+    fields?: string[] | undefined;
+    /** The extra fields its items have, from its own choice or its main category */
+    fieldList: CategoryField[];
   };
   eventLocationCategories: {
     _id: Id<'eventLocationCategories'>;
@@ -352,16 +357,11 @@ export type BroadcastView = {
   _id: Id<'eventBroadcasts'>;
 };
 
-export type CategoryFieldText =
-  | 'brand'
-  | 'frameNumber'
-  | 'frameSize'
-  | 'wheelSize'
-  | 'bikeBrand'
-  | 'clothingSize'
-  | 'shoeSize'
-  | 'sportSize'
-  | 'model';
+/** An extra field of item categories, as admins define it */
+export type CategoryFieldDefinition = CategoryField;
+
+/** A value of an item with the name of its field (in German and maybe English) */
+export type CategoryAttribute = DescribedAttribute;
 
 export type DiscountRules = {
   allowed: boolean;
@@ -433,7 +433,7 @@ export type ProofItem = {
   productId?: Id<'products'> | undefined;
   title: string;
   category: string;
-  attributes: { label: string; text: CategoryFieldText; value: string }[];
+  attributes: CategoryAttribute[];
   price: number;
   status: string;
   soldFor?: number | undefined;
@@ -637,12 +637,21 @@ export interface Api {
         parentCategory?: Id<'categories'> | undefined;
         label: string;
         translations?: CategoryTranslations | undefined;
+        fields?: string[] | undefined;
       },
       Id<'categories'>
     >;
     updateCategory: FunctionReference<
       'mutation',
-      { categoryId: Id<'categories'>; label: string; translations: CategoryTranslations },
+      {
+        categoryId: Id<'categories'>;
+        label: string;
+        translations: CategoryTranslations;
+        /** Unset: a main category */
+        parentCategory?: Id<'categories'> | undefined;
+        /** Unset: those of the main category */
+        fields?: string[] | undefined;
+      },
       null
     >;
     deleteCategory: FunctionReference<'mutation', { categoryId: Id<'categories'> }, null>;
@@ -651,18 +660,29 @@ export interface Api {
       EmptyObject,
       (Doc<'categories'> & { productCount: number; eventCount: number; childCount: number })[]
     >;
-    getAllCategories: FunctionReference<
+    getAllCategories: FunctionReference<'query', EmptyObject, Doc<'categories'>[]>;
+    listFields: FunctionReference<'query', EmptyObject, CategoryField[]>;
+    listFieldsForAdmin: FunctionReference<
       'query',
       EmptyObject,
-      {
-        _id: Id<'categories'>;
-        _creationTime: number;
-        parentCategory?: Id<'categories'> | undefined;
-        updatedAt: number;
-        label: string;
-        translations: CategoryTranslations;
-      }[]
+      (CategoryField & { categoryCount: number })[]
     >;
+    saveField: FunctionReference<
+      'mutation',
+      {
+        /** Unset: a new field */
+        fieldId?: string | undefined;
+        label: string;
+        labelEn?: string | undefined;
+        placeholder?: string | undefined;
+        placeholderEn?: string | undefined;
+        hint?: string | undefined;
+        hintEn?: string | undefined;
+        short: boolean;
+      },
+      string
+    >;
+    deleteField: FunctionReference<'mutation', { fieldId: string }, null>;
     getCategoryLabel: FunctionReference<'query', { categoryId: Id<'categories'> }, string | null>;
     getCategoryId: FunctionReference<'query', { categoryLabel: string }, Id<'categories'> | null>;
   };
@@ -2441,7 +2461,7 @@ export interface Api {
           'minimumPrice'
         > & {
           minimumPrice?: number | undefined;
-          attributeList: { label: string; value: string }[];
+          attributeList: CategoryAttribute[];
           activeListing: {
             eventId: Id<'events'>;
             eventProductId: Id<'eventProducts'>;
@@ -2529,7 +2549,7 @@ export interface Api {
         listPrice: number;
         minimumPrice: number | undefined;
         sellerPaidOut: boolean;
-        attributes: { label: string; text: CategoryFieldText; value: string }[];
+        attributes: CategoryAttribute[];
         internalNote?: string;
       } | null
     >;

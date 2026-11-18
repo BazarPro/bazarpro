@@ -27,3 +27,23 @@ export function seedBackend(...flags: string[]) {
 
 /** Where the login page leads: the overview (`/`, src/pages/dashboard) */
 export const isOverview = (url: URL) => url.pathname === '/';
+
+/**
+ * Picks the category of an item: opens the picker, then the main category, then the
+ * sub-category (items go into sub-categories).
+ */
+export async function pickCategory(
+  page: import('@playwright/test').Page,
+  main: string,
+  sub: string,
+  scope: import('@playwright/test').Locator | import('@playwright/test').Page = page
+) {
+  await scope.locator('#categoryId').click();
+  await page.getByRole('menu').waitFor();
+  const item = page.getByRole('menuitem', { name: sub, exact: true });
+  // The only main category left, e.g. at a bike sale, is open already
+  if (!(await item.isVisible())) {
+    await page.getByRole('menuitem', { name: new RegExp(`^${main}`) }).click();
+  }
+  await item.click();
+}

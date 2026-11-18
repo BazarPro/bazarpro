@@ -2,6 +2,7 @@
   "myProducts": {
     "soldCannotAdd": "Verkaufte Artikel können nicht mehr zu Basaren hinzugefügt werden.",
     "cannotUnregister": "Dieser Artikel kann nicht mehr abgemeldet werden.",
+    "categoryNotAllowed": "Die Kategorie dieses Artikels ist bei „{{event}}“ nicht erlaubt.",
     "deletedMany_one": "{{count}} Artikel gelöscht",
     "deletedMany_other": "{{count}} Artikel gelöscht",
     "deleteFailed": "Löschen fehlgeschlagen",
@@ -122,6 +123,10 @@
     "chooseCondition": "Zustand wählen",
     "category": "Kategorie *",
     "chooseCategory": "Kategorie wählen",
+    "noCategories": "Keine passende Kategorie.",
+    "categoryNotAllowed": "„{{category}}“ ist bei „{{event}}“ nicht erlaubt. Wähle eine andere Kategorie oder einen anderen Basar.",
+    "categoryNotAllowedShort": "Die Kategorie ist bei „{{event}}“ nicht erlaubt.",
+    "categoriesOfBazaar": "Nur Kategorien, die {{events}} erlaubt.",
     "price": "Preis (€) *",
     "images": "Bilder *",
     "negotiable": "Preis verhandelbar?",

@@ -222,7 +222,7 @@ pub fn missing_for_event(
         missing.push("photo".to_owned());
     }
     for key in &features.required_fields {
-        if !fields.iter().any(|field| field.key == key) {
+        if !fields.iter().any(|field| &field.key == key) {
             continue;
         }
         let value = product
@@ -253,9 +253,35 @@ pub fn missing_label(info: &str, fields: &[CategoryField]) -> String {
 pub async fn fields_of(
     conn: &mut PgConnection,
     category: Uuid,
-) -> sqlx::Result<&'static [CategoryField]> {
-    let categories = category_fields::load_categories(conn).await?;
-    Ok(category_fields::category_fields(category, &categories))
+) -> sqlx::Result<Vec<CategoryField>> {
+    Ok(category_fields::FieldIndex::load(conn)
+        .await?
+        .fields(category))
+}
+
+/// A bazaar takes items of the categories it allows; one that allows a main category
+/// takes its sub-categories too. Bazaars without a list take everything.
+pub async fn assert_category_allowed(
+    conn: &mut PgConnection,
+    category: Uuid,
+    event: &Event,
+) -> AppResult<()> {
+    if event.categories.is_empty() || event.categories.contains(&category) {
+        return Ok(());
+    }
+    let parent: Option<Uuid> = sqlx::query_scalar("SELECT parent_id FROM categories WHERE id = $1")
+        .bind(category)
+        .fetch_optional(conn)
+        .await?
+        .flatten();
+    if parent.is_some_and(|parent| event.categories.contains(&parent)) {
+        return Ok(());
+    }
+    Err(AppError::coded(
+        axum::http::StatusCode::BAD_REQUEST,
+        "product.categoryNotAllowed",
+        &[("event", &event.title)],
+    ))
 }
 
 /// Refuses a new announcement when the item lacks something the event requires.
@@ -264,7 +290,8 @@ async fn assert_ready_for_event(
     product: &Product,
     event: &Event,
 ) -> AppResult<()> {
-    let fields = fields_of(conn, product.product_category).await?;
+    assert_category_allowed(conn, product.product_category, event).await?;
+    let fields = &fields_of(conn, product.product_category).await?;
     let missing = missing_for_event(product, event, fields);
     if missing.is_empty() {
         return Ok(());

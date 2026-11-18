@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { runBackend } from '../utils';
+import { pickCategory, runBackend } from '../utils';
 import {
   BUYER,
   ORGANIZER,
@@ -278,8 +278,7 @@ test.describe('organizer tools', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Titel *').fill(itemTitle);
     await dialog.getByRole('radio', { name: 'Gebraucht', exact: true }).click();
-    await dialog.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Fahrräder' }).click();
+    await pickCategory(page, 'Fahrräder', 'Trekkingräder', dialog);
     await dialog.getByLabel('Rahmennummer').fill('BAT 123');
     await dialog.getByLabel('Preis (€) *').fill('140');
     await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
@@ -319,15 +318,13 @@ test.describe('category fields', () => {
   test('bike categories show bike fields in the product form, others do not', async ({ page }) => {
     await login(page, SELLER);
     await page.goto('/products/new');
-    await page.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Fahrräder' }).click();
+    await pickCategory(page, 'Fahrräder', 'Trekkingräder');
     await expect(page.getByLabel('Rahmennummer')).toBeVisible();
     await expect(page.getByText(/Nicht gefunden\? Schreib „nicht gefunden“ hinein/)).toBeVisible();
     await page.getByRole('button', { name: 'Nicht gefunden' }).click();
     await expect(page.getByLabel('Rahmennummer')).toHaveValue('nicht gefunden');
 
-    await page.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Bücher' }).click();
+    await pickCategory(page, 'Bücher', 'Romane');
     await expect(page.getByLabel('Rahmennummer')).toHaveCount(0);
   });
 });

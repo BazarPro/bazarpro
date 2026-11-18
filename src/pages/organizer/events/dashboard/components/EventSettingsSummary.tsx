@@ -8,9 +8,9 @@ import { Badge } from '../../../../../components/ui/badge';
 import { dateLocale } from '../../../../../i18n/format';
 import { useTranslation } from 'react-i18next';
 import { serviceLabel } from '../../../../../i18n/services';
-import { REQUIRABLE_FIELDS } from '../../../../../shared/categoryFields';
+import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
-import { categoryNames } from '../../../../../i18n/categories';
+import { eventCategoryNames } from '../../../../../i18n/categories';
 import { api } from '../../../../../lib/api/functions';
 import { useQuery } from '../../../../../lib/api/react';
 import { formatEventPlace } from '../../../../../shared/eventJsonLd';
@@ -60,6 +60,7 @@ function formatRange(start: number, end?: number) {
 /** Read-only overview of the current event settings. */
 export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
   const { t } = useTranslation('organizer');
+  const requirable = useRequirableFields();
   const categoryList = useQuery(api.categories.getAllCategories);
   const timeFormat = new Intl.DateTimeFormat(dateLocale(), {
     weekday: 'short',
@@ -120,11 +121,13 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
       </Row>
       <Row label={t('summary.categories')}>
         <div className="flex flex-wrap gap-1">
-          {(categoryNames(event.categories, categoryList) ?? event.categoryLabels).map((label) => (
-            <Badge key={label} variant="outline">
-              {label}
-            </Badge>
-          ))}
+          {(eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels).map(
+            (label) => (
+              <Badge key={label} variant="outline">
+                {label}
+              </Badge>
+            )
+          )}
         </div>
       </Row>
       <Row label={t('summary.services')}>
@@ -155,9 +158,8 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
             <Feature
               on={true}
               title={t('summary.requiredFields', {
-                fields: REQUIRABLE_FIELDS.filter((field) =>
-                  features.requiredFields?.includes(field.key)
-                )
+                fields: requirable
+                  .filter((field) => features.requiredFields?.includes(field.key))
                   .map((field) => categoryFieldText(field, 'label') ?? field.label)
                   .join(', '),
               })}

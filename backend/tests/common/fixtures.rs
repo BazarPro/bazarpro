@@ -32,9 +32,17 @@ pub async fn session(db: &PgPool, user: Uuid) -> String {
     session::create(&mut conn, user).await.unwrap()
 }
 
+/// A category with the extra fields of the default one of that name (migration 0034).
 pub async fn category(db: &PgPool, label: &str) -> Uuid {
-    sqlx::query_scalar("INSERT INTO categories (label) VALUES ($1) RETURNING id")
+    let fields: Option<&[&str]> = match label {
+        "Fahrräder" => Some(&["frameNumber", "frameSize", "wheelSize", "brand", "color"]),
+        "Kleidung" => Some(&["clothingSize", "brand", "color"]),
+        "Sport" => Some(&["sportSize", "brand", "color"]),
+        _ => None,
+    };
+    sqlx::query_scalar("INSERT INTO categories (label, fields) VALUES ($1, $2) RETURNING id")
         .bind(label)
+        .bind(fields)
         .fetch_one(db)
         .await
         .unwrap()

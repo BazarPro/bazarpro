@@ -12,11 +12,12 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::access::is_platform_admin;
+use super::categories::assert_for_items;
 use super::category_fields::{self, Attribute};
 use super::docs::{self, Event, EventProduct, Product};
 use super::event_products::{
-    Events, are_relations_locked, fields_of, is_product_locked, missing_for_event, missing_label,
-    pick_active_listing, relations_of_product,
+    Events, are_relations_locked, assert_category_allowed, fields_of, is_product_locked,
+    missing_for_event, missing_label, pick_active_listing, relations_of_product,
 };
 use super::event_roles::find_organizer_event;
 use super::events::{admitted_by_visibility, is_live};
@@ -66,14 +67,14 @@ async fn generate_upload_url(ctx: &mut Ctx, _: NoArgs) -> AppResult<String> {
 /// Rejects values longer than their field allows, e.g. sizes that would not fit on the
 /// labels. Only sizes are that short; other fields are cut at 120 characters.
 pub(super) fn check_attribute_lengths(
-    fields: &'static [category_fields::CategoryField],
+    fields: &[category_fields::CategoryField],
     attributes: Option<&BTreeMap<String, String>>,
 ) -> AppResult<()> {
     match category_fields::too_long(fields, attributes) {
         Some(field) => Err(AppError::coded(
             axum::http::StatusCode::BAD_REQUEST,
             "product.sizeTooLong",
-            &[("max", &field.max_length.to_string())],
+            &[("max", &field.max_length().to_string())],
         )),
         None => Ok(()),
     }
@@ -88,7 +89,7 @@ pub(super) async fn normalize_extras(
     attributes: Option<&BTreeMap<String, String>>,
     minimum_price: Option<f64>,
 ) -> AppResult<(Option<BTreeMap<String, String>>, Option<Decimal>)> {
-    let fields = fields_of(conn, category).await?;
+    let fields = &fields_of(conn, category).await?;
     check_attribute_lengths(fields, attributes)?;
     let minimum = match minimum_price {
         Some(minimum) if !minimum.is_finite() || minimum < 0.0 => {
@@ -215,6 +216,7 @@ async fn add_product(ctx: &mut Ctx, args: AddArgs) -> AppResult<Uuid> {
     }
     check_condition(&args.condition)?;
     check_category(ctx.conn(), args.product_category.0).await?;
+    assert_for_items(ctx.conn(), args.product_category.0).await?;
     let price = price(args.price)?;
     let (attributes, minimum) = normalize_extras(
         ctx.conn(),
@@ -269,7 +271,7 @@ async fn own_unlocked_product(ctx: &mut Ctx, id: Uuid) -> AppResult<Product> {
 /// An edit must not remove what an upcoming event of the item requires, e.g. its last
 /// photo or a required field like the frame number.
 async fn assert_ready_for_upcoming_events(ctx: &mut Ctx, product: &Product) -> AppResult<()> {
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     let now = Utc::now();
     for relation in relations_of_product(ctx.conn(), product.id).await? {
         let Some(event) = docs::event(ctx.conn(), relation.event_id).await? else {
@@ -322,6 +324,21 @@ async fn update_product(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
     let product = own_unlocked_product(ctx, args.product_id.0).await?;
     check_condition(&args.condition)?;
     check_category(ctx.conn(), args.product_category.0).await?;
+    if args.product_category.0 != product.product_category {
+        assert_for_items(ctx.conn(), args.product_category.0).await?;
+        // The bazaars it is announced for must take the new category
+        let events: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT event_id FROM event_products WHERE product_id = $1 AND status = 'announced'",
+        )
+        .bind(product.id)
+        .fetch_all(ctx.conn())
+        .await?;
+        for event in events {
+            if let Some(event) = docs::event(ctx.conn(), event).await? {
+                assert_category_allowed(ctx.conn(), args.product_category.0, &event).await?;
+            }
+        }
+    }
     let price = price(args.price)?;
     let (attributes, minimum) = normalize_extras(
         ctx.conn(),
@@ -413,7 +430,7 @@ struct AttributesArgs {
 /// Fills in category fields, e.g. the frame number an event requires; keeps the others.
 async fn add_product_attributes(ctx: &mut Ctx, args: AttributesArgs) -> AppResult<()> {
     let product = own_unlocked_product(ctx, args.product_id.0).await?;
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     check_attribute_lengths(fields, Some(&args.attributes))?;
     let mut merged: BTreeMap<String, String> = product
         .attributes
@@ -764,7 +781,7 @@ async fn get_product(ctx: &mut Ctx, args: ProductArgs) -> AppResult<Option<Produ
             return Ok(None);
         }
     }
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     let listing = pick_active_listing(ctx.conn(), &relations, &mut events, now).await?;
     let mut indexable = relations.is_empty();
     for relation in relations.iter().filter(|r| r.status != "rejected") {

@@ -17,7 +17,7 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use super::access::{active_admins, is_platform_admin, require_admin};
-use super::category_fields::requirable_fields;
+use super::category_fields::{self, requirable_fields};
 use super::docs::{self, Event};
 use super::event_exclusions::{exclusion, has_handed_in};
 use super::event_roles::{
@@ -782,7 +782,20 @@ fn sanitize_intake_fee(fee: Option<f64>) -> AppResult<Option<f64>> {
 
 /// Validates the organizer's choice. `previous`: the stored features; switches an older
 /// client does not send keep their value.
-fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppResult<Value> {
+/// The keys of the fields a bazaar can make required, e.g. "frameNumber".
+async fn requirable_keys(ctx: &mut Ctx) -> sqlx::Result<Vec<String>> {
+    let definitions = category_fields::load_definitions(ctx.conn()).await?;
+    Ok(requirable_fields(&definitions)
+        .into_iter()
+        .map(|field| field.key.clone())
+        .collect())
+}
+
+fn sanitize_features(
+    features: FeaturesArgs,
+    previous: Option<&Value>,
+    known: &[String],
+) -> AppResult<Value> {
     let max = features.max_discount_percent;
     if let Some(max) = max
         && (!max.is_finite() || !(1.0..=MAX_DISCOUNT_PERCENT as f64).contains(&max))
@@ -810,11 +823,10 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
             .and_then(|p| p.get("requiredFields"))
             .and_then(|v| serde_json::from_value(v.clone()).ok()),
     };
-    let known: Vec<&'static str> = requirable_fields().iter().map(|f| f.key).collect();
     let required_fields: Vec<String> = required_fields
         .unwrap_or_default()
         .into_iter()
-        .filter(|key| known.contains(&key.as_str()))
+        .filter(|key| known.contains(key))
         .fold(Vec::new(), |mut keys, key| {
             if !keys.contains(&key) {
                 keys.push(key);
@@ -1191,9 +1203,10 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     check_access_code(&args.visibility, args.access_code.as_deref())?;
     check_files(ctx, &[args.cover_image, args.event_map_image]).await?;
     let public = args.visibility == "public" && !single;
+    let known = requirable_keys(ctx).await?;
     let features = args
         .features
-        .map(|f| sanitize_features(f, None))
+        .map(|f| sanitize_features(f, None, &known))
         .transpose()?;
     let logistics = args.seller_logistics.map(sanitize_logistics).transpose()?;
     let logistics = logistics.as_ref();
@@ -1310,8 +1323,9 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         start = event.start_date;
         end = event.end_date;
     }
+    let known = requirable_keys(ctx).await?;
     let features = match args.features {
-        Some(features) => sanitize_features(features, event.features.as_ref())?,
+        Some(features) => sanitize_features(features, event.features.as_ref(), &known)?,
         None => event.features.clone().unwrap_or_else(|| json!({})),
     };
     // A sale is booked the way the event was set when it was made. Switching afterwards
@@ -1883,6 +1897,10 @@ pub fn notify_admins_event_pending(
 mod tests {
     use super::*;
 
+    fn known() -> Vec<String> {
+        vec!["frameNumber".into(), "size".into()]
+    }
+
     #[test]
     fn features_are_sanitized() {
         let stored = sanitize_features(
@@ -1898,6 +1916,7 @@ mod tests {
                 ..FeaturesArgs::default()
             },
             Some(&json!({ "fixedSellerData": true, "labelMark": "universal" })),
+            &known(),
         )
         .unwrap();
         assert_eq!(stored["discounts"], false);
@@ -1921,6 +1940,7 @@ mod tests {
                 ..FeaturesArgs::default()
             },
             None,
+            &known(),
         )
         .unwrap();
         assert_eq!(stored["publicCatalog"], false);
@@ -1933,6 +1953,7 @@ mod tests {
                 ..FeaturesArgs::default()
             },
             Some(&stored),
+            &known(),
         )
         .unwrap();
         assert_eq!(kept["publicCatalog"], false);
@@ -1941,7 +1962,11 @@ mod tests {
 
     #[test]
     fn feature_ranges_are_checked() {
-        let err = |features: FeaturesArgs| sanitize_features(features, None).unwrap_err().code();
+        let err = |features: FeaturesArgs| {
+            sanitize_features(features, None, &known())
+                .unwrap_err()
+                .code()
+        };
         assert_eq!(
             err(FeaturesArgs {
                 max_discount_percent: Some(80.0),

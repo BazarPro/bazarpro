@@ -101,7 +101,14 @@
   "categories": {
     "title": "Kategorien & Services",
     "allowed": "Erlaubte Artikelkategorien *",
-    "services": "Zusätzliche Services"
+    "subcategories": "Unterkategorien von {{name}}",
+    "services": "Zusätzliche Services",
+    "allowedHint": "Verkäufer können nur Artikel dieser Kategorien anmelden. Klappe eine Kategorie auf, um einzelne Unterkategorien zu wählen.",
+    "selectAll": "Alle",
+    "selectNone": "Keine",
+    "chosenAll": "alle",
+    "chosenSome": "{{count}} von {{total}}",
+    "chosenSummary": "{{count}} von {{total}} Hauptkategorien gewählt"
   },
   "contact": {
     "title": "Kontakt & Finanzen",
@@ -1088,7 +1095,7 @@
     "bikeExchange": {
       "title": "Fahrradbörse",
       "text": "Räder, Schlösser und Zubehör: abgeben, an der Kasse verkaufen, danach auszahlen.",
-      "highlights": ["Fotos Pflicht", "Verhandeln (VB)", "Große Etiketten"],
+      "highlights": ["Fotos Pflicht", "Verhandeln (VB)", "Rahmennummer Pflicht"],
       "exampleTitle": "Fahrradbörse",
       "exampleItems": ["Hollandrad, 28 Zoll", "Kinderrad 20 Zoll", "Bügelschloss"]
     }

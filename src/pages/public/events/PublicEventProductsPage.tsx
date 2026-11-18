@@ -29,6 +29,7 @@ import { Footer } from '../../../components/layout/Footer';
 import { useInstanceConfig } from '../../../hooks/useInstanceConfig';
 import { useTranslation } from 'react-i18next';
 import { categoryNames } from '../../../i18n/categories';
+import { withSubcategories } from '../../../shared/categoryTree';
 import {
   autoViewMode,
   loadViewMode,
@@ -114,9 +115,11 @@ export function PublicEventProductsPage() {
     const productList = (products as ProductWithDiscount[] | undefined) ?? [];
     const isRunning = !!event && isEventRunning(event, now);
 
+    const inCategory =
+      filterCategory === 'all' ? undefined : withSubcategories(filterCategory, categoryList);
     let result = productList.filter((p: ProductWithDiscount) => {
       const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = filterCategory === 'all' || p.productCategory === filterCategory;
+      const matchesCategory = !inCategory || inCategory.has(p.productCategory);
       const matchesStatus = matchesPublicStatusFilter(p, filterStatus, isRunning);
       const matchesMinPrice = minPrice === '' || p.price >= parseFloat(minPrice);
       const matchesMaxPrice = maxPrice === '' || p.price <= parseFloat(maxPrice);

@@ -160,6 +160,22 @@ async fn save_walk_in_product(ctx: &mut Ctx, args: SaveArgs) -> AppResult<Uuid> 
     }
     check_condition(&args.condition)?;
     check_category(ctx.conn(), args.product_category.0).await?;
+    let changed = match args.product_id {
+        Some(id) => {
+            let current: Option<Uuid> =
+                sqlx::query_scalar("SELECT category_id FROM products WHERE id = $1")
+                    .bind(id.0)
+                    .fetch_optional(ctx.conn())
+                    .await?;
+            current != Some(args.product_category.0)
+        }
+        None => true,
+    };
+    if changed {
+        super::categories::assert_for_items(ctx.conn(), args.product_category.0).await?;
+        super::event_products::assert_category_allowed(ctx.conn(), args.product_category.0, &event)
+            .await?;
+    }
     let (attributes, minimum) = normalize_extras(
         ctx.conn(),
         args.product_category.0,

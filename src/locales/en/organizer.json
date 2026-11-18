@@ -101,7 +101,14 @@
   "categories": {
     "title": "Categories & services",
     "allowed": "Allowed item categories *",
-    "services": "Additional services"
+    "subcategories": "Sub-categories of {{name}}",
+    "services": "Additional services",
+    "allowedHint": "Sellers can only register items of these categories. Open a category to choose single sub-categories.",
+    "selectAll": "All",
+    "selectNone": "None",
+    "chosenAll": "all",
+    "chosenSome": "{{count}} of {{total}}",
+    "chosenSummary": "{{count}} of {{total}} main categories chosen"
   },
   "contact": {
     "title": "Contact & finances",
@@ -1088,7 +1095,7 @@
     "bikeExchange": {
       "title": "Bike sale",
       "text": "Bikes, locks and accessories: hand in, sell at the cash desk, pay out afterwards.",
-      "highlights": ["Photos required", "Negotiable price", "Large labels"],
+      "highlights": ["Photos required", "Negotiable price", "Frame number required"],
       "exampleTitle": "Bike sale",
       "exampleItems": ["City bike, 28 inch", "Children's bike 20 inch", "U-lock"]
     }

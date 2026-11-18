@@ -64,43 +64,8 @@
     }
   },
   "categoryFields": {
-    "frameNumber": {
-      "label": "Rahmennummer",
-      "placeholder": "z. B. WBK123456",
-      "hint": "Nicht gefunden? Schreib „nicht gefunden“ hinein – wir suchen sie vor Ort gemeinsam.",
-      "notFound": "Nicht gefunden",
-      "notFoundValue": "nicht gefunden"
-    },
-    "frameSize": {
-      "label": "Rahmengröße",
-      "placeholder": "z. B. 52 cm oder M"
-    },
-    "wheelSize": {
-      "label": "Laufradgröße",
-      "placeholder": "z. B. 28 Zoll"
-    },
-    "bikeBrand": {
-      "label": "Marke",
-      "placeholder": "z. B. Cube"
-    },
-    "clothingSize": {
-      "label": "Größe",
-      "placeholder": "z. B. M oder 128"
-    },
-    "shoeSize": {
-      "label": "Größe (EU)",
-      "placeholder": "z. B. 38"
-    },
-    "sportSize": {
-      "label": "Größe / Länge",
-      "placeholder": "z. B. 160 cm"
-    },
-    "brand": {
-      "label": "Marke"
-    },
-    "model": {
-      "label": "Modell"
-    }
+    "notFound": "Nicht gefunden",
+    "notFoundValue": "nicht gefunden"
   },
   "service": {
     "Parkplatz": "Parkplatz",

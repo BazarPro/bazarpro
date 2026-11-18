@@ -168,7 +168,7 @@ async fn parallel_mutations_are_serialized_and_retried(db: PgPool) {
             .fetch_one(&db)
             .await
             .unwrap();
-    assert_eq!((count, distinct), (11, 11));
+    assert_eq!((count, distinct), (89, 89));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -187,11 +187,21 @@ async fn the_start_of_the_server_only_fills_an_empty_table(db: PgPool) {
     };
     let start = || rpc::call(&app.state, None, "categories.seedIfEmpty", json!({}));
 
+    // As after removing all data: the fields of the default categories come back with them
+    sqlx::query("DELETE FROM category_field_definitions")
+        .execute(&db)
+        .await
+        .unwrap();
     // A new instance gets the defaults, and a second start adds nothing
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 11);
+    let fields: i64 = sqlx::query_scalar("SELECT count(*) FROM category_field_definitions")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(fields, 9);
+    assert_eq!(labels().await.len(), 89);
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 11);
+    assert_eq!(labels().await.len(), 89);
 
     // An instance with categories of its own does not get the defaults back
     sqlx::query("DELETE FROM categories WHERE label <> 'Kleidung'")
@@ -390,6 +400,97 @@ async fn the_default_categories_come_with_their_english_names(db: PgPool) {
         .find(|c| c["label"] == "Fahrräder")
         .unwrap();
     assert_eq!(bikes["translations"]["en"], "Bikes");
+
+    // One level of sub-categories, the main category with them
+    let parent_of = |label: &str| {
+        let list = list.body["value"].as_array().unwrap();
+        let child = list.iter().find(|c| c["label"] == label).unwrap();
+        let parent = child.get("parentCategory")?;
+        list.iter()
+            .find(|c| &c["_id"] == parent)
+            .map(|c| c["label"].as_str().unwrap().to_owned())
+    };
+    assert_eq!(parent_of("Fahrradanhänger").as_deref(), Some("Fahrräder"));
+    assert_eq!(parent_of("Laufräder").as_deref(), Some("Kinderfahrzeuge"));
+    assert_eq!(parent_of("Fahrräder"), None);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn admins_move_categories_one_level_deep(db: PgPool) {
+    let app = app(&db).await;
+    let admin = app.user_session("admin@example.org", true).await;
+    let create = |args: Value| {
+        let (app, admin) = (&app, &admin);
+        async move {
+            app.mutation("categories.createCategory", args, Some(admin))
+                .await
+        }
+    };
+    let id = |response: common::Reply| response.body["value"].as_str().unwrap().to_owned();
+    let bikes = id(create(json!({ "label": "Fahrräder" })).await);
+    let kids = id(create(json!({ "label": "Kinderfahrräder", "parentCategory": bikes })).await);
+    let trailers = id(create(json!({ "label": "Fahrradanhänger" })).await);
+    let update = |category: &str, label: &str, parent: Option<&str>| {
+        let (app, admin) = (&app, &admin);
+        let args = json!({
+            "categoryId": category,
+            "label": label,
+            "translations": {},
+            "parentCategory": parent,
+        });
+        async move {
+            app.mutation("categories.updateCategory", args, Some(admin))
+                .await
+        }
+    };
+    let parent_of = |category: String| {
+        let db = &db;
+        async move {
+            sqlx::query_scalar::<_, Option<uuid::Uuid>>(
+                "SELECT parent_id FROM categories WHERE id = $1",
+            )
+            .bind(uuid::Uuid::parse_str(&category).unwrap())
+            .fetch_one(db)
+            .await
+            .unwrap()
+            .map(|id| id.to_string())
+        }
+    };
+
+    // A main category gets a sub-category, and it can go back to the top
+    let moved = update(&trailers, "Fahrradanhänger", Some(&bikes)).await;
+    assert_eq!(moved.status, StatusCode::OK, "{:?}", moved.body);
+    assert_eq!(parent_of(trailers.clone()).await, Some(bikes.clone()));
+    update(&trailers, "Fahrradanhänger", None).await;
+    assert_eq!(parent_of(trailers.clone()).await, None);
+
+    // No second level, no loop, and no main category with sub-categories below another
+    assert_eq!(
+        update(&trailers, "Fahrradanhänger", Some(&kids)).await.body["code"],
+        "category.parentNotMain"
+    );
+    assert_eq!(
+        create(json!({ "label": "Laufräder", "parentCategory": kids }))
+            .await
+            .body["code"],
+        "category.parentNotMain"
+    );
+    assert_eq!(
+        update(&bikes, "Fahrräder", Some(&bikes)).await.body["code"],
+        "category.parentNotMain"
+    );
+    assert_eq!(
+        update(&bikes, "Fahrräder", Some(&trailers)).await.body["code"],
+        "category.hasSubcategories"
+    );
+    let gone = uuid::Uuid::new_v4().to_string();
+    assert_eq!(
+        update(&trailers, "Fahrradanhänger", Some(&gone))
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(parent_of(bikes).await, None);
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -421,4 +522,182 @@ async fn feature_flags(db: PgPool) {
         all.body["value"]["is_create_products_on_signup_enabled"],
         false
     );
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn admins_pick_the_extra_fields(db: PgPool) {
+    let app = app(&db).await;
+    let admin = app.user_session("admin@example.org", true).await;
+    let create = |args: Value| {
+        let (app, admin) = (&app, &admin);
+        async move {
+            app.mutation("categories.createCategory", args, Some(admin))
+                .await
+        }
+    };
+    let fields_of = |label: &'static str| {
+        let app = &app;
+        async move {
+            let list = app
+                .query("categories.getAllCategories", json!({}), None)
+                .await;
+            list.body["value"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["label"] == label)
+                .unwrap()
+                .get("fields")
+                .cloned()
+        }
+    };
+
+    // Picked fields are stored in the order of the list, without doubles
+    let created =
+        create(json!({ "label": "Kinderwagen", "fields": ["color", "brand", "color"] })).await;
+    assert_eq!(created.status, StatusCode::OK, "{:?}", created.body);
+    assert_eq!(
+        fields_of("Kinderwagen").await,
+        Some(json!(["brand", "color"]))
+    );
+    // Without a choice the name decides, as before
+    create(json!({ "label": "Fahrräder" })).await;
+    assert_eq!(fields_of("Fahrräder").await, None);
+
+    assert_eq!(
+        create(json!({ "label": "Mäntel", "fields": ["clothingSize", "shoeSize"] }))
+            .await
+            .body["code"],
+        "category.oneSize"
+    );
+    assert_eq!(
+        create(json!({ "label": "Mäntel", "fields": ["height"] }))
+            .await
+            .body["code"],
+        "category.unknownField"
+    );
+
+    // An empty choice means none at all; leaving it out goes back to the name
+    let id = created.body["value"].as_str().unwrap().to_owned();
+    let update = |fields: Option<Value>| {
+        let (app, admin, id) = (&app, &admin, id.clone());
+        let mut args = json!({ "categoryId": id, "label": "Kinderwagen", "translations": {} });
+        if let Some(fields) = fields {
+            args["fields"] = fields;
+        }
+        async move {
+            app.mutation("categories.updateCategory", args, Some(admin))
+                .await
+        }
+    };
+    assert_eq!(update(Some(json!([]))).await.status, StatusCode::OK);
+    assert_eq!(fields_of("Kinderwagen").await, Some(json!([])));
+    update(None).await;
+    assert_eq!(fields_of("Kinderwagen").await, None);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn admins_define_extra_fields(db: PgPool) {
+    let app = app(&db).await;
+    let user = app.user_session("user@example.org", false).await;
+    let admin = app.user_session("admin@example.org", true).await;
+    let save = |args: Value, session| {
+        let app = &app;
+        async move { app.mutation("categories.saveField", args, session).await }
+    };
+
+    let forbidden = save(json!({ "label": "Höhe", "short": false }), Some(&user)).await;
+    assert_eq!(forbidden.status, StatusCode::FORBIDDEN);
+    assert_eq!(
+        save(json!({ "label": "  ", "short": false }), Some(&admin))
+            .await
+            .body["code"],
+        "category.labelEmpty"
+    );
+    let created = save(
+        json!({ "label": " Höhe ", "labelEn": "Height", "placeholder": "", "short": true }),
+        Some(&admin),
+    )
+    .await;
+    let id = created.body["value"].as_str().unwrap().to_owned();
+
+    // Everybody reads the fields; a new one stores its values under its own key
+    let fields = app.query("categories.listFields", json!({}), None).await;
+    let height = fields.body["value"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["_id"] == id.as_str())
+        .unwrap()
+        .clone();
+    assert_eq!(height["key"], id.as_str());
+    assert_eq!(height["label"], "Höhe");
+    assert_eq!(height["labelEn"], "Height");
+    assert!(height.get("placeholder").is_none());
+    assert_eq!(height["short"], true);
+
+    // A category picks it and its items get it; the main category's sub-categories too
+    let main = app
+        .mutation(
+            "categories.createCategory",
+            json!({ "label": "Möbel", "fields": [id, "brand"] }),
+            Some(&admin),
+        )
+        .await
+        .body["value"]
+        .clone();
+    app.mutation(
+        "categories.createCategory",
+        json!({ "label": "Regale", "parentCategory": main }),
+        Some(&admin),
+    )
+    .await;
+    let list = app
+        .query("categories.getAllCategories", json!({}), None)
+        .await;
+    let shelves = list.body["value"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["label"] == "Regale")
+        .unwrap()
+        .clone();
+    let names: Vec<&str> = shelves["fieldList"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["label"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Marke", "Höhe"]);
+
+    // Renamed in place; in use it cannot be deleted
+    let renamed = save(
+        json!({ "fieldId": id, "label": "Höhe (cm)", "short": true }),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(renamed.status, StatusCode::OK);
+    let delete = |field: &str| {
+        let (app, admin) = (&app, &admin);
+        let args = json!({ "fieldId": field });
+        async move {
+            app.mutation("categories.deleteField", args, Some(admin))
+                .await
+        }
+    };
+    assert_eq!(delete(&id).await.body["code"], "categoryField.inUse");
+    let counted = app
+        .query("categories.listFieldsForAdmin", json!({}), Some(&admin))
+        .await;
+    let row = counted.body["value"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["_id"] == id.as_str())
+        .unwrap()
+        .clone();
+    assert_eq!(row["categoryCount"], 1);
+    assert_eq!(row["label"], "Höhe (cm)");
+    assert_eq!(delete("model").await.status, StatusCode::OK);
+    assert_eq!(delete("model").await.status, StatusCode::NOT_FOUND);
 }

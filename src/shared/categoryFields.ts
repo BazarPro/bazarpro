@@ -1,160 +1,59 @@
 /**
  * Extra item fields per product category (e.g. frame number for bikes, size for clothes).
- * The values live on the product, so an item keeps them when it moves on to the next
- * bazaar. Pure helpers only, so the frontend can import this file as well.
+ * Admins define the fields and pick them per category; the server sends each category with
+ * the fields its items have (`fieldList`, inherited from the main category). The values
+ * live on the product, so an item keeps them when it moves on to the next bazaar.
+ * Pure helpers only, so the frontend can import this file as well.
  */
 
 export interface CategoryField {
+  /** Picked by categories, e.g. "clothingSize" */
+  _id: string;
+  /** Under which the value is stored on the item; sizes share "size" */
   key: string;
-  /** Translation of label, placeholder and hint: categoryFields.<text> in src/locales */
-  text: CategoryFieldText;
   label: string;
+  labelEn?: string;
   placeholder?: string;
+  placeholderEn?: string;
   hint?: string;
-  /** Longest value; sizes stay short so they fit on the labels */
-  maxLength?: number;
+  hintEn?: string;
+  /** At most MAX_SHORT_LENGTH characters, so it fits on the labels (e.g. a size) */
+  short: boolean;
   /**
    * Sellers may not find the value (e.g. a worn frame number): a button fills in the
-   * agreed text (categoryFields.<text>.notFoundValue), the same for everyone, so it can be
+   * agreed text (records:categoryFields.notFoundValue), the same for everyone, so it can be
    * filtered in the records (#299). A required field stays required.
    */
-  notFoundButton?: boolean;
+  notFoundButton: boolean;
 }
-
-export type CategoryFieldText =
-  | 'frameNumber'
-  | 'frameSize'
-  | 'wheelSize'
-  | 'bikeBrand'
-  | 'clothingSize'
-  | 'shoeSize'
-  | 'sportSize'
-  | 'brand'
-  | 'model';
 
 const MAX_VALUE_LENGTH = 120;
-/** Longest size, e.g. "134/140" or "160 cm"; longer ones would not fit on the labels */
-export const MAX_SIZE_LENGTH = 7;
+/** Longest short value, e.g. "134/140" or "160 cm"; longer ones would not fit on the labels */
+export const MAX_SHORT_LENGTH = 7;
 
-export function fieldMaxLength(field: CategoryField): number {
-  return field.maxLength ?? MAX_VALUE_LENGTH;
+export function fieldMaxLength(field: Pick<CategoryField, 'short'>): number {
+  return field.short ? MAX_SHORT_LENGTH : MAX_VALUE_LENGTH;
 }
-
-const BIKE_FIELDS: CategoryField[] = [
-  {
-    key: 'frameNumber',
-    text: 'frameNumber',
-    label: 'Rahmennummer',
-    placeholder: 'z. B. WBK123456',
-    hint: 'Nicht gefunden? Schreib „nicht gefunden“ hinein – wir suchen sie vor Ort gemeinsam.',
-    notFoundButton: true,
-  },
-  { key: 'frameSize', text: 'frameSize', label: 'Rahmengröße', placeholder: 'z. B. 52 cm oder M' },
-  { key: 'wheelSize', text: 'wheelSize', label: 'Laufradgröße', placeholder: 'z. B. 28 Zoll' },
-  { key: 'brand', text: 'bikeBrand', label: 'Marke', placeholder: 'z. B. Cube' },
-];
-
-const CLOTHING_FIELDS: CategoryField[] = [
-  {
-    key: 'size',
-    text: 'clothingSize',
-    label: 'Größe',
-    placeholder: 'z. B. M oder 128',
-    maxLength: MAX_SIZE_LENGTH,
-  },
-  { key: 'brand', text: 'brand', label: 'Marke' },
-];
-
-const SHOE_FIELDS: CategoryField[] = [
-  {
-    key: 'size',
-    text: 'shoeSize',
-    label: 'Größe (EU)',
-    placeholder: 'z. B. 38',
-    maxLength: MAX_SIZE_LENGTH,
-  },
-  { key: 'brand', text: 'brand', label: 'Marke' },
-];
-
-const SPORT_FIELDS: CategoryField[] = [
-  {
-    key: 'size',
-    text: 'sportSize',
-    label: 'Größe / Länge',
-    placeholder: 'z. B. 160 cm',
-    maxLength: MAX_SIZE_LENGTH,
-  },
-  { key: 'brand', text: 'brand', label: 'Marke' },
-];
-
-const ELECTRONICS_FIELDS: CategoryField[] = [
-  { key: 'brand', text: 'brand', label: 'Marke' },
-  { key: 'model', text: 'model', label: 'Modell' },
-];
-
-/**
- * Category names are free text (admins create e.g. "Trekkingräder" or "E-Bikes / Pedelecs"),
- * so fields are matched by keywords. The first matching rule wins.
- */
-const FIELD_RULES: { match: RegExp; exclude?: RegExp; fields: CategoryField[] }[] = [
-  {
-    // "rad" only as a whole word or word ending, so "Radio" does not count as a bike
-    match: /fahrr|räder|\brad\b|rad$|bike|pedelec|\bmtb\b|bmx/i,
-    // Accessories and clothing for cyclists have no frame number
-    exclude: /zubehör|teile|bekleidung|helm|anhänger|schloss/i,
-    fields: BIKE_FIELDS,
-  },
-  { match: /schuh|stiefel|sneaker/i, fields: SHOE_FIELDS },
-  // "mode" only as a word or word ending ("Damenmode"), not in "Sondermodelle"
-  { match: /kleid|jacke|hose|\bmode\b|mode$|shirt|pullover/i, fields: CLOTHING_FIELDS },
-  { match: /sport|\bski|snowboard/i, fields: SPORT_FIELDS },
-  {
-    match: /elektron|handy|smartphone|computer|laptop|tablet|kamera|konsole/i,
-    fields: ELECTRONICS_FIELDS,
-  },
-];
 
 /**
  * Fields an organizer can make required for a bazaar, one per key. The same key means
- * the same thing in every category (e.g. "brand"), so one choice covers all of them.
+ * the same thing in every category (e.g. "size"), so one choice covers all of them.
  */
-export const REQUIRABLE_FIELDS: CategoryField[] = (() => {
-  const byKey = new Map<string, CategoryField>();
-  for (const rule of FIELD_RULES) {
-    for (const field of rule.fields) if (!byKey.has(field.key)) byKey.set(field.key, field);
-  }
-  return [...byKey.values()];
-})();
-
-export const REQUIRABLE_FIELD_KEYS = REQUIRABLE_FIELDS.map((field) => field.key);
-
-/** Fields for a single category label, without looking at parent categories. */
-export function getFieldsForLabel(label: string): CategoryField[] | undefined {
-  const name = label.trim();
-  return FIELD_RULES.find((rule) => rule.match.test(name) && !rule.exclude?.test(name))?.fields;
+export function requirableFields(definitions: readonly CategoryField[] | undefined) {
+  return (definitions ?? []).filter(
+    (field, index, all) => all.findIndex((other) => other.key === field.key) === index
+  );
 }
 
-type CategoryLike = { _id: string; label: string; parentCategory?: string };
+type CategoryWithFields = { _id: string; fieldList?: CategoryField[] };
 
-/**
- * Fields for a category. Sub-categories without their own set inherit the fields
- * of their parent.
- */
+/** The fields of a category, as the server resolved them. */
 export function getCategoryFields(
   categoryId: string | undefined,
-  categories: CategoryLike[] | undefined
+  categories: readonly CategoryWithFields[] | undefined
 ): CategoryField[] {
   if (!categoryId || !categories) return [];
-  const byId = new Map(categories.map((c) => [c._id, c]));
-  const seen = new Set<string>();
-  let current = byId.get(categoryId);
-  while (current && !seen.has(current._id)) {
-    seen.add(current._id);
-    const fields = getFieldsForLabel(current.label);
-    if (fields) return fields;
-    current = current.parentCategory ? byId.get(current.parentCategory) : undefined;
-  }
-  return [];
+  return categories.find((category) => category._id === categoryId)?.fieldList ?? [];
 }
 
 /**
@@ -174,13 +73,27 @@ export function sanitizeAttributes(
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+/** A value of an item with the name of its field, as the server describes it too. */
+export interface DescribedAttribute {
+  label: string;
+  labelEn?: string;
+  /** The id of the field */
+  text: string;
+  value: string;
+}
+
 /** Label/value pairs for display, in the order the category defines. */
 export function describeAttributes(
   fields: CategoryField[],
   attributes: Record<string, string> | undefined
-): { label: string; text: CategoryFieldText; value: string }[] {
+): DescribedAttribute[] {
   if (!attributes) return [];
   return fields
     .filter((field) => attributes[field.key])
-    .map((field) => ({ label: field.label, text: field.text, value: attributes[field.key] }));
+    .map((field) => ({
+      label: field.label,
+      labelEn: field.labelEn,
+      text: field._id,
+      value: attributes[field.key],
+    }));
 }

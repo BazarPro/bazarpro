@@ -35,7 +35,7 @@ import { useInstanceConfig } from '../../../hooks/useInstanceConfig';
 import { SellerBroadcasts } from '../../../components/broadcasts/SellerBroadcasts';
 import { MyRejections } from '../../../components/participation/MyRejections';
 import { useTranslation } from 'react-i18next';
-import { categoryNames } from '../../../i18n/categories';
+import { eventCategoryNames } from '../../../i18n/categories';
 import { serviceLabel } from '../../../i18n/services';
 import { useNowPassing } from '../../../hooks/useNowPassing';
 import { registrationTimes } from '../../../shared/eventFeatures';
@@ -381,7 +381,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
             <div className="bg-card rounded-xl border p-6">
               <h2 className="text-lg font-semibold mb-3">{t('page.categories')}</h2>
               <div className="flex flex-wrap gap-2">
-                {(categoryNames(event.categories, categoryList) ?? event.categoryLabels)?.map(
+                {(eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels)?.map(
                   (category: string) => (
                     <Badge key={category} variant="secondary">
                       <Tag className="mr-1 h-3 w-3" />

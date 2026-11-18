@@ -2,6 +2,7 @@
   "myProducts": {
     "soldCannotAdd": "Sold items can no longer be added to bazaars.",
     "cannotUnregister": "This item can no longer be withdrawn.",
+    "categoryNotAllowed": "The category of this item is not allowed at “{{event}}”.",
     "deletedMany_one": "{{count}} item deleted",
     "deletedMany_other": "{{count}} items deleted",
     "deleteFailed": "Deleting failed",
@@ -122,6 +123,10 @@
     "chooseCondition": "Choose condition",
     "category": "Category *",
     "chooseCategory": "Choose category",
+    "noCategories": "No matching category.",
+    "categoryNotAllowed": "“{{category}}” is not allowed at “{{event}}”. Choose another category or bazaar.",
+    "categoryNotAllowedShort": "The category is not allowed at “{{event}}”.",
+    "categoriesOfBazaar": "Only categories {{events}} allows.",
     "price": "Price (€) *",
     "images": "Photos *",
     "negotiable": "Price negotiable?",

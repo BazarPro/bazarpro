@@ -9,7 +9,9 @@ import { Label } from '../../../../components/ui/label';
 import { useQuery } from '../../../../lib/api/react';
 import { api } from '../../../../lib/api/functions';
 import { MAX_DISCOUNT_PERCENT } from '../../../../shared/eventFeatures';
-import { getCategoryFields, REQUIRABLE_FIELDS } from '../../../../shared/categoryFields';
+import { getCategoryFields } from '../../../../shared/categoryFields';
+import { expandCategories } from '../../../../shared/categoryTree';
+import { useRequirableFields } from '../../../../hooks/useCategoryFields';
 import { feeLockHint, type FeeLock } from '../../../../lib/sellerFees';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useTranslation } from 'react-i18next';
@@ -164,12 +166,17 @@ function RequiredFieldsPicker() {
   const { t } = useTranslation('organizer');
   const { control, watch } = useFormContext();
   const categoryList = useQuery(api.categories.getAllCategories);
-  const chosenCategories = (watch('categories') as string[] | undefined) ?? [];
+  const requirable = useRequirableFields();
+  // A chosen main category stands for its sub-categories, which may have other fields
+  const chosenCategories = expandCategories(
+    (watch('categories') as string[] | undefined) ?? [],
+    categoryList
+  );
   const required = (watch('features.requiredFields') as string[] | undefined) ?? [];
   const available = new Set(
     chosenCategories.flatMap((id) => getCategoryFields(id, categoryList).map((f) => f.key))
   );
-  const fields = REQUIRABLE_FIELDS.filter(
+  const fields = requirable.filter(
     (field) => available.has(field.key) || required.includes(field.key)
   );
 
