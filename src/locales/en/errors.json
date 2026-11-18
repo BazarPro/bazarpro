@@ -63,9 +63,11 @@
     "notYet": "Discounts are only possible from the time set by the organizer."
   },
   "event": {
+    "feeCapRange": "The fee cap must be between 0 and 10,000 €.",
+    "full": "“{{event}}” is full: all {{limit}} places for items are taken.",
     "blocked": "This bazaar was blocked by moderation.",
     "endBeforeStart": "The end of the {{label}} must be after its start.",
-    "feesOnlyLower": "Since sellers have registered, commission and intake fee can only be lowered.",
+    "feesOnlyLower": "Since sellers have registered, commission, intake fee and fee cap can only be lowered.",
     "intakeFeeRange": "The intake fee must be between 0 and 100 €.",
     "invalidLocationCategory": "Invalid location category for this bazaar.",
     "itemLimitInvalid": "The item limit must be a whole number from 1.",
@@ -81,7 +83,7 @@
     "pastNoEdit": "Past bazaars can no longer be edited.",
     "rejectionReasonRequired": "Please give a reason for the rejection.",
     "runningNoDate": "The date cannot be changed during the bazaar.",
-    "runningNoFees": "Commission and intake fee cannot be changed during the bazaar.",
+    "runningNoFees": "Commission, intake fee and fee cap cannot be changed during the bazaar.",
     "directSaleLocked": "Sales are already booked. Direct sale can no longer be switched on or off.",
     "runningNoVisibility": "The visibility cannot be changed during the bazaar.",
     "accessCodeRequired": "This visibility needs an access code.",

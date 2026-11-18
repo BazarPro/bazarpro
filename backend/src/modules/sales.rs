@@ -177,3 +177,103 @@ pub async fn intake_fee_for_seller(
     .await?;
     Ok(fee_for(per_item, items))
 }
+
+/// What the fee cap gives back of a seller's fees (commission and intake fee): everything
+/// above it. The app computes the same (feeCapCredit, src/shared/feeCap.ts).
+pub fn fee_cap_credit(fees: Decimal, cap: Option<Decimal>) -> Decimal {
+    cap.map_or(Decimal::ZERO, |cap| (fees - cap).max(Decimal::ZERO))
+}
+
+/// The commission of a direct sale under the cap: at most what is left of it after the
+/// commissions the seller `paid` before. The app shows the same (cappedCommission).
+pub fn capped_commission(commission: Decimal, paid: Decimal, cap: Option<Decimal>) -> Decimal {
+    cap.map_or(commission, |cap| {
+        commission.min((cap - paid).max(Decimal::ZERO))
+    })
+}
+
+/// The fee cap credit of one seller: as stored at the payout, otherwise from the setting.
+pub fn fee_cap_credit_of(
+    event: &Event,
+    seller: Option<&EventSeller>,
+    commission: Decimal,
+    intake_fee: &IntakeFee,
+) -> Decimal {
+    if let Some(seller) = seller.filter(|seller| seller.payout_received) {
+        return seller.fee_cap_credit.unwrap_or(Decimal::ZERO);
+    }
+    fee_cap_credit(
+        commission + intake_fee.total,
+        event.resolved_features().max_fees_per_seller,
+    )
+}
+
+/// Commissions the seller paid at the desk for direct sales of the event so far.
+pub async fn direct_commission_paid(
+    conn: &mut PgConnection,
+    event_id: Uuid,
+    seller_id: Uuid,
+) -> sqlx::Result<Decimal> {
+    sqlx::query_scalar(
+        "SELECT COALESCE(sum(commission_amount), 0) FROM purchases
+         WHERE event_id = $1 AND seller_id = $2 AND direct_sale",
+    )
+    .bind(event_id)
+    .bind(seller_id)
+    .fetch_one(conn)
+    .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn euro(cents: i64) -> Decimal {
+        Decimal::new(cents, 2)
+    }
+
+    #[test]
+    fn the_cap_gives_back_what_is_above_it() {
+        assert_eq!(fee_cap_credit(euro(3500), None), Decimal::ZERO);
+        assert_eq!(fee_cap_credit(euro(1500), Some(euro(2000))), Decimal::ZERO);
+        assert_eq!(fee_cap_credit(euro(2000), Some(euro(2000))), Decimal::ZERO);
+        assert_eq!(fee_cap_credit(euro(3550), Some(euro(2000))), euro(1550));
+        // A cap of 0 waives every fee
+        assert_eq!(fee_cap_credit(euro(300), Some(Decimal::ZERO)), euro(300));
+    }
+
+    #[test]
+    fn direct_sales_pay_commission_up_to_the_cap() {
+        assert_eq!(capped_commission(euro(1400), euro(0), None), euro(1400));
+        assert_eq!(
+            capped_commission(euro(1400), euro(0), Some(euro(2000))),
+            euro(1400)
+        );
+        assert_eq!(
+            capped_commission(euro(1400), euro(1400), Some(euro(2000))),
+            euro(600)
+        );
+        assert_eq!(
+            capped_commission(euro(1400), euro(2000), Some(euro(2000))),
+            Decimal::ZERO
+        );
+        // Paid more before the cap was lowered: nothing more, never a refund
+        assert_eq!(
+            capped_commission(euro(500), euro(2500), Some(euro(2000))),
+            Decimal::ZERO
+        );
+    }
+
+    #[test]
+    fn capped_direct_sales_and_the_settlement_agree() {
+        // Three direct sales of 14 € commission each, cap 20 €, intake fee 3 €
+        let cap = Some(euro(2000));
+        let mut paid = Decimal::ZERO;
+        for _ in 0..3 {
+            paid += capped_commission(euro(1400), paid, cap);
+        }
+        assert_eq!(paid, euro(2000));
+        // The intake fee is waived at the payout: all fees stay at the cap
+        assert_eq!(fee_cap_credit(paid + euro(300), cap), euro(300));
+    }
+}

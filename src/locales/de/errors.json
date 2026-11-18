@@ -63,9 +63,11 @@
     "notYet": "Rabatte sind erst ab der vom Veranstalter festgelegten Uhrzeit möglich."
   },
   "event": {
+    "feeCapRange": "Der Gebühren-Deckel muss zwischen 0 und 10.000 € liegen.",
+    "full": "„{{event}}“ ist voll: Alle {{limit}} Plätze für Artikel sind vergeben.",
     "blocked": "Dieser Basar wurde von der Moderation gesperrt.",
     "endBeforeStart": "Das Ende der {{label}} muss nach dem Beginn liegen.",
-    "feesOnlyLower": "Seit sich Verkäufer angemeldet haben, können Provision und Annahmegebühr nur noch gesenkt werden.",
+    "feesOnlyLower": "Seit sich Verkäufer angemeldet haben, können Provision, Annahmegebühr und Gebühren-Deckel nur noch gesenkt werden.",
     "intakeFeeRange": "Die Annahmegebühr muss zwischen 0 und 100 € liegen.",
     "invalidLocationCategory": "Ungültige Standortkategorie für dieses Event.",
     "itemLimitInvalid": "Die Artikelgrenze muss eine ganze Zahl ab 1 sein.",
@@ -81,7 +83,7 @@
     "pastNoEdit": "Vergangene Basare können nicht mehr bearbeitet werden.",
     "rejectionReasonRequired": "Bitte gib einen Grund für die Ablehnung an.",
     "runningNoDate": "Während des Basars kann das Datum nicht geändert werden.",
-    "runningNoFees": "Während des Basars können Provision und Annahmegebühr nicht geändert werden.",
+    "runningNoFees": "Während des Basars können Provision, Annahmegebühr und Gebühren-Deckel nicht geändert werden.",
     "directSaleLocked": "Es sind schon Verkäufe gebucht. Der Direktverkauf lässt sich jetzt nicht mehr ein- oder ausschalten.",
     "runningNoVisibility": "Während des Basars kann die Sichtbarkeit nicht geändert werden.",
     "accessCodeRequired": "Für diese Sichtbarkeit brauchst du einen Zugangscode.",

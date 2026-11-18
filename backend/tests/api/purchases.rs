@@ -456,7 +456,7 @@ async fn my_sales_per_event_with_the_intake_fee(db: PgPool) {
     assert_eq!(group["items"][0]["sale"]["totalAmount"], 30.0);
     assert_eq!(
         group["totals"],
-        json!({ "revenue": 30.0, "commission": 3.0, "intakeFee": { "perItem": 0.5, "items": 2, "total": 1.0 }, "payout": 26.0 })
+        json!({ "revenue": 30.0, "commission": 3.0, "intakeFee": { "perItem": 0.5, "items": 2, "total": 1.0 }, "feeCapCredit": 0.0, "payout": 26.0 })
     );
     assert_eq!(group["paid"], false);
     assert_eq!(
@@ -1026,4 +1026,176 @@ async fn direct_sellers_have_nothing_to_settle(db: PgPool) {
     assert_eq!(seller["payout"], json!(0.0), "{seller}");
     // 200.01 € from the buyers, less 20 € commission
     assert_eq!(seller["receivedDirectly"], json!(180.01));
+}
+
+async fn vendor_of(desk: &Desk) -> Value {
+    let vendors = desk
+        .app
+        .query(
+            "eventRoles.getVendorsForEvent",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(vendors.status, StatusCode::OK, "{}", vendors.body);
+    vendors.body["value"][0].clone()
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_fee_cap_gives_back_what_is_above_it_at_the_payout(db: PgPool) {
+    // 10 % commission, 3 € per bike handed in, at most 20 € of fees per seller
+    let desk = Desk::new(
+        db.clone(),
+        json!({ "intakeFee": 3, "maxFeesPerSeller": 20 }),
+    )
+    .await;
+    let (_, ebike) = desk.item("E-Bike", 140.0).await;
+    let (_, trekking) = desk.item("Trekkingrad", 90.0).await;
+    desk.sell(json!({ "eventProductId": ebike })).await;
+    // Each sale keeps its full commission; the cap works on the sum
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["commission"], json!(14.0));
+    // 14 € + 2 × 3 € is just above the cap
+    assert_eq!(vendor["feeCapCredit"], json!(0.0));
+    assert_eq!(vendor["payout"], json!(126.0 - 6.0));
+
+    desk.sell(json!({ "eventProductId": trekking })).await;
+    // 23 € commission + 6 € intake fee = 29 €: 9 € come back
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["feeCapCredit"], json!(9.0), "{vendor}");
+    assert_eq!(vendor["payout"], json!(230.0 - 20.0));
+    let seller = fixtures::session(&db, desk.seller).await;
+    let sales = desk
+        .app
+        .query("purchases.getMySales", json!({}), Some(&seller))
+        .await;
+    let totals = &sales.body["value"][0]["totals"];
+    assert_eq!(totals["feeCapCredit"], json!(9.0), "{totals}");
+    assert_eq!(totals["payout"], json!(210.0));
+
+    // The payout stores the credit; a later change of the cap does not alter it
+    let args = json!({ "eventId": desk.event, "vendorUserId": desk.seller });
+    let paid = desk
+        .app
+        .mutation("eventSeller.settleVendor", args.clone(), Some(&desk.team))
+        .await;
+    assert_eq!(paid.status, StatusCode::OK, "{}", paid.body);
+    let stored: (f64, Option<f64>) = sqlx::query_as(
+        "SELECT payout_amount::float8, fee_cap_credit::float8 FROM event_sellers
+         WHERE event_id = $1 AND user_id = $2",
+    )
+    .bind(desk.event)
+    .bind(desk.seller)
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(stored, (210.0, Some(9.0)));
+    sqlx::query(
+        "UPDATE events SET features = '{\"intakeFee\": 3, \"maxFeesPerSeller\": 10}' WHERE id = $1",
+    )
+    .bind(desk.event)
+    .execute(&db)
+    .await
+    .unwrap();
+    assert_eq!(vendor_of(&desk).await["payout"], json!(210.0));
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    assert_eq!(summary["totalFeeCapCredits"], json!(9.0), "{summary}");
+    assert_eq!(summary["totalPaidOut"], json!(210.0));
+    // 230 € taken, 210 € paid out: the bazaar keeps exactly the cap
+    assert_eq!(summary["cashInHandSoll"], json!(20.0));
+
+    // Taking the payout back clears it; the new cap counts from then on
+    let undone = desk
+        .app
+        .mutation(
+            "eventSeller.unmarkVendorPayoutReceived",
+            args,
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(undone.status, StatusCode::OK, "{}", undone.body);
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["feeCapCredit"], json!(19.0), "{vendor}");
+    assert_eq!(vendor["payout"], json!(220.0));
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_direct_sale_takes_commission_only_up_to_the_cap(db: PgPool) {
+    let desk = Desk::new(
+        db.clone(),
+        json!({ "directSale": true, "maxFeesPerSeller": 20, "intakeFee": 2 }),
+    )
+    .await;
+    let (ebike, ebike_relation) = desk.item("E-Bike", 140.0).await;
+    let (trekking, trekking_relation) = desk.item("Trekkingrad", 90.0).await;
+    let (city, city_relation) = desk.item("Stadtrad", 50.0).await;
+    let left = |product: Uuid| {
+        let app = &desk.app;
+        let team = desk.team.clone();
+        async move {
+            app.query(
+                "purchases.getCheckoutItem",
+                json!({ "eventId": desk.event, "productId": product }),
+                Some(&team),
+            )
+            .await
+            .body["value"]["feeCapLeft"]
+                .clone()
+        }
+    };
+    assert_eq!(left(ebike).await, json!(20.0));
+
+    let reply = desk
+        .cart(
+            json!([{ "eventProductId": ebike_relation }, { "eventProductId": trekking_relation }]),
+            None,
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // 14 € for the first bike, the rest of the cap (6 € instead of 9 €) for the second
+    assert_eq!(reply.body["value"]["taken"], json!(20.0));
+    assert_eq!(desk.purchase(ebike).await.unwrap().1, 14.0);
+    assert_eq!(desk.purchase(trekking).await.unwrap().1, 6.0);
+    assert_eq!(left(city).await, json!(0.0));
+    // The cap is reached: no more commission
+    desk.sell(json!({ "eventProductId": city_relation })).await;
+    assert_eq!(desk.purchase(city).await.unwrap().1, 0.0);
+
+    // The intake fee is above the cap as well: the seller owes nothing at the end
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["commission"], json!(20.0));
+    assert_eq!(vendor["feeCapCredit"], json!(6.0), "{vendor}");
+    assert_eq!(vendor["payout"], json!(0.0));
+
+    // Undone, the commission goes back; the other sales stay as booked, under the cap
+    sqlx::query(
+        "INSERT INTO feature_flags (key, value) VALUES ('allow_undo_inventory_actions', true)",
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+    let undo = desk
+        .app
+        .mutation(
+            "purchases.undoSale",
+            json!({ "eventProductId": ebike_relation }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(undo.status, StatusCode::OK, "{}", undo.body);
+    assert_eq!(left(ebike).await, json!(14.0));
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["commission"], json!(6.0));
+    // 6 € commission + 6 € intake fee are below the cap: the seller pays the intake fee
+    assert_eq!(vendor["feeCapCredit"], json!(0.0));
+    assert_eq!(vendor["payout"], json!(-6.0));
 }

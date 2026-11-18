@@ -69,6 +69,8 @@ struct ExportSeller {
     revenue: Decimal,
     commission: Decimal,
     intake_fee: Decimal,
+    /// Fees above the cap given back
+    fee_cap_credit: Decimal,
     /// Negative when the seller owes the bazaar
     payout: Decimal,
     paid: bool,
@@ -137,6 +139,7 @@ async fn get_export(ctx: &mut Ctx, args: EventArgs) -> AppResult<Export> {
             revenue: vendor.total_revenue,
             commission: vendor.commission,
             intake_fee: vendor.intake_fee.total,
+            fee_cap_credit: vendor.fee_cap_credit,
             payout: vendor.payout,
             paid: vendor.paid,
         })

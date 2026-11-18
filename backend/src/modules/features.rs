@@ -27,10 +27,12 @@ struct Stored {
     public_catalog: Option<bool>,
     required_fields: Option<Vec<String>>,
     max_items_per_seller: Option<f64>,
+    max_items_total: Option<f64>,
     label_format: Option<String>,
     price_on_label: Option<bool>,
     label_mark: Option<String>,
     intake_fee: Option<f64>,
+    max_fees_per_seller: Option<f64>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
     direct_sale: Option<bool>,
@@ -54,12 +56,16 @@ pub struct EventFeatures {
     pub public_catalog: bool,
     pub required_fields: Vec<String>,
     pub max_items_per_seller: Option<u32>,
+    /// Items of all sellers together, e.g. what the hall holds
+    pub max_items_total: Option<u32>,
     pub label_format: String,
     pub price_on_label: bool,
     /// What tells the sellers' items apart on labels: see `label_mark`
     pub label_mark: String,
     /// Fixed fee in € per accepted item, kept from the payout
     pub intake_fee: Option<Decimal>,
+    /// Upper bound in € of all fees one seller pays (commission and intake fee)
+    pub max_fees_per_seller: Option<Decimal>,
     pub private_sellers_only: bool,
     pub fixed_seller_data: bool,
     /// Buyers pay the seller at the item; the cash desk books the sale and takes only the
@@ -94,6 +100,7 @@ pub fn resolve(features: Option<&Value>) -> EventFeatures {
         public_catalog: stored.public_catalog.unwrap_or(true),
         required_fields: stored.required_fields.unwrap_or_default(),
         max_items_per_seller: stored.max_items_per_seller.map(|n| n.max(0.0) as u32),
+        max_items_total: stored.max_items_total.map(|n| n.max(0.0) as u32),
         label_format: stored.label_format.unwrap_or_else(|| "standard".to_owned()),
         price_on_label: stored.price_on_label.unwrap_or(false),
         // Older bazaars may have stored the seller number, which labels no longer show
@@ -105,6 +112,10 @@ pub fn resolve(features: Option<&Value>) -> EventFeatures {
             .intake_fee
             .and_then(Decimal::from_f64_retain)
             .map(|fee| fee.cents()),
+        max_fees_per_seller: stored
+            .max_fees_per_seller
+            .and_then(Decimal::from_f64_retain)
+            .map(|cap| cap.max(Decimal::ZERO).cents()),
         private_sellers_only: stored.private_sellers_only.unwrap_or(false),
         fixed_seller_data: stored.fixed_seller_data.unwrap_or(false),
         direct_sale: stored.direct_sale.unwrap_or(false),
