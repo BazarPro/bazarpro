@@ -130,6 +130,7 @@ fn refused(status: StatusCode, body: &Value) -> AppError {
         (_, "READER_BUSY") => AppError::coded(status, "sumup.readerBusy", &[]),
         // The token lacks the readers scopes: connected before BazarPro asked for them
         (StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN, _) => {
+            tracing::warn!(%status, %body, "SumUp denied the readers API");
             AppError::forbidden("sumup.reconnect")
         }
         (StatusCode::NOT_FOUND, _) => AppError::not_found("sumup.readerNotFound"),
