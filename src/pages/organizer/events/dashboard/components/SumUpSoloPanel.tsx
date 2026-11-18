@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '../../../../../components/ui/button';
 import { Input } from '../../../../../components/ui/input';
+import { InfoTip } from '../../../../../components/ui/info-tip';
 import { getUserFacingErrorMessage } from '../../../../../lib/errors';
 import type { SumUpSoloState } from '../../../../../lib/sumupSolo';
 import { useSumUpReturn } from '../../../../../native/sumup';
@@ -97,7 +98,12 @@ export function SumUpReaderList({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{t('checkout.solo.title')}</p>
+        {/* In the settings the row above names them already */}
+        {choose ? (
+          <p className="text-xs text-muted-foreground">{t('checkout.solo.title')}</p>
+        ) : (
+          <span />
+        )}
         <Button
           type="button"
           size="sm"
@@ -210,7 +216,10 @@ export function SumUpPairForm({ solo, disabled }: { solo: SumUpSoloState; disabl
   return (
     // No <form>: the desk and the event settings are forms of their own
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">{t('checkout.solo.pairHint')}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-xs font-medium">{t('checkout.solo.pairTitle')}</p>
+        <InfoTip>{t('checkout.solo.pairHint')}</InfoTip>
+      </div>
       <div className="flex flex-wrap gap-2">
         <Input
           value={code}
