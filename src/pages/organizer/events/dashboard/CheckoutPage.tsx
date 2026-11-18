@@ -31,7 +31,7 @@ import { Label } from '../../../../components/ui/label';
 import { ImageWithFallback } from '../../../../components/ui/image-with-fallback';
 import { QRCodeScanner } from '../../../../components/ui/QRCodeScanner';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
-import { formatPriceDE } from '../../../../lib/utils';
+import { cn, formatPriceDE } from '../../../../lib/utils';
 import { Trans, useTranslation } from 'react-i18next';
 import { useEventAccess } from '../../../../hooks/useEventAccess';
 import { PageSkeleton } from '../../../../components/ui/loading';
@@ -684,37 +684,45 @@ function CashDesk() {
                   <span className="text-2xl font-bold tabular-nums">{formatPriceDE(taken)} €</span>
                 </div>
                 {cardPayments && (
-                  <div className="w-full space-y-1">
+                  <div className="w-full space-y-2">
+                    {/* Quiet like a switch: the one strong colour is the button that sells */}
                     <div
                       role="radiogroup"
                       aria-label={t('checkout.payment')}
-                      className="grid w-full grid-cols-2 gap-2"
+                      className="grid w-full grid-cols-2 gap-1 rounded-lg bg-muted p-1"
                     >
-                      {(['cash', 'card'] as const).map((method) => (
-                        <Button
-                          key={method}
-                          type="button"
-                          role="radio"
-                          aria-checked={paymentMethod === method}
-                          variant={paymentMethod === method ? 'default' : 'outline'}
-                          className="gap-2"
-                          disabled={isSubmitting}
-                          onClick={() => setChosenMethod(method)}
-                        >
-                          {method === 'cash' ? (
-                            <Banknote className="h-4 w-4" />
-                          ) : (
-                            <CreditCard className="h-4 w-4" />
-                          )}
-                          {t(`checkout.${method}`)}
-                        </Button>
-                      ))}
+                      {(['cash', 'card'] as const).map((method) => {
+                        const selected = paymentMethod === method;
+                        return (
+                          <button
+                            key={method}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            disabled={isSubmitting}
+                            onClick={() => setChosenMethod(method)}
+                            className={cn(
+                              'flex h-9 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+                              selected
+                                ? 'bg-background text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            {method === 'cash' ? (
+                              <Banknote className="h-4 w-4" />
+                            ) : (
+                              <CreditCard className="h-4 w-4" />
+                            )}
+                            {t(`checkout.${method}`)}
+                          </button>
+                        );
+                      })}
                     </div>
                     {byCard && sumUp.available && (
-                      <SumUpPanel sumUp={sumUp} disabled={isSubmitting} />
+                      <SumUpPanel sumUp={sumUp} disabled={isSubmitting} eventId={eventId} />
                     )}
                     {byCard && solo.oauth && !offline.offline && (
-                      <SumUpSoloPanel solo={solo} disabled={isSubmitting} />
+                      <SumUpSoloPanel solo={solo} disabled={isSubmitting} eventId={eventId} />
                     )}
                     {byCard && !viaSumUp && (
                       <p className="text-xs text-muted-foreground">{t('checkout.cardHint')}</p>
@@ -752,7 +760,7 @@ function CashDesk() {
                     <Button
                       loading={isSubmitting}
                       size="lg"
-                      className="h-auto min-h-10 min-w-0 flex-1 gap-2 whitespace-normal"
+                      className="h-11 min-w-0 flex-1 gap-2"
                       disabled={
                         !allReady ||
                         !emailValid ||
@@ -764,22 +772,26 @@ function CashDesk() {
                       onClick={() => void chargeWithSumUp()}
                     >
                       <CreditCard className="h-4 w-4 shrink-0" />
-                      {isSubmitting
-                        ? t('checkout.sumup.charging')
-                        : t('checkout.sumup.charge', { total: formatPriceDE(taken) })}
+                      {isSubmitting ? t('checkout.sumup.charging') : t('checkout.sumup.charge')}
                     </Button>
                   ) : (
                     <Button
                       loading={isSubmitting}
                       size="lg"
-                      className="h-auto min-h-10 min-w-0 flex-1 whitespace-normal"
+                      className="h-11 min-w-0 flex-1"
                       disabled={!allReady || !emailValid || !moneyReceived || isSubmitting}
                       onClick={submit}
                     >
                       {isSubmitting ? t('checkout.selling') : t('checkout.complete')}
                     </Button>
                   )}
-                  <Button size="lg" variant="outline" onClick={clearCart} disabled={isSubmitting}>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-11"
+                    onClick={clearCart}
+                    disabled={isSubmitting}
+                  >
                     {t('checkout.clear')}
                   </Button>
                 </div>

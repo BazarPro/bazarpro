@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { MemoryRouter } from 'react-router-dom';
 import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMutation, useOptionalQuery } from '../../../../lib/api/react';
@@ -53,7 +54,11 @@ function Settings({ dirty = false }: { dirty?: boolean }) {
 
 const show = (connection: Connection | undefined, dirty = false) => {
   vi.mocked(useOptionalQuery).mockReturnValue(connection as never);
-  return render(<Settings dirty={dirty} />);
+  return render(
+    <MemoryRouter>
+      <Settings dirty={dirty} />
+    </MemoryRouter>
+  );
 };
 
 describe('SumUpConnectionSettings', () => {
@@ -66,15 +71,15 @@ describe('SumUpConnectionSettings', () => {
 
   it('shows nothing on a server without SumUp OAuth', () => {
     const { container } = show({ oauth: false, connected: false, mine: true });
-    expect(container).toBeEmptyDOMElement();
+    expect(container.textContent).toBe('');
     show(undefined);
   });
 
   it('lets the organizer connect the account', async () => {
     show({ oauth: true, connected: false, mine: true });
-    expect(screen.getByText('SumUp-Konto')).toBeInTheDocument();
-    // The app and the Solo come once the account is there
-    expect(screen.queryByText('SumUp Solo im Browser')).toBeNull();
+    expect(screen.getByText('Nicht verbunden')).toBeInTheDocument();
+    // The devices come once the account is there
+    expect(screen.queryByText('Kartenterminals im Browser')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Mit SumUp verbinden' }));
     await waitFor(() => expect(connect).toHaveBeenCalled());
   });
@@ -94,7 +99,7 @@ describe('SumUpConnectionSettings', () => {
 
   it('tells a helper that the organizer connects it', () => {
     show({ oauth: true, connected: false, mine: false });
-    expect(screen.getByText('Nicht verbunden')).toBeInTheDocument();
+    expect(screen.getByText(/Er kann es hier verbinden/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mit SumUp verbinden' })).toBeNull();
   });
 
@@ -102,33 +107,43 @@ describe('SumUpConnectionSettings', () => {
     solo.readers = [{ id: 'r1', name: 'Kasse 1', status: 'paired', online: true }];
     show({ oauth: true, connected: true, mine: true, merchantCode: 'MC123' });
     expect(screen.getByText('Verbunden')).toBeInTheDocument();
-    expect(screen.getByText('· MC123')).toBeInTheDocument();
-    expect(screen.getByText('In der BazarPro-App')).toBeInTheDocument();
-    expect(screen.getByText('1 Solo gekoppelt')).toBeInTheDocument();
+    expect(screen.getByText('Händlerkonto MC123')).toBeInTheDocument();
+    expect(screen.getByText(/Kartenleser per Bluetooth/)).toBeInTheDocument();
     expect(screen.getByText('Kasse 1')).toBeInTheDocument();
+    expect(screen.getByText('online')).toBeInTheDocument();
   });
 
   it('pairs the first Solo with the code it shows', async () => {
     show({ oauth: true, connected: true, mine: true });
-    expect(screen.getByText('0 Solos gekoppelt')).toBeInTheDocument();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Code vom Solo' }), {
-      target: { value: 'abcd1234' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Koppeln' }));
-    await waitFor(() => expect(solo.pair).toHaveBeenCalledWith('ABCD1234', undefined));
+    expect(screen.getByText('Noch kein SumUp Solo gekoppelt.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Solo koppeln' }));
+    const pair = await screen.findByRole('button', { name: 'Koppeln' });
+    expect(pair).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Code vom Solo'), { target: { value: 'abcd1234' } });
+    fireEvent.change(screen.getByLabelText('Name des Solo'), { target: { value: 'Kasse 2' } });
+    fireEvent.click(pair);
+    await waitFor(() => expect(solo.pair).toHaveBeenCalledWith('ABCD1234', 'Kasse 2'));
   });
 
   it('says why the Solos cannot be listed', () => {
     solo.error = new Error('Bitte verbinde SumUp neu.');
     show({ oauth: true, connected: true, mine: true });
     expect(screen.getByText('Bitte verbinde SumUp neu.')).toBeInTheDocument();
-    expect(screen.queryByText(/gekoppelt/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Solo koppeln' })).toBeNull();
   });
 
   it('waits for the Solos', () => {
     solo.readers = null;
     show({ oauth: true, connected: true, mine: true });
     expect(screen.getByText('SumUp wird geprüft…')).toBeInTheDocument();
+  });
+
+  it('removes a Solo', async () => {
+    solo.readers = [{ id: 'r1', name: 'Kasse 1', status: 'paired', online: false }];
+    show({ oauth: true, connected: true, mine: true });
+    expect(screen.getByText('offline')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Kasse 1 entfernen' }));
+    await waitFor(() => expect(solo.remove).toHaveBeenCalledWith('r1'));
   });
 
   it('disconnects after asking', async () => {
@@ -142,6 +157,6 @@ describe('SumUpConnectionSettings', () => {
     show({ oauth: true, connected: true, mine: false });
     expect(screen.getByText('Verbunden')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Trennen' })).toBeNull();
-    expect(screen.queryByText('SumUp Solo im Browser')).toBeNull();
+    expect(screen.queryByText('Kartenterminals im Browser')).toBeNull();
   });
 });

@@ -199,16 +199,16 @@
       "disconnectTitle": "SumUp trennen?",
       "disconnectText": "Die Kassen deines Teams kassieren dann nicht mehr mit deinem SumUp-Konto, bis du es wieder verbindest. Den Zugriff von BazarPro kannst du auch in SumUp selbst widerrufen.",
       "keep": "Verbunden lassen",
-      "soloTitle": "SumUp Solo im Browser",
+      "soloTitle": "Kartenterminals im Browser",
       "soloText": "Für Kassen am PC oder im Browser ohne App: Der SumUp Solo ist selbst per WLAN oder Mobilfunk online und bekommt den Betrag direkt von BazarPro. Kopple ihn hier einmal, dann kann jede Kasse deines Teams ihn wählen. Andere Kartenleser (Air, 3G) gehen nur in der App.",
-      "account": "SumUp-Konto",
       "linked": "Verbunden",
       "notLinked": "Nicht verbunden",
-      "app": "In der BazarPro-App",
       "appText": "Am Handy oder Tablet kassiert die App mit einem SumUp-Kartenleser per Bluetooth (z. B. Air oder Solo) oder per Tap to Pay auf dem iPhone. Den Kartenleser verbindest du an der Kasse unter „Karte“.",
-      "appStatus": "Kartenleser an der Kasse",
-      "soloCount_one": "{{count}} Solo gekoppelt",
-      "soloCount_other": "{{count}} Solos gekoppelt"
+      "merchant": "Händlerkonto {{merchant}}",
+      "connectedText": "Dein SumUp-Konto ist verbunden.",
+      "connectShort": "Einmal verbinden, dann kassieren alle Kassen deines Teams damit.",
+      "soloNone": "Noch kein SumUp Solo gekoppelt.",
+      "appShort": "In der BazarPro-App verbindest du Kartenleser per Bluetooth direkt an der Kasse."
     }
   },
   "logistics": {
@@ -823,7 +823,7 @@
       "device": "Kartenzahlung mit",
       "reader": "Kartenleser",
       "readerSettings": "Kartenleser verbinden",
-      "charge": "{{total}} € mit SumUp kassieren",
+      "charge": "Mit Karte kassieren",
       "charging": "Zahlung läuft…",
       "minimum": "SumUp nimmt Karten erst ab {{min}} €. Bitte bar kassieren.",
       "conflict": "Die Karte ist belastet, aber nicht alles ließ sich buchen ({{error}}). Der Verkauf wird nachgebucht; was nicht geht, steht unter „Offline-Vorgänge“ in der Kassenabrechnung – dort per SumUp erstatten.",
@@ -840,8 +840,6 @@
         "tapToPayActivation": "Tap to Pay ist auf diesem iPhone noch nicht eingerichtet.",
         "other": "Die Zahlung ist fehlgeschlagen."
       },
-      "connect": "Mit SumUp verbinden",
-      "connectText": "Verbinde dein SumUp-Konto, dann kassiert jede Kasse deines Teams damit. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
       "notConnected": "Der Veranstalter hat noch kein SumUp-Konto verbunden. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
       "tokenFailed": "Die Anmeldung mit dem SumUp-Konto des Veranstalters hat nicht geklappt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
       "retry": "Erneut versuchen"
@@ -853,20 +851,24 @@
       "offline": "offline",
       "processing": "wird gekoppelt…",
       "none": "Der Veranstalter hat noch keinen SumUp Solo gekoppelt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
-      "noneOrganizer": "Im Browser kassiert die Kasse über einen SumUp Solo. Kopple ihn einmal, dann geht der Betrag direkt an den Solo.",
-      "pairHint": "Auf dem Solo: vom SumUp-Konto abmelden, dann Verbindungen → API → Verbinden. Den angezeigten Code hier eingeben, er gilt fünf Minuten.",
+      "noneOrganizer": "Noch kein SumUp Solo gekoppelt. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
       "code": "Code vom Solo",
       "name": "Name des Solo",
       "namePlaceholder": "Name, z. B. Kasse 1",
       "pair": "Koppeln",
-      "pairAnother": "Weiteren Solo koppeln",
       "paired": "Der Solo ist gekoppelt.",
       "remove": "{{reader}} entfernen",
       "payOnReader": "Bitte am {{reader}} mit Karte oder Handy bezahlen…",
       "cancel": "Abbrechen",
-      "connectText": "Verbinde dein SumUp-Konto, dann kassiert die Kasse auch im Browser über deinen SumUp Solo. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
-      "byHand": "Bis dahin: Betrag am eigenen Kartengerät eingeben.",
-      "pairTitle": "Solo koppeln"
+      "pairTitle": "SumUp Solo koppeln",
+      "toSettings": "Einstellungen",
+      "notConnected": "SumUp ist noch nicht verbunden. Bis dahin: Betrag am eigenen Kartengerät eingeben.",
+      "choose": "Solo wählen",
+      "pairButton": "Solo koppeln",
+      "pairIntro": "Einmal koppeln, dann kann jede Kasse deines Teams im Browser damit kassieren.",
+      "step1": "Den Solo einschalten und mit WLAN oder Mobilfunk verbinden.",
+      "step2": "Falls angemeldet: auf dem Solo vom SumUp-Konto abmelden.",
+      "step3": "Auf dem Solo Verbindungen → API → Verbinden öffnen und den Code hier eingeben. Er gilt fünf Minuten."
     }
   },
   "proof": {

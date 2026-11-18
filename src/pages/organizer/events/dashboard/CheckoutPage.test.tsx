@@ -312,7 +312,7 @@ describe('CheckoutPage', () => {
     expect(screen.queryByText(/SumUp/)).not.toBeInTheDocument();
   });
 
-  it('on a server with SumUp OAuth the organizer connects the account for the team', async () => {
+  it('on a server with SumUp OAuth the desk sends the organizer to the settings', async () => {
     takeCards();
     Object.assign(sumUp, { available: true, mode: 'oauth', connected: false, loggedIn: false });
     const { unmount } = renderPage();
@@ -328,8 +328,11 @@ describe('CheckoutPage', () => {
     renderPage();
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mit SumUp verbinden' }));
-    expect(sumUp.connect).toHaveBeenCalled();
+    // Connected once for the team, in the event settings
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/\/settings#sumup$/)
+    );
     // The card is recorded by hand until then
     expect(screen.getByRole('checkbox', { name: '9,00 € mit Karte bezahlt' })).toBeInTheDocument();
   });
@@ -345,7 +348,7 @@ describe('CheckoutPage', () => {
     expect(screen.getByText('SumUp verbunden · MH4H92C7')).toBeInTheDocument();
     // The terminal confirms the payment, so there is no tick to set
     expect(screen.queryByRole('checkbox', { name: /bezahlt/ })).not.toBeInTheDocument();
-    const charge = screen.getByRole('button', { name: '15,00 € mit SumUp kassieren' });
+    const charge = screen.getByRole('button', { name: 'Mit Karte kassieren' });
     await waitFor(() => expect(charge).toBeEnabled());
     expect(sumUp.prepare).toHaveBeenCalled();
     fireEvent.click(charge);
@@ -376,7 +379,7 @@ describe('CheckoutPage', () => {
     renderPage();
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
-    const charge = screen.getByRole('button', { name: '9,00 € mit SumUp kassieren' });
+    const charge = screen.getByRole('button', { name: 'Mit Karte kassieren' });
     await waitFor(() => expect(charge).toBeEnabled());
     fireEvent.click(charge);
 
@@ -392,7 +395,7 @@ describe('CheckoutPage', () => {
     renderPage();
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
-    const charge = screen.getByRole('button', { name: '9,00 € mit SumUp kassieren' });
+    const charge = screen.getByRole('button', { name: 'Mit Karte kassieren' });
     await waitFor(() => expect(charge).toBeEnabled());
     fireEvent.click(charge);
 
@@ -422,7 +425,7 @@ describe('CheckoutPage', () => {
     expect(
       screen.getByText('SumUp nimmt Karten erst ab 1,00 €. Bitte bar kassieren.')
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '0,50 € mit SumUp kassieren' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Mit Karte kassieren' })).toBeDisabled();
   });
 
   it('offers no card without the setting', async () => {
@@ -758,7 +761,7 @@ describe('CheckoutPage without internet (app)', () => {
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
     expect(screen.getByRole('checkbox', { name: '9,00 € mit Karte bezahlt' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /mit SumUp kassieren/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mit Karte kassieren' })).not.toBeInTheDocument();
   });
 
   it('queues a charged card sale the backend refuses, so the rest is booked', async () => {
@@ -774,7 +777,7 @@ describe('CheckoutPage without internet (app)', () => {
 
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
-    const charge = screen.getByRole('button', { name: '9,00 € mit SumUp kassieren' });
+    const charge = screen.getByRole('button', { name: 'Mit Karte kassieren' });
     await waitFor(() => expect(charge).toBeEnabled());
     fireEvent.click(charge);
 
@@ -861,15 +864,27 @@ describe('CheckoutPage with a SumUp Solo (browser)', () => {
     }) as typeof useQuery);
   });
 
+  it('lets the desk choose between several Solos', () => {
+    const second = { id: 'rdr_2', name: 'Kasse 2', status: 'paired' as const, online: false };
+    Object.assign(solo, { readers: [SOLO, second] });
+    renderPage();
+    scan('jack');
+    fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'SumUp Solo' }), {
+      target: { value: 'rdr_2' },
+    });
+    expect(solo.choose).toHaveBeenCalledWith('rdr_2');
+  });
+
   it('charges the card on the Solo and books the sale with SumUp’s code', async () => {
     solo.charge.mockResolvedValue({ status: 'successful', transactionCode: 'TCODE77' });
     renderPage();
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
     expect(soloEnabled.last).toBe(true);
-    expect(screen.getByRole('radio', { name: /Kasse 1/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('Kasse 1')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /bezahlt/ })).not.toBeInTheDocument();
-    const charge = screen.getByRole('button', { name: '9,00 € mit SumUp kassieren' });
+    const charge = screen.getByRole('button', { name: 'Mit Karte kassieren' });
     await waitFor(() => expect(charge).toBeEnabled());
     fireEvent.click(charge);
 
@@ -893,30 +908,23 @@ describe('CheckoutPage with a SumUp Solo (browser)', () => {
     expect(solo.cancel).toHaveBeenCalled();
   });
 
-  it('without a paired Solo the card is recorded by hand, and the organizer pairs one', async () => {
+  it('without a paired Solo the card is recorded by hand, and the organizer pairs one in the settings', () => {
     Object.assign(solo, { readers: [], reader: undefined, ready: false });
     const { unmount } = renderPage();
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
     expect(screen.getByText(/noch keinen SumUp Solo gekoppelt/)).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: '9,00 € mit Karte bezahlt' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Koppeln' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument();
     unmount();
 
+    // Pairing is not done at the desk: the organizer gets the way to the settings
     Object.assign(solo, { mayPair: true });
     renderPage();
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
-    const pair = screen.getByRole('button', { name: 'Koppeln' });
-    expect(pair).toBeDisabled();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Code vom Solo' }), {
-      target: { value: 'abcd1234' },
-    });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Name des Solo' }), {
-      target: { value: 'Kasse 2' },
-    });
-    fireEvent.click(pair);
-    await waitFor(() => expect(solo.pair).toHaveBeenCalledWith('ABCD1234', 'Kasse 2'));
+    expect(screen.queryByRole('button', { name: 'Koppeln' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toBeInTheDocument();
   });
 
   it('tells what keeps the Solo from charging, e.g. a connection without its scopes', () => {
@@ -929,7 +937,7 @@ describe('CheckoutPage with a SumUp Solo (browser)', () => {
     renderPage();
     scan('jack');
     fireEvent.click(screen.getByRole('radio', { name: 'Karte' }));
-    expect(screen.getByText(/neu verbinden/)).toBeInTheDocument();
+    expect(screen.getByText(/verbinde es neu/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     expect(solo.refresh).toHaveBeenCalled();
   });

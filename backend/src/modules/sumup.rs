@@ -426,6 +426,9 @@ struct TokenResponse {
     access_token: String,
     refresh_token: Option<String>,
     expires_in: Option<i64>,
+    /// What SumUp granted, which may be less than asked for: restricted scopes need
+    /// SumUp's approval for the OAuth app
+    scope: Option<String>,
 }
 
 /// SumUp refused the grant: the merchant revoked the access, or the refresh token is gone.
@@ -500,6 +503,20 @@ async fn connect(state: &AppState, user: Uuid, code: &str) -> anyhow::Result<()>
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("SumUp sent no refresh token"))?;
     let merchant = merchant_code(state, &tokens.access_token).await;
+    let granted: Vec<&str> = tokens
+        .scope
+        .as_deref()
+        .map(|scope| scope.split([' ', ',']).filter(|s| !s.is_empty()).collect())
+        .unwrap_or_default();
+    let missing: Vec<&str> = state
+        .config
+        .sumup_scopes
+        .split_whitespace()
+        .filter(|wanted| tokens.scope.is_some() && !granted.contains(wanted))
+        .collect();
+    if !missing.is_empty() {
+        tracing::warn!(?missing, ?merchant, "SumUp granted fewer scopes than asked for");
+    }
 
     let mut tx = state.db.begin().await?;
     sqlx::query(

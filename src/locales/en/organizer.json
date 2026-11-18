@@ -199,16 +199,16 @@
       "disconnectTitle": "Disconnect SumUp?",
       "disconnectText": "The cash desks of your team will no longer charge your SumUp account until you connect it again. You can also revoke BazarPro's access in SumUp itself.",
       "keep": "Keep connected",
-      "soloTitle": "SumUp Solo in the browser",
+      "soloTitle": "Card terminals in the browser",
       "soloText": "For desks on a PC or in a browser without the app: the SumUp Solo is online itself over Wi-Fi or mobile data and gets the amount straight from BazarPro. Pair it here once, and every desk of your team can choose it. Other card readers (Air, 3G) only work in the app.",
-      "account": "SumUp account",
       "linked": "Connected",
       "notLinked": "Not connected",
-      "app": "In the BazarPro app",
       "appText": "On a phone or tablet the app charges with a SumUp card reader over Bluetooth (e.g. Air or Solo) or with Tap to Pay on iPhone. You connect the card reader at the cash desk under “Card”.",
-      "appStatus": "Card reader at the desk",
-      "soloCount_one": "{{count}} Solo paired",
-      "soloCount_other": "{{count}} Solos paired"
+      "merchant": "Merchant account {{merchant}}",
+      "connectedText": "Your SumUp account is connected.",
+      "connectShort": "Connect once, and every desk of your team charges it.",
+      "soloNone": "No SumUp Solo paired yet.",
+      "appShort": "In the BazarPro app you connect card readers over Bluetooth right at the desk."
     }
   },
   "logistics": {
@@ -823,7 +823,7 @@
       "device": "Take cards with",
       "reader": "Card reader",
       "readerSettings": "Connect card reader",
-      "charge": "Charge {{total}} € with SumUp",
+      "charge": "Charge card",
       "charging": "Payment in progress…",
       "minimum": "SumUp takes cards from {{min}} € only. Please take cash.",
       "conflict": "The card is charged, but not everything could be booked ({{error}}). The sale is booked later; what fails shows under “Offline issues” in the cash summary – refund it there via SumUp.",
@@ -840,8 +840,6 @@
         "tapToPayActivation": "Tap to Pay is not set up on this iPhone yet.",
         "other": "The payment failed."
       },
-      "connect": "Connect SumUp",
-      "connectText": "Connect your SumUp account, and every cash desk of your team charges it. Until then: enter the amount on your own card terminal.",
       "notConnected": "The organizer has not connected a SumUp account yet. Until then: enter the amount on your own card terminal.",
       "tokenFailed": "Logging in with the organizer's SumUp account did not work. Until then: enter the amount on your own card terminal.",
       "retry": "Try again"
@@ -853,20 +851,24 @@
       "offline": "offline",
       "processing": "pairing…",
       "none": "The organizer has not paired a SumUp Solo yet. Until then: enter the amount on your own card terminal.",
-      "noneOrganizer": "In the browser the desk charges cards on a SumUp Solo. Pair it once, and the amount goes straight to the Solo.",
-      "pairHint": "On the Solo: log out of the SumUp account, then Connections → API → Connect. Enter the code it shows here; it is valid for five minutes.",
+      "noneOrganizer": "No SumUp Solo paired yet. Until then: enter the amount on your own card terminal.",
       "code": "Code from the Solo",
       "name": "Name of the Solo",
       "namePlaceholder": "Name, e.g. Desk 1",
       "pair": "Pair",
-      "pairAnother": "Pair another Solo",
       "paired": "The Solo is paired.",
       "remove": "Remove {{reader}}",
       "payOnReader": "Please pay on {{reader}} with a card or phone…",
       "cancel": "Cancel",
-      "connectText": "Connect your SumUp account, and the desk also charges cards in the browser on your SumUp Solo. Until then: enter the amount on your own card terminal.",
-      "byHand": "Until then: enter the amount on your own card terminal.",
-      "pairTitle": "Pair a Solo"
+      "pairTitle": "Pair a SumUp Solo",
+      "toSettings": "Settings",
+      "notConnected": "SumUp is not connected yet. Until then: enter the amount on your own card terminal.",
+      "choose": "Choose a Solo",
+      "pairButton": "Pair a Solo",
+      "pairIntro": "Pair it once, and every desk of your team can charge with it in the browser.",
+      "step1": "Switch the Solo on and connect it to Wi-Fi or mobile data.",
+      "step2": "If logged in: log the Solo out of the SumUp account.",
+      "step3": "On the Solo open Connections → API → Connect and enter the code here. It is valid for five minutes."
     }
   },
   "proof": {
