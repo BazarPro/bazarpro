@@ -3,7 +3,7 @@ import { resolveEventFeatures, type StoredEventFeatures } from '../shared/eventF
 import { formatBerlinRange, formatBerlinTime } from '../shared/berlinTime';
 import i18n, { currentLocale } from '../i18n';
 import { dateLocale } from '../i18n/format';
-import { REQUIRABLE_FIELDS } from '../shared/categoryFields';
+import { requirableFields, type CategoryField } from '../shared/categoryFields';
 import { categoryFieldText } from '../i18n/categoryFields';
 
 function text(key: string, values?: Record<string, unknown>): string {
@@ -111,7 +111,10 @@ export interface SellerRule {
 }
 
 /** Item limit, photos and the price features of the bazaar, as sellers read them. */
-export function describeSellerRules(event: SellerConditionsEvent): SellerRule[] {
+export function describeSellerRules(
+  event: SellerConditionsEvent,
+  fieldDefinitions?: readonly CategoryField[]
+): SellerRule[] {
   const features = resolveEventFeatures(event);
   const rules: SellerRule[] = [
     {
@@ -128,7 +131,7 @@ export function describeSellerRules(event: SellerConditionsEvent): SellerRule[] 
   if (!features.publicCatalog) {
     rules.push({ text: text('noPublicCatalog'), allowed: true });
   }
-  const required = REQUIRABLE_FIELDS.filter((field) =>
+  const required = requirableFields(fieldDefinitions).filter((field) =>
     features.requiredFields?.includes(field.key)
   );
   if (required.length > 0) {

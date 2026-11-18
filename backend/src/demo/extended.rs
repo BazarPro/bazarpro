@@ -368,7 +368,7 @@ impl Demo<'_> {
                 "description": self.text(item.description),
                 "condition": item.condition,
                 "images": images,
-                "productCategory": self.seeder.category(item.cat),
+                "productCategory": self.seeder.item_category(item.cat, item.title.de),
                 "price": item.price,
                 "readyForSale": true,
                 "sold": false,
@@ -810,7 +810,7 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                 access_code: None,
                 vendor_limit: Some(60),
                 commission: 15.0,
-                categories: &[Cat::Clothing, Cat::Shoes, Cat::Toys, Cat::Books, Cat::Other],
+                categories: &[Cat::Clothing, Cat::Shoes, Cat::Toys, Cat::Books, Cat::Other, Cat::BabyKids, Cat::Bikes, Cat::Sports, Cat::Furniture],
                 cover: "cover_clothes",
                 features: json!({
                     "discounts": true,
@@ -1006,7 +1006,7 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                     "title": demo.text(item.title),
                     "description": demo.text(item.description),
                     "condition": item.condition,
-                    "productCategory": demo.seeder.category(item.cat),
+                    "productCategory": demo.seeder.item_category(item.cat, item.title.de),
                     "price": item.price,
                 }),
             )
@@ -1260,7 +1260,19 @@ async fn flea_market(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                 access_code: None,
                 vendor_limit: None,
                 commission: 10.0,
-                categories: &[Cat::Household, Cat::Furniture, Cat::Electronics, Cat::Bikes, Cat::Clothing],
+                categories: &[
+                    Cat::Household,
+                    Cat::Furniture,
+                    Cat::Electronics,
+                    Cat::Bikes,
+                    Cat::Clothing,
+                    Cat::Shoes,
+                    Cat::Accessories,
+                    Cat::Sports,
+                    Cat::Toys,
+                    Cat::Books,
+                    Cat::Other,
+                ],
                 cover: "cover_market",
                 features: json!({
                     "discounts": true,
@@ -1594,7 +1606,8 @@ async fn other_events(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()
             &EventPlan {
                 vendor_limit: Some(3),
                 visibility: "logged-in",
-                categories: &[Cat::Clothing, Cat::Shoes],
+                // Children's things from the kids' list
+                categories: &[Cat::Clothing, Cat::Shoes, Cat::Toys, Cat::Books, Cat::Other, Cat::BabyKids, Cat::Bikes, Cat::Sports, Cat::Furniture],
                 features: json!({ "discounts": false, "labelFormat": "small", "labelMark": "universal" }),
                 ..plan(
                     sabine,

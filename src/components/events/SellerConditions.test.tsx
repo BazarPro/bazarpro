@@ -1,6 +1,19 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SellerConditions } from './SellerConditions';
+
+// The extra fields admins defined, for the names of required ones
+vi.mock('../../lib/api/react', () => ({
+  useQuery: () => [
+    {
+      _id: 'frameNumber',
+      key: 'frameNumber',
+      label: 'Rahmennummer',
+      short: false,
+      notFoundButton: true,
+    },
+  ],
+}));
 
 describe('SellerConditions', () => {
   it('shows fees, a worked example, the rules and the times', () => {

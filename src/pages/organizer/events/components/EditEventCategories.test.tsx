@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FormProvider, useForm } from 'react-hook-form';
 import type { Doc } from '../../../../lib/api/types';
 import { EditEventCategories } from './EditEventCategories';
@@ -24,35 +24,56 @@ function Form({ categories = [] as string[] }) {
   );
 }
 
-describe('EditEventCategories', () => {
-  it('shows main categories and their sub-categories only when opened', () => {
-    render(<Form />);
-    expect(screen.getByText('Fahrräder')).toBeInTheDocument();
-    expect(screen.getByText('0/2')).toBeInTheDocument();
-    expect(screen.queryByText('Lastenräder')).not.toBeInTheDocument();
+beforeEach(() => {
+  // jsdom has no ResizeObserver; the checkbox uses it
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
+});
 
+describe('EditEventCategories', () => {
+  it('one row per main category; opened, its sub-categories', () => {
+    render(<Form />);
+    expect(screen.getByText('0 von 2 Hauptkategorien gewählt')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Lastenräder')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Unterkategorien von Fahrräder' }));
-    expect(screen.getByText('Lastenräder')).toBeInTheDocument();
+    expect(screen.getByLabelText('Lastenräder')).not.toBeChecked();
   });
 
-  it('a main category comes and goes with its sub-categories', () => {
+  it('a main category with all sub-categories is stored as itself', () => {
     render(<Form />);
-    fireEvent.click(screen.getByText('Fahrräder'));
-    expect(chosen).toEqual(['bikes', 'cargo', 'trailers']);
-    expect(screen.getByText('2/2')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Fahrräder'));
+    expect(chosen).toEqual(['bikes']);
+    expect(screen.getByRole('button', { name: 'Unterkategorien von Fahrräder' })).toHaveTextContent(
+      'alle'
+    );
 
+    // One sub-category less: the others are stored, the main category is half chosen
     fireEvent.click(screen.getByRole('button', { name: 'Unterkategorien von Fahrräder' }));
-    fireEvent.click(screen.getByText('Fahrradanhänger'));
-    expect(chosen).toEqual(['bikes', 'cargo']);
+    fireEvent.click(screen.getByLabelText('Fahrradanhänger'));
+    expect(chosen).toEqual(['cargo']);
+    expect(screen.getByLabelText('Fahrräder')).toHaveAttribute('data-state', 'indeterminate');
+    expect(screen.getByText('1 von 2')).toBeInTheDocument();
 
-    // Not all chosen: a click chooses the rest, the next one clears the group
-    const badge = screen.getByText('1/2').parentElement as HTMLElement;
-    fireEvent.click(within(badge).getByText('Fahrräder'));
-    expect(chosen).toEqual(['bikes', 'cargo', 'trailers']);
-    fireEvent.click(within(badge).getByText('Fahrräder'));
+    // Half chosen: a click chooses all, the next one none
+    fireEvent.click(screen.getByLabelText('Fahrräder'));
+    expect(chosen).toEqual(['bikes']);
+    fireEvent.click(screen.getByLabelText('Fahrräder'));
     expect(chosen).toEqual([]);
+  });
 
-    fireEvent.click(screen.getByText('Sonstiges'));
-    expect(chosen).toEqual(['misc']);
+  it('all and none at once; a stored main category shows all its sub-categories', () => {
+    render(<Form categories={['bikes']} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Unterkategorien von Fahrräder' }));
+    expect(screen.getByLabelText('Lastenräder')).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Alle' }));
+    expect(chosen).toEqual(['bikes', 'misc']);
+    fireEvent.click(screen.getByRole('button', { name: 'Keine' }));
+    expect(chosen).toEqual([]);
   });
 });

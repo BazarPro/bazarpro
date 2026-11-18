@@ -42,6 +42,7 @@ import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
 import { Trans, useTranslation } from 'react-i18next';
 import { ListSkeleton, Loading } from '../../../components/ui/loading';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { isCategoryAllowed } from '../../../shared/categoryTree';
 
 /**
  * Main Product List View for the Users Producs
@@ -222,11 +223,24 @@ export function MyProductsPage() {
     return map;
   }, [eventProductStatuses]);
 
+  const selectionEvent = events?.find((event) => event._id === eventSelectionEventId);
+  // The bazaar only takes items of the categories it allows
+  const isCategoryRefused = (productId: Id<'products'>) => {
+    const product = productsById.get(productId);
+    return (
+      !!product &&
+      !!selectionEvent &&
+      !assignedProductIds.has(productId) &&
+      !isCategoryAllowed(product.productCategory, selectionEvent.categories, categoryList)
+    );
+  };
+
   const isSelectionLocked = (productId: Id<'products'>) => {
     if (!isEventSelectionMode) return false;
     const product = productsById.get(productId);
     if (!product) return false;
     if (product.sold) return true;
+    if (isCategoryRefused(productId)) return true;
     if (!assignedProductIds.has(productId)) return false;
     const status = eventProductStatusMap.get(productId as string);
     return status !== 'announced';
@@ -238,6 +252,10 @@ export function MyProductsPage() {
       if (!product) return;
       if (product.sold) {
         toast.error(t('myProducts.soldCannotAdd'));
+        return;
+      }
+      if (isCategoryRefused(productId)) {
+        toast.error(t('myProducts.categoryNotAllowed', { event: selectionEvent?.title ?? '' }));
         return;
       }
       if (isSelectionLocked(productId)) {

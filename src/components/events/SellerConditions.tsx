@@ -8,6 +8,7 @@ import {
   type SellerConditionsEvent,
 } from '../../lib/sellerFees';
 import { resolveEventFeatures } from '../../shared/eventFeatures';
+import { useCategoryFieldDefinitions } from '../../hooks/useCategoryFields';
 import { cn, formatPriceDE } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -33,7 +34,10 @@ export function SellerConditions({
     commission: event.commission,
     intakeFee: resolveEventFeatures(event).intakeFee,
   });
-  const rules = describeSellerRules(event).filter((rule) => !compact || rule.allowed);
+  const fieldDefinitions = useCategoryFieldDefinitions();
+  const rules = describeSellerRules(event, fieldDefinitions).filter(
+    (rule) => !compact || rule.allowed
+  );
   const schedule = describeSellerSchedule(event);
 
   return (

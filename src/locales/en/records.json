@@ -64,47 +64,8 @@
     }
   },
   "categoryFields": {
-    "frameNumber": {
-      "label": "Frame number",
-      "placeholder": "e.g. WBK123456",
-      "hint": "Can't find it? Enter “not found” – we'll look for it together on site.",
-      "notFound": "Not found",
-      "notFoundValue": "not found"
-    },
-    "frameSize": {
-      "label": "Frame size",
-      "placeholder": "e.g. 52 cm or M"
-    },
-    "wheelSize": {
-      "label": "Wheel size",
-      "placeholder": "e.g. 28 inch"
-    },
-    "bikeBrand": {
-      "label": "Brand",
-      "placeholder": "e.g. Cube"
-    },
-    "clothingSize": {
-      "label": "Size",
-      "placeholder": "e.g. M or 128"
-    },
-    "shoeSize": {
-      "label": "Size (EU)",
-      "placeholder": "e.g. 38"
-    },
-    "sportSize": {
-      "label": "Size / length",
-      "placeholder": "e.g. 160 cm"
-    },
-    "brand": {
-      "label": "Brand"
-    },
-    "model": {
-      "label": "Model"
-    },
-    "color": {
-      "label": "Color",
-      "placeholder": "e.g. red"
-    }
+    "notFound": "Not found",
+    "notFoundValue": "not found"
   },
   "service": {
     "Parkplatz": "Parking",

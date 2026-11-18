@@ -12,11 +12,12 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::access::is_platform_admin;
+use super::categories::assert_for_items;
 use super::category_fields::{self, Attribute};
 use super::docs::{self, Event, EventProduct, Product};
 use super::event_products::{
-    Events, are_relations_locked, fields_of, is_product_locked, missing_for_event, missing_label,
-    pick_active_listing, relations_of_product,
+    Events, are_relations_locked, assert_category_allowed, fields_of, is_product_locked,
+    missing_for_event, missing_label, pick_active_listing, relations_of_product,
 };
 use super::event_roles::find_organizer_event;
 use super::events::{admitted_by_visibility, is_live};
@@ -73,7 +74,7 @@ pub(super) fn check_attribute_lengths(
         Some(field) => Err(AppError::coded(
             axum::http::StatusCode::BAD_REQUEST,
             "product.sizeTooLong",
-            &[("max", &field.max_length.to_string())],
+            &[("max", &field.max_length().to_string())],
         )),
         None => Ok(()),
     }
@@ -215,6 +216,7 @@ async fn add_product(ctx: &mut Ctx, args: AddArgs) -> AppResult<Uuid> {
     }
     check_condition(&args.condition)?;
     check_category(ctx.conn(), args.product_category.0).await?;
+    assert_for_items(ctx.conn(), args.product_category.0).await?;
     let price = price(args.price)?;
     let (attributes, minimum) = normalize_extras(
         ctx.conn(),
@@ -322,6 +324,21 @@ async fn update_product(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
     let product = own_unlocked_product(ctx, args.product_id.0).await?;
     check_condition(&args.condition)?;
     check_category(ctx.conn(), args.product_category.0).await?;
+    if args.product_category.0 != product.product_category {
+        assert_for_items(ctx.conn(), args.product_category.0).await?;
+        // The bazaars it is announced for must take the new category
+        let events: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT event_id FROM event_products WHERE product_id = $1 AND status = 'announced'",
+        )
+        .bind(product.id)
+        .fetch_all(ctx.conn())
+        .await?;
+        for event in events {
+            if let Some(event) = docs::event(ctx.conn(), event).await? {
+                assert_category_allowed(ctx.conn(), args.product_category.0, &event).await?;
+            }
+        }
+    }
     let price = price(args.price)?;
     let (attributes, minimum) = normalize_extras(
         ctx.conn(),

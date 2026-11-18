@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useApiClient, useMutation } from '../../lib/api/react';
+import { useApiClient, useMutation, useQuery } from '../../lib/api/react';
 import { toast } from 'sonner';
 import { api } from '../../lib/api/functions';
 import type { Doc, Id } from '../../lib/api/types';
@@ -87,6 +87,7 @@ export function WalkInProductDialog({
 }) {
   const { t } = useTranslation('organizer');
   const saveProduct = useMutation(api.walkInSellers.saveWalkInProduct);
+  const event = useQuery(api.events.getEvent, open ? { id: eventId } : 'skip');
   const client = useApiClient();
   const generateUploadUrl = useMutation(api.products.generateUploadUrl);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -176,7 +177,7 @@ export function WalkInProductDialog({
         </DialogHeader>
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit((data) => onSubmit(data, false))}>
-            <MyProductBasicInfo allowOffers={false} />
+            <MyProductBasicInfo allowOffers={false} bazaars={event ? [event] : []} />
             <div className="mt-4 space-y-2">
               <Label>{t('walkIn.images')}</Label>
               {product && product.images.length > 0 && (

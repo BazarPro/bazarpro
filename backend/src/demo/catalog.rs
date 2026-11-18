@@ -83,6 +83,7 @@ pub enum Cat {
     Household,
     Accessories,
     Other,
+    BabyKids,
 }
 
 impl Cat {
@@ -98,7 +99,7 @@ impl Cat {
             Self::Toys => "toys",
             Self::Furniture => "chair",
             Self::Household | Self::Accessories => "tote",
-            Self::Other => "wooden_train",
+            Self::Other | Self::BabyKids => "wooden_train",
         }
     }
 }
@@ -116,7 +117,75 @@ pub const CATEGORIES: &[(Cat, Text)] = &[
     (Cat::Household, t("Haushalt", "Household")),
     (Cat::Accessories, t("Accessoires", "Accessories")),
     (Cat::Other, t("Sonstiges", "Other")),
+    (Cat::BabyKids, t("Baby & Kind", "Baby & child")),
 ];
+
+/// The sub-category of a demo item (German label of a default category), by words of its
+/// title in either language: items go into sub-categories, main categories only group them.
+pub fn sub_label(cat: Cat, title: &str) -> &'static str {
+    let title = title.to_lowercase();
+    let has = |words: &[&str]| words.iter().any(|word| title.contains(word));
+    match cat {
+        Cat::Clothing if has(&["ski", "funktions", "thermal"]) => "Sportbekleidung",
+        Cat::Clothing if has(&["body", "baby"]) => "Babykleidung",
+        Cat::Clothing if has(&["damen", "women"]) => "Damenkleidung",
+        Cat::Clothing if has(&["herren", "men's", "bomber", "w32"]) => "Herrenkleidung",
+        Cat::Clothing => "Kinderkleidung",
+        Cat::Shoes if has(&["skischuh", "ski boot"]) => "Skischuhe",
+        Cat::Shoes if has(&["laufschuh", "running"]) => "Sportschuhe",
+        Cat::Shoes if has(&["sneaker"]) => "Herrenschuhe",
+        Cat::Shoes => "Kinderschuhe",
+        Cat::Sports if has(&["yoga", "fitness"]) => "Fitness",
+        Cat::Sports if has(&["helm"]) => "Helme & Protektoren",
+        Cat::Sports if has(&["ball", "football"]) => "Ballsport",
+        Cat::Sports if has(&["outdoor", "wander", "hiking"]) => "Camping & Outdoor",
+        Cat::Sports => "Wintersport",
+        Cat::Bikes if has(&["kindersitz", "child bike seat", "child seat"]) => {
+            "Fahrrad-Kindersitze"
+        }
+        Cat::Bikes if has(&["e-bike"]) => "E-Bikes & Pedelecs",
+        Cat::Bikes if has(&["trekking"]) => "Trekkingräder",
+        Cat::Bikes if has(&["mountain", "fully", "mtb", "rockrider"]) => "Mountainbikes (MTB)",
+        Cat::Bikes if has(&["renn", "road", "gravel"]) => "Rennräder & Gravelbikes",
+        Cat::Bikes if has(&["falt", "fold"]) => "Falträder & Klappräder",
+        Cat::Bikes if has(&["kinder", "jugend", "child", "youth", "kid"]) => {
+            "Kinder- & Jugendräder"
+        }
+        Cat::Bikes => "Cityräder & Hollandräder",
+        Cat::Electronics if has(&["kopfhörer", "headphone", "radio"]) => "Audio & HiFi",
+        Cat::Electronics if has(&["kamera", "camera"]) => "Foto & Kamera",
+        Cat::Electronics if has(&["notebook", "laptop", "tablet"]) => "Computer & Tablets",
+        Cat::Electronics if has(&["smartphone", "handy", "phone"]) => "Handys & Smartphones",
+        Cat::Electronics => "Weitere Elektronik",
+        Cat::Books if has(&["kinder", "jugend", "erstlese", "bilderbuch"]) => {
+            "Kinder- & Jugendbücher"
+        }
+        Cat::Books if has(&["krimi", "roman", "klassiker"]) => "Romane",
+        Cat::Books if has(&["kochbuch"]) => "Kochbücher",
+        Cat::Books if has(&["sachbuch", "ratgeber", "reiseführer"]) => "Sachbücher",
+        Cat::Books => "Weitere Bücher",
+        Cat::Toys if has(&["kuschel", "puppe", "plüsch"]) => "Puppen & Plüsch",
+        Cat::Toys if has(&["baustein", "lego"]) => "Lego & Bausteine",
+        Cat::Toys if has(&["puzzle", "spiel"]) && !has(&["sandspiel"]) => "Spiele & Puzzles",
+        Cat::Toys if has(&["sand", "outdoor"]) => "Outdoor-Spielzeug",
+        Cat::Toys => "Weiteres Spielzeug",
+        Cat::Furniture if has(&["kinder"]) => "Kindermöbel",
+        Cat::Furniture if has(&["sofa", "sessel", "lowboard"]) => "Wohnzimmermöbel",
+        Cat::Furniture => "Weitere Möbel",
+        Cat::Household if has(&["kaffee", "küche", "pfanne"]) => "Küche & Kochen",
+        Cat::Household if has(&["bettwäsche"]) => "Heimtextilien",
+        Cat::Household => "Weiteres für den Haushalt",
+        Cat::Accessories if has(&["handschuh", "mütze"]) => "Mützen & Schals",
+        Cat::Accessories if has(&["beutel", "tasche"]) => "Taschen & Rucksäcke",
+        Cat::Accessories if has(&["gürtel"]) => "Gürtel",
+        Cat::Accessories => "Weitere Accessoires",
+        Cat::Other | Cat::BabyKids if has(&["autokindersitz", "car seat"]) => "Autokindersitze",
+        Cat::Other | Cat::BabyKids if has(&["kinderwagen", "pram"]) => "Kinderwagen & Buggys",
+        Cat::Other if has(&["gesellschaftsspiel", "board game"]) => "Spiele & Puzzles",
+        Cat::BabyKids => "Babyausstattung",
+        Cat::Other => "Sonstiges",
+    }
+}
 
 pub struct Person {
     pub first: Text,
@@ -302,7 +371,7 @@ pub const KIDS: &[Item] = &[
             "Fünf T-Shirts in Grün- und Blautönen, kaum getragen, keine Flecken.",
             "Five T-shirts in green and blue, hardly worn, no stains.",
         ),
-        &[("size", "110/116", "4-5 years")],
+        &[("size", "110/116", "4-5 y")],
     ),
     item(
         Cat::Clothing,
@@ -314,7 +383,7 @@ pub const KIDS: &[Item] = &[
             "Wasserabweisend, mit abnehmbarer Kapuze. Ärmel leicht ausgewaschen.",
             "Water-repellent with a detachable hood. Sleeves slightly faded.",
         ),
-        &[("size", "122", "6-7 years")],
+        &[("size", "122", "6-7 y")],
     ),
     item(
         Cat::Clothing,
@@ -356,7 +425,7 @@ pub const KIDS: &[Item] = &[
             "Nur einmal zur Kommunion getragen.",
             "Worn once for a family celebration.",
         ),
-        &[("size", "140", "10 years")],
+        &[("size", "140", "10 y")],
     ),
     item(
         Cat::Clothing,
@@ -383,7 +452,7 @@ pub const KIDS: &[Item] = &[
             "Bio-Baumwolle, kurz- und langärmlig gemischt.",
             "Organic cotton, short and long sleeves.",
         ),
-        &[("size", "62/68", "3-6 months")],
+        &[("size", "62/68", "3-6 m")],
     ),
     item(
         Cat::Shoes,
@@ -395,7 +464,7 @@ pub const KIDS: &[Item] = &[
             "Klettverschluss, helle Sohle, kaum Abrieb.",
             "Velcro straps, light sole, barely worn.",
         ),
-        &[("size", "31", "12.5 kids")],
+        &[("size", "31", "12.5 K")],
     ),
     item(
         Cat::Shoes,
@@ -714,7 +783,7 @@ pub const SKI: &[Item] = &[
             "Verstärkte Knie, verstellbare Träger.",
             "Reinforced knees, adjustable braces.",
         ),
-        &[("size", "140", "10 years")],
+        &[("size", "140", "10 y")],
     ),
     item(
         Cat::Clothing,

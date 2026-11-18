@@ -102,8 +102,13 @@
     "title": "Kategorien & Services",
     "allowed": "Erlaubte Artikelkategorien *",
     "subcategories": "Unterkategorien von {{name}}",
-    "groupHint": "Eine Hauptkategorie wählt ihre Unterkategorien mit. Über den Pfeil wählst du sie einzeln.",
-    "services": "Zusätzliche Services"
+    "services": "Zusätzliche Services",
+    "allowedHint": "Verkäufer können nur Artikel dieser Kategorien anmelden. Klappe eine Kategorie auf, um einzelne Unterkategorien zu wählen.",
+    "selectAll": "Alle",
+    "selectNone": "Keine",
+    "chosenAll": "alle",
+    "chosenSome": "{{count}} von {{total}}",
+    "chosenSummary": "{{count}} von {{total}} Hauptkategorien gewählt"
   },
   "contact": {
     "title": "Kontakt & Finanzen",

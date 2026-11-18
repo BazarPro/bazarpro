@@ -415,15 +415,12 @@ struct RecordRow {
 }
 
 fn attributes(
-    categories: &[category_fields::CategoryRef],
+    index: &category_fields::FieldIndex,
     category: Option<Uuid>,
     attributes: Option<&Value>,
 ) -> Vec<Attribute> {
     match category {
-        Some(category) => category_fields::describe_attributes(
-            &category_fields::category_fields(category, categories),
-            attributes,
-        ),
+        Some(category) => category_fields::describe_attributes(&index.fields(category), attributes),
         None => Vec::new(),
     }
 }
@@ -437,7 +434,7 @@ async fn get_proof_of_offers(ctx: &mut Ctx, args: EventArgs) -> AppResult<Proof>
     let event = docs::event(ctx.conn(), event_id)
         .await?
         .ok_or_else(|| AppError::not_found("notFound.event"))?;
-    let categories = category_fields::load_categories(ctx.conn()).await?;
+    let index = category_fields::FieldIndex::load(ctx.conn()).await?;
     let records: Vec<RecordRow> = sqlx::query_as(
         "SELECT r.product_id, r.seller_id, r.title, r.category_id, r.category_label, r.attributes,
                 r.price, ep.status::text AS status, pu.total_amount AS sold_for,
@@ -470,7 +467,7 @@ async fn get_proof_of_offers(ctx: &mut Ctx, args: EventArgs) -> AppResult<Proof>
         items.push(ProofItem {
             product_id: record.product_id,
             category: record.category_label.unwrap_or_default(),
-            attributes: attributes(&categories, record.category_id, record.attributes.as_ref()),
+            attributes: attributes(&index, record.category_id, record.attributes.as_ref()),
             title: record.title,
             price: record.price,
             status,
@@ -485,7 +482,7 @@ async fn get_proof_of_offers(ctx: &mut Ctx, args: EventArgs) -> AppResult<Proof>
             product_id: purchase.product_id,
             category: purchase.category_label.clone().unwrap_or_default(),
             attributes: attributes(
-                &categories,
+                &index,
                 purchase.category_id,
                 purchase.product_attributes.as_ref(),
             ),

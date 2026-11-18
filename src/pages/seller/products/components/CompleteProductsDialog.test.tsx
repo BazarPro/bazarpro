@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Id } from '../../../../lib/api/types';
 import type { ProductToComplete } from '../../../../lib/productCompletion';
-import { getFieldsForLabel } from '../../../../shared/categoryFields';
 import { CompleteProductsDialog } from './CompleteProductsDialog';
 
 // Selecting files goes through react-dropzone and image processing; a button is enough here
@@ -21,7 +20,17 @@ const item = (id: string): ProductToComplete => ({
   eventTitles: ['Fahrradbörse'],
 });
 
-const frameNumber = getFieldsForLabel('Fahrräder')!.filter((field) => field.key === 'frameNumber');
+const frameNumber = [
+  {
+    _id: 'frameNumber',
+    key: 'frameNumber',
+    label: 'Rahmennummer',
+    placeholder: 'z. B. WBK123456',
+    hint: 'Nicht gefunden? Schreib „nicht gefunden“ hinein – wir suchen sie vor Ort gemeinsam.',
+    short: false,
+    notFoundButton: true,
+  },
+];
 
 function renderDialog(items = [item('Helm'), item('Schloss')]) {
   const onSave = vi.fn().mockResolvedValue(undefined);

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { runBackend } from '../utils';
+import { pickCategory, runBackend } from '../utils';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -134,8 +134,7 @@ async function fillAndCreateProduct(page: Page, eventTitle: string, productTitle
 
   await page.getByRole('radio', { name: 'Gebraucht, wie neu' }).click();
 
-  await page.getByLabel('Kategorie *').click();
-  await page.getByRole('option', { name: 'Sport', exact: true }).click();
+  await pickCategory(page, 'Sport', 'Wintersport');
 
   await page.getByLabel('Preis (€) *').fill('25');
 

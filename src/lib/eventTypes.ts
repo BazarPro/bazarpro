@@ -1,5 +1,6 @@
 import type { ItemKind } from '../components/illustrations/ItemIllustrations';
 import type { StoredEventFeatures } from '../shared/eventFeatures';
+import { compactSelection, groupCategories } from '../shared/categoryTree';
 
 /**
  * Kinds of bazaars with suggested settings for the creation wizard, the most asked for
@@ -124,8 +125,9 @@ export function findEventType(id: string | undefined): EventType | undefined {
 }
 
 /**
- * The categories a kind of bazaar preselects: those whose name matches, and the
- * sub-categories of a main category that matches, unless the kind excludes them.
+ * The categories a kind of bazaar preselects, as a bazaar stores them: the sub-categories
+ * whose name or main category matches, unless the kind excludes them; a main category
+ * when all of its are in (compactSelection).
  */
 export function preselectedCategories(
   type: Pick<EventType, 'categoryMatch' | 'categoryExclude'>,
@@ -133,13 +135,16 @@ export function preselectedCategories(
 ): string[] {
   const { categoryMatch: match, categoryExclude: exclude } = type;
   if (!match) return [];
-  const byId = new Map(categories.map((category) => [category._id, category]));
-  return categories
-    .filter((category) => {
-      if (exclude?.test(category.label)) return false;
-      if (match.test(category.label)) return true;
-      const parent = category.parentCategory ? byId.get(category.parentCategory) : undefined;
-      return !!parent && !parent.parentCategory && match.test(parent.label);
-    })
-    .map((category) => category._id);
+  const chosen = new Set<string>();
+  for (const { category, children } of groupCategories(categories)) {
+    if (children.length === 0) {
+      if (match.test(category.label) && !exclude?.test(category.label)) chosen.add(category._id);
+      continue;
+    }
+    for (const child of children) {
+      if (exclude?.test(child.label)) continue;
+      if (match.test(child.label) || match.test(category.label)) chosen.add(child._id);
+    }
+  }
+  return compactSelection(chosen, categories);
 }

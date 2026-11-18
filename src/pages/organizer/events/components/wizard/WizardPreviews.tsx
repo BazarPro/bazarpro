@@ -45,7 +45,7 @@ import {
 } from '../../../../../lib/sellerFees';
 import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
-import { REQUIRABLE_FIELDS } from '../../../../../shared/categoryFields';
+import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
 import { formatEventPlace } from '../../../../../shared/eventJsonLd';
 import { MAX_DISCOUNT_PERCENT } from '../../../../../shared/eventFeatures';
 import { eventCategoryNames } from '../../../../../i18n/categories';
@@ -409,13 +409,14 @@ export function ItemsPreview({ type }: { type?: EventType }) {
   const features = values.features ?? {};
   const { kind, items } = useExamples(type);
   const categoryList = useQuery(api.categories.getAllCategories);
+  const requirable = useRequirableFields();
   const chosenIds = (categoryList ?? [])
     .map((category) => category._id as string)
     .filter((id) => values.categories?.includes(id));
   const chosen = eventCategoryNames(chosenIds, categoryList) ?? [];
-  const required = REQUIRABLE_FIELDS.filter((field) =>
-    features.requiredFields?.includes(field.key)
-  ).map((field) => categoryFieldText(field, 'label') ?? field.label);
+  const required = requirable
+    .filter((field) => features.requiredFields?.includes(field.key))
+    .map((field) => categoryFieldText(field, 'label') ?? field.label);
   const limit = given(features.maxItemsPerSeller);
   const small = features.labelFormat === 'small';
   const showPrice = !!features.priceOnLabel && !features.discounts;

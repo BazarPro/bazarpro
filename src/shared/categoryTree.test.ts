@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { collapseSubcategories, groupCategories, withSubcategories } from './categoryTree';
+import {
+  collapseSubcategories,
+  compactSelection,
+  expandCategories,
+  expandSelection,
+  groupCategories,
+  isCategoryAllowed,
+  isForItems,
+  withSubcategories,
+} from './categoryTree';
 
 const categories = [
   { _id: 'clothes' },
@@ -39,5 +48,31 @@ describe('category tree', () => {
     // Not all chosen: every name stays
     expect(collapseSubcategories(['bikes', 'cargo'], categories)).toEqual(['bikes', 'cargo']);
     expect(collapseSubcategories(['cargo', 'trailers'], categories)).toEqual(['cargo', 'trailers']);
+  });
+
+  it('a bazaar stores a main category when all its sub-categories are chosen', () => {
+    const tree = categories.filter((category) => category._id !== 'bells');
+    expect([...expandSelection(['bikes', 'clothes'], tree)]).toEqual([
+      'clothes',
+      'cargo',
+      'trailers',
+    ]);
+    expect(compactSelection(new Set(['clothes', 'cargo', 'trailers']), tree)).toEqual([
+      'clothes',
+      'bikes',
+    ]);
+    expect(compactSelection(new Set(['cargo']), tree)).toEqual(['cargo']);
+    expect(expandCategories(['bikes'], tree)).toEqual(['bikes', 'cargo', 'trailers']);
+  });
+
+  it('a bazaar takes a category it allows or whose main category it allows', () => {
+    expect(isCategoryAllowed('cargo', ['bikes'], categories)).toBe(true);
+    expect(isCategoryAllowed('cargo', ['cargo'], categories)).toBe(true);
+    expect(isCategoryAllowed('trailers', ['cargo'], categories)).toBe(false);
+    expect(isCategoryAllowed('clothes', ['bikes'], categories)).toBe(false);
+    // Without a list it takes everything
+    expect(isCategoryAllowed('clothes', [], categories)).toBe(true);
+    expect(isForItems('bikes', categories)).toBe(false);
+    expect(isForItems('cargo', categories)).toBe(true);
   });
 });

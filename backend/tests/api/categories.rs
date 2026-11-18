@@ -168,7 +168,7 @@ async fn parallel_mutations_are_serialized_and_retried(db: PgPool) {
             .fetch_one(&db)
             .await
             .unwrap();
-    assert_eq!((count, distinct), (72, 72));
+    assert_eq!((count, distinct), (89, 89));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -187,11 +187,21 @@ async fn the_start_of_the_server_only_fills_an_empty_table(db: PgPool) {
     };
     let start = || rpc::call(&app.state, None, "categories.seedIfEmpty", json!({}));
 
+    // As after removing all data: the fields of the default categories come back with them
+    sqlx::query("DELETE FROM category_field_definitions")
+        .execute(&db)
+        .await
+        .unwrap();
     // A new instance gets the defaults, and a second start adds nothing
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 72);
+    let fields: i64 = sqlx::query_scalar("SELECT count(*) FROM category_field_definitions")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(fields, 9);
+    assert_eq!(labels().await.len(), 89);
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 72);
+    assert_eq!(labels().await.len(), 89);
 
     // An instance with categories of its own does not get the defaults back
     sqlx::query("DELETE FROM categories WHERE label <> 'Kleidung'")
@@ -584,4 +594,110 @@ async fn admins_pick_the_extra_fields(db: PgPool) {
     assert_eq!(fields_of("Kinderwagen").await, Some(json!([])));
     update(None).await;
     assert_eq!(fields_of("Kinderwagen").await, None);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn admins_define_extra_fields(db: PgPool) {
+    let app = app(&db).await;
+    let user = app.user_session("user@example.org", false).await;
+    let admin = app.user_session("admin@example.org", true).await;
+    let save = |args: Value, session| {
+        let app = &app;
+        async move { app.mutation("categories.saveField", args, session).await }
+    };
+
+    let forbidden = save(json!({ "label": "Höhe", "short": false }), Some(&user)).await;
+    assert_eq!(forbidden.status, StatusCode::FORBIDDEN);
+    assert_eq!(
+        save(json!({ "label": "  ", "short": false }), Some(&admin))
+            .await
+            .body["code"],
+        "category.labelEmpty"
+    );
+    let created = save(
+        json!({ "label": " Höhe ", "labelEn": "Height", "placeholder": "", "short": true }),
+        Some(&admin),
+    )
+    .await;
+    let id = created.body["value"].as_str().unwrap().to_owned();
+
+    // Everybody reads the fields; a new one stores its values under its own key
+    let fields = app.query("categories.listFields", json!({}), None).await;
+    let height = fields.body["value"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["_id"] == id.as_str())
+        .unwrap()
+        .clone();
+    assert_eq!(height["key"], id.as_str());
+    assert_eq!(height["label"], "Höhe");
+    assert_eq!(height["labelEn"], "Height");
+    assert!(height.get("placeholder").is_none());
+    assert_eq!(height["short"], true);
+
+    // A category picks it and its items get it; the main category's sub-categories too
+    let main = app
+        .mutation(
+            "categories.createCategory",
+            json!({ "label": "Möbel", "fields": [id, "brand"] }),
+            Some(&admin),
+        )
+        .await
+        .body["value"]
+        .clone();
+    app.mutation(
+        "categories.createCategory",
+        json!({ "label": "Regale", "parentCategory": main }),
+        Some(&admin),
+    )
+    .await;
+    let list = app
+        .query("categories.getAllCategories", json!({}), None)
+        .await;
+    let shelves = list.body["value"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["label"] == "Regale")
+        .unwrap()
+        .clone();
+    let names: Vec<&str> = shelves["fieldList"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["label"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Marke", "Höhe"]);
+
+    // Renamed in place; in use it cannot be deleted
+    let renamed = save(
+        json!({ "fieldId": id, "label": "Höhe (cm)", "short": true }),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(renamed.status, StatusCode::OK);
+    let delete = |field: &str| {
+        let (app, admin) = (&app, &admin);
+        let args = json!({ "fieldId": field });
+        async move {
+            app.mutation("categories.deleteField", args, Some(admin))
+                .await
+        }
+    };
+    assert_eq!(delete(&id).await.body["code"], "categoryField.inUse");
+    let counted = app
+        .query("categories.listFieldsForAdmin", json!({}), Some(&admin))
+        .await;
+    let row = counted.body["value"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["_id"] == id.as_str())
+        .unwrap()
+        .clone();
+    assert_eq!(row["categoryCount"], 1);
+    assert_eq!(row["label"], "Höhe (cm)");
+    assert_eq!(delete("model").await.status, StatusCode::OK);
+    assert_eq!(delete("model").await.status, StatusCode::NOT_FOUND);
 }

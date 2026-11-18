@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EVENT_TYPES, findEventType, preselectedCategories } from './eventTypes';
 import { resolveEventFeatures, showsPriceOnLabel } from '../shared/eventFeatures';
-import { REQUIRABLE_FIELD_KEYS } from '../shared/categoryFields';
 import i18n from '../i18n';
 
 describe('event types', () => {
@@ -13,8 +12,17 @@ describe('event types', () => {
           expect(i18n.exists(key, { ns: 'organizer', lng }), `${lng} ${key}`).toBe(true);
         }
       }
+      // Fields of the default categories (migration 0034)
       for (const key of type.features.requiredFields ?? []) {
-        expect(REQUIRABLE_FIELD_KEYS).toContain(key);
+        expect([
+          'frameNumber',
+          'frameSize',
+          'wheelSize',
+          'brand',
+          'color',
+          'size',
+          'model',
+        ]).toContain(key);
       }
       // A printed price only works without discounts
       if (type.features.priceOnLabel) expect(showsPriceOnLabel(type)).toBe(true);
@@ -100,17 +108,9 @@ describe('event types', () => {
       { _id: 'games', label: 'Konsolen & Videospiele', parentCategory: 'electronics' },
     ];
     const chosen = (id: string) => preselectedCategories(findEventType(id)!, tree);
-    expect(chosen('kidsBazaar')).toEqual([
-      'clothes',
-      'kidsClothes',
-      'maternity',
-      'books',
-      'kidsBooks',
-      'vehicles',
-      'scooters',
-      'prams',
-    ]);
-    expect(chosen('bikeExchange')).toEqual(['bikes', 'cargo', 'vehicles', 'scooters']);
+    // Stored as a bazaar does: the sub-categories, a main category when all are in
+    expect(chosen('kidsBazaar')).toEqual(['kidsClothes', 'maternity', 'kidsBooks', 'vehicles']);
+    expect(chosen('bikeExchange')).toEqual(['bikes', 'scooters']);
   });
 
   it('the bike sale follows the guide: frame number required and an intake fee', () => {

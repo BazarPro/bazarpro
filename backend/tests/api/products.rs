@@ -142,7 +142,12 @@ async fn adding_updating_and_deleting_items(db: PgPool) {
     assert_eq!(product["attributes"], json!({ "frameNumber": "WBK123" }));
     assert_eq!(
         product["attributeList"],
-        json!([{ "label": "Rahmennummer", "text": "frameNumber", "value": "WBK123" }])
+        json!([{
+            "label": "Rahmennummer",
+            "labelEn": "Frame number",
+            "text": "frameNumber",
+            "value": "WBK123"
+        }])
     );
     assert_eq!(product["minimumPrice"], 30.0);
     assert_eq!(product["categoryName"], "Fahrräder");
@@ -1555,4 +1560,100 @@ async fn upload_url_and_image_urls(db: PgPool) {
             image.as_str().unwrap()
         )])
     );
+}
+
+/// A category below another one, as an admin arranges them.
+async fn sub_category(db: &PgPool, label: &str, parent: Uuid) -> Uuid {
+    sqlx::query_scalar("INSERT INTO categories (label, parent_id) VALUES ($1, $2) RETURNING id")
+        .bind(label)
+        .bind(parent)
+        .fetch_one(db)
+        .await
+        .unwrap()
+}
+
+async fn allow(db: &PgPool, event: Uuid, categories: &[Uuid]) {
+    for (position, category) in categories.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO event_categories (event_id, position, category_id) VALUES ($1, $2, $3)",
+        )
+        .bind(event)
+        .bind(position as i32)
+        .bind(category)
+        .execute(db)
+        .await
+        .unwrap();
+    }
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn items_go_into_sub_categories_a_bazaar_allows(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let erika = seller(&db, "Erika").await;
+    let bikes = fixtures::category(&db, "Fahrräder").await;
+    let trekking = sub_category(&db, "Trekkingräder", bikes).await;
+    let trailers = sub_category(&db, "Fahrradanhänger", bikes).await;
+    let books = fixtures::category(&db, "Bücher").await;
+    let image = photo(&app, &erika).await;
+
+    // A main category with sub-categories only groups them
+    let main = app
+        .mutation(
+            "products.addProduct",
+            product_args(&erika, bikes, vec![image.clone()]),
+            Some(&erika.session),
+        )
+        .await;
+    assert_eq!(main.body["code"], "product.chooseSubcategory");
+    let bike = add(
+        &app,
+        &erika,
+        product_args(&erika, trekking, vec![image.clone()]),
+    )
+    .await;
+    let book = add(
+        &app,
+        &erika,
+        product_args(&erika, books, vec![image.clone()]),
+    )
+    .await;
+
+    // A bazaar that allows "Fahrräder" takes its sub-categories, nothing else
+    let organizer = fixtures::user(&db, "Olga").await;
+    let market = fixtures::event(&db, EventSpec::new("Radmarkt", organizer)).await;
+    allow(&db, market, &[bikes]).await;
+    assert_eq!(
+        announce(&app, &erika, market, bike).await.status,
+        StatusCode::OK
+    );
+    let refused = announce(&app, &erika, market, book).await;
+    assert_eq!(refused.body["code"], "product.categoryNotAllowed");
+    assert_eq!(
+        refused.body["message"],
+        "Diese Kategorie ist bei „Radmarkt“ nicht erlaubt."
+    );
+
+    // One that allows single sub-categories takes only those
+    let picky = fixtures::event(&db, EventSpec::new("Nur Trekking", organizer)).await;
+    allow(&db, picky, &[trekking]).await;
+    assert_eq!(
+        announce(&app, &erika, picky, bike).await.status,
+        StatusCode::OK
+    );
+
+    // An announced item cannot move to a category one of its bazaars does not take
+    let args = json!({
+        "productId": bike,
+        "title": "Kinderfahrrad",
+        "description": "Gut erhalten",
+        "condition": "good",
+        "productCategory": trailers,
+        "images": [image],
+        "price": 40,
+        "readyForSale": true,
+    });
+    let moved = app
+        .mutation("products.updateProduct", args, Some(&erika.session))
+        .await;
+    assert_eq!(moved.body["code"], "product.categoryNotAllowed");
 }

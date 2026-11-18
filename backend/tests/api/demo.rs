@@ -54,7 +54,7 @@ async fn bazaars_in_every_state(db: PgPool) {
     demo::run(&app.state, options(Locale::De)).await.unwrap();
 
     // The whole default tree, as on a fresh instance: main categories with sub-categories
-    assert_eq!(count(&db, "SELECT count(*) FROM categories").await, 72);
+    assert_eq!(count(&db, "SELECT count(*) FROM categories").await, 89);
     assert_eq!(
         count(
             &db,
@@ -381,7 +381,7 @@ async fn english_demo_for_screenshots(db: PgPool) {
         0
     );
     // The default tree in English, labelled with the English names
-    assert_eq!(count(&db, "SELECT count(*) FROM categories").await, 72);
+    assert_eq!(count(&db, "SELECT count(*) FROM categories").await, 89);
     assert_eq!(
         count(
             &db,
@@ -408,7 +408,8 @@ async fn english_demo_for_screenshots(db: PgPool) {
     .await
     .unwrap();
     assert!(
-        labels.contains(&"Toys".to_owned()) && !labels.contains(&"Spielzeug".to_owned()),
+        labels.contains(&"Dolls & plush".to_owned())
+            && !labels.contains(&"Puppen & Plüsch".to_owned()),
         "{labels:?}"
     );
     assert_eq!(

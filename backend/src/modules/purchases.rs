@@ -537,7 +537,10 @@ async fn send_receipt(
                 value: product.clone(),
             }];
             details.extend(attributes.iter().map(|a| Detail {
-                label: a.label.to_owned(),
+                label: match (&a.label_en, locale) {
+                    (Some(en), Locale::En) => en.clone(),
+                    _ => a.label.clone(),
+                },
                 value: a.value.clone(),
             }));
             details.push(Detail {
@@ -860,7 +863,7 @@ async fn get_checkout_snapshot(ctx: &mut Ctx, args: EventIdArgs) -> AppResult<Ch
     .bind(event_id)
     .fetch_all(ctx.conn())
     .await?;
-    let categories = category_fields::load_categories(ctx.conn()).await?;
+    let index = category_fields::FieldIndex::load(ctx.conn()).await?;
     let mut offers = accepted_offers_of_event(ctx, event_id).await?;
     let mut items = Vec::with_capacity(relations.len());
     for relation in relations {
@@ -868,7 +871,7 @@ async fn get_checkout_snapshot(ctx: &mut Ctx, args: EventIdArgs) -> AppResult<Ch
             continue;
         };
         let list_price = current_list_price(product, &relation);
-        let fields = category_fields::category_fields(product.product_category, &categories);
+        let fields = index.fields(product.product_category);
         items.push(SnapshotItem {
             offers: offers.remove(&relation.id).unwrap_or_default(),
             item: CheckoutItem {

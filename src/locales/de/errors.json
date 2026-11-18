@@ -126,7 +126,8 @@
     "product": "Artikel nicht gefunden.",
     "question": "Frage nicht gefunden.",
     "report": "Meldung nicht gefunden.",
-    "user": "Nutzer nicht gefunden."
+    "user": "Nutzer nicht gefunden.",
+    "categoryField": "Zusatzfeld nicht gefunden."
   },
   "offline": {
     "failed": "Die Aktion ließ sich nicht nachholen. Bitte von Hand erledigen.",
@@ -185,7 +186,9 @@
     "rejected": "Der Artikel wurde abgelehnt. Nimm zuerst die Ablehnung zurück.",
     "rejectedNoRemove": "Abgelehnte Artikel bleiben beim Basar vermerkt und können nicht entfernt werden.",
     "notRegistered": "Melde dich zuerst als Verkäufer bei diesem Basar an.",
-    "rejectedHere": "„{{title}}“ wurde bei „{{event}}“ abgelehnt und kann dort nicht erneut angemeldet werden."
+    "rejectedHere": "„{{title}}“ wurde bei „{{event}}“ abgelehnt und kann dort nicht erneut angemeldet werden.",
+    "chooseSubcategory": "Bitte wähle eine Unterkategorie, zum Beispiel unter „Fahrräder“ die Art des Rads.",
+    "categoryNotAllowed": "Diese Kategorie ist bei „{{event}}“ nicht erlaubt."
   },
   "profile": {
     "nameRequired": "Bitte Vor- und Nachnamen angeben.",
@@ -263,5 +266,8 @@
   "upload": {
     "quotaExceeded": "Du hast zu viele Bilder hochgeladen, die noch nicht gespeichert sind. Bitte speichere zuerst oder versuche es später noch einmal.",
     "tooMany": "Du hast sehr viele Bilder hochgeladen. Bitte versuche es später noch einmal."
+  },
+  "categoryField": {
+    "inUse": "Dieses Zusatzfeld wird noch von Kategorien verwendet. Entferne es dort zuerst."
   }
 }
