@@ -125,6 +125,8 @@ export function InventoryConfirmDialog({
       confirmLabel={isSubmitting ? t('confirm.processing') : content.actionLabel}
       loading={isSubmitting}
       destructive={type === 'undoSale' || type === 'undoReturn'}
+      // A self-declared fee group is confirmed or removed first
+      disabled={type === 'markAvailable' && !!feeGroupCheck}
       onConfirm={(e) => {
         e.preventDefault();
         runConfirm();

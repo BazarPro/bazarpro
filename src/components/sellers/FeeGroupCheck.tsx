@@ -58,7 +58,8 @@ export function FeeGroupCheck({
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
         {group?.proofHint
-          ? t('feeGroupCheck.textWithProof', { proof: group.proofHint })
+          ? // The sentence brings its own full stop
+            t('feeGroupCheck.textWithProof', { proof: group.proofHint.replace(/[.!\s]+$/, '') })
           : t('feeGroupCheck.text')}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

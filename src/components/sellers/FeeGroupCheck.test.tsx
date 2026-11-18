@@ -18,7 +18,7 @@ const groups: FeeGroup[] = [
     label: 'Vereinsmitglieder',
     commission: 5,
     assignment: 'selfDeclared',
-    proofHint: 'Ausweis zeigen',
+    proofHint: 'Ausweis zeigen.',
   },
   { id: 'helpers', label: 'Helfer', commission: 0, assignment: 'helpers' },
 ];
@@ -41,7 +41,7 @@ describe('FeeGroupCheck', () => {
   it('asks for the proof and confirms the group', async () => {
     render(<FeeGroupCheck eventId={EVENT} seller={vendor(pending)} groups={groups} />);
     expect(screen.getByText('Ermäßigt: Vereinsmitglieder – Nachweis prüfen')).toBeInTheDocument();
-    expect(screen.getByText(/Nachweis: Ausweis zeigen/)).toBeInTheDocument();
+    expect(screen.getByText(/Nachweis: Ausweis zeigen\. Bestätige/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Bestätigen' }));
     await waitFor(() =>
       expect(calls['feeGroups.confirmFeeGroup']).toHaveBeenCalledWith({
