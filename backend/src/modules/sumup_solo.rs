@@ -275,8 +275,10 @@ async fn pair(
         response.status(),
         StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND | StatusCode::CONFLICT
     ) {
+        let status = response.status();
         let body: Value = response.json().await.unwrap_or(Value::Null);
-        tracing::info!(%body, "SumUp refused a pairing code");
+        // Kept at warn: SumUp's reason is the only hint why a Solo does not pair
+        tracing::warn!(%status, %body, "SumUp refused a pairing code");
         return Err(AppError::bad_request("sumup.pairingFailed"));
     }
     let body = read(response).await?;
