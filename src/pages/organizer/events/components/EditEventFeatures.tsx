@@ -305,6 +305,56 @@ function RegistrationWindowFields() {
   );
 }
 
+/** A fee in €, read-only while the bazaar runs. */
+function EuroField({
+  name,
+  label,
+  info,
+  placeholder,
+  max,
+  step = 0.5,
+  feeLock,
+  error,
+}: {
+  name: 'intakeFee' | 'maxFeesPerSeller';
+  label: string;
+  info: string;
+  placeholder: string;
+  max: number;
+  step?: number;
+  feeLock: FeeLock;
+  error?: string;
+}) {
+  const { register } = useFormContext();
+  const running = feeLock === 'running';
+  return (
+    <div className="space-y-2">
+      <LabelWithInfo htmlFor={name} info={info}>
+        {label}
+      </LabelWithInfo>
+      <div className="relative max-w-40">
+        <Input
+          id={name}
+          type="number"
+          min={0}
+          max={max}
+          step={step}
+          className={running ? 'pr-8 opacity-60 cursor-not-allowed' : 'pr-8'}
+          placeholder={placeholder}
+          readOnly={running}
+          aria-readonly={running}
+          {...register(`features.${name}`, { valueAsNumber: true })}
+        />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+          €
+        </span>
+      </div>
+      {feeLock && <p className="text-xs text-muted-foreground">{feeLockHint(feeLock)}</p>}
+      {error && <FieldError>{error}</FieldError>}
+    </div>
+  );
+}
+
 /** Groups of switches; the creation wizard shows one group per step. */
 export type FeaturePart = 'sale' | 'items' | 'registration' | 'fees';
 const ALL_PARTS: FeaturePart[] = ['sale', 'items', 'registration', 'fees'];
@@ -336,7 +386,14 @@ export function EditEventFeatures({
   const needsCatalog = publicCatalog === false ? t('features.needsCatalog') : undefined;
   const featureErrors = errors.features as
     | Partial<
-        Record<'maxDiscountPercent' | 'intakeFee' | 'maxItemsPerSeller', { message?: string }>
+        Record<
+          | 'maxDiscountPercent'
+          | 'intakeFee'
+          | 'maxItemsPerSeller'
+          | 'maxItemsTotal'
+          | 'maxFeesPerSeller',
+          { message?: string }
+        >
       >
     | undefined;
 
@@ -423,24 +480,42 @@ export function EditEventFeatures({
           />
 
           <RequiredFieldsPicker />
-          <div className="space-y-2">
-            <LabelWithInfo
-              htmlFor="maxItemsPerSeller"
-              info={`${t('features.maxItemsHint')} ${feeLock ? t('features.maxItemsLocked') : t('features.maxItemsLater')}`}
-            >
-              {t('features.maxItems')}
-            </LabelWithInfo>
-            <Input
-              id="maxItemsPerSeller"
-              type="number"
-              min={1}
-              className="max-w-40"
-              placeholder={t('features.unlimited')}
-              {...register('features.maxItemsPerSeller', { valueAsNumber: true })}
-            />
-            {featureErrors?.maxItemsPerSeller && (
-              <FieldError>{featureErrors.maxItemsPerSeller.message}</FieldError>
-            )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo
+                htmlFor="maxItemsPerSeller"
+                info={`${t('features.maxItemsHint')} ${feeLock ? t('features.maxItemsLocked') : t('features.maxItemsLater')}`}
+              >
+                {t('features.maxItems')}
+              </LabelWithInfo>
+              <Input
+                id="maxItemsPerSeller"
+                type="number"
+                min={1}
+                className="max-w-40"
+                placeholder={t('features.unlimited')}
+                {...register('features.maxItemsPerSeller', { valueAsNumber: true })}
+              />
+              {featureErrors?.maxItemsPerSeller && (
+                <FieldError>{featureErrors.maxItemsPerSeller.message}</FieldError>
+              )}
+            </div>
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo htmlFor="maxItemsTotal" info={t('features.maxItemsTotalHint')}>
+                {t('features.maxItemsTotal')}
+              </LabelWithInfo>
+              <Input
+                id="maxItemsTotal"
+                type="number"
+                min={1}
+                className="max-w-40"
+                placeholder={t('features.unlimited')}
+                {...register('features.maxItemsTotal', { valueAsNumber: true })}
+              />
+              {featureErrors?.maxItemsTotal && (
+                <FieldError>{featureErrors.maxItemsTotal.message}</FieldError>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="min-w-0 space-y-2">
@@ -513,33 +588,28 @@ export function EditEventFeatures({
       )}
 
       {show('fees') && (
-        <div className="space-y-2">
-          <LabelWithInfo
-            htmlFor="intakeFee"
+        <>
+          <EuroField
+            name="intakeFee"
+            label={t('features.intakeFee')}
             info={feeLock ? feeLockHint(feeLock) : t('features.intakeFeeHint')}
-          >
-            {t('features.intakeFee')}
-          </LabelWithInfo>
-          <div className="relative max-w-40">
-            <Input
-              id="intakeFee"
-              type="number"
-              min={0}
-              max={100}
-              step={0.5}
-              className={feeLock === 'running' ? 'pr-8 opacity-60 cursor-not-allowed' : 'pr-8'}
-              placeholder={t('features.none')}
-              readOnly={feeLock === 'running'}
-              aria-readonly={feeLock === 'running'}
-              {...register('features.intakeFee', { valueAsNumber: true })}
-            />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-              €
-            </span>
-          </div>
-          {feeLock && <p className="text-xs text-muted-foreground">{feeLockHint(feeLock)}</p>}
-          {featureErrors?.intakeFee && <FieldError>{featureErrors.intakeFee.message}</FieldError>}
-        </div>
+            placeholder={t('features.none')}
+            max={100}
+            feeLock={feeLock}
+            error={featureErrors?.intakeFee?.message}
+          />
+          <EuroField
+            name="maxFeesPerSeller"
+            label={t('features.maxFees')}
+            info={`${t('features.maxFeesHint')} ${feeLock ? feeLockHint(feeLock) : t('features.maxFeesLater')}`}
+            placeholder={t('features.noCap')}
+            max={10_000}
+            // Amounts in cents are allowed, like the backend takes them
+            step={0.01}
+            feeLock={feeLock}
+            error={featureErrors?.maxFeesPerSeller?.message}
+          />
+        </>
       )}
     </>
   );

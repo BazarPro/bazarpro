@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Doc, Id } from '../../lib/api/types';
@@ -10,7 +10,10 @@ vi.mock('../../lib/api/react', () => ({ useMutation: () => setRegistrationOpen }
 const HOUR = 3_600_000;
 const eventId = '0199f2a4-7c1e-7b3a-9d2e-5f6a7b8c9d0e' as Id<'events'>;
 
-function renderPanel(event: Partial<Doc<'events'>> = {}, canSwitch = true) {
+function renderPanel(
+  event: Partial<Doc<'events'>> & { itemPlacesLeft?: number } = {},
+  canSwitch = true
+) {
   render(
     <MemoryRouter>
       <RegistrationPanel
@@ -36,6 +39,32 @@ describe('registration on the sellers page', () => {
     renderPanel({ vendorLimit: 50, sellerCount: 50 });
     expect(screen.getByText('Voll belegt')).toBeVisible();
     expect(screen.getByText('Alle Plätze belegt')).toBeVisible();
+  });
+
+  it('shows the places for items of the whole market next to the sellers', () => {
+    renderPanel({
+      vendorLimit: 50,
+      sellerCount: 30,
+      features: { maxItemsTotal: 400 },
+      itemPlacesLeft: 100,
+    });
+    const items = within(screen.getByTestId('item-places'));
+    expect(items.getByText('300')).toBeVisible();
+    expect(items.getByText('/ 400')).toBeVisible();
+    expect(items.getByText('Noch 100 Artikel möglich')).toBeVisible();
+    expect(items.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '300');
+    expect(screen.getByText('Noch 20 Plätze frei')).toBeVisible();
+  });
+
+  it('says when all places for items are taken, also without a seller limit', () => {
+    renderPanel({ features: { maxItemsTotal: 400 }, itemPlacesLeft: 0 });
+    expect(screen.getByText('Kein Limit')).toBeVisible();
+    expect(screen.getByText('Alle Plätze für Artikel belegt')).toBeVisible();
+  });
+
+  it('shows no places for items without a limit for them', () => {
+    renderPanel({ vendorLimit: 50, sellerCount: 30 });
+    expect(screen.queryByTestId('item-places')).toBeNull();
   });
 
   it('shows the access code sellers need', () => {

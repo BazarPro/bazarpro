@@ -1,4 +1,5 @@
 import { formatPriceDE } from './utils';
+import { feeCapCredit } from '../shared/feeCap';
 import { resolveEventFeatures, type StoredEventFeatures } from '../shared/eventFeatures';
 import { formatBerlinRange, formatBerlinTime } from '../shared/berlinTime';
 import i18n, { currentLocale } from '../i18n';
@@ -15,12 +16,16 @@ export interface SellerFees {
   commission: number;
   /** Fixed € per accepted item, sold or not */
   intakeFee?: number;
+  /** All fees of a seller together at most, in € */
+  maxFeesPerSeller?: number;
 }
 
 /** What sellers agree to when they register; all of it comes from the event. */
 export interface SellerConditionsEvent {
   commission: number;
   features?: StoredEventFeatures;
+  /** Places for items left on the whole market, as the backend counts them */
+  itemPlacesLeft?: number;
   sellerLogistics?: {
     dropoffStart?: number;
     dropoffEnd?: number;
@@ -44,6 +49,8 @@ export interface ExampleRow {
   label: string;
   /** Signed: income positive, fees negative */
   amount: number;
+  /** Fees given back by the cap */
+  credit?: boolean;
 }
 
 export interface FeeExample {
@@ -54,7 +61,7 @@ export interface FeeExample {
 }
 
 /** What sellers pay, in plain words, with a worked example; empty without fees. */
-export function describeSellerFees({ commission, intakeFee = 0 }: SellerFees): {
+export function describeSellerFees({ commission, intakeFee = 0, maxFeesPerSeller }: SellerFees): {
   lines: string[];
   example: FeeExample | null;
 } {
@@ -66,6 +73,9 @@ export function describeSellerFees({ commission, intakeFee = 0 }: SellerFees): {
     lines.push(text('intakeFeeLine', { fee: formatPriceDE(intakeFee) }));
   }
   if (lines.length === 0) return { lines, example: null };
+  if (maxFeesPerSeller !== undefined) {
+    lines.push(text('feeCapLine', { fee: formatPriceDE(maxFeesPerSeller) }));
+  }
 
   const revenue = EXAMPLE.sold * EXAMPLE.price;
   const rows: ExampleRow[] = [
@@ -87,6 +97,16 @@ export function describeSellerFees({ commission, intakeFee = 0 }: SellerFees): {
         fee: formatPriceDE(intakeFee),
       }),
       amount: -Math.round(EXAMPLE.handedIn * intakeFee * 100) / 100,
+    });
+  }
+  // Fees are the negative rows; what is above the cap comes back
+  const fees = -rows.reduce((sum, row) => sum + Math.min(row.amount, 0), 0);
+  const credit = feeCapCredit(fees, maxFeesPerSeller);
+  if (credit > 0) {
+    rows.push({
+      label: text('exampleFeeCap', { fee: formatPriceDE(maxFeesPerSeller ?? 0) }),
+      amount: credit,
+      credit: true,
     });
   }
   const total = Math.round(rows.reduce((sum, row) => sum + row.amount, 0) * 100) / 100;
@@ -128,6 +148,18 @@ export function describeSellerRules(
       allowed: true,
     },
   ];
+  if (features.maxItemsTotal) {
+    const left = event.itemPlacesLeft;
+    rules.splice(1, 0, {
+      text:
+        left === 0
+          ? text('marketFull', { max: features.maxItemsTotal })
+          : left !== undefined
+            ? text('placesLeft', { count: left, max: features.maxItemsTotal })
+            : text('maxItemsTotal', { max: features.maxItemsTotal }),
+      allowed: left !== 0,
+    });
+  }
   if (!features.publicCatalog) {
     rules.push({ text: text('noPublicCatalog'), allowed: true });
   }

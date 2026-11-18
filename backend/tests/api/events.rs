@@ -777,6 +777,25 @@ async fn after_the_first_seller_fees_only_go_down_and_the_limit_only_up(db: PgPo
         edit(5.0, json!({ "intakeFee": 0.5, "maxItemsPerSeller": 30 })).await["value"],
         Value::Null
     );
+    // The fee cap only for the sellers: set or lowered, never raised or removed
+    let terms =
+        |cap: Value| json!({ "intakeFee": 0.5, "maxItemsPerSeller": 30, "maxFeesPerSeller": cap });
+    assert_eq!(edit(5.0, terms(json!(20))).await["value"], Value::Null);
+    assert_eq!(
+        edit(5.0, terms(json!(25))).await["code"],
+        "event.feesOnlyLower"
+    );
+    assert_eq!(
+        edit(5.0, terms(Value::Null)).await["code"],
+        "event.feesOnlyLower"
+    );
+    assert_eq!(edit(5.0, terms(json!(15))).await["value"], Value::Null);
+    // The limit of the whole market is free: items already in stay
+    let mut market = terms(json!(15));
+    market["maxItemsTotal"] = json!(200);
+    assert_eq!(edit(5.0, market.clone()).await["value"], Value::Null);
+    market["maxItemsTotal"] = json!(100);
+    assert_eq!(edit(5.0, market).await["value"], Value::Null);
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]

@@ -19,6 +19,25 @@ describe('describeSellerFees', () => {
     });
   });
 
+  it('names the fee cap and gives back what is above it in the example', () => {
+    const { lines, example } = describeSellerFees({
+      commission: 10,
+      intakeFee: 3,
+      maxFeesPerSeller: 20,
+    });
+    expect(lines.at(-1)).toBe('Du zahlst höchstens 20,00 € Gebühren, alles zusammen');
+    // 3 € commission + 30 € intake fee: 13 € come back
+    expect(example?.rows.at(-1)).toEqual({
+      label: 'Gebühren-Deckel 20,00 €',
+      amount: 13,
+      credit: true,
+    });
+    expect(example?.total).toBe(10);
+    // Below the cap the example has nothing to give back
+    const below = describeSellerFees({ commission: 10, intakeFee: 0.5, maxFeesPerSeller: 20 });
+    expect(below.example?.rows).toHaveLength(3);
+  });
+
   it('goes negative when the fee is higher than the sales', () => {
     expect(describeSellerFees({ commission: 0, intakeFee: 4 }).example?.total).toBe(-10);
   });
@@ -54,6 +73,17 @@ describe('describeSellerRules', () => {
       'Käufer können öffentlich Fragen zu deinen Artikeln stellen',
     ]);
     expect(rules.every((rule) => rule.allowed)).toBe(true);
+  });
+
+  it('tells how many places of the whole market are left', () => {
+    const rules = (itemPlacesLeft?: number) =>
+      describeSellerRules({ commission: 0, features: { maxItemsTotal: 200 }, itemPlacesLeft })[1];
+    expect(rules().text).toBe('Höchstens 200 Artikel auf dem ganzen Basar');
+    expect(rules(23).text).toBe('Höchstens 200 Artikel auf dem ganzen Basar, noch 23 Plätze frei');
+    expect(rules(0)).toEqual({
+      text: 'Der Basar ist voll: Alle 200 Plätze für Artikel sind vergeben',
+      allowed: false,
+    });
   });
 
   it('says what is not offered', () => {

@@ -204,6 +204,12 @@ export function VendorSettlement({
                 <dd className="whitespace-nowrap">−{formatPriceDE(vendor.intakeFee.total)} €</dd>
               </div>
             )}
+            {vendor.feeCapCredit > 0 && (
+              <div className="flex justify-between gap-3 text-emerald-700 dark:text-emerald-400">
+                <dt>{t('settle.feeCap')}</dt>
+                <dd className="whitespace-nowrap">+{formatPriceDE(vendor.feeCapCredit)} €</dd>
+              </div>
+            )}
             <div className="flex justify-between gap-3 border-t pt-2 text-base font-bold">
               <dt>{owes ? t('settle.pays', { name }) : t('settle.payout')}</dt>
               <dd className={`whitespace-nowrap ${owes ? 'text-destructive' : 'text-primary'}`}>

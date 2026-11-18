@@ -493,6 +493,82 @@ async fn the_item_limit_of_an_event(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_item_limit_of_the_whole_market(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let organizer = fixtures::user(&db, "Orga").await;
+    let erika = seller(&db, "Erika").await;
+    let max = seller(&db, "Max").await;
+    let category = fixtures::category(&db, "Fahrräder").await;
+    let event = fixtures::event(
+        &db,
+        EventSpec {
+            features: json!({ "photosOptional": true, "maxItemsTotal": 3 }),
+            ..EventSpec::new("Fahrradmarkt", organizer)
+        },
+    )
+    .await;
+    let places = || async {
+        app.query(
+            "events.getEvent",
+            json!({ "id": event }),
+            Some(&max.session),
+        )
+        .await
+        .body["value"]["itemPlacesLeft"]
+            .clone()
+    };
+    assert_eq!(places().await, json!(3));
+    let mut erikas = Vec::new();
+    for _ in 0..2 {
+        let item = add(&app, &erika, product_args(&erika, category, vec![])).await;
+        assert_eq!(
+            announce(&app, &erika, event, item).await.status,
+            StatusCode::OK
+        );
+        erikas.push(item);
+    }
+    let item = add(&app, &max, product_args(&max, category, vec![])).await;
+    assert_eq!(
+        announce(&app, &max, event, item).await.status,
+        StatusCode::OK
+    );
+    assert_eq!(places().await, json!(0));
+
+    // The market is full, for every seller
+    let late = add(&app, &max, product_args(&max, category, vec![])).await;
+    let reply = announce(&app, &max, event, late).await;
+    assert_eq!(reply.body["code"], "event.full", "{}", reply.body);
+    assert_eq!(
+        reply.body["params"],
+        json!({ "event": "Fahrradmarkt", "limit": "3" })
+    );
+
+    // A rejected item frees its place
+    sqlx::query("UPDATE event_products SET status = 'rejected' WHERE product_id = $1")
+        .bind(erikas[0])
+        .execute(&db)
+        .await
+        .unwrap();
+    assert_eq!(places().await, json!(1));
+    assert_eq!(
+        announce(&app, &max, event, late).await.status,
+        StatusCode::OK
+    );
+
+    // Lowering the limit keeps the items that are in
+    sqlx::query("UPDATE events SET features = '{\"photosOptional\": true, \"maxItemsTotal\": 1}' WHERE id = $1")
+        .bind(event)
+        .execute(&db)
+        .await
+        .unwrap();
+    assert_eq!(
+        status_of(&db, event, late).await.as_deref(),
+        Some("announced")
+    );
+    assert_eq!(places().await, json!(0));
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn handed_in_items_are_locked_until_returned_or_the_bazaar_ends(db: PgPool) {
     let app = TestApp::new(db.clone());
     let organizer = fixtures::user(&db, "Orga").await;

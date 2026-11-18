@@ -3,6 +3,7 @@ import {
   _resetAudioContext,
   clearCachedCart,
   commissionOf,
+  deskCommissions,
   deskTakes,
   getCheckoutCartStorageKey,
   getCheckoutSoundEnabled,
@@ -224,5 +225,18 @@ describe('what the desk takes', () => {
     expect(deskTakes([4.1, 4.1], true, 15)).toBe(1.24);
     expect(deskTakes([0.1, 0.2], false, 10)).toBe(0.3);
     expect(deskTakes([], true, 10)).toBe(0);
+  });
+
+  it('shares the rest of the fee cap among the items of a seller', () => {
+    const lines = [
+      { price: 140, sellerId: 'anna', feeCapLeft: 20 },
+      { price: 90, sellerId: 'ben', feeCapLeft: 20 },
+      { price: 90, sellerId: 'anna', feeCapLeft: 20 },
+      { price: 50, sellerId: 'anna', feeCapLeft: 20 },
+    ];
+    // Anna: 14 €, then the rest of 6 €, then nothing; Ben is on his own
+    expect(deskCommissions(lines, 10)).toEqual([14, 9, 6, 0]);
+    // Without a cap every item pays its commission
+    expect(deskCommissions([{ price: 140 }, { price: 90 }], 10)).toEqual([14, 9]);
   });
 });

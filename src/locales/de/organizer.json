@@ -44,7 +44,9 @@
     "postalCodeInvalid": "Bitte eine gültige Postleitzahl eingeben",
     "cityRequired": "Bitte gib zur Postleitzahl auch den Ort an",
     "addressTooLong": "Zu lang",
-    "unsaved": "Ungespeicherte Änderungen"
+    "unsaved": "Ungespeicherte Änderungen",
+    "feeCapMax": "Höchstens 10.000 €",
+    "registeredMaxFeeCap": "Verkäufer sind angemeldet: höchstens {{fee}} €"
   },
   "basic": {
     "title": "Grundinformationen",
@@ -193,7 +195,13 @@
     "registrationUntil": "Anmeldung bis (optional)",
     "registrationWindowHint": "Leer lassen, wenn die Anmeldung sofort und bis zum Ende des Basars offen ist. Einladungen gelten auch außerhalb dieser Zeit.",
     "registrationClosedHint": "Die Anmeldung ist geschlossen. Neue Verkäufer kommen nur über eine Einladung hinein.",
-    "registrationWindow": "Das Ende der Anmeldung muss nach ihrem Beginn liegen."
+    "registrationWindow": "Das Ende der Anmeldung muss nach ihrem Beginn liegen.",
+    "maxItemsTotal": "Artikel insgesamt (optional)",
+    "maxItemsTotalHint": "Begrenzt die Artikel aller Verkäufer zusammen, z. B. auf das, was in die Halle passt. Verkäufer sehen, wie viele Plätze noch frei sind. Senkst du die Grenze, bleiben angemeldete Artikel dabei.",
+    "maxFees": "Gebühren-Deckel pro Verkäufer in € (optional)",
+    "noCap": "kein Deckel",
+    "maxFeesHint": "Ein Verkäufer zahlt insgesamt höchstens so viel Provision und Annahmegebühr, z. B. 20 € bei teuren Rädern. Was darüber liegt, geht bei der Abrechnung an ihn zurück. Beim Direktverkauf nimmt die Kasse dann keine Provision mehr.",
+    "maxFeesLater": "Sobald sich der erste Verkäufer angemeldet hat, kannst du ihn nur noch senken."
   },
   "logistics": {
     "title": "Abgabe & Abholung",
@@ -330,7 +338,9 @@
     "registration": "Anmeldung",
     "registrationOpen": "Offen bis zum Ende des Basars",
     "registrationClosed": "Geschlossen, nur mit Einladung",
-    "untilTime": "bis {{time}} Uhr"
+    "untilTime": "bis {{time}} Uhr",
+    "maxItemsTotal": "Höchstens {{count}} Artikel insgesamt",
+    "maxFees": "Höchstens {{amount}} € Gebühren pro Verkäufer"
   },
   "sellers": {
     "sortSheets": "Sortierblätter",
@@ -445,7 +455,8 @@
     "confirmTitle": "Abrechnung für {{name}}",
     "returnedItems": "{{count}} unverkaufte Artikel zurückgegeben",
     "saving": "Wird gespeichert…",
-    "done": "Erledigt, abschließen"
+    "done": "Erledigt, abschließen",
+    "feeCap": "Gebühren-Deckel"
   },
   "cash": {
     "title": "Abrechnung",
@@ -473,7 +484,8 @@
     "feesCollected": "Annahmegebühr bezahlt",
     "feesOpen": "Annahmegebühr noch zu kassieren",
     "sellersToCollect": "Diese Verkäufer haben weniger verkauft, als die Annahmegebühr kostet, und zahlen bei der Abrechnung:",
-    "sellerNumber": "Nr. {{number}}"
+    "sellerNumber": "Nr. {{number}}",
+    "capSplit": "− {{amount}} € zurück durch den Gebühren-Deckel"
   },
   "products": {
     "sellerFound": "Teilnehmer {{name}} gefunden",
@@ -784,7 +796,9 @@
       "received": "{{total}} € Provision vom Verkäufer erhalten",
       "commission": "Provision {{amount}} €",
       "agreed": "Vereinbarter Preis",
-      "agreedPrice": "Vereinbarter Preis"
+      "agreedPrice": "Vereinbarter Preis",
+      "commissionCapped": "Provision {{amount}} € · Deckel",
+      "capReached": "Gebühren-Deckel erreicht, keine Provision"
     }
   },
   "proof": {
@@ -869,7 +883,8 @@
     "fileName": "Abrechnung",
     "fileNameSellers": "Abrechnung-Verkaeufer",
     "fileNameSales": "Abrechnung-Verkaeufe",
-    "direct": "direkt bezahlt"
+    "direct": "direkt bezahlt",
+    "feeCap": "Gebühren-Deckel (€)"
   },
   "wizard": {
     "back": "Zurück",
@@ -953,7 +968,10 @@
         "priceOffers": "Preisvorschläge",
         "minimumPrice": "VB",
         "questions": "Fragen"
-      }
+      },
+      "maxItemsTotal_one": "max. {{count}} Artikel insgesamt",
+      "maxItemsTotal_other": "max. {{count}} Artikel insgesamt",
+      "maxFees": "höchstens {{fee}} € pro Verkäufer"
     },
     "fixErrors": "Bitte prüfe die markierten Angaben.",
     "guestCreate": "Konto anlegen und Basar erstellen",
@@ -1030,7 +1048,10 @@
       "mapExample": "Nur ein Beispiel: Hier erscheint dein eigener Plan, sobald du ihn hochlädst.",
       "mapRow": "Reihe {{row}}",
       "mapCashDesk": "Kasse",
-      "mapEntrance": "Eingang"
+      "mapEntrance": "Eingang",
+      "maxItemsTotal": "{{count}} Plätze für Artikel insgesamt",
+      "feeCap": "Höchstens {{fee}} Gebühren pro Verkäufer",
+      "feeCapExample": "Gebühren-Deckel {{fee}}"
     },
     "short": {
       "type": "Art",
@@ -1328,6 +1349,14 @@
     "noneLeft": "Alle Plätze belegt",
     "unlimited": "Kein Limit",
     "unlimitedHint": "Beliebig viele Verkäufer können sich anmelden",
+    "sellers": "Verkäufer",
+    "items": "Artikel",
+    "itemPlaces": "Plätze für Artikel",
+    "itemsLeft_one": "Noch ein Artikel möglich",
+    "itemsLeft_other": "Noch {{count}} Artikel möglich",
+    "noItemsLeft": "Alle Plätze für Artikel belegt",
+    "itemLimit_one": "Höchstens ein Artikel",
+    "itemLimit_other": "Höchstens {{count}} Artikel",
     "access": "Zugang",
     "noCode": "Ohne Code",
     "noCodeHint": "Jeder mit Konto kann sich anmelden",

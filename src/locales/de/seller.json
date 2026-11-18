@@ -40,7 +40,13 @@
     "createForEvent": "Artikel für Basar erstellen",
     "soldHidden_one": "1 verkaufter Artikel ist ausgeblendet.",
     "soldHidden_other": "{{count}} verkaufte Artikel sind ausgeblendet.",
-    "showAllOrSales": "<all>Alle anzeigen</all> oder <sales>zu Meine Verkäufe</sales>"
+    "showAllOrSales": "<all>Alle anzeigen</all> oder <sales>zu Meine Verkäufe</sales>",
+    "placesLeft_one": "noch {{count}} Platz frei",
+    "placesLeft_other": "noch {{count}} Plätze frei",
+    "marketFull": "Basar voll",
+    "placesOver_one": "{{count}} Artikel zu viel für die freien Plätze",
+    "placesOver_other": "{{count}} Artikel zu viel für die freien Plätze",
+    "noPlaceLeft": "Auf dem Basar ist kein Platz mehr frei."
   },
   "header": {
     "title": "Meine Artikel",

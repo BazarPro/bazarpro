@@ -48,6 +48,8 @@ export function CashReconciliationPage() {
   const allPaid =
     summary.vendorsTotalCount > 0 && summary.vendorsPaidCount === summary.vendorsTotalCount;
   const collecting = summary.totalFeesToCollect > 0.005;
+  // Older backends do not send it
+  const capCredits = summary.totalFeeCapCredits ?? 0;
   // Direct sale: the sellers have their money, so there may be nobody to settle
   const nothingToSettle = summary.vendorsTotalCount === 0 && summary.totalDirectSales > 0.005;
   const payoutProgress =
@@ -88,7 +90,7 @@ export function CashReconciliationPage() {
                 {summary.totalIntakeFees > 0 ? t('cash.commissionAndFees') : t('cash.commission')}
               </p>
               <p className="text-xl font-semibold tabular-nums">
-                {formatPriceDE(summary.totalCommission + summary.totalIntakeFees)} €
+                {formatPriceDE(summary.totalCommission + summary.totalIntakeFees - capCredits)} €
               </p>
               {summary.totalIntakeFees > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground tabular-nums">
@@ -96,6 +98,11 @@ export function CashReconciliationPage() {
                     commission: formatPriceDE(summary.totalCommission),
                     fees: formatPriceDE(summary.totalIntakeFees),
                   })}
+                </p>
+              )}
+              {capCredits > 0 && (
+                <p className="mt-1 text-xs text-emerald-700 tabular-nums dark:text-emerald-400">
+                  {t('cash.capSplit', { amount: formatPriceDE(capCredits) })}
                 </p>
               )}
             </div>

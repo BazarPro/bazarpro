@@ -113,40 +113,75 @@ async fn get_my_seller_number(ctx: &mut Ctx, args: EventArgs) -> AppResult<Optio
     )
 }
 
-/// Refuses when `adding` more items would exceed the event's limit per seller.
+/// Items that take a place at the event: all but rejected ones, whose place is free again.
+const TAKING_PLACE: &str = "ep.status <> 'rejected'";
+
+/// Refuses when `adding` more items would exceed the event's limit per seller or the
+/// limit of the whole market. Items already in stay when the organizer lowers a limit.
 pub async fn assert_item_limit(
     ctx: &mut Ctx,
     event: &Event,
     vendor: Uuid,
     adding: i64,
 ) -> AppResult<()> {
-    let Some(limit) = event.resolved_features().max_items_per_seller else {
+    let features = event.resolved_features();
+    if adding <= 0 {
+        return Ok(());
+    }
+    if let Some(limit) = features.max_items_per_seller {
+        let current: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+            "SELECT count(*) FROM event_products ep JOIN products p ON p.id = ep.product_id
+             WHERE ep.event_id = $1 AND p.vendor_id = $2 AND {TAKING_PLACE}"
+        )))
+        .bind(event.id)
+        .bind(vendor)
+        .fetch_one(ctx.conn())
+        .await?;
+        let limit = i64::from(limit);
+        if current + adding > limit {
+            let left = (limit - current).max(0).to_string();
+            return Err(AppError::coded(
+                axum::http::StatusCode::BAD_REQUEST,
+                "seller.itemLimit",
+                &[
+                    ("event", &event.title),
+                    ("limit", &limit.to_string()),
+                    ("left", &left),
+                ],
+            ));
+        }
+    }
+    assert_market_space(ctx, event, adding).await
+}
+
+/// Refuses when `adding` more items would exceed the limit of the whole market
+/// (maxItemsTotal), whoever brings them: online sellers as well as walk-in sellers.
+pub async fn assert_market_space(ctx: &mut Ctx, event: &Event, adding: i64) -> AppResult<()> {
+    let Some(limit) = event.resolved_features().max_items_total else {
         return Ok(());
     };
     if adding <= 0 {
         return Ok(());
     }
-    let current: i64 = sqlx::query_scalar(
-        // A rejected item takes no place: the seller may announce another instead
-        "SELECT count(*) FROM event_products ep JOIN products p ON p.id = ep.product_id
-         WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status <> 'rejected'",
-    )
-    .bind(event.id)
-    .bind(vendor)
-    .fetch_one(ctx.conn())
-    .await?;
-    let limit = i64::from(limit);
-    if current + adding > limit {
-        let left = (limit - current).max(0).to_string();
+    // Two sellers must not both get the last place
+    docs::lock_event(ctx.conn(), event.id).await?;
+    let taken = items_taking_place(ctx, event.id).await?;
+    if taken + adding > i64::from(limit) {
         return Err(AppError::coded(
             axum::http::StatusCode::BAD_REQUEST,
-            "seller.itemLimit",
-            &[
-                ("event", &event.title),
-                ("limit", &limit.to_string()),
-                ("left", &left),
-            ],
+            "event.full",
+            &[("event", &event.title), ("limit", &limit.to_string())],
         ));
     }
     Ok(())
+}
+
+/// Items of all sellers that take a place at the event.
+pub async fn items_taking_place(ctx: &mut Ctx, event: Uuid) -> sqlx::Result<i64> {
+    sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+        "SELECT count(*) FROM event_products ep WHERE ep.event_id = $1 AND {TAKING_PLACE}"
+    )))
+    .bind(event)
+    .fetch_one(ctx.conn())
+    .await
 }

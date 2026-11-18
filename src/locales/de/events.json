@@ -118,7 +118,13 @@
     "questionsDuringEvent": "Käufer können während des Basars öffentlich Fragen zu deinen Artikeln stellen",
     "privateSellers": "Nur für Privatleute: Du bestätigst beim Anmelden, dass du nicht gewerblich verkaufst",
     "fixedData": "Bring deinen Ausweis mit: Der Veranstalter prüft vor Ort Name und Anschrift. Sobald er deinen ersten Artikel annimmt, sind sie fest, ebenso die Angaben zu angenommenen Artikeln. Der Veranstalter führt darüber einen Nachweis",
-    "directSale": "Direktverkauf: Du bist bei deinem Artikel, Käufer einigen sich mit dir auf den Preis und bezahlen dich direkt. Danach bucht die Kasse den Verkauf zum vereinbarten Preis, dort zahlst du nur die Provision"
+    "directSale": "Direktverkauf: Du bist bei deinem Artikel, Käufer einigen sich mit dir auf den Preis und bezahlen dich direkt. Danach bucht die Kasse den Verkauf zum vereinbarten Preis, dort zahlst du nur die Provision",
+    "feeCapLine": "Du zahlst höchstens {{fee}} € Gebühren, alles zusammen",
+    "exampleFeeCap": "Gebühren-Deckel {{fee}} €",
+    "maxItemsTotal": "Höchstens {{max}} Artikel auf dem ganzen Basar",
+    "placesLeft_one": "Höchstens {{max}} Artikel auf dem ganzen Basar, noch {{count}} Platz frei",
+    "placesLeft_other": "Höchstens {{max}} Artikel auf dem ganzen Basar, noch {{count}} Plätze frei",
+    "marketFull": "Der Basar ist voll: Alle {{max}} Plätze für Artikel sind vergeben"
   },
   "sidebar": {
     "details": "Basar-Details",
@@ -129,6 +135,7 @@
     "atTime": "{{date}}, {{time}} Uhr",
     "location": "Ort",
     "limit": "Plätze für Verkäufer",
+    "itemLimit": "Plätze für Artikel",
     "spots": "{{count}} Plätze",
     "calendar": "Kalender",
     "ics": "Als ICS herunterladen",

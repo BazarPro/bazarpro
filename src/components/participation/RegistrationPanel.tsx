@@ -17,7 +17,58 @@ import { spotsLeft } from './registrationText';
 type RegistrationPanelEvent = Pick<
   Doc<'events'>,
   '_id' | 'features' | 'vendorLimit' | 'sellerCount' | 'accessCode' | 'visibility' | 'endDate'
->;
+> & {
+  /** Places for items left on the whole market; sent with `maxItemsTotal` */
+  itemPlacesLeft?: number;
+};
+
+/** "12 / 50" over a bar that turns amber once every place is taken. */
+function PlacesMeter({
+  taken,
+  limit,
+  label,
+  leftText,
+  fullText,
+  small,
+}: {
+  taken: number;
+  limit: number;
+  label: string;
+  leftText: string;
+  fullText: string;
+  small?: boolean;
+}) {
+  const full = taken >= limit;
+  return (
+    <>
+      <div className="flex items-baseline gap-1 tabular-nums">
+        <span className={cn('font-semibold', small ? 'text-lg' : 'text-2xl')}>{taken}</span>
+        <span className="text-muted-foreground">/ {limit}</span>
+      </div>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={limit}
+        aria-valuenow={Math.min(taken, limit)}
+        aria-label={label}
+      >
+        <div
+          className={cn('h-full rounded-full transition-all', full ? 'bg-amber-500' : 'bg-primary')}
+          style={{ width: `${Math.min(100, (taken / limit) * 100)}%` }}
+        />
+      </div>
+      <p
+        className={cn(
+          'text-sm',
+          full ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-muted-foreground'
+        )}
+      >
+        {full ? fullText : leftText}
+      </p>
+    </>
+  );
+}
 
 /** One column of the panel: a small heading over its content. */
 function Section({
@@ -65,6 +116,11 @@ export function RegistrationPanel({
   const left = spotsLeft(event);
   const taken = event.sellerCount ?? 0;
   const full = left === 0;
+  const maxItemsTotal =
+    event.features?.maxItemsTotal && event.features.maxItemsTotal > 0
+      ? event.features.maxItemsTotal
+      : undefined;
+  const itemsLeft = maxItemsTotal !== undefined ? event.itemPlacesLeft : undefined;
   const code = event.accessCode?.trim() || undefined;
   const linkOnly = event.visibility === 'approved';
 
@@ -172,39 +228,20 @@ export function RegistrationPanel({
         </Section>
 
         <Section icon={<Users className="h-3.5 w-3.5" />} label={t('registrationPanel.places')}>
+          {maxItemsTotal !== undefined && (
+            <div className="text-xs font-medium text-muted-foreground">
+              {t('registrationPanel.sellers')}
+            </div>
+          )}
           {limit !== undefined ? (
-            <>
-              <div className="flex items-baseline gap-1 tabular-nums">
-                <span className="text-2xl font-semibold">{taken}</span>
-                <span className="text-muted-foreground">/ {limit}</span>
-              </div>
-              <div
-                className="h-2 w-full overflow-hidden rounded-full bg-muted"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={limit}
-                aria-valuenow={Math.min(taken, limit)}
-                aria-label={t('registrationPanel.places')}
-              >
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all',
-                    full ? 'bg-amber-500' : 'bg-primary'
-                  )}
-                  style={{ width: `${Math.min(100, (taken / limit) * 100)}%` }}
-                />
-              </div>
-              <p
-                className={cn(
-                  'text-sm',
-                  full ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-muted-foreground'
-                )}
-              >
-                {full
-                  ? t('registrationPanel.noneLeft')
-                  : t('registrationPanel.left', { count: left ?? 0 })}
-              </p>
-            </>
+            <PlacesMeter
+              taken={taken}
+              limit={limit}
+              label={t('registrationPanel.places')}
+              leftText={t('registrationPanel.left', { count: left ?? 0 })}
+              fullText={t('registrationPanel.noneLeft')}
+              small={maxItemsTotal !== undefined}
+            />
           ) : (
             <>
               <span className="block text-lg font-semibold">
@@ -214,6 +251,27 @@ export function RegistrationPanel({
                 {t('registrationPanel.unlimitedHint')}
               </p>
             </>
+          )}
+          {maxItemsTotal !== undefined && (
+            <div className="space-y-2 border-t pt-3" data-testid="item-places">
+              <div className="text-xs font-medium text-muted-foreground">
+                {t('registrationPanel.items')}
+              </div>
+              {itemsLeft !== undefined ? (
+                <PlacesMeter
+                  taken={Math.max(0, maxItemsTotal - itemsLeft)}
+                  limit={maxItemsTotal}
+                  label={t('registrationPanel.itemPlaces')}
+                  leftText={t('registrationPanel.itemsLeft', { count: itemsLeft })}
+                  fullText={t('registrationPanel.noItemsLeft')}
+                  small
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t('registrationPanel.itemLimit', { count: maxItemsTotal })}
+                </p>
+              )}
+            </div>
           )}
         </Section>
 

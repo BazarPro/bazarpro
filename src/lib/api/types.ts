@@ -112,10 +112,12 @@ export interface Docs {
           publicCatalog?: boolean | undefined;
           requiredFields?: string[] | undefined;
           maxItemsPerSeller?: number | undefined;
+          maxItemsTotal?: number | undefined;
           labelFormat?: 'small' | 'standard' | undefined;
           priceOnLabel?: boolean | undefined;
           labelMark?: 'universal' | 'none' | undefined;
           intakeFee?: number | undefined;
+          maxFeesPerSeller?: number | undefined;
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
           directSale?: boolean | undefined;
@@ -384,10 +386,12 @@ export type EventFeatures = {
   publicCatalog: boolean;
   requiredFields?: string[] | undefined;
   maxItemsPerSeller?: number | undefined;
+  maxItemsTotal?: number | undefined;
   labelFormat: 'small' | 'standard';
   priceOnLabel: boolean;
   labelMark: 'universal' | 'none';
   intakeFee?: number | undefined;
+  maxFeesPerSeller?: number | undefined;
   privateSellersOnly: boolean;
   fixedSellerData: boolean;
   directSale: boolean;
@@ -463,6 +467,8 @@ export type SettlementExport = {
     startDate: number;
     endDate: number;
     commission: number;
+    /** Fee cap per seller; with it the seller table has its column */
+    maxFeesPerSeller?: number | undefined;
   };
   sales: SettlementSale[];
   sellers: SettlementSeller[];
@@ -493,6 +499,8 @@ export type SettlementSeller = {
   revenue: number;
   commission: number;
   intakeFee: number;
+  /** Fees above the cap given back; missing from older backends */
+  feeCapCredit?: number;
   /** Negative when the seller owes the bazaar */
   payout: number;
   paid: boolean;
@@ -564,6 +572,9 @@ export type VendorWithCalculations = {
   totalRevenue: number;
   commission: number;
   intakeFee: IntakeFee;
+  /** Fees above the cap (maxFeesPerSeller) the seller gets back */
+  feeCapCredit: number;
+  /** Sales less commission and intake fee, plus feeCapCredit */
   payout: number;
   /** Direct sales: what the seller got from the buyers and keeps; not in the payout */
   receivedDirectly: number;
@@ -1148,10 +1159,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1220,10 +1233,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1294,10 +1309,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1368,10 +1385,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1418,6 +1437,8 @@ export interface Api {
         coverImageUrl: string | null;
         eventMapImageUrl: string | null;
         categoryLabels: string[];
+        /** Places for items left on the whole market; only with maxItemsTotal */
+        itemPlacesLeft?: number;
         _id: Id<'events'>;
         _creationTime: number;
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
@@ -1450,10 +1471,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1493,6 +1516,8 @@ export interface Api {
         coverImageUrl: string | null;
         eventMapImageUrl: string | null;
         categoryLabels: string[];
+        /** Places for items left on the whole market; only with maxItemsTotal */
+        itemPlacesLeft?: number;
         _id: Id<'events'>;
         _creationTime: number;
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
@@ -1525,10 +1550,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1597,10 +1624,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1655,10 +1684,13 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              /** null clears it; left out, the stored value stays (older apps) */
+              maxItemsTotal?: number | null | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | null | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1711,10 +1743,13 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              /** null clears it; left out, the stored value stays (older apps) */
+              maxItemsTotal?: number | null | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | null | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1792,10 +1827,12 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1845,6 +1882,8 @@ export interface Api {
         totalPaidOut: number;
         totalPendingPayout: number;
         totalIntakeFees: number;
+        /** Fees above the cap given back to sellers; missing from older backends */
+        totalFeeCapCredits?: number;
         totalFeesCollected: number;
         totalFeesToCollect: number;
         sellersToCollect: { name: string; sellerNumber: number | undefined; amount: number }[];
@@ -2551,6 +2590,10 @@ export interface Api {
         sellerPaidOut: boolean;
         attributes: CategoryAttribute[];
         internalNote?: string;
+        /** The seller, so a cart shares the rest of the fee cap among their items */
+        sellerId: Id<'users'>;
+        /** Direct sale with a fee cap: the commission the seller still pays at most */
+        feeCapLeft?: number;
       } | null
     >;
     getCheckoutSnapshot: FunctionReference<
@@ -2661,7 +2704,14 @@ export interface Api {
           images: Id<'_storage'>[];
           sale: SaleInfo;
         }[];
-        totals: { revenue: number; commission: number; intakeFee: IntakeFee; payout: number };
+        totals: {
+          revenue: number;
+          commission: number;
+          intakeFee: IntakeFee;
+          /** Fees above the cap given back */
+          feeCapCredit: number;
+          payout: number;
+        };
       }[]
     >;
   };

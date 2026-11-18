@@ -715,8 +715,14 @@ fn features_json(event: &Event) -> Value {
     if let Some(limit) = f.max_items_per_seller {
         map.insert("maxItemsPerSeller".into(), serde_json::json!(limit));
     }
+    if let Some(limit) = f.max_items_total {
+        map.insert("maxItemsTotal".into(), serde_json::json!(limit));
+    }
     if let Some(fee) = f.intake_fee {
         map.insert("intakeFee".into(), serde_json::json!(fee));
+    }
+    if let Some(cap) = f.max_fees_per_seller {
+        map.insert("maxFeesPerSeller".into(), serde_json::json!(cap));
     }
     value
 }

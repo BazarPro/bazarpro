@@ -49,6 +49,7 @@ export interface SellerPrintout {
     | 'commission'
     | 'receivedDirectly'
     | 'intakeFee'
+    | 'feeCapCredit'
     | 'payout'
     | 'paid'
   >;
@@ -140,6 +141,10 @@ export function settlementRows({ event, seller, items }: SellerPrintout): string
       }),
       `-${formatPriceDE(seller.intakeFee.total)} €`,
     ]);
+  }
+  // Fees above the cap go back to the seller
+  if (seller.feeCapCredit > 0) {
+    rows.push([settleText('feeCap'), `+${formatPriceDE(seller.feeCapCredit)} €`]);
   }
   return rows;
 }

@@ -34,6 +34,8 @@ struct ExportEvent {
     end_date: DateTime<Utc>,
     /// Percent of each sale the bazaar keeps
     commission: Decimal,
+    /// Fee cap per seller (#301); with it the seller table has a column for it
+    max_fees_per_seller: Option<Decimal>,
 }
 
 #[skip_serializing_none]
@@ -69,6 +71,8 @@ struct ExportSeller {
     revenue: Decimal,
     commission: Decimal,
     intake_fee: Decimal,
+    /// Fees above the cap given back
+    fee_cap_credit: Decimal,
     /// Negative when the seller owes the bazaar
     payout: Decimal,
     paid: bool,
@@ -137,6 +141,7 @@ async fn get_export(ctx: &mut Ctx, args: EventArgs) -> AppResult<Export> {
             revenue: vendor.total_revenue,
             commission: vendor.commission,
             intake_fee: vendor.intake_fee.total,
+            fee_cap_credit: vendor.fee_cap_credit,
             payout: vendor.payout,
             paid: vendor.paid,
         })
@@ -144,6 +149,7 @@ async fn get_export(ctx: &mut Ctx, args: EventArgs) -> AppResult<Export> {
     sellers.sort_by_key(|seller| seller.seller_number.unwrap_or(i32::MAX));
     Ok(Export {
         event: ExportEvent {
+            max_fees_per_seller: event.resolved_features().max_fees_per_seller,
             location: event.place(),
             title: event.title,
             start_date: event.start_date,

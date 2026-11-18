@@ -413,7 +413,10 @@ pub struct VendorWithCalculations {
     pub commission: Decimal,
     /// Fixed fee per accepted item, kept from the payout
     pub intake_fee: IntakeFee,
-    /// Sales minus commission and intake fee; negative when the seller owes the bazaar
+    /// Fees above the cap (maxFeesPerSeller) the seller gets back
+    pub fee_cap_credit: Decimal,
+    /// Sales minus commission and intake fee, plus the cap credit; negative when the seller
+    /// owes the bazaar
     pub payout: Decimal,
     /// Direct sales: what the seller got from the buyers and keeps, so it is not in the payout
     pub received_directly: Decimal,
@@ -503,6 +506,8 @@ pub async fn load_vendors_with_calculations(
             seller.as_ref(),
             accepted.get(&vendor).copied().unwrap_or(0),
         );
+        let fee_cap_credit =
+            sales::fee_cap_credit_of(&event, seller.as_ref(), commission, &intake_fee);
         let sort_code = if universal {
             seller_sort_code(ctx, vendor).await?
         } else {
@@ -517,7 +522,8 @@ pub async fn load_vendors_with_calculations(
             total_revenue,
             commission,
             intake_fee,
-            payout: sales_payout - intake_fee.total,
+            fee_cap_credit,
+            payout: sales_payout - intake_fee.total + fee_cap_credit,
             received_directly,
             paid: seller.as_ref().is_some_and(|seller| seller.payout_received),
             gross_revenue,

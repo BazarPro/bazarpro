@@ -56,6 +56,8 @@ interface RegisteredTerms {
   commission: number;
   intakeFee: number;
   maxItemsPerSeller?: number;
+  /** Unset: no cap, the highest there is */
+  maxFeesPerSeller?: number;
 }
 import { useTranslation } from 'react-i18next';
 import { coverFile, coverForKind, DEFAULT_COVER } from '../../../lib/eventCovers';
@@ -174,6 +176,12 @@ const buildEventSchema = (
           .min(1, zodMessage('form.minOne', 'organizer'))
           .optional()
           .or(z.nan()),
+        maxItemsTotal: z
+          .number()
+          .int(zodMessage('form.wholeNumber', 'organizer'))
+          .min(1, zodMessage('form.minOne', 'organizer'))
+          .optional()
+          .or(z.nan()),
         labelFormat: z.enum(LABEL_FORMATS),
         priceOnLabel: z.boolean(),
         labelMark: z.enum(LABEL_MARKS),
@@ -187,6 +195,12 @@ const buildEventSchema = (
           .number()
           .min(0, zodMessage('form.feeNegative', 'organizer'))
           .max(100, zodMessage('form.feeMax', 'organizer'))
+          .optional()
+          .or(z.nan()),
+        maxFeesPerSeller: z
+          .number()
+          .min(0, zodMessage('form.feeNegative', 'organizer'))
+          .max(10_000, zodMessage('form.feeCapMax', 'organizer'))
           .optional()
           .or(z.nan()),
       }),
@@ -258,6 +272,17 @@ const buildEventSchema = (
           path: ['features', 'intakeFee'],
         });
       }
+      const cap = given(data.features.maxFeesPerSeller) ?? Infinity;
+      if (cap > (terms.maxFeesPerSeller ?? Infinity)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: i18n.t('form.registeredMaxFeeCap', {
+            ns: 'organizer',
+            fee: formatPriceDE(terms.maxFeesPerSeller ?? 0),
+          }),
+          path: ['features', 'maxFeesPerSeller'],
+        });
+      }
       const limit = given(data.features.maxItemsPerSeller) ?? Infinity;
       if (terms.maxItemsPerSeller !== undefined && limit < terms.maxItemsPerSeller) {
         ctx.addIssue({
@@ -307,10 +332,12 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
     publicCatalog: features.publicCatalog,
     requiredFields: features.requiredFields ?? [],
     maxItemsPerSeller: features.maxItemsPerSeller,
+    maxItemsTotal: features.maxItemsTotal,
     labelFormat: features.labelFormat,
     priceOnLabel: features.priceOnLabel,
     labelMark: features.labelMark,
     intakeFee: features.intakeFee,
+    maxFeesPerSeller: features.maxFeesPerSeller,
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
     directSale: features.directSale,
@@ -324,7 +351,22 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
   };
 }
 
-function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
+/** A number field's value; an empty field is NaN or missing. */
+function givenNumber(value: number | undefined): number | undefined {
+  return typeof value === 'number' && !isNaN(value) ? value : undefined;
+}
+
+/**
+ * The features as the create and edit mutations take them. The market-wide item limit and
+ * the fee cap are sent as null when empty: the backend keeps a value that is left out, so
+ * an older app that does not know them cannot delete them.
+ */
+type FeaturesArgs = Omit<StoredEventFeatures, 'maxItemsTotal' | 'maxFeesPerSeller'> & {
+  maxItemsTotal: number | null;
+  maxFeesPerSeller: number | null;
+};
+
+function featuresFromForm(features: FeatureFormData): FeaturesArgs {
   return {
     discounts: features.discounts,
     discountStartsAt:
@@ -341,10 +383,8 @@ function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
     photosOptional: features.photosOptional,
     publicCatalog: features.publicCatalog,
     requiredFields: features.requiredFields,
-    maxItemsPerSeller:
-      typeof features.maxItemsPerSeller === 'number' && !isNaN(features.maxItemsPerSeller)
-        ? features.maxItemsPerSeller
-        : undefined,
+    maxItemsPerSeller: givenNumber(features.maxItemsPerSeller),
+    maxItemsTotal: givenNumber(features.maxItemsTotal) ?? null,
     labelFormat: features.labelFormat,
     priceOnLabel: features.priceOnLabel,
     labelMark: features.labelMark,
@@ -352,6 +392,8 @@ function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
       typeof features.intakeFee === 'number' && !isNaN(features.intakeFee) && features.intakeFee > 0
         ? features.intakeFee
         : undefined,
+    // 0 is a cap as well: no fees at all
+    maxFeesPerSeller: givenNumber(features.maxFeesPerSeller) ?? null,
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
     directSale: features.directSale,
@@ -360,6 +402,15 @@ function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
     registrationStartsAt: timeFromForm(features.registrationOpen, features.registrationStartsAt),
     registrationEndsAt: timeFromForm(features.registrationOpen, features.registrationEndsAt),
   };
+}
+
+/** The features as stored, for previews: a cleared value is just not there. */
+function storedFeatures({ maxItemsTotal, maxFeesPerSeller, ...rest }: FeaturesArgs) {
+  return {
+    ...rest,
+    maxItemsTotal: maxItemsTotal ?? undefined,
+    maxFeesPerSeller: maxFeesPerSeller ?? undefined,
+  } satisfies StoredEventFeatures;
 }
 
 /** A datetime-local value as timestamp; nothing while its switch is off. */
@@ -429,8 +480,8 @@ const WIZARD_STEPS = [
     id: 'sale',
     fields: ['features.maxDiscountPercent', 'features.discountStartsAt'],
   },
-  { id: 'items', fields: ['categories', 'features.maxItemsPerSeller'] },
-  { id: 'fees', fields: ['commission', 'features.intakeFee'] },
+  { id: 'items', fields: ['categories', 'features.maxItemsPerSeller', 'features.maxItemsTotal'] },
+  { id: 'fees', fields: ['commission', 'features.intakeFee', 'features.maxFeesPerSeller'] },
   {
     id: 'registration',
     fields: ['visibility', 'accessCode', 'vendorLimit', 'features.registrationEndsAt'],
@@ -617,7 +668,7 @@ function WizardFinal({ type }: { type?: EventType }) {
       type={type}
       conditions={{
         commission: Number.isFinite(values.commission) ? values.commission : 0,
-        features: featuresFromForm(values.features),
+        features: storedFeatures(featuresFromForm(values.features)),
         sellerLogistics: logisticsFromForm(values.sellerLogistics),
       }}
     />
@@ -699,6 +750,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           commission: event.commission,
           intakeFee: event.features?.intakeFee ?? 0,
           maxItemsPerSeller: event.features?.maxItemsPerSeller,
+          maxFeesPerSeller: event.features?.maxFeesPerSeller,
         }
       : undefined;
   const eventSchema = useMemo(
@@ -1094,7 +1146,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           eventMapImage?: Id<'_storage'>;
           clearCoverImage?: boolean;
           clearEventMapImage?: boolean;
-          features: StoredEventFeatures;
+          features: FeaturesArgs;
           sellerLogistics: StoredLogistics;
         } = {
           id: eventId,

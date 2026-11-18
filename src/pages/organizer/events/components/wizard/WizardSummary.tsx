@@ -47,6 +47,8 @@ interface SummaryValues {
     minimumPrice?: boolean;
     questions?: boolean;
     maxItemsPerSeller?: number;
+    maxItemsTotal?: number;
+    maxFeesPerSeller?: number;
     intakeFee?: number;
     registrationOpen?: boolean;
   };
@@ -141,16 +143,27 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
 
   const categoryCount = values.categories?.length ?? 0;
   const maxItems = given(features.maxItemsPerSeller);
+  const maxItemsTotal = given(features.maxItemsTotal);
   const items = [
     t('wizard.summary.categoryCount', { count: categoryCount }),
     maxItems ? t('wizard.summary.maxItems', { count: maxItems }) : undefined,
+    maxItemsTotal ? t('wizard.summary.maxItemsTotal', { count: maxItemsTotal }) : undefined,
   ].filter(Boolean);
 
   const commission = given(values.commission) ?? 0;
   const intakeFee = given(features.intakeFee);
+  const maxFees = given(features.maxFeesPerSeller);
+  // "10 % Provision + 3,00 € pro Artikel · höchstens 20,00 € pro Verkäufer"
   const fees = [
-    t('wizard.summary.commission', { percent: commission }),
-    intakeFee ? t('wizard.summary.intakeFee', { fee: formatPriceDE(intakeFee) }) : undefined,
+    [
+      t('wizard.summary.commission', { percent: commission }),
+      intakeFee ? t('wizard.summary.intakeFee', { fee: formatPriceDE(intakeFee) }) : undefined,
+    ]
+      .filter(Boolean)
+      .join(' '),
+    maxFees !== undefined
+      ? t('wizard.summary.maxFees', { fee: formatPriceDE(maxFees) })
+      : undefined,
   ].filter(Boolean);
 
   const joining = [
@@ -239,7 +252,7 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
           label={t('wizard.summary.fees')}
           {...edit('fees')}
         >
-          {fees.join(' ')}
+          {fees.join(' · ')}
         </Fact>
         <Fact
           icon={<Users className="h-4 w-4" />}

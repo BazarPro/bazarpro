@@ -343,6 +343,17 @@ pub async fn event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<Option<Eve
     Ok(row.map(Event::from))
 }
 
+/// Holds the event row until the transaction ends, so checks against a limit of the whole
+/// event (the last place of the market) run one at a time.
+/// Does not block inserts that only reference the event.
+pub async fn lock_event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<()> {
+    sqlx::query("SELECT 1 FROM events WHERE id = $1 FOR NO KEY UPDATE")
+        .bind(id)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
 /// Events matching `condition` (SQL on `e`, with `$1` bound to `param`), ordered by start.
 pub async fn events_where<P>(
     conn: &mut PgConnection,
@@ -526,6 +537,8 @@ pub struct EventSeller {
     pub number: Option<i32>,
     pub intake_fee: Option<Decimal>,
     pub intake_fee_items: Option<i32>,
+    /// Fees above the cap given back at the payout (#301)
+    pub fee_cap_credit: Option<Decimal>,
     #[serde(with = "ms_opt")]
     pub private_seller_confirmed_at: Option<DateTime<Utc>>,
     pub seller_snapshot: Option<Value>,
@@ -534,7 +547,7 @@ pub struct EventSeller {
 pub const EVENT_SELLER_COLUMNS: &str =
     "id, created_at, event_id, user_id, total_fee, commission_fee,
     sale_fee_fixed, sale_fee_percentage, payout_amount, payout_received, number, intake_fee,
-    intake_fee_items, private_seller_confirmed_at, seller_snapshot";
+    intake_fee_items, fee_cap_credit, private_seller_confirmed_at, seller_snapshot";
 
 pub async fn event_seller(
     conn: &mut PgConnection,
@@ -587,9 +600,15 @@ pub struct Purchase {
 }
 
 impl Purchase {
-    /// What came into the till for the sale
+    /// What came into the till for the sale. A direct sale whose commission was raised
+    /// after an undone sale (fee cap, #301) has a negative payout: the part the desk did not
+    /// take and the seller pays at the settlement.
     pub fn taken(&self) -> Decimal {
-        desk_takes(self.direct_sale, self.total_amount, self.commission_amount)
+        if self.direct_sale {
+            self.commission_amount + self.payout_amount.min(Decimal::ZERO)
+        } else {
+            desk_takes(false, self.total_amount, self.commission_amount)
+        }
     }
 
     /// What the seller got from the buyer at the item and keeps; 0 unless a direct sale

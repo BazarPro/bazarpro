@@ -27,7 +27,7 @@ use super::event_roles::{
 use super::features::MAX_DISCOUNT_PERCENT;
 use super::moderation::{LogEntry, log_action};
 use super::notifications::{self, Area, Content, T};
-use super::{retention, sales};
+use super::{retention, sales, seller_numbers};
 use crate::config::InstanceMode;
 use crate::error::{AppError, AppResult};
 use crate::i18n::{Locale, mail_text};
@@ -562,6 +562,9 @@ pub struct EventDetails {
     pub cover_image_url: Option<String>,
     pub event_map_image_url: Option<String>,
     pub category_labels: Vec<String>,
+    /// Places for items left on the whole market; only with a limit (maxItemsTotal)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item_places_left: Option<i64>,
 }
 
 pub(super) async fn details(
@@ -578,7 +581,14 @@ pub(super) async fn details(
     .bind(event.id)
     .fetch_all(ctx.conn())
     .await?;
+    let item_places_left = match event.resolved_features().max_items_total {
+        Some(limit) => Some(
+            (i64::from(limit) - seller_numbers::items_taking_place(ctx, event.id).await?).max(0),
+        ),
+        None => None,
+    };
     Ok(EventDetails {
+        item_places_left,
         cover_image_url: event.cover_image.map(|id| storage::url(&config, id)),
         event_map_image_url: event.event_map_image.map(|id| storage::url(&config, id)),
         category_labels: labels,
@@ -745,10 +755,16 @@ struct FeaturesArgs {
     #[serde(default, with = "serde_with::rust::double_option")]
     required_fields: Option<Option<Vec<String>>>,
     max_items_per_seller: Option<f64>,
+    /// Some(None) (null) clears it; left out, the stored value stays (older apps)
+    #[serde(default, with = "serde_with::rust::double_option")]
+    max_items_total: Option<Option<f64>>,
     label_format: Option<String>,
     price_on_label: Option<bool>,
     label_mark: Option<String>,
     intake_fee: Option<f64>,
+    /// Some(None) (null) clears it; left out, the stored value stays (older apps)
+    #[serde(default, with = "serde_with::rust::double_option")]
+    max_fees_per_seller: Option<Option<f64>>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
     direct_sale: Option<bool>,
@@ -766,6 +782,18 @@ fn sanitize_item_limit(limit: Option<f64>) -> AppResult<Option<f64>> {
             Err(AppError::bad_request("event.itemLimitInvalid"))
         }
         Some(limit) => Ok(Some(limit)),
+    }
+}
+
+/// The fee cap per seller in €; 0 is allowed and waives every fee.
+fn sanitize_fee_cap(cap: Option<f64>) -> AppResult<Option<f64>> {
+    match cap {
+        None => Ok(None),
+        Some(cap) if cap.is_nan() => Ok(None),
+        Some(cap) if !cap.is_finite() || !(0.0..=10_000.0).contains(&cap) => {
+            Err(AppError::bad_request("event.feeCapRange"))
+        }
+        Some(cap) => Ok(Some((cap * 100.0).round() / 100.0)),
     }
 }
 
@@ -817,6 +845,7 @@ fn sanitize_features(
         return Err(invalid("labelMark"));
     }
     let previous_bool = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_bool);
+    let previous_number = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
     let required_fields: Option<Vec<String>> = match features.required_fields {
         Some(fields) => fields,
         None => previous
@@ -895,6 +924,14 @@ fn sanitize_features(
         json!(sanitize_item_limit(features.max_items_per_seller)?),
     );
     put(
+        "maxItemsTotal",
+        json!(sanitize_item_limit(
+            features
+                .max_items_total
+                .unwrap_or_else(|| previous_number("maxItemsTotal"))
+        )?),
+    );
+    put(
         "labelFormat",
         json!(
             features
@@ -921,6 +958,14 @@ fn sanitize_features(
     put(
         "intakeFee",
         json!(sanitize_intake_fee(features.intake_fee)?),
+    );
+    put(
+        "maxFeesPerSeller",
+        json!(sanitize_fee_cap(
+            features
+                .max_fees_per_seller
+                .unwrap_or_else(|| previous_number("maxFeesPerSeller"))
+        )?),
     );
     put(
         "privateSellersOnly",
@@ -1354,11 +1399,19 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
                 .unwrap_or(0.0)
         };
         let (old_fee, new_fee) = (fee(event.features.as_ref()), fee(Some(&features)));
+        // No cap is the highest one
+        let cap = |features: Option<&Value>| {
+            features
+                .and_then(|f| f.get("maxFeesPerSeller"))
+                .and_then(Value::as_f64)
+                .unwrap_or(f64::INFINITY)
+        };
+        let (old_cap, new_cap) = (cap(event.features.as_ref()), cap(Some(&features)));
         if running {
-            if commission != event.commission || new_fee != old_fee {
+            if commission != event.commission || new_fee != old_fee || new_cap != old_cap {
                 return Err(AppError::bad_request("event.runningNoFees"));
             }
-        } else if commission > event.commission || new_fee > old_fee {
+        } else if commission > event.commission || new_fee > old_fee || new_cap > old_cap {
             return Err(AppError::bad_request("event.feesOnlyLower"));
         }
         let limit = |features: Option<&Value>| {
@@ -1634,6 +1687,8 @@ struct FinancialSummary {
     total_paid_out: Decimal,
     total_pending_payout: Decimal,
     total_intake_fees: Decimal,
+    /// Fees above the cap given back to sellers
+    total_fee_cap_credits: Decimal,
     total_fees_collected: Decimal,
     total_fees_to_collect: Decimal,
     sellers_to_collect: Vec<SellerToCollect>,
@@ -1714,6 +1769,7 @@ async fn get_event_financial_summary(
         total_paid_out: paid_out,
         total_pending_payout: pending,
         total_intake_fees: vendors.iter().map(|v| v.intake_fee.total).sum(),
+        total_fee_cap_credits: vendors.iter().map(|v| v.fee_cap_credit).sum(),
         total_fees_collected: fees_collected,
         total_fees_to_collect: to_collect.iter().map(|s| s.amount).sum(),
         sellers_to_collect: to_collect,
@@ -1913,6 +1969,8 @@ mod tests {
                     "frameNumber".into(),
                 ])),
                 intake_fee: Some(0.555),
+                max_fees_per_seller: Some(Some(19.999)),
+                max_items_total: Some(Some(200.0)),
                 ..FeaturesArgs::default()
             },
             Some(&json!({ "fixedSellerData": true, "labelMark": "universal" })),
@@ -1923,6 +1981,8 @@ mod tests {
         assert!(stored.get("discountStartsAt").is_none());
         assert_eq!(stored["requiredFields"], json!(["frameNumber"]));
         assert_eq!(stored["intakeFee"], 0.56);
+        assert_eq!(stored["maxFeesPerSeller"], 20.0);
+        assert_eq!(stored["maxItemsTotal"], 200.0);
         // Not sent by an older client: kept
         assert_eq!(stored["fixedSellerData"], true);
         assert_eq!(stored["labelMark"], "universal");
@@ -1961,6 +2021,28 @@ mod tests {
     }
 
     #[test]
+    fn item_limit_and_fee_cap_stay_unless_cleared() {
+        let stored = json!({ "maxItemsTotal": 200.0, "maxFeesPerSeller": 20.0 });
+        // An older app does not send them: kept
+        let kept = sanitize_features(FeaturesArgs::default(), Some(&stored), &known()).unwrap();
+        assert_eq!(kept["maxItemsTotal"], 200.0);
+        assert_eq!(kept["maxFeesPerSeller"], 20.0);
+        // Sent as null: cleared
+        let cleared = sanitize_features(
+            FeaturesArgs {
+                max_items_total: Some(None),
+                max_fees_per_seller: Some(None),
+                ..FeaturesArgs::default()
+            },
+            Some(&stored),
+            &known(),
+        )
+        .unwrap();
+        assert!(cleared.get("maxItemsTotal").is_none());
+        assert!(cleared.get("maxFeesPerSeller").is_none());
+    }
+
+    #[test]
     fn feature_ranges_are_checked() {
         let err = |features: FeaturesArgs| {
             sanitize_features(features, None, &known())
@@ -1987,6 +2069,20 @@ mod tests {
                 ..Default::default()
             }),
             Some("event.intakeFeeRange")
+        );
+        assert_eq!(
+            err(FeaturesArgs {
+                max_items_total: Some(Some(0.0)),
+                ..Default::default()
+            }),
+            Some("event.itemLimitInvalid")
+        );
+        assert_eq!(
+            err(FeaturesArgs {
+                max_fees_per_seller: Some(Some(-1.0)),
+                ..Default::default()
+            }),
+            Some("event.feeCapRange")
         );
     }
 
