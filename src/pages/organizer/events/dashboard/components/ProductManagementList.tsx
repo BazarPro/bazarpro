@@ -138,7 +138,8 @@ export function ProductManagementList({
     >
       <TabsList
         className={cn(
-          'grid w-full grid-cols-3 md:w-auto h-auto mb-4',
+          // Phones: one row that scrolls sideways instead of two uneven rows
+          'mb-4 flex h-auto w-full justify-start overflow-x-auto [scrollbar-width:none] md:grid',
           tabs.length > 5 ? 'md:grid-cols-6' : 'md:grid-cols-5'
         )}
         id="product-list-top"
@@ -147,7 +148,7 @@ export function ProductManagementList({
           <TabsTrigger
             key={tab.value}
             value={tab.value}
-            className="py-1.5 px-1 text-xs sm:text-sm gap-1.5"
+            className="shrink-0 gap-1.5 px-2.5 py-1.5 text-xs sm:text-sm md:px-1"
           >
             <tab.icon className="h-4 w-4 hidden sm:block" />
             {t(`list.${tab.value}`)}

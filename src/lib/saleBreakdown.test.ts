@@ -8,6 +8,7 @@ const sale = (overrides: Partial<SaleInfo>): SaleInfo => ({
   totalAmount: 200,
   commission: 20,
   payout: 180,
+  directSale: false,
   soldAt: 0,
   ...overrides,
 });
@@ -38,6 +39,22 @@ describe('buildPriceLines', () => {
     expect(
       buildPriceLines(sale({ priceSource: 'offer', totalAmount: 150 }), 'buyer')[1]
     ).toMatchObject({ label: 'Nachlass durch angenommenen Preisvorschlag', amount: -50 });
+  });
+
+  it('shows what the seller keeps of a direct sale instead of a payout of 0', () => {
+    const direct = sale({
+      priceSource: 'negotiated',
+      totalAmount: 250,
+      listPrice: 280,
+      commission: 25,
+      payout: 0,
+      directSale: true,
+    });
+    expect(buildPriceLines(direct, 'seller').slice(2)).toEqual([
+      { label: 'Verkaufspreis', amount: 250, kind: 'total' },
+      { label: 'Bazar-Gebühr (10 %)', amount: -25, kind: 'deduction' },
+      { label: 'Bleibt beim Verkäufer (direkt vom Käufer erhalten)', amount: 225, kind: 'total' },
+    ]);
   });
 
   it('has no reduction line for a sale at the label price', () => {

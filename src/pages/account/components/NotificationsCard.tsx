@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useMutation, useQuery } from '../../../lib/api/react';
 import { Bell } from 'lucide-react';
@@ -6,7 +6,10 @@ import { toast } from 'sonner';
 import { api } from '../../../lib/api/functions';
 import { NOTIFICATION_CATEGORIES } from '../../../shared/constants';
 import { useTranslation } from 'react-i18next';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Switch } from '../../../components/ui/switch';
+import { InfoTip } from '../../../components/ui/info-tip';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { FORM_ROWS, FormSection } from '../../../components/ui/form-section';
 import { Label } from '../../../components/ui/label';
 import { getUserFacingErrorMessage } from '../../../lib/errors';
 
@@ -28,53 +31,51 @@ export function NotificationsCard() {
 
   // Opened from the unsubscribe page via /account#notifications
   const { hash } = useLocation();
-  const sectionRef = useRef<HTMLElement>(null);
   const loaded = prefs !== undefined;
   useEffect(() => {
-    if (loaded && hash === '#notifications') sectionRef.current?.scrollIntoView();
+    if (loaded && hash === '#notifications') {
+      document.getElementById('notifications')?.scrollIntoView();
+    }
   }, [loaded, hash]);
 
   return (
-    <section
-      ref={sectionRef}
+    <FormSection
       id="notifications"
-      className="mb-8 rounded-xl border bg-card p-6 shadow-xs"
+      icon={Bell}
+      title={t('notifications.title')}
+      info={t('notifications.intro')}
+      className="scroll-mt-24"
+      contentClassName={FORM_ROWS}
     >
-      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
-        <Bell className="h-5 w-5" /> {t('notifications.title')}
-      </h2>
-      <p className="mb-4 text-sm text-muted-foreground">{t('notifications.intro')}</p>
-      {prefs && (
-        <ul className="space-y-3">
-          {NOTIFICATION_CATEGORIES.map((category) => {
-            const title = t(`notifications.categories.${category}.title`);
+      {prefs
+        ? NOTIFICATION_CATEGORIES.map((category) => {
             const description = NOTIFICATION_HINTS.includes(category)
               ? t(`notifications.categories.${category}.description` as never)
               : null;
             const id = `notify-${category}`;
             return (
-              <li key={category} className="flex items-start gap-3">
-                <Checkbox
+              <div key={category} className="flex items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-1">
+                  <Label htmlFor={id} className="cursor-pointer font-medium">
+                    {t(`notifications.categories.${category}.title`)}
+                  </Label>
+                  {description && <InfoTip>{description}</InfoTip>}
+                </div>
+                <Switch
                   id={id}
                   checked={prefs[category]}
-                  className="mt-0.5"
                   onCheckedChange={(checked) =>
                     update({ prefs: { [category]: !!checked } }).catch((error) =>
                       toast.error(getUserFacingErrorMessage(error))
                     )
                   }
                 />
-                <div>
-                  <Label htmlFor={id} className="cursor-pointer font-medium">
-                    {title}
-                  </Label>
-                  {description && <p className="text-sm text-muted-foreground">{description}</p>}
-                </div>
-              </li>
+              </div>
             );
-          })}
-        </ul>
-      )}
-    </section>
+          })
+        : NOTIFICATION_CATEGORIES.map((category) => (
+            <Skeleton key={category} className="h-6 w-full" />
+          ))}
+    </FormSection>
   );
 }

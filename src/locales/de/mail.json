@@ -184,8 +184,10 @@
   "sale": {
     "price": "Verkaufspreis",
     "commission": "Provision",
+    "commissionPaid": "Provision (an der Kasse bezahlt)",
     "payout": "Auszahlung",
     "footnote": "Die Auszahlung erhältst du vom Veranstalter.",
+    "directFootnote": "Den Verkaufspreis hast du direkt vom Käufer bekommen, die Provision hast du an der Kasse bezahlt. Eine Auszahlung gibt es deshalb nicht.",
     "one": {
       "subject": "Verkauft: {{title}}",
       "heading": "Dein Artikel wurde verkauft",

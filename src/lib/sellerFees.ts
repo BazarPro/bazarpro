@@ -141,6 +141,9 @@ export function describeSellerRules(event: SellerConditionsEvent): SellerRule[] 
       allowed: true,
     });
   }
+  if (features.directSale) {
+    rules.push({ text: text('directSale'), allowed: true });
+  }
   if (features.privateSellersOnly) {
     rules.push({ text: text('privateSellers'), allowed: true });
   }

@@ -59,7 +59,7 @@ async fn bazaars_in_every_state(db: PgPool) {
     let organizer = sign_in(&app, "sabine.krause@example.org").await;
     let seller = sign_in(&app, "anna.schmidt@example.org").await;
 
-    assert_eq!(count(&db, "SELECT count(*) FROM events").await, 14);
+    assert_eq!(count(&db, "SELECT count(*) FROM events").await, 15);
     assert_eq!(
         count(
             &db,
@@ -90,8 +90,8 @@ async fn bazaars_in_every_state(db: PgPool) {
             "SELECT count(*) FROM events WHERE start_date <= now() AND end_date > now()"
         )
         .await,
-        3,
-        "showcase, test bazaar and kids' bazaar run now"
+        4,
+        "showcase, test bazaar, kids' bazaar and bike flea market run now"
     );
     // Offers in every state, the ones of the ended flea market expired
     let states: Vec<String> =
@@ -283,6 +283,43 @@ async fn bazaars_in_every_state(db: PgPool) {
     assert_eq!(messages.as_array().map(Vec::len), Some(2), "{messages}");
     ok(&app, "moderation.listLog", json!({}), Some(&admin)).await;
 
+    // The bike flea market: sellers sell themselves, the desk books it and takes 20 %
+    let bikes = event_id(&db, "Fahrradflohmarkt Ulm").await;
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM purchases pu JOIN events e ON e.id = pu.event_id
+             WHERE e.title = 'Fahrradflohmarkt Ulm' AND pu.direct_sale AND pu.payout_amount = 0"
+        )
+        .await,
+        5
+    );
+    let summary = ok(
+        &app,
+        "events.getEventFinancialSummary",
+        json!({ "eventId": bikes }),
+        Some(&sign_in(&app, "jonas.weber@example.org").await),
+    )
+    .await;
+    assert_eq!(
+        summary["cashInHandSoll"], summary["totalCommission"],
+        "{summary}"
+    );
+    assert_eq!(
+        summary["totalDirectSales"], summary["totalNetRevenue"],
+        "{summary}"
+    );
+    // One seller has not come to the intake yet: their bikes are announced only
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM event_products ep JOIN events e ON e.id = ep.event_id
+             WHERE e.title = 'Fahrradflohmarkt Ulm' AND ep.status = 'announced'"
+        )
+        .await,
+        2
+    );
+
     // The next deploy of a review app only moves the running bazaars to today
     sqlx::query("UPDATE events SET start_date = now() - interval '9 days', end_date = now() - interval '2 days' WHERE title = 'Kinderbasar Kita Sonnenschein'")
         .execute(&db)
@@ -290,7 +327,7 @@ async fn bazaars_in_every_state(db: PgPool) {
         .unwrap();
     let skipped = demo::run(&app.state, options(Locale::De)).await.unwrap();
     assert!(skipped.contains("übersprungen"), "{skipped}");
-    assert_eq!(count(&db, "SELECT count(*) FROM events").await, 14);
+    assert_eq!(count(&db, "SELECT count(*) FROM events").await, 15);
     assert_eq!(
         count(&db, "SELECT count(*) FROM events WHERE title = 'Kinderbasar Kita Sonnenschein' AND start_date <= now() AND end_date > now()").await,
         1

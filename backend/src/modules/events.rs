@@ -750,6 +750,7 @@ struct FeaturesArgs {
     intake_fee: Option<f64>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
+    direct_sale: Option<bool>,
     /// Absent (older apps): switch and window stay as stored
     registration_open: Option<bool>,
     registration_starts_at: Option<f64>,
@@ -923,6 +924,15 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
             features
                 .fixed_seller_data
                 .or(previous_bool("fixedSellerData"))
+                .unwrap_or(false)
+        ),
+    );
+    put(
+        "directSale",
+        json!(
+            features
+                .direct_sale
+                .or(previous_bool("directSale"))
                 .unwrap_or(false)
         ),
     );
@@ -1300,6 +1310,24 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         Some(features) => sanitize_features(features, event.features.as_ref())?,
         None => event.features.clone().unwrap_or_else(|| json!({})),
     };
+    // A sale is booked the way the event was set when it was made. Switching afterwards
+    // would leave one cash summary with both kinds, and desks selling the old way
+    let direct = |features: Option<&Value>| {
+        features
+            .and_then(|f| f.get("directSale"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    };
+    if direct(Some(&features)) != direct(event.features.as_ref()) {
+        let sold: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM purchases WHERE event_id = $1)")
+                .bind(event.id)
+                .fetch_one(ctx.conn())
+                .await?;
+        if sold {
+            return Err(AppError::bad_request("event.directSaleLocked"));
+        }
+    }
     if fees_locked(ctx, &event).await? {
         let fee = |features: Option<&Value>| {
             features
@@ -1578,6 +1606,10 @@ struct FinancialSummary {
     total_net_revenue: Decimal,
     total_discounts: Decimal,
     total_commission: Decimal,
+    /// Sales paid to the seller at the item; the till holds only their commission
+    total_direct_sales: Decimal,
+    /// Their commission, the part of them in the till
+    total_direct_commission: Decimal,
     total_payout_soll: Decimal,
     total_paid_out: Decimal,
     total_pending_payout: Decimal,
@@ -1604,10 +1636,29 @@ async fn get_event_financial_summary(
     let net: Decimal = purchases.iter().map(|p| p.total_amount).sum();
     let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
     let payout_soll: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
+    let direct: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.total_amount)
+        .sum();
+    let direct_commission: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.commission_amount)
+        .sum();
+    let taken: Decimal = purchases.iter().map(docs::Purchase::taken).sum();
 
     let vendors = load_vendors_with_calculations(ctx, event).await?;
     // A seller whose sales do not cover the intake fee pays in instead of getting paid out
     let owes = |payout: Decimal| payout < Decimal::new(-5, 3);
+    // At a direct-sale event a seller without money either way has nothing to settle; the
+    // progress counts only those who have, or who were settled anyway
+    let direct_event = docs::event(ctx.conn(), event)
+        .await?
+        .is_some_and(|event| event.resolved_features().direct_sale);
+    let to_settle = |v: &&event_roles::VendorWithCalculations| {
+        !direct_event || v.paid || v.payout.abs() >= Decimal::new(5, 3)
+    };
     let sum = |paid: bool, owing: bool| -> Decimal {
         vendors
             .iter()
@@ -1637,6 +1688,8 @@ async fn get_event_financial_summary(
         total_net_revenue: net,
         total_discounts: gross - net,
         total_commission: commission,
+        total_direct_sales: direct,
+        total_direct_commission: direct_commission,
         total_payout_soll: payout_soll,
         total_paid_out: paid_out,
         total_pending_payout: pending,
@@ -1644,10 +1697,10 @@ async fn get_event_financial_summary(
         total_fees_collected: fees_collected,
         total_fees_to_collect: to_collect.iter().map(|s| s.amount).sum(),
         sellers_to_collect: to_collect,
-        cash_in_hand_soll: net - paid_out + fees_collected,
+        cash_in_hand_soll: taken - paid_out + fees_collected,
         sales_count: purchases.len(),
         vendors_paid_count: vendors.iter().filter(|v| v.paid).count(),
-        vendors_total_count: vendors.len(),
+        vendors_total_count: vendors.iter().filter(to_settle).count(),
     })
 }
 

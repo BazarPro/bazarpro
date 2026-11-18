@@ -57,6 +57,11 @@ export interface EventFeatures {
    * what, e.g. for the police at a bike market.
    */
   fixedSellerData: boolean;
+  /**
+   * Direct sale: buyers pay the seller at the item. The cash desk books the sale at the
+   * agreed price and takes only the commission from the seller; nothing is paid out later.
+   */
+  directSale: boolean;
   /** Sellers may join on their own. Off: only people the organizer invites get in. */
   registrationOpen: boolean;
   /** Joining is possible from this time on; unset: right away. */
@@ -85,6 +90,7 @@ export const DEFAULT_EVENT_FEATURES: EventFeatures = {
   labelMark: 'universal',
   privateSellersOnly: false,
   fixedSellerData: false,
+  directSale: false,
   registrationOpen: true,
 };
 

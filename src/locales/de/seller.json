@@ -63,6 +63,7 @@
     "questions_one": "{{count}} offene Frage",
     "questions_other": "{{count}} offene Fragen",
     "payout": "Auszahlung an dich: {{amount}} €",
+    "receivedDirectly": "Direkt erhalten, abzüglich Provision: {{amount}} €",
     "privateInvoice": "Privatrechnung",
     "forBuyer": "Für den Käufer",
     "forMe": "Für mich (mit Bazar-Gebühr)",

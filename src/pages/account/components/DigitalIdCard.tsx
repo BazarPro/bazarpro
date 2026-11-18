@@ -11,12 +11,14 @@ import {
 } from '../../../lib/checkInCode';
 import { isNetworkError } from '../../../lib/offlineMode';
 import { Button } from '../../../components/ui/button';
-import { QrCode as QrCodeIcon, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, QrCode as QrCodeIcon, RefreshCw } from 'lucide-react';
 import { QrCode } from '../../../components/ui/QrCode';
 import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '../../../lib/errors';
 import { useTranslation } from 'react-i18next';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { FormSection } from '../../../components/ui/form-section';
+import { cn } from '../../../lib/utils';
 
 /**
  * The seller's ID QR code for intake and pickup. Online it carries the 60-second token of
@@ -128,71 +130,74 @@ export function DigitalIdCard() {
   };
 
   return (
-    <div className="bg-card rounded-xl border shadow-xs overflow-hidden mb-8">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <QrCodeIcon className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">{t('digitalId.title')}</h3>
-          </div>
-          {showDigitalId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleIdVisibility}
-              className="text-muted-foreground hover:text-primary"
-            >
-              <EyeOff className="h-4 w-4 mr-2" /> {t('digitalId.hide')}
-            </Button>
-          )}
-        </div>
-
-        {showDigitalId ? (
-          <div className="flex flex-col md:flex-row gap-8 items-center animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="bg-white p-4 rounded-xl border-4 border-primary/10 relative">
-              {/* While a new token loads the last code stays: the time-based codes work */}
-              {qrValue ? (
-                <QrCode value={qrValue} className="h-[180px] w-[180px]" />
-              ) : (
-                <Skeleton className="h-[180px] w-[180px] rounded-lg" />
-              )}
-            </div>
-            <div className="flex-1 space-y-4 text-center md:text-left">
-              <p className="text-sm text-muted-foreground">{t('digitalId.usage')}</p>
-              <div className="flex flex-col gap-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/5 rounded-full text-xs font-medium text-primary border border-primary/10 w-fit mx-auto md:mx-0">
-                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                  {offlineOnly
-                    ? t('digitalId.offline', { seconds: STEP_SECONDS })
-                    : t('digitalId.validFor', { seconds: Math.max(0, timeLeft) })}
+    <FormSection
+      icon={QrCodeIcon}
+      title={t('digitalId.title')}
+      description={t('digitalId.onlyOnSite')}
+      info={t('digitalId.usage')}
+      action={
+        <Button
+          variant={showDigitalId ? 'ghost' : 'outline'}
+          size="sm"
+          onClick={toggleIdVisibility}
+          aria-label={showDigitalId ? t('digitalId.hide') : t('digitalId.showId')}
+        >
+          {showDigitalId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {showDigitalId ? t('digitalId.hide') : t('digitalId.show')}
+        </Button>
+      }
+    >
+      {/* Opens by its height (grid rows), so nothing below jumps */}
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out motion-reduce:transition-none',
+          showDigitalId ? 'grid-rows-[1fr] opacity-100' : '-mt-5 grid-rows-[0fr] opacity-0'
+        )}
+        inert={!showDigitalId}
+      >
+        <div className="min-h-0 overflow-hidden">
+          {/* Stays while it folds away; the codes stop meanwhile */}
+          {(showDigitalId || qrValue) && (
+            <div className="flex flex-col items-center gap-5 pt-1 sm:flex-row sm:items-center sm:gap-6">
+              <div className="rounded-xl border bg-white p-3">
+                {/* While a new token loads the last code stays: the time-based codes work */}
+                {qrValue ? (
+                  <QrCode value={qrValue} className="h-[180px] w-[180px]" />
+                ) : (
+                  <Skeleton className="h-[180px] w-[180px] rounded-lg" />
+                )}
+              </div>
+              <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+                <div className="flex items-center gap-1">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    <span className="h-2 w-2 rounded-full bg-primary motion-safe:animate-pulse" />
+                    {offlineOnly
+                      ? t('digitalId.offline', { seconds: STEP_SECONDS })
+                      : t('digitalId.validFor', { seconds: Math.max(0, timeLeft) })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground"
+                    onClick={handleRefreshId}
+                    disabled={isGeneratingId}
+                    aria-label={t('digitalId.refresh')}
+                    title={t('digitalId.refresh')}
+                  >
+                    <RefreshCw className={cn('h-3.5 w-3.5', isGeneratingId && 'animate-spin')} />
+                  </Button>
                 </div>
                 {noKey && !checkInToken && (
                   <p className="text-xs text-destructive">{t('digitalId.noOfflineKey')}</p>
                 )}
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-[10px] h-auto p-0 text-muted-foreground uppercase tracking-widest font-semibold"
-                  onClick={handleRefreshId}
-                  disabled={isGeneratingId}
-                >
-                  {t('digitalId.refresh')}
-                </Button>
+                <p className="max-w-xs text-xs text-muted-foreground">
+                  {t('digitalId.noScreenshot')}
+                </p>
               </div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                {t('digitalId.noScreenshot')}
-              </p>
             </div>
-          </div>
-        ) : (
-          <div className="py-8 text-center border-2 border-dashed rounded-xl bg-muted/20">
-            <Button variant="outline" onClick={toggleIdVisibility}>
-              {t('digitalId.showId')}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">{t('digitalId.onlyOnSite')}</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </FormSection>
   );
 }

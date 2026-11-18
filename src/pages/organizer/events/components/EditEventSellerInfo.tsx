@@ -1,15 +1,15 @@
 import { FormSection } from '../../../../components/ui/form-section';
 import { useFormContext } from 'react-hook-form';
-import { Input } from '../../../../components/ui/input';
-import { Label } from '../../../../components/ui/label';
 import { Textarea } from '../../../../components/ui/text-area';
 import { dayBeforeInfo } from '../../../../shared/reminderContent';
 import { mailT } from '../../../../shared/i18n';
 import { currentLocale } from '../../../../i18n';
 import { logisticsFromForm, type LogisticsForm } from '../../../../lib/sellerLogistics';
 import { useTranslation } from 'react-i18next';
-
-const TIME_FIELDS = ['dropoffStart', 'dropoffEnd', 'pickupStart', 'pickupEnd'] as const;
+import { Mail, Package, Truck } from 'lucide-react';
+import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
+import { splitLocal } from '../../../../lib/eventDates';
+import { TimeRangeFields } from './TimeRangeFields';
 
 /**
  * Hand-in and pickup times and a note for sellers. They go into the mail on the
@@ -49,17 +49,27 @@ export function EditEventSellerInfo() {
       : null;
 
   return (
-    <FormSection description={t('logistics.intro')}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {TIME_FIELDS.map((field) => (
-          <div key={field} className="space-y-2">
-            <Label htmlFor={field}>{t(`logistics.${field}`)}</Label>
-            <Input id={field} type="datetime-local" {...register(`sellerLogistics.${field}`)} />
-          </div>
-        ))}
-      </div>
+    <FormSection>
+      <TimeRangeFields
+        id="dropoff"
+        label={t('logistics.dropoff')}
+        icon={<Truck className="h-4 w-4 text-primary" />}
+        startName="sellerLogistics.dropoffStart"
+        endName="sellerLogistics.dropoffEnd"
+        defaultDay={splitLocal(startDate).date}
+      />
+      <TimeRangeFields
+        id="pickup"
+        label={t('logistics.pickup')}
+        icon={<Package className="h-4 w-4 text-primary" />}
+        startName="sellerLogistics.pickupStart"
+        endName="sellerLogistics.pickupEnd"
+        defaultDay={splitLocal(endDate).date}
+      />
       <div className="space-y-2">
-        <Label htmlFor="sellerNote">{t('logistics.note')}</Label>
+        <LabelWithInfo htmlFor="sellerNote" info={t('logistics.noteHint')}>
+          {t('logistics.note')}
+        </LabelWithInfo>
         <Textarea
           id="sellerNote"
           rows={3}
@@ -70,7 +80,11 @@ export function EditEventSellerInfo() {
       </div>
       {preview && (
         <details className="rounded-md border bg-muted/30 p-4 text-sm">
-          <summary className="cursor-pointer font-medium">{t('logistics.preview')}</summary>
+          <summary className="flex cursor-pointer items-center gap-2 font-medium">
+            <Mail className="h-4 w-4 text-primary" />
+            {t('logistics.preview')}
+            <InfoTip>{t('logistics.intro')}</InfoTip>
+          </summary>
           <div className="mt-3 space-y-2">
             <p className="text-xs text-muted-foreground">
               {t('logistics.subject', { subject: preview.subject })}

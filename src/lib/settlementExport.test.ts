@@ -47,6 +47,7 @@ const sale = (overrides: Partial<SettlementSale> = {}): SettlementSale => ({
   priceSource: 'offer',
   commission: 14,
   payout: 126,
+  directSale: false,
   ...overrides,
 });
 const settlement = (sellers: SettlementSeller[], sales: SettlementSale[]): SettlementExport => ({

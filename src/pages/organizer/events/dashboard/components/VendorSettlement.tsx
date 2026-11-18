@@ -187,6 +187,12 @@ export function VendorSettlement({
                 {formatPriceDE(vendor.commission)} €
               </dd>
             </div>
+            {vendor.receivedDirectly > 0.005 && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">{t('settle.receivedDirectly')}</dt>
+                <dd className="whitespace-nowrap">−{formatPriceDE(vendor.receivedDirectly)} €</dd>
+              </div>
+            )}
             {vendor.intakeFee.total > 0 && (
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">

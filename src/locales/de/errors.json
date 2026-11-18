@@ -78,6 +78,7 @@
     "rejectionReasonRequired": "Bitte gib einen Grund für die Ablehnung an.",
     "runningNoDate": "Während des Basars kann das Datum nicht geändert werden.",
     "runningNoFees": "Während des Basars können Provision und Annahmegebühr nicht geändert werden.",
+    "directSaleLocked": "Es sind schon Verkäufe gebucht. Der Direktverkauf lässt sich jetzt nicht mehr ein- oder ausschalten.",
     "runningNoVisibility": "Während des Basars kann die Sichtbarkeit nicht geändert werden.",
     "accessCodeRequired": "Für diese Sichtbarkeit brauchst du einen Zugangscode.",
     "sellerNoteTooLong": "Der Hinweis für Verkäufer darf höchstens {{max}} Zeichen haben.",

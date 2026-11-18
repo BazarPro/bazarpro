@@ -582,12 +582,32 @@ pub struct Purchase {
     pub category_label: Option<String>,
     pub product_attributes: Option<Value>,
     pub seller_number: Option<i32>,
+    /// Paid to the seller at the item; the cash desk took only the commission
+    pub direct_sale: bool,
+}
+
+impl Purchase {
+    /// What came into the till for the sale
+    pub fn taken(&self) -> Decimal {
+        desk_takes(self.direct_sale, self.total_amount, self.commission_amount)
+    }
+
+    /// What the seller got from the buyer at the item and keeps; 0 unless a direct sale
+    pub fn received_directly(&self) -> Decimal {
+        self.total_amount - self.taken()
+    }
+}
+
+/// What the cash desk takes for a sale: the price, at a direct sale only the commission.
+/// The app shows the same before the sale (deskTakes, src/lib/checkout.ts).
+pub fn desk_takes(direct: bool, total: Decimal, commission: Decimal) -> Decimal {
+    if direct { commission } else { total }
 }
 
 pub const PURCHASE_COLUMNS: &str = "id, created_at, product_id, event_id, seller_id, total_amount,
     commission_amount, payout_amount, payout_status, payout_date, discount_percent, list_price,
     price_source::text AS price_source, offer_id, product_title, category_id, category_label,
-    product_attributes, seller_number";
+    product_attributes, seller_number, direct_sale";
 
 pub async fn purchases_where<P>(
     conn: &mut PgConnection,

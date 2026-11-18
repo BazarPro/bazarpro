@@ -37,7 +37,6 @@ export function EditEventCategories({ categoryList }: EventCategoriesProbs) {
       ? categories.filter((c: string) => c !== id)
       : [...categories, id];
 
-    console.log('Toggling Category:', id, 'New State:', current);
     setValue('categories', current, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
@@ -49,7 +48,7 @@ export function EditEventCategories({ categoryList }: EventCategoriesProbs) {
   };
 
   return (
-    <FormSection title={t('categories.title')}>
+    <FormSection>
       <div className="space-y-2">
         <Label>{t('categories.allowed')}</Label>
         <div className="flex flex-wrap gap-2 mb-2">

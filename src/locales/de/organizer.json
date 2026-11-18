@@ -69,8 +69,15 @@
     "postalCode": "PLZ",
     "city": "Ort",
     "country": "Land",
-    "start": "Startdatum *",
-    "end": "Enddatum *"
+    "when": "Wann?",
+    "whenHint": "Wähle den Tag: Beginn und Ende sind dann schon eingetragen, du passt nur noch die Uhrzeit an. Abgabe und Abholung schlagen wir passend am selben Tag vor.",
+    "place": "Wo?",
+    "day": "Datum",
+    "firstDay": "Erster Tag",
+    "lastDay": "Letzter Tag",
+    "startTime": "Beginn",
+    "endTime": "Ende",
+    "multiDay": "Geht über mehrere Tage"
   },
   "map": {
     "createFailed": "Kategorie konnte nicht angelegt werden",
@@ -85,8 +92,8 @@
     "pendingPlaceholder": "z. B. Reihe 1, Raum 23a",
     "addToList": "Zur Liste hinzufügen",
     "pendingHint": "Nach dem Anlegen des Basars werden diese Kategorien gespeichert. Du kannst sie später unter „Bearbeiten“ ändern.",
-    "title": "Lageplan und Standortkategorien",
-    "intro": "Optional: Lade einen Lageplan des Basars hoch (z. B. mit Ständen, Reihen, etc.), damit Besucher sich schneller orientieren können.",
+    "title": "Lageplan und Standorte",
+    "intro": "Ein Lageplan (z. B. mit Ständen und Reihen) hilft Besuchern, sich schneller zu orientieren.",
     "image": "Lageplan / Karte (Bild)",
     "categories": "Standortkategorien"
   },
@@ -116,7 +123,9 @@
     "linkOnlyJoin": "Als Verkäufer anmelden kann sich nur, wer ein Konto hat und den Code eingibt.",
     "linkOnlyItems": "Die Angebote sehen nur angemeldete Verkäufer, dein Team und Administratoren. Besucher ohne Anmeldung sehen keine Artikel.",
     "limit": "Teilnehmerlimit für Verkäufer (optional)",
-    "limitPlaceholder": "z. B. 200"
+    "limitPlaceholder": "z. B. 200",
+    "visibilityHint": "Öffentliche Basare erscheinen nach einer kurzen Prüfung auf der Startseite von BazarPro. Mit einem Zugangscode kommt nur rein, wer den Code von dir bekommt.",
+    "limitHint": "Höchstzahl der Verkäufer. Leer lassen für unbegrenzt."
   },
   "features": {
     "title": "Funktionen",
@@ -167,8 +176,9 @@
     "privateSellersText": "Beim Anmelden bestätigen Verkäufer, dass sie als Privatperson verkaufen und nicht gewerblich.",
     "fixedData": "Feste Daten für den Nachweis",
     "fixedDataText": "Bei der Annahme vor Ort prüfst du Name und Anschrift mit dem Ausweis; weichen sie ab, korrigiert der Verkäufer sie vorher in seinem Profil. Mit dem ersten angenommenen Artikel sind sie fest, ebenso Titel, Kategorie, Preis und Pflichtangaben jedes angenommenen Artikels. So entsteht ein verlässlicher Nachweis, wer was angeboten hat, z. B. für die Polizei. Verkäufer brauchen dafür ein vollständiges Profil.",
+    "directSale": "Direktverkauf: Käufer bezahlen beim Verkäufer",
+    "directSaleText": "Käufer und Verkäufer einigen sich am Artikel, der Käufer bezahlt direkt beim Verkäufer. Danach scannt die Kasse das Etikett, bucht den Verkauf zum vereinbarten Preis und kassiert vom Verkäufer nur die Provision. Nach dem Markt gibt es keine Auszahlung, der Nachweis zeigt trotzdem jeden Verkauf.",
     "discountFromNeedsDates": "Wähle zuerst Beginn und Ende des Basars.",
-    "discountStartLater": "Ab wann die Rabatte gelten, legst du bei „Wann und wo?“ fest, sobald der Termin steht.",
     "registrationOpen": "Verkäufer können sich anmelden",
     "registrationOpenText": "Verkäufer melden sich selbst über die Basarseite an. Ausgeschaltet kommt nur noch hinein, wen du einlädst.",
     "registrationFrom": "Anmeldung ab (optional)",
@@ -180,15 +190,19 @@
   "logistics": {
     "title": "Abgabe & Abholung",
     "intro": "Verkäufer mit angemeldeten Artikeln bekommen am Vorabend um 18 Uhr eine Mail mit allen Infos. Alle, die noch nicht abgerechnet sind, bekommen eine Erinnerung an die Abholung: direkt nach dem Basar oder, wenn die Abholung später beginnt, 2 Stunden davor.",
-    "dropoffStart": "Abgabe ab (optional)",
-    "dropoffEnd": "Abgabe bis (optional)",
-    "pickupStart": "Abholung ab (optional)",
-    "pickupEnd": "Abholung bis (optional)",
     "note": "Hinweis für Verkäufer (optional)",
     "notePlaceholder": "z. B. Bitte Räder mit Schloss abgeben, Eingang über den Hof",
     "preview": "Vorschau der Mail am Vorabend",
     "example": "Beispiel mit Verkäufernummer 17 und 12 Artikeln.",
-    "subject": "Betreff: {{subject}}"
+    "subject": "Betreff: {{subject}}",
+    "dropoff": "Abgabe",
+    "pickup": "Abholung",
+    "day": "Tag",
+    "from": "Von",
+    "until": "Bis",
+    "untilDay": "Bis Tag",
+    "clear": "Leeren",
+    "noteHint": "Steht in der Mail am Vorabend, z. B. wo der Eingang ist."
   },
   "myEvents": {
     "rejected": "Abgelehnt",
@@ -299,6 +313,7 @@
     "requiredFields": "Pflichtangaben: {{fields}}",
     "privateSellers": "Nur Privatverkäufer",
     "fixedData": "Feste Daten für den Nachweis",
+    "directSale": "Direktverkauf, die Kasse kassiert nur die Provision",
     "registration": "Anmeldung",
     "registrationOpen": "Offen bis zum Ende des Basars",
     "registrationClosed": "Geschlossen, nur mit Einladung",
@@ -408,6 +423,7 @@
     "sold": "Verkauft ({{count}} Artikel)",
     "commission": "Provision ({{percent}} %)",
     "intakeFee": "Annahmegebühr ({{items}} × {{perItem}} €)",
+    "receivedDirectly": "Direkt vom Käufer erhalten",
     "pays": "{{name}} zahlt",
     "payout": "Auszahlung",
     "notHandedIn_one": "{{count}} angemeldeter Artikel wurde nie abgegeben und bleibt bei der Abrechnung außen vor.",
@@ -428,6 +444,7 @@
     "howTitle": "So kommt der Betrag zustande",
     "income_one": "Einnahmen aus {{count}} Verkauf",
     "income_other": "Einnahmen aus {{count}} Verkäufen",
+    "directSales": "Direktverkäufe: beim Verkäufer bezahlt, nur die Provision kam in die Kasse",
     "paidOut": "Bereits an Verkäufer ausgezahlt",
     "inCash": "In der Kasse",
     "discounts": "Gegenüber den Etikettenpreisen ({{gross}} €) wurden {{discounts}} € an Rabatten und Preisnachlässen gewährt.",
@@ -437,6 +454,7 @@
     "open": "Noch offen",
     "allPaid": "Alle Verkäufer sind abgerechnet. In der Kasse bleibt die Provision.",
     "allPaidWithFees": "Alle Verkäufer sind abgerechnet. In der Kasse bleibt die Provision mit den Annahmegebühren.",
+    "directNoPayout": "Direktverkauf: Die Verkäufer haben ihr Geld schon vom Käufer erhalten, es ist nichts auszuzahlen.",
     "feesToCollect": "Annahmegebühren, die Verkäufer noch bezahlen müssen",
     "feesCollectedIncome": "Annahmegebühren von Verkäufern bezahlt",
     "feesCollected": "Annahmegebühr bezahlt",
@@ -717,12 +735,16 @@
     "sum_other": "Summe ({{count}} Artikel)",
     "sold_one": "<b>{{count}} Artikel verkauft</b> für {{total}} €. Der nächste Käufer kann kommen.",
     "sold_other": "<b>{{count}} Artikel verkauft</b> für {{total}} €. Der nächste Käufer kann kommen.",
+    "soldDirect_one": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert. Der nächste Verkauf kann kommen.",
+    "soldDirect_other": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert. Der nächste Verkauf kann kommen.",
     "offline": {
       "title": "Offline – die Kasse verkauft weiter",
       "text": "Preise aus dem Artikelstand von {{time}} Uhr. Verkäufe werden auf dem Gerät gespeichert und nachgebucht, sobald wieder Internet da ist.",
       "pending_one": "{{count}} Verkauf wartet aufs Nachbuchen.",
       "pending_other": "{{count}} Verkäufe warten aufs Nachbuchen.",
+      "noCopyTitle": "Offline – ohne Artikelstand",
       "noCopy": "Offline und kein Artikelstand auf diesem Gerät. Verkaufen geht erst wieder mit Internet. Tipp: Kasse vor dem Basar einmal online öffnen.",
+      "browserTitle": "Keine Verbindung zum Server",
       "browser": "Keine Verbindung zum Server. Ohne Internet verkaufen geht nur in der BazarPro-App.",
       "ready": "Offline bereit · Artikelstand {{time}} Uhr",
       "loading": "Artikelstand für offline wird geladen…",
@@ -731,6 +753,8 @@
       "refresh": "Aktualisieren",
       "queued_one": "<b>{{count}} Artikel verkauft</b> für {{total}} € – offline gespeichert, wird nachgebucht.",
       "queued_other": "<b>{{count}} Artikel verkauft</b> für {{total}} € – offline gespeichert, wird nachgebucht.",
+      "queuedDirect_one": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert – offline gespeichert, wird nachgebucht.",
+      "queuedDirect_other": "<b>{{count}} Artikel verkauft</b>, {{total}} € Provision kassiert – offline gespeichert, wird nachgebucht.",
       "synced_one": "{{count}} Offline-Verkauf nachgebucht",
       "synced_other": "{{count}} Offline-Verkäufe nachgebucht",
       "conflicts_one": "{{count}} Artikel konnte nicht gebucht werden – siehe Abrechnung.",
@@ -739,7 +763,16 @@
     "received": "{{total}} € erhalten",
     "cameraOn": "Kamera einschalten",
     "cameraOff": "Kamera ausschalten",
-    "invoice": "Rechnung erstellen"
+    "invoice": "Rechnung erstellen",
+    "direct": {
+      "sum_one": "Provision {{percent}} % ({{count}} Artikel)",
+      "sum_other": "Provision {{percent}} % ({{count}} Artikel)",
+      "paidToSeller": "Verkaufspreis, direkt an den Verkäufer bezahlt",
+      "received": "{{total}} € Provision vom Verkäufer erhalten",
+      "commission": "Provision {{amount}} €",
+      "agreed": "Vereinbarter Preis",
+      "agreedPrice": "Vereinbarter Preis"
+    }
   },
   "proof": {
     "cardTitle": "Nachweis der angebotenen Artikel",
@@ -822,7 +855,8 @@
     },
     "fileName": "Abrechnung",
     "fileNameSellers": "Abrechnung-Verkaeufer",
-    "fileNameSales": "Abrechnung-Verkaeufe"
+    "fileNameSales": "Abrechnung-Verkaeufe",
+    "direct": "direkt bezahlt"
   },
   "wizard": {
     "back": "Zurück",
@@ -832,42 +866,74 @@
     "steps": {
       "type": {
         "title": "Was für ein Basar wird's?",
-        "text": "Wähle eine Vorlage. Ändern kannst du später alles."
+        "text": "Wähle eine Vorlage – alles lässt sich später ändern."
       },
       "sale": {
         "title": "Wie wird verkauft?",
-        "text": "Was du einschaltest, zeigt die Vorschau."
+        "text": "Schalte ein, was dein Basar bieten soll."
       },
       "items": {
         "title": "Welche Artikel?",
-        "text": "Kategorien, Fotos und das Etikett für jedes Teil."
+        "text": "Kategorien, Fotos und Etiketten."
       },
       "fees": {
         "title": "Was kostet es die Verkäufer?",
-        "text": "Provision und, wenn du willst, eine Annahmegebühr pro Artikel."
+        "text": "Provision und, wenn du willst, eine Annahmegebühr."
       },
       "registration": {
         "title": "Wer darf mitmachen?",
-        "text": "Öffentliche Basare erscheinen nach einer kurzen Prüfung auf der Startseite von BazarPro. Mit einem Zugangscode kommt nur rein, wer den Code von dir bekommt."
+        "text": "Sichtbarkeit, Zugang und Anmeldung."
       },
       "basics": {
         "title": "Wann und wo?",
-        "text": "So steht dein Basar auf seiner Seite und in den Mails an Verkäufer."
+        "text": "Wähle den Tag – die übrigen Termine schlagen wir dir passend vor."
       },
       "logistics": {
         "title": "Abgabe und Abholung",
-        "text": "Wann bringen Verkäufer ihre Sachen, und wann holen sie Unverkauftes und ihr Geld ab?"
+        "text": "Schon passend zum Termin eingetragen – pass nur die Uhrzeiten an."
       },
       "preview": {
         "title": "So sieht dein Basar aus",
-        "text": "Das sehen Besucher und Verkäufer. Ändern kannst du danach noch alles."
+        "text": "Alles auf einen Blick. Ändern kannst du auch danach noch alles."
+      },
+      "details": {
+        "title": "Beschreibung und Kontakt",
+        "text": "Das lesen Besucher auf der Seite deines Basars."
       }
     },
     "summary": {
-      "title": "Titel",
-      "when": "Beginn",
       "where": "Ort",
-      "categories": "Kategorien"
+      "edit": "{{step}} bearbeiten",
+      "sale": "Verkauf",
+      "fees": "Gebühren",
+      "joining": "Mitmachen",
+      "dropoff": "Abgabe",
+      "pickup": "Abholung",
+      "open": "offen",
+      "commission": "{{percent}} % Provision",
+      "intakeFee": "+ {{fee}} € pro Artikel",
+      "registrationOpen": "Anmeldung offen",
+      "registrationClosed": "Nur mit Einladung",
+      "plain": "Klassisch an der Kasse",
+      "ready": "Bereit zum Anlegen",
+      "readyText": "Prüfe die Eckdaten – mit einem Klick springst du zurück zum passenden Schritt.",
+      "date": "Termin",
+      "items": "Artikel",
+      "logistics": "Abgabe & Abholung",
+      "contact": "Kontakt",
+      "categoryCount_one": "{{count}} Kategorie",
+      "categoryCount_other": "{{count}} Kategorien",
+      "maxItems_one": "max. {{count}} Artikel pro Verkäufer",
+      "maxItems_other": "max. {{count}} Artikel pro Verkäufer",
+      "feat": {
+        "directSale": "Direktverkauf",
+        "publicCatalog": "Online-Katalog",
+        "discounts": "Rabatte",
+        "discountsUpTo": "Rabatte bis {{percent}} %",
+        "priceOffers": "Preisvorschläge",
+        "minimumPrice": "VB",
+        "questions": "Fragen"
+      }
     },
     "fixErrors": "Bitte prüfe die markierten Angaben.",
     "guestCreate": "Konto anlegen und Basar erstellen",
@@ -951,11 +1017,12 @@
       "registration": "Mitmachen",
       "basics": "Termin & Ort",
       "logistics": "Abgabe",
-      "preview": "Vorschau"
+      "preview": "Vorschau",
+      "details": "Beschreibung"
     },
     "pictures": {
       "title": "Bilder",
-      "intro": "Mit Bild wirkt dein Basar gleich einladender. Du kannst alles später ändern.",
+      "intro": "Mit Bild wirkt dein Basar gleich einladender.",
       "cover": "Titelbild",
       "coverText": "Wähle eine Vorlage oder lade ein eigenes Bild hoch.",
       "coverPick": "Vorlage „{{name}}“ wählen",
@@ -970,7 +1037,7 @@
       "own": "Eigenes Bild",
       "map": "Lageplan",
       "mapText": "Zeigt Besuchern, wo sie Stände, Kasse und Eingang finden.",
-      "locked": "Eigene Bilder kannst du nach dem Anmelden hochladen. Dein Basar bleibt erhalten.",
+      "locked": "Eigenes Titelbild und Lageplan kannst du nach dem Anmelden hochladen – dein Basar bleibt erhalten.",
       "login": "Anmelden und hochladen",
       "noCover": "Kein Titelbild"
     }

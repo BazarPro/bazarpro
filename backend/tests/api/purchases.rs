@@ -803,3 +803,227 @@ async fn the_snapshot_for_an_offline_desk(db: PgPool) {
         .await;
     assert_eq!(forbidden.body["code"], "auth.forbidden");
 }
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_direct_sale_takes_only_the_commission(db: PgPool) {
+    // The buyer paid the seller at the bike; the desk books it at the agreed price
+    let desk = Desk::new(db.clone(), json!({ "directSale": true })).await;
+    let (agreed, agreed_relation) = desk.item("Trekkingrad", 280.0).await;
+    let (listed, listed_relation) = desk.item("Hollandrad", 190.0).await;
+    // Without a minimum price any agreed price up to the label counts
+    let above = desk
+        .cart(
+            json!([{ "eventProductId": agreed_relation, "negotiatedPrice": 300 }]),
+            None,
+        )
+        .await;
+    assert_eq!(above.body["code"], "checkout.itemFailed", "{}", above.body);
+    let reply = desk
+        .cart(
+            json!([
+                { "eventProductId": agreed_relation, "negotiatedPrice": 250 },
+                { "eventProductId": listed_relation },
+            ]),
+            None,
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // The desk took 10 % of 440 €, nothing is paid out
+    assert_eq!(reply.body["value"]["total"], json!(440.0));
+    assert_eq!(reply.body["value"]["taken"], json!(44.0));
+    assert_eq!(
+        desk.purchase(agreed).await,
+        Some((250.0, 25.0, 0.0, Some("negotiated".into()), None))
+    );
+    assert_eq!(
+        desk.purchase(listed).await,
+        Some((190.0, 19.0, 0.0, Some("list".into()), None))
+    );
+    let direct: i64 = sqlx::query_scalar("SELECT count(*) FROM purchases WHERE direct_sale")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(direct, 2);
+
+    // The till holds the commission only; the seller is owed nothing
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(summary.status, StatusCode::OK, "{}", summary.body);
+    let summary = &summary.body["value"];
+    assert_eq!(summary["cashInHandSoll"], json!(44.0), "{summary}");
+    assert_eq!(summary["totalDirectSales"], json!(440.0));
+    assert_eq!(summary["totalDirectCommission"], json!(44.0));
+    assert_eq!(summary["totalPendingPayout"], json!(0.0));
+
+    // The seller's mail names the commission paid at the desk and no payout
+    let mail = desk
+        .mails()
+        .await
+        .into_iter()
+        .find(|(to, _)| to == "seller@test.example");
+    assert!(mail.is_some());
+    let html = desk
+        .app
+        .sent
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|m| m.to == "seller@test.example")
+        .unwrap()
+        .html
+        .clone();
+    assert!(html.contains("an der Kasse bezahlt"), "{html}");
+    assert!(!html.contains("Auszahlung</"), "{html}");
+}
+
+/// editEvent with `directSale` set, everything else as the event is.
+async fn switch_direct_sale(desk: &Desk, on: bool) -> common::Reply {
+    let event = desk
+        .app
+        .query(
+            "events.getEvent",
+            json!({ "id": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    let mut args = json!({ "id": desk.event, "features": { "directSale": on } });
+    for key in [
+        "title",
+        "description",
+        "location",
+        "startDate",
+        "endDate",
+        "categories",
+        "contactInfo",
+        "commission",
+        "services",
+        "visibility",
+    ] {
+        args[key] = event[key].clone();
+    }
+    desk.app
+        .mutation("events.editEvent", args, Some(&desk.team))
+        .await
+}
+
+async fn is_direct(db: &PgPool, product: Uuid) -> bool {
+    sqlx::query_scalar("SELECT direct_sale FROM purchases WHERE product_id = $1")
+        .bind(product)
+        .fetch_one(db)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn an_offline_sale_is_booked_the_way_the_desk_sold_it(db: PgPool) {
+    let desk = Desk::new(db.clone(), json!({})).await;
+    let (normal, normal_relation) = desk.item("Ski", 50.0).await;
+    let (direct, direct_relation) = desk.item("Rad", 200.0).await;
+    let (older, older_relation) = desk.item("Roller", 30.0).await;
+    // The desk took 50 € into the till offline; before the queue is booked the organizer
+    // switches to direct sale, which is possible while nothing is sold
+    let switched = switch_direct_sale(&desk, true).await;
+    assert_eq!(switched.status, StatusCode::OK, "{}", switched.body);
+
+    let mut as_normal = offline_sale(Uuid::new_v4(), &[(normal_relation, normal, 50.0)]);
+    as_normal["directSale"] = json!(false);
+    let mut as_direct = offline_sale(Uuid::new_v4(), &[(direct_relation, direct, 180.0)]);
+    as_direct["directSale"] = json!(true);
+    // An older app does not say how it sold: as the event says
+    let unsaid = offline_sale(Uuid::new_v4(), &[(older_relation, older, 30.0)]);
+    let reply = desk.sync(json!([as_normal, as_direct, unsaid])).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+
+    // The seller is still owed the 45 € that are in the till
+    assert_eq!(
+        desk.purchase(normal).await,
+        Some((50.0, 5.0, 45.0, Some("list".into()), None))
+    );
+    assert!(!is_direct(&db, normal).await);
+    assert_eq!(
+        desk.purchase(direct).await,
+        Some((180.0, 18.0, 0.0, Some("list".into()), None))
+    );
+    assert!(is_direct(&db, direct).await);
+    assert!(is_direct(&db, older).await);
+
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    // 50 € + the commissions of the direct sales (18 € + 3 €)
+    assert_eq!(summary["cashInHandSoll"], json!(71.0), "{summary}");
+    assert_eq!(summary["totalPendingPayout"], json!(45.0));
+    // One seller with money to settle
+    assert_eq!(summary["vendorsTotalCount"], json!(1));
+
+    // With sales booked the way of selling stays
+    let back = switch_direct_sale(&desk, false).await;
+    assert_eq!(back.body["code"], "event.directSaleLocked", "{}", back.body);
+    let same = switch_direct_sale(&desk, true).await;
+    assert_eq!(same.status, StatusCode::OK, "{}", same.body);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn direct_sellers_have_nothing_to_settle(db: PgPool) {
+    let desk = Desk::new(db.clone(), json!({ "directSale": true })).await;
+    // A label of one cent can be booked at one cent: no minimum price is involved
+    let (cheap, cheap_relation) = desk.item("Klingel", 0.01).await;
+    let (_, bike_relation) = desk.item("Rad", 250.0).await;
+    let reply = desk
+        .cart(
+            json!([
+                { "eventProductId": cheap_relation, "negotiatedPrice": 0.01 },
+                { "eventProductId": bike_relation, "negotiatedPrice": 200 },
+            ]),
+            None,
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(
+        desk.purchase(cheap).await,
+        Some((0.01, 0.0, 0.0, Some("negotiated".into()), None))
+    );
+
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    // Nobody waits for a payout, so nobody counts as open
+    assert_eq!(summary["vendorsTotalCount"], json!(0), "{summary}");
+    assert_eq!(summary["vendorsPaidCount"], json!(0));
+
+    let vendors = desk
+        .app
+        .query(
+            "eventRoles.getVendorsForEvent",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(vendors.status, StatusCode::OK, "{}", vendors.body);
+    let seller = &vendors.body["value"][0];
+    assert_eq!(seller["payout"], json!(0.0), "{seller}");
+    // 200.01 € from the buyers, less 20 € commission
+    assert_eq!(seller["receivedDirectly"], json!(180.01));
+}

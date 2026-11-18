@@ -403,7 +403,11 @@ pub async fn run(state: &AppState, options: Options) -> anyhow::Result<String> {
 }
 
 /// Bazaars that should be running whenever someone looks at a review app.
-const RUNNING_TITLES: [Text; 2] = [core::SHOWCASE_TITLE, extended::KIDS_TITLE];
+const RUNNING_TITLES: [Text; 3] = [
+    core::SHOWCASE_TITLE,
+    extended::KIDS_TITLE,
+    extended::BIKE_MARKET_TITLE,
+];
 
 /// Review apps keep their database across deploys, so the bazaars seeded with the first
 /// deploy would be over after a while: moves each one ending within a day to "started two

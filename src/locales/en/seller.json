@@ -63,6 +63,7 @@
     "questions_one": "{{count}} open question",
     "questions_other": "{{count}} open questions",
     "payout": "Payout to you: {{amount}} €",
+    "receivedDirectly": "Received directly, less commission: {{amount}} €",
     "privateInvoice": "Private invoice",
     "forBuyer": "For the buyer",
     "forMe": "For me (with bazaar fee)",
