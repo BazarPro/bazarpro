@@ -81,6 +81,7 @@ import {
 } from './components/wizard/WizardPreviews';
 import { WizardSummary } from './components/wizard/WizardSummary';
 import { PageSkeleton } from '../../../components/ui/loading';
+import { isEventRunning } from '../../../shared/eventPhase';
 
 /**
  * @param getOriginalStartDate start date of the event being edited (datetime-local string);
@@ -452,7 +453,9 @@ function WizardHeader({
   disabled: boolean;
 }) {
   const { t } = useTranslation('organizer');
+  const directSale = useFormContext<EventFormData>().watch('features.directSale');
   const id = WIZARD_STEPS[step].id;
+  const key = stepKey(id, directSale);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -476,7 +479,7 @@ function WizardHeader({
               onClick={() => onGoTo(index)}
               disabled={index >= step}
               aria-current={index === step ? 'step' : undefined}
-              aria-label={t(`wizard.short.${candidate.id}`)}
+              aria-label={t(`wizard.short.${stepKey(candidate.id, directSale)}`)}
               className="group w-full text-left disabled:cursor-default"
             >
               <span
@@ -485,18 +488,26 @@ function WizardHeader({
               <span
                 className={`mt-1.5 hidden truncate text-xs lg:block ${index === step ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
               >
-                {t(`wizard.short.${candidate.id}`)}
+                {t(`wizard.short.${stepKey(candidate.id, directSale)}`)}
               </span>
             </button>
           </li>
         ))}
       </ol>
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">{t(`wizard.steps.${id}.title`)}</h2>
-        <p className="mt-1 text-muted-foreground">{t(`wizard.steps.${id}.text`)}</p>
+        <h2 className="text-2xl font-semibold tracking-tight">{t(`wizard.steps.${key}.title`)}</h2>
+        <p className="mt-1 text-muted-foreground">{t(`wizard.steps.${key}.text`)}</p>
       </div>
     </div>
   );
+}
+
+/**
+ * The text key of a step or section: at a direct sale the logistics are setup and
+ * teardown, not hand-in and pickup (#299).
+ */
+function stepKey<T extends string>(id: T, directSale: boolean | undefined) {
+  return id === 'logistics' && directSale ? 'logisticsDirect' : id;
 }
 
 /** The sections of the edit page, in the order of the wizard's steps. */
@@ -672,7 +683,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
   const now = Date.now();
-  const isRunning = !isAdmin && !!event && event.startDate <= now && now <= event.endDate;
+  const isRunning = !isAdmin && !!event && isEventRunning(event, now);
   // Sellers registered with these fees: they may only go down, the item limit only up
   const feeLockState = useQuery(api.events.getFeeLock, eventId ? { eventId } : 'skip');
   const feeLock = isAdmin ? null : isRunning ? 'running' : feeLockState?.locked ? 'sellers' : null;
@@ -730,6 +741,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     reset,
     formState: { isSubmitting, isDirty },
   } = methods;
+  const directSale = methods.watch('features.directSale');
 
   // While a bazaar is set up, drop-off, pickup and the other times around it follow its
   // date: picking the day suggests them on the same day, moving it moves them along
@@ -1228,7 +1240,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                           ?.scrollIntoView({ behavior: 'smooth' })
                       }
                     >
-                      {t(`wizard.short.${id}`)}
+                      {t(`wizard.short.${stepKey(id, directSale)}`)}
                     </Button>
                   ))}
                 </nav>
@@ -1236,7 +1248,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                   <section key={id} id={`section-${id}`} className="scroll-mt-32 space-y-4">
                     <div>
                       <h2 className="text-xl font-semibold tracking-tight">
-                        {t(`wizard.steps.${id}.title`)}
+                        {t(`wizard.steps.${stepKey(id, directSale)}.title`)}
                       </h2>
                     </div>
                     <EventSection

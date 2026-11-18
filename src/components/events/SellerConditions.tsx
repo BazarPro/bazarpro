@@ -97,7 +97,7 @@ export function SellerConditions({
         </ConditionsSection>
 
         {(schedule.rows.length > 0 || schedule.note) && (
-          <ConditionsSection title={t('conditions.schedule')}>
+          <ConditionsSection title={schedule.title}>
             {schedule.rows.length > 0 && (
               <dl className="space-y-2 text-sm">
                 {schedule.rows.map((row) => (

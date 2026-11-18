@@ -61,6 +61,7 @@ const FALLBACK_TYPE = EVENT_TYPES.find((type) => type.id === 'clothingBazaar')!;
 interface WizardValues {
   title?: string;
   description?: string;
+  contactInfo?: string;
   location?: string;
   address?: { street?: string; postalCode?: string; city?: string; country?: string };
   startDate?: string;
@@ -91,6 +92,7 @@ interface WizardValues {
     intakeFee?: number;
     privateSellersOnly?: boolean;
     fixedSellerData?: boolean;
+    directSale?: boolean;
   };
   sellerLogistics?: {
     dropoffStart?: string;
@@ -677,7 +679,25 @@ function HeroPreview({ type, values }: { type?: EventType; values: WizardValues 
   );
 }
 
-/** Step "basics": the top of the bazaar page and the description as it will read. */
+/** The contact box of the bazaar page (#299): who to ask, as the organizer wrote it. */
+function ContactPreview({ contact, className }: { contact?: string; className?: string }) {
+  const { t } = useTranslation('organizer');
+  return (
+    <div className={cn('rounded-xl border bg-card p-4 text-sm shadow-sm', className)}>
+      <h3 className="mb-2 font-semibold">{t('sidebar.contact', { ns: 'events' })}</h3>
+      {contact?.trim() ? (
+        <p className="whitespace-pre-line break-words text-muted-foreground">{contact}</p>
+      ) : (
+        <p className="text-muted-foreground italic">{t('wizard.preview.contactOpen')}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Steps "basics" and "details": the top of the bazaar page, the description as it will
+ * read and the contact box.
+ */
 export function PlacePreview({ type }: { type?: EventType }) {
   const { t } = useTranslation('organizer');
   const values = useWizardValues();
@@ -692,6 +712,7 @@ export function PlacePreview({ type }: { type?: EventType }) {
             <p className="text-muted-foreground">{t('wizard.preview.descriptionOpen')}</p>
           )}
         </div>
+        <ContactPreview contact={values.contactInfo} className="shadow-none" />
       </div>
     </PreviewCanvas>
   );
@@ -702,6 +723,7 @@ export function LogisticsPreview() {
   const { t, i18n } = useTranslation('organizer');
   const values = useWizardValues();
   const logistics = values.sellerLogistics ?? {};
+  const direct = !!values.features?.directSale;
   const span = (from?: string, to?: string) => {
     const start = formatLocal(from, i18n.language);
     const end = formatLocal(to, i18n.language);
@@ -711,7 +733,7 @@ export function LogisticsPreview() {
   const steps = [
     {
       icon: <Truck className="h-4 w-4" />,
-      label: t('wizard.preview.dropoff'),
+      label: t(direct ? 'wizard.preview.setup' : 'wizard.preview.dropoff'),
       when: span(logistics.dropoffStart, logistics.dropoffEnd),
     },
     {
@@ -721,7 +743,7 @@ export function LogisticsPreview() {
     },
     {
       icon: <Package className="h-4 w-4" />,
-      label: t('wizard.preview.pickup'),
+      label: t(direct ? 'wizard.preview.teardown' : 'wizard.preview.pickup'),
       when: span(logistics.pickupStart, logistics.pickupEnd),
     },
   ];
@@ -915,6 +937,7 @@ export function EventPagePreview({
               event={conditions}
               compact
             />
+            <ContactPreview contact={values.contactInfo} />
           </aside>
         </div>
       </div>

@@ -30,6 +30,11 @@ export interface ReminderEvent {
   startDate: number;
   endDate: number;
   contactInfo: string;
+  /**
+   * Direct sale: sellers stand at their items, so the times are setup and teardown
+   * instead of hand-in and pickup (#299).
+   */
+  directSale?: boolean;
   sellerLogistics?: {
     dropoffStart?: number;
     dropoffEnd?: number;
@@ -63,13 +68,16 @@ export function dayBeforeInfo(
 ): NotificationContent {
   const logistics = event.sellerLogistics ?? {};
   const dropoff = range(t, logistics.dropoffStart, logistics.dropoffEnd);
+  const direct = !!event.directSale;
   const details = [
     {
       label: t('reminder.bazaar'),
       value: formatBerlinRange(event.startDate, event.endDate, t.locale),
     },
     { label: t('reminder.location'), value: formatEventPlace(event) },
-    ...(dropoff ? [{ label: t('reminder.dropoff'), value: dropoff }] : []),
+    ...(dropoff
+      ? [{ label: t(direct ? 'reminder.setup' : 'reminder.dropoff'), value: dropoff }]
+      : []),
     ...(seller.sellerNumber !== undefined
       ? [{ label: t('reminder.yourNumber'), value: String(seller.sellerNumber) }]
       : []),
@@ -80,8 +88,10 @@ export function dayBeforeInfo(
     heading: t('reminder.dayBefore.heading', { event: event.title }),
     paragraphs: [
       t('reminder.dayBefore.items', { count: seller.itemCount }),
-      ...(dropoff ? [t('reminder.dayBefore.dropoff', { dropoff })] : []),
-      t('reminder.dayBefore.digitalId'),
+      ...(dropoff
+        ? [t(direct ? 'reminder.dayBefore.setup' : 'reminder.dayBefore.dropoff', { dropoff })]
+        : []),
+      t(direct ? 'reminder.dayBefore.digitalIdSetup' : 'reminder.dayBefore.digitalId'),
       ...noteParagraphs(event),
       ...contactParagraph(event, t),
     ],
@@ -99,6 +109,7 @@ export function pickupReminder(
 ): NotificationContent {
   const logistics = event.sellerLogistics ?? {};
   const pickup = range(t, logistics.pickupStart, logistics.pickupEnd);
+  const direct = !!event.directSale;
   const unsold = seller.unsoldTitles;
   const listed = unsold.slice(0, MAX_LISTED_ITEMS).join(', ');
   const more =
@@ -107,13 +118,24 @@ export function pickupReminder(
       : '';
   const euro = `${Math.abs(seller.payout).toFixed(2).replace('.', ',')} €`;
   return {
-    subject: t('reminder.pickup.subject', { event: event.title }),
-    heading: t('reminder.pickup.heading'),
+    subject: t(direct ? 'reminder.pickup.subjectTeardown' : 'reminder.pickup.subject', {
+      event: event.title,
+    }),
+    heading: t(direct ? 'reminder.pickup.headingTeardown' : 'reminder.pickup.heading'),
     paragraphs: [
       t('reminder.pickup.over', { event: event.title, count: seller.soldCount }),
-      ...(unsold.length > 0 ? [t('reminder.pickup.toPickUp', { items: listed + more })] : []),
+      ...(unsold.length > 0
+        ? [
+            t(direct ? 'reminder.pickup.toTakeBack' : 'reminder.pickup.toPickUp', {
+              items: listed + more,
+            }),
+          ]
+        : []),
       pickup
-        ? t('reminder.pickup.when', { pickup, location: formatEventPlace(event) })
+        ? t(direct ? 'reminder.pickup.whenTeardown' : 'reminder.pickup.when', {
+            pickup,
+            location: formatEventPlace(event),
+          })
         : t('reminder.pickup.where', { location: formatEventPlace(event) }),
       ...noteParagraphs(event),
       ...contactParagraph(event, t),
@@ -124,7 +146,7 @@ export function pickupReminder(
         ? { label: t('reminder.pickup.feeDue'), value: euro }
         : { label: t('reminder.pickup.payout'), value: euro },
       {
-        label: t('reminder.pickup.unsold'),
+        label: t(direct ? 'reminder.pickup.unsoldTeardown' : 'reminder.pickup.unsold'),
         value: t('common.items', { count: unsold.length }),
       },
     ],

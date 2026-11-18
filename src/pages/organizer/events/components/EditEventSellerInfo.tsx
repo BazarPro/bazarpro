@@ -19,6 +19,8 @@ export function EditEventSellerInfo() {
   const { t } = useTranslation('organizer');
   const { register, watch } = useFormContext();
   const logistics = watch('sellerLogistics') as LogisticsForm;
+  // Sellers stand at their items: the same times are setup and teardown (#299)
+  const directSale = !!watch('features.directSale');
   const [title, location, startDate, endDate, contactInfo] = watch([
     'title',
     'location',
@@ -41,6 +43,7 @@ export function EditEventSellerInfo() {
             startDate: start,
             endDate: end,
             contactInfo: contactInfo ?? '',
+            directSale,
             sellerLogistics: logisticsFromForm(logistics),
           },
           { itemCount: 12, sellerNumber: 17 },
@@ -52,7 +55,7 @@ export function EditEventSellerInfo() {
     <FormSection>
       <TimeRangeFields
         id="dropoff"
-        label={t('logistics.dropoff')}
+        label={t(directSale ? 'logistics.setup' : 'logistics.dropoff')}
         icon={<Truck className="h-4 w-4 text-primary" />}
         startName="sellerLogistics.dropoffStart"
         endName="sellerLogistics.dropoffEnd"
@@ -60,7 +63,7 @@ export function EditEventSellerInfo() {
       />
       <TimeRangeFields
         id="pickup"
-        label={t('logistics.pickup')}
+        label={t(directSale ? 'logistics.teardown' : 'logistics.pickup')}
         icon={<Package className="h-4 w-4 text-primary" />}
         startName="sellerLogistics.pickupStart"
         endName="sellerLogistics.pickupEnd"
@@ -83,7 +86,7 @@ export function EditEventSellerInfo() {
           <summary className="flex cursor-pointer items-center gap-2 font-medium">
             <Mail className="h-4 w-4 text-primary" />
             {t('logistics.preview')}
-            <InfoTip>{t('logistics.intro')}</InfoTip>
+            <InfoTip>{t(directSale ? 'logistics.introDirect' : 'logistics.intro')}</InfoTip>
           </summary>
           <div className="mt-3 space-y-2">
             <p className="text-xs text-muted-foreground">

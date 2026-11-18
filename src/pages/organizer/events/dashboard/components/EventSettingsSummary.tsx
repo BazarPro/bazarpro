@@ -108,12 +108,12 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
                 .join(' ')
             : t('summary.registrationOpen')}
       </Row>
-      <Row label={t('summary.dropoff')}>
+      <Row label={t(features.directSale ? 'summary.setup' : 'summary.dropoff')}>
         {logistics?.dropoffStart !== undefined
           ? formatRange(logistics.dropoffStart, logistics.dropoffEnd)
           : t('summary.notGiven')}
       </Row>
-      <Row label={t('summary.pickup')}>
+      <Row label={t(features.directSale ? 'summary.teardown' : 'summary.pickup')}>
         {logistics?.pickupStart !== undefined
           ? formatRange(logistics.pickupStart, logistics.pickupEnd)
           : t('summary.notGiven')}

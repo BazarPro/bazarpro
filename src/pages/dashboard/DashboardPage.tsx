@@ -35,9 +35,10 @@ import { formatDateRangeDE, formatDateTimeDE, formatPriceDE } from '../../lib/ut
 import { AdminOverviewPage } from '../administrator/AdminOverviewPage';
 import { formatEventPlace } from '../../shared/eventJsonLd';
 import { EventApprovalBadge } from '../../components/events/EventApprovalBadge';
+import { EventPhaseBadge } from '../../components/events/EventPhaseBadge';
+import { resolveEventFeatures } from '../../shared/eventFeatures';
 import { eventApproval } from '../../lib/eventApproval';
 import { eventDraftTitle } from '../../lib/eventDraft';
-import { useNowPassing } from '../../hooks/useNowPassing';
 
 /**
  * Start page for signed-in users (#158), one per role of the role switch: sellers see
@@ -122,6 +123,8 @@ function SellerOverview() {
   const seller = next ? sales?.find((group) => group.event._id === next._id) : undefined;
   const started = !!next && next.startDate <= Date.now();
   const dropoff = next?.sellerLogistics?.dropoffStart;
+  // Sellers stand at their items: they set up instead of handing in (#299)
+  const direct = !!next && resolveEventFeatures(next).directSale;
 
   // The way through a bazaar; the first open step is the one to do now
   const steps: NextStep[] = [
@@ -151,10 +154,10 @@ function SellerOverview() {
     {
       id: 'labels',
       icon: Printer,
-      title: t('steps.labels'),
+      title: t(direct ? 'steps.labelsDirect' : 'steps.labels'),
       text: dropoff
-        ? t('steps.dropoff', { date: formatDateTimeDE(dropoff) })
-        : t('steps.labelsText'),
+        ? t(direct ? 'steps.setup' : 'steps.dropoff', { date: formatDateTimeDE(dropoff) })
+        : t(direct ? 'steps.labelsTextDirect' : 'steps.labelsText'),
       to: '/my-products',
       state: next ? { filterEvent: next._id } : undefined,
       // Only with items there was something to hand in
@@ -163,7 +166,7 @@ function SellerOverview() {
     {
       id: 'payout',
       icon: Receipt,
-      title: t('steps.payout'),
+      title: t(direct ? 'steps.payoutDirect' : 'steps.payout'),
       text: [salesSummary(sales, t), seller?.paid && t('nextBazaar.paid')]
         .filter(Boolean)
         .join(' · '),
@@ -281,9 +284,6 @@ function OrganizerOverview({ canCreate }: { canCreate: boolean }) {
             {isHelper(selected) && (
               <Badge variant="outline">{t('myEvents.helper', { ns: 'organizer' })}</Badge>
             )}
-            {selected.endDate < now && (
-              <Badge variant="secondary">{t('myEvents.ended', { ns: 'organizer' })}</Badge>
-            )}
           </>
         }
         note={<ApprovalNote event={selected} />}
@@ -394,6 +394,7 @@ function EventList({
                 <p className="font-medium break-words">{event.title}</p>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <span>{formatDateRangeDE(event.startDate, event.endDate)}</span>
+                  <EventPhaseBadge event={event} />
                   <EventApprovalBadge event={event} />
                   {isHelper(event) && (
                     <Badge variant="outline">{t('myEvents.helper', { ns: 'organizer' })}</Badge>
@@ -475,10 +476,8 @@ function BazaarHero({
   footer?: ReactNode;
   testId?: string;
 }) {
-  const { t } = useTranslation('dashboard');
   // A picture that does not load leaves no empty box (e.g. a deleted file)
   const [failedImage, setFailedImage] = useState<string | null>(null);
-  const running = event.startDate <= useNowPassing([event.startDate]);
   return (
     <Card className="overflow-hidden sm:flex" data-testid={testId}>
       {event.coverImage && event.coverImage !== failedImage && (
@@ -492,7 +491,7 @@ function BazaarHero({
       <CardContent className="min-w-0 flex-1 space-y-3 p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>{label}</span>
-          {running && <Badge>{t('nextBazaar.running')}</Badge>}
+          <EventPhaseBadge event={event} />
           {badges}
         </div>
         {/* Full title: long names of bazaars wrap instead of being cut off */}

@@ -177,7 +177,45 @@ describe('DashboardPage', () => {
     renderAt(<DashboardPage />);
     const current = screen.getByTestId('current-event');
     expect(within(current).getByRole('heading', { name: 'Frühjahrsbasar' })).toBeInTheDocument();
+    // The chosen one is "selected", its state comes from start and end (#299)
+    expect(within(current).getByText('Ausgewählter Basar')).toBeInTheDocument();
     expect(within(current).getByText('Beendet')).toBeInTheDocument();
+    expect(within(current).queryByText('Läuft gerade')).toBeNull();
+  });
+
+  it('tells upcoming, running and ended bazaars apart (#299)', () => {
+    selectEvent('run');
+    organizer([
+      { ...event('run', 'Läuft heute', 0), startDate: now - 3600_000, endDate: now + 3600_000 },
+      event('soon', 'Bald', 5),
+      // Started long ago, over since yesterday: never "running" again
+      event('over', 'Vorbei', -1),
+    ]);
+    renderAt(<DashboardPage />);
+    const current = screen.getByTestId('current-event');
+    expect(within(current).getByText('Läuft gerade')).toBeInTheDocument();
+    const later = screen.getByRole('heading', { name: 'Weitere Basare' }).closest('section')!;
+    expect(within(later).getByText('Demnächst')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Vergangene Basare (1)' }));
+    const past = screen.getByText('Vorbei').closest('li')!;
+    expect(within(past).getByText('Beendet')).toBeInTheDocument();
+    expect(within(past).queryByText('Läuft gerade')).toBeNull();
+  });
+
+  it('speaks of setup at a direct sale (#299)', () => {
+    seller({
+      'events.getMyRegisteredEvents': [
+        {
+          ...kita,
+          features: { directSale: true },
+          sellerLogistics: { dropoffStart: kita.startDate - 3600_000 },
+        },
+      ],
+    });
+    renderAt(<DashboardPage />);
+    expect(screen.getByText('Etiketten drucken und zum Aufbau mitbringen')).toBeInTheDocument();
+    expect(screen.getByText(/^Aufbau ab /)).toBeInTheDocument();
+    expect(screen.queryByText(/^Abgabe ab /)).toBeNull();
   });
 
   it('shows why an event was rejected and where one only helps', () => {

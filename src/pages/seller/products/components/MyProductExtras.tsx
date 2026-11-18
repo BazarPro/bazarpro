@@ -6,6 +6,7 @@ import { fieldMaxLength, getCategoryFields } from '../../../../shared/categoryFi
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
 import { Checkbox } from '../../../../components/ui/checkbox';
+import { Button } from '../../../../components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
 
@@ -24,6 +25,7 @@ export function MyProductCategoryFields({
   const {
     register,
     watch,
+    setValue,
     formState: { errors },
   } = useFormContext();
   const categoryList = useQuery(api.categories.getAllCategories);
@@ -34,28 +36,49 @@ export function MyProductCategoryFields({
 
   return (
     <div className="grid md:grid-cols-2 gap-4">
-      {fields.map((field) => (
-        <div key={field.key} className="space-y-2">
-          <Label htmlFor={`attr-${field.key}`}>
-            {categoryFieldText(field, 'label')}
-            {requiredFields.includes(field.key) && ' *'}
-          </Label>
-          <Input
-            id={`attr-${field.key}`}
-            placeholder={categoryFieldText(field, 'placeholder')}
-            maxLength={fieldMaxLength(field)}
-            readOnly={fixedFields.includes(field.key) && !!watch(`attributes.${field.key}`)}
-            {...register(`attributes.${field.key}`)}
-          />
-          {fieldErrors?.[field.key]?.message ? (
-            <FieldError>{fieldErrors[field.key].message}</FieldError>
-          ) : (
-            categoryFieldText(field, 'hint') && (
-              <p className="text-xs text-muted-foreground">{categoryFieldText(field, 'hint')}</p>
-            )
-          )}
-        </div>
-      ))}
+      {fields.map((field) => {
+        const name = `attributes.${field.key}`;
+        const readOnly = fixedFields.includes(field.key) && !!watch(name);
+        const notFound = field.notFoundButton
+          ? categoryFieldText(field, 'notFoundValue')
+          : undefined;
+        return (
+          <div key={field.key} className="space-y-2">
+            <Label htmlFor={`attr-${field.key}`}>
+              {categoryFieldText(field, 'label')}
+              {requiredFields.includes(field.key) && ' *'}
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id={`attr-${field.key}`}
+                placeholder={categoryFieldText(field, 'placeholder')}
+                maxLength={fieldMaxLength(field)}
+                readOnly={readOnly}
+                {...register(name)}
+              />
+              {notFound && !readOnly && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() =>
+                    setValue(name, notFound, { shouldDirty: true, shouldValidate: true })
+                  }
+                >
+                  {categoryFieldText(field, 'notFound')}
+                </Button>
+              )}
+            </div>
+            {fieldErrors?.[field.key]?.message ? (
+              <FieldError>{fieldErrors[field.key].message}</FieldError>
+            ) : (
+              categoryFieldText(field, 'hint') && (
+                <p className="text-xs text-muted-foreground">{categoryFieldText(field, 'hint')}</p>
+              )
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -82,8 +82,22 @@ describe('describeSellerSchedule', () => {
       },
     });
     expect(schedule).toEqual({
+      title: 'Abgabe & Abholung',
       rows: [{ label: 'Abgabe', value: 'Freitag, 16. Oktober 2026, 17:00–19:00 Uhr' }],
       note: 'Eingang über den Hof',
     });
+  });
+
+  it('speaks of setup and teardown at a direct sale (#299)', () => {
+    const schedule = describeSellerSchedule({
+      commission: 0,
+      features: { directSale: true },
+      sellerLogistics: {
+        dropoffStart: Date.UTC(2026, 9, 17, 6),
+        pickupStart: Date.UTC(2026, 9, 17, 14),
+      },
+    });
+    expect(schedule.title).toBe('Aufbau & Abbau');
+    expect(schedule.rows.map((row) => row.label)).toEqual(['Aufbau', 'Abbau']);
   });
 });

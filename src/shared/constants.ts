@@ -87,6 +87,7 @@ export type EventVisibility = (typeof EVENT_VISIBILITY)[number];
 export const EVENT_SERVICES = [
   'Parkplatz',
   'Skiservice',
+  'Fahrradcodierung',
   'Gastronomie',
   'Imbiss',
   'Getränke',

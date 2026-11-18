@@ -90,6 +90,7 @@
     "youPay": "Du zahlst",
     "itemsAndPrices": "Artikel & Preise",
     "schedule": "Abgabe & Abholung",
+    "scheduleDirect": "Aufbau & Abbau",
     "commissionLine": "{{percent}} % Provision vom Verkaufspreis jedes verkauften Artikels",
     "intakeFeeLine": "{{fee}} € Annahmegebühr pro angenommenem Artikel, auch wenn er nicht verkauft wird",
     "exampleSold": "{{sold}} × {{price}} € verkauft",
@@ -111,6 +112,8 @@
     "questions": "Käufer können öffentlich Fragen zu deinen Artikeln stellen",
     "dropoff": "Abgabe",
     "pickup": "Abholung",
+    "setup": "Aufbau",
+    "teardown": "Abbau",
     "requiredFields": "Pflichtangaben für jeden Artikel: {{fields}}",
     "questionsDuringEvent": "Käufer können während des Basars öffentlich Fragen zu deinen Artikeln stellen",
     "privateSellers": "Nur für Privatleute: Du bestätigst beim Anmelden, dass du nicht gewerblich verkaufst",
@@ -197,5 +200,10 @@
     "title_other": "{{count}} Artikel nicht abgegeben",
     "hint_one": "Diesen Artikel hast du nicht rechtzeitig abgegeben. Er wird bei diesem Basar nicht angeboten und kann nicht erneut angemeldet werden.",
     "hint_other": "Diese Artikel hast du nicht rechtzeitig abgegeben. Sie werden bei diesem Basar nicht angeboten und können nicht erneut angemeldet werden."
+  },
+  "phase": {
+    "upcoming": "Demnächst",
+    "running": "Läuft gerade",
+    "ended": "Beendet"
   }
 }

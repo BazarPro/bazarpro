@@ -40,6 +40,7 @@ import { serviceLabel } from '../../../i18n/services';
 import { useNowPassing } from '../../../hooks/useNowPassing';
 import { registrationTimes } from '../../../shared/eventFeatures';
 import { describeRegistration } from '../../../components/participation/registrationText';
+import { eventPhase } from '../../../shared/eventPhase';
 
 /**
  *  Main Landingpage for a Public Event
@@ -192,8 +193,9 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
     image: coverImageUrl ?? toAbsoluteUrl(DEFAULT_SEO_IMAGE) ?? DEFAULT_SEO_IMAGE,
   });
 
-  const isPast = event.endDate < now;
-  const isRunning = event.startDate <= now && !isPast;
+  const phase = eventPhase(event, now);
+  const isPast = phase === 'ended';
+  const isRunning = phase === 'running';
   const registration = describeRegistration(event, now, isTeam ? 'team' : undefined);
   const closedText = registration.blocked;
 

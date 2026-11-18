@@ -4,7 +4,7 @@ import type { CategoryFieldText } from '../shared/categoryFields';
 /** Label, placeholder or hint of a category field in the current language. */
 export function categoryFieldText(
   field: { text: CategoryFieldText },
-  part: 'label' | 'placeholder' | 'hint'
+  part: 'label' | 'placeholder' | 'hint' | 'notFound' | 'notFoundValue'
 ): string | undefined {
   const key = `categoryFields.${field.text}.${part}`;
   return i18n.exists(key, { ns: 'records' })

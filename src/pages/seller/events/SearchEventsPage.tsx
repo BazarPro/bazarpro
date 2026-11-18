@@ -19,7 +19,7 @@ import {
   Users,
   Ban,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Doc, Exclusion, Id } from '../../../lib/api/types';
 import { useState } from 'react';
 import { EventFilters } from '../../../components/events/EventFilters';
@@ -34,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { formatEventPlace } from '../../../shared/eventJsonLd';
 import { describeRegistration } from '../../../components/participation/registrationText';
 import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
+import { isEventOver } from '../../../shared/eventPhase';
 
 function EventCard({
   event,
@@ -89,7 +90,10 @@ function EventCard({
     <div
       data-onboarding-id={onboardingId}
       className={cn(
-        'bg-card rounded-xl border shadow-xs overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full',
+        // The whole card opens the bazaar: the title link stretches over it (#299), the
+        // buttons on it lie above and keep their own action
+        'relative bg-card rounded-xl border shadow-xs overflow-hidden hover:shadow-md hover:border-primary/40 transition-shadow flex flex-col h-full',
+        'has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-ring has-[[data-card-link]:focus-visible]:ring-offset-2',
         exclusion && 'border-destructive/40'
       )}
     >
@@ -118,7 +122,14 @@ function EventCard({
             className="text-lg font-semibold leading-snug line-clamp-2 break-words"
             title={event.title}
           >
-            {event.title}
+            <Link
+              to={`/public-events/${event._id}`}
+              state={{ from: '/browse-events' }}
+              data-card-link
+              className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+            >
+              {event.title}
+            </Link>
           </h3>
         </div>
         <div className="mb-4 flex-1">
@@ -174,7 +185,7 @@ function EventCard({
               onClick={() =>
                 navigate(`/public-events/${event._id}`, { state: { from: '/browse-events' } })
               }
-              className="flex items-center gap-2 text-sm font-medium text-destructive hover:underline"
+              className="relative z-10 flex items-center gap-2 text-sm font-medium text-destructive hover:underline"
             >
               <Megaphone className="h-4 w-4" />
               {t('search.newMessages', { count: unreadMessages })}
@@ -183,7 +194,7 @@ function EventCard({
           {isRegistered && (
             <button
               onClick={() => navigate('/my-products', { state: { filterEvent: event._id } })}
-              className="flex items-center gap-2 text-sm font-medium text-primary hover:underline transition-all cursor-pointer"
+              className="relative z-10 flex items-center gap-2 text-sm font-medium text-primary hover:underline transition-all cursor-pointer"
             >
               <Package className="h-4 w-4" />
               <span>{t('search.productsAndLabels', { products: productCountLabel })}</span>
@@ -191,7 +202,7 @@ function EventCard({
           )}
         </div>
 
-        <div className="flex gap-2 mt-auto">
+        <div className="relative z-10 flex gap-2 mt-auto">
           <Button
             variant="outline"
             className="flex-1"
@@ -301,7 +312,7 @@ export function SearchEventsPage() {
   });
 
   const renderCard = (event: Doc<'events'>, onboardingId?: string) => (
-    <div key={event._id} className={event.endDate < now ? 'opacity-75 grayscale-[0.5]' : ''}>
+    <div key={event._id} className={isEventOver(event, now) ? 'opacity-75 grayscale-[0.5]' : ''}>
       <EventCard
         event={event}
         isRegistered={registeredEventIds.has(event._id)}

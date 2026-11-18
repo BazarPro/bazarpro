@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { eventPhase } from '../shared/eventPhase';
 
 /**
  * The event an organizer works on: chosen in the overview or by opening an event page,
@@ -46,10 +47,10 @@ type Dated = { _id: string; startDate: number; endDate: number };
 
 /** The running event, else the next one, else the last one that ended. */
 export function currentEvent<T extends Dated>(events: T[], now = Date.now()): T | undefined {
-  const running = events.filter((e) => e.startDate <= now && e.endDate >= now);
+  const running = events.filter((e) => eventPhase(e, now) === 'running');
   if (running.length > 0) return running.sort((a, b) => a.startDate - b.startDate)[0];
   const upcoming = events
-    .filter((e) => e.startDate > now)
+    .filter((e) => eventPhase(e, now) === 'upcoming')
     .sort((a, b) => a.startDate - b.startDate);
   if (upcoming.length > 0) return upcoming[0];
   return [...events].sort((a, b) => b.endDate - a.endDate)[0];

@@ -191,6 +191,7 @@
   "logistics": {
     "title": "Drop-off & pickup",
     "intro": "Sellers with registered items get an email with all information at 6 pm the evening before. Everyone not yet settled gets a pickup reminder: right after the bazaar or, if pickup starts later, 2 hours before it.",
+    "introDirect": "At a direct sale sellers stand at their items themselves: the times are for setup and teardown. Sellers with registered items get an email with all information at 6 pm the evening before. Everyone not yet settled gets a teardown reminder: right after the bazaar or, if teardown starts later, 2 hours before it.",
     "note": "Note for sellers (optional)",
     "notePlaceholder": "e.g. Please hand in bikes with a lock, entrance via the yard",
     "preview": "Preview of the email the evening before",
@@ -198,6 +199,8 @@
     "subject": "Subject: {{subject}}",
     "dropoff": "Drop-off",
     "pickup": "Pickup",
+    "setup": "Setup",
+    "teardown": "Teardown",
     "day": "Day",
     "from": "From",
     "until": "Until",
@@ -293,6 +296,8 @@
     "unlimited": "Unlimited",
     "dropoff": "Drop-off",
     "pickup": "Pickup",
+    "setup": "Setup",
+    "teardown": "Teardown",
     "notGiven": "Not given",
     "categories": "Categories",
     "services": "Services",
@@ -900,6 +905,10 @@
       "details": {
         "title": "Description and contact",
         "text": "What visitors read on your bazaar’s page."
+      },
+      "logisticsDirect": {
+        "title": "Setup and teardown",
+        "text": "When do sellers set up and take down their stands? Already filled in to match the date – just adjust the times."
       }
     },
     "summary": {
@@ -910,6 +919,8 @@
       "joining": "Joining",
       "dropoff": "Drop-off",
       "pickup": "Pickup",
+      "setup": "Setup",
+      "teardown": "Teardown",
       "open": "open",
       "commission": "{{percent}} % commission",
       "intakeFee": "+ €{{fee}} per item",
@@ -921,6 +932,7 @@
       "date": "Date",
       "items": "Items",
       "logistics": "Drop-off & pickup",
+      "logisticsDirect": "Setup & teardown",
       "contact": "Contact",
       "categoryCount_one": "{{count}} category",
       "categoryCount_other": "{{count}} categories",
@@ -995,9 +1007,12 @@
       "dateOpen": "Date to follow",
       "placeOpen": "Place to follow",
       "descriptionOpen": "Your description goes here – what there is, where to park, whether there is coffee and cake.",
+      "contactOpen": "Your contact details for questions from sellers and visitors go here.",
       "dropoff": "Drop-off",
       "sale": "Bazaar",
       "pickup": "Pickup",
+      "setup": "Setup",
+      "teardown": "Teardown",
       "open": "open",
       "browserUrl": "bazarpro.de/bazaar",
       "offersTitle": "Offers",
@@ -1018,6 +1033,7 @@
       "registration": "Joining",
       "basics": "Date & place",
       "logistics": "Drop-off",
+      "logisticsDirect": "Setup",
       "preview": "Preview",
       "details": "Description"
     },
@@ -1235,7 +1251,8 @@
       "offer": {
         "title": "What's on offer",
         "food": "With {{services}} on site",
-        "skiService": "Ski service on site"
+        "skiService": "Ski service on site",
+        "bikeCoding": "Bike coding on site"
       },
       "sell": {
         "title": "How to sell",
@@ -1247,6 +1264,10 @@
         "dropoffAt": "Drop-off: {{time}}",
         "pickup": "Collect unsold items and your money",
         "pickupAt": "Pick-up and payout: {{time}}",
+        "setup": "Set up your stand on site",
+        "setupAt": "Setup: {{time}}",
+        "teardown": "Take down your stand and settle up",
+        "teardownAt": "Teardown and settlement: {{time}}",
         "terms": "{{commission}} % of the proceeds go to the organizer.",
         "termsWithFee": "{{commission}} % of the proceeds and a drop-off fee of €{{fee}} per item go to the organizer."
       },
