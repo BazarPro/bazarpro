@@ -51,6 +51,8 @@ struct ExportSale {
     price_source: String,
     commission: Decimal,
     payout: Decimal,
+    /// Paid to the seller at the item; the desk took only the commission
+    direct_sale: bool,
 }
 
 #[skip_serializing_none]
@@ -118,6 +120,7 @@ async fn get_export(ctx: &mut Ctx, args: EventArgs) -> AppResult<Export> {
                 price_source: sale.price_source,
                 commission: sale.commission,
                 payout: sale.payout,
+                direct_sale: sale.direct_sale,
             }
         })
         .collect();

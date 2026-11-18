@@ -1,8 +1,21 @@
 import { FormSection } from '../../../../components/ui/form-section';
 import { FieldError } from '../../../../components/ui/field-error';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useFormContext } from 'react-hook-form';
+import {
+  Bold,
+  CalendarDays,
+  Heading2,
+  Heading3,
+  Italic,
+  Link,
+  List,
+  MapPin,
+  Pilcrow,
+  type LucideIcon,
+} from 'lucide-react';
 import { Input } from '../../../../components/ui/input';
+import { TimeInput } from '../../../../components/ui/time-input';
 import { Label } from '../../../../components/ui/label';
 import { Textarea } from '../../../../components/ui/text-area';
 import { Button } from '../../../../components/ui/button';
@@ -11,6 +24,16 @@ import { SafeMarkdown } from '../../../../components/markdown/SafeMarkdown';
 import { IMAGE_UPLOAD_MAX_HEIGHT, IMAGE_UPLOAD_MAX_WIDTH } from '../../../../lib/imageProcessing';
 import { Trans, useTranslation } from 'react-i18next';
 import { CountrySelect } from '../../../../components/ui/country-select';
+import { Checkbox } from '../../../../components/ui/checkbox';
+import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
+import { cn } from '../../../../lib/utils';
+import {
+  addToTime,
+  DEFAULT_DURATION_MINUTES,
+  DEFAULT_START_TIME,
+  joinLocal,
+  splitLocal,
+} from '../../../../lib/eventDates';
 
 interface EditEventBasicInfoProps {
   initialCoverImageUrl?: string | null;
@@ -20,13 +43,21 @@ interface EditEventBasicInfoProps {
   allowCoverImage?: boolean;
   /** Settings that need the dates, e.g. the discount start in the wizard */
   afterDates?: ReactNode;
+  /** The wizard asks for date and place first, for the description later */
+  parts?: BasicInfoPart[];
+  /** More fields at the end of the card, e.g. the contact on the edit page */
+  children?: ReactNode;
 }
+
+export type BasicInfoPart = 'when' | 'description';
 
 export function EditEventBasicInfo({
   initialCoverImageUrl,
   lockDates = false,
   allowCoverImage = true,
   afterDates,
+  parts = ['when', 'description'],
+  children,
 }: EditEventBasicInfoProps) {
   const { t } = useTranslation('organizer');
   const {
@@ -131,95 +162,67 @@ export function EditEventBasicInfo({
     });
   };
 
-  return (
-    <FormSection title={t('basic.title')}>
-      <div className="space-y-2" data-onboarding-id="event-form-title">
-        <Label htmlFor="title">{t('basic.eventTitle')}</Label>
-        <Input id="title" {...register('title')} placeholder={t('basic.titlePlaceholder')} />
-        {errors.title && <FieldError>{errors.title.message as string}</FieldError>}
-      </div>
+  const toolbar: { type: Parameters<typeof insertMarkdown>[0]; label: string; icon: LucideIcon }[] =
+    [
+      { type: 'h2', label: 'H2', icon: Heading2 },
+      { type: 'h3', label: 'H3', icon: Heading3 },
+      { type: 'paragraph', label: t('basic.paragraph'), icon: Pilcrow },
+      { type: 'bold', label: t('basic.bold'), icon: Bold },
+      { type: 'italic', label: t('basic.italic'), icon: Italic },
+      { type: 'list', label: t('basic.list'), icon: List },
+      { type: 'link', label: t('basic.link'), icon: Link },
+    ];
 
-      {allowCoverImage && (
-        <div className="space-y-2">
-          <Label>{t('basic.cover')}</Label>
-          <ImageUpload
-            onFilesChange={handleFilesChange}
-            initialImageUrls={initialImageUrls}
-            onRemoveExistingImage={handleRemoveExistingImage}
-            maxFiles={1}
-          />
-          <p className="text-xs text-muted-foreground">
-            {t('basic.imageHint', {
-              width: IMAGE_UPLOAD_MAX_WIDTH,
-              height: IMAGE_UPLOAD_MAX_HEIGHT,
-            })}
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <Label htmlFor="description">{t('basic.description')}</Label>
-          <div className="flex gap-2">
+  const descriptionEditor = (
+    <div className="space-y-2">
+      <LabelWithInfo
+        htmlFor="description"
+        info={<Trans i18nKey="basic.markdownHint" ns="organizer" components={{ code: <code /> }} />}
+      >
+        {t('basic.description')}
+      </LabelWithInfo>
+      <div className="overflow-hidden rounded-md border border-input bg-input-background shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+        <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-1.5 py-1">
+          {toolbar.map(({ type, label, icon: Icon }) => (
             <Button
+              key={type}
               type="button"
+              variant="ghost"
               size="sm"
-              variant={descriptionMode === 'edit' ? 'default' : 'outline'}
-              onClick={() => setDescriptionMode('edit')}
+              className="h-7 w-7 p-0"
+              aria-label={label}
+              title={label}
+              disabled={descriptionMode === 'preview'}
+              onClick={() => insertMarkdown(type)}
             >
-              {t('basic.edit')}
+              <Icon className="h-4 w-4" />
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={descriptionMode === 'preview' ? 'default' : 'outline'}
-              onClick={() => setDescriptionMode('preview')}
-            >
-              {t('basic.preview')}
-            </Button>
+          ))}
+          <div className="ml-auto flex rounded-md bg-muted p-0.5 text-xs">
+            {(['edit', 'preview'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={descriptionMode === mode}
+                onClick={() => setDescriptionMode(mode)}
+                className={cn(
+                  'rounded px-2.5 py-1 font-medium transition-colors',
+                  descriptionMode === mode
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {mode === 'edit' ? t('basic.edit') : t('basic.preview')}
+              </button>
+            ))}
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => insertMarkdown('h2')}>
-            H2
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => insertMarkdown('h3')}>
-            H3
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => insertMarkdown('paragraph')}
-          >
-            {t('basic.paragraph')}
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => insertMarkdown('bold')}>
-            {t('basic.bold')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => insertMarkdown('italic')}
-          >
-            {t('basic.italic')}
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => insertMarkdown('list')}>
-            {t('basic.list')}
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => insertMarkdown('link')}>
-            {t('basic.link')}
-          </Button>
-        </div>
-
         {descriptionMode === 'edit' ? (
           <Textarea
             id="description"
             {...descriptionField}
-            rows={10}
-            className="min-h-64 leading-relaxed"
+            rows={8}
+            className="min-h-48 rounded-none border-0 leading-relaxed shadow-none focus-visible:ring-0"
             onKeyDown={handleDescriptionTab}
             onBlur={(e) => {
               const sanitized = e.target.value.replace(/\t/g, '  ');
@@ -230,7 +233,7 @@ export function EditEventBasicInfo({
             }}
           />
         ) : (
-          <div className="min-h-64 rounded-md border bg-muted/30 p-4">
+          <div className="min-h-48 p-4">
             {descriptionValue.trim() ? (
               <SafeMarkdown
                 content={descriptionValue}
@@ -241,33 +244,65 @@ export function EditEventBasicInfo({
             )}
           </div>
         )}
+      </div>
+      {errors.description && <FieldError>{errors.description.message as string}</FieldError>}
+    </div>
+  );
 
-        <p className="text-xs text-muted-foreground">
-          <Trans i18nKey="basic.markdownHint" ns="organizer" components={{ code: <code /> }} />
-        </p>
-        {errors.description && <FieldError>{errors.description.message as string}</FieldError>}
+  if (!parts.includes('when')) return descriptionEditor;
+
+  return (
+    <FormSection>
+      <div className="space-y-2" data-onboarding-id="event-form-title">
+        <Label htmlFor="title">{t('basic.eventTitle')}</Label>
+        <Input id="title" {...register('title')} placeholder={t('basic.titlePlaceholder')} />
+        {errors.title && <FieldError>{errors.title.message as string}</FieldError>}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="location">{t('basic.location')}</Label>
-        <Input
-          id="location"
-          {...register('location')}
-          placeholder={t('basic.locationPlaceholder')}
-        />
-        {errors.location && <FieldError>{errors.location.message as string}</FieldError>}
-      </div>
+      {allowCoverImage && (
+        <div className="space-y-2">
+          <LabelWithInfo
+            info={t('basic.imageHint', {
+              width: IMAGE_UPLOAD_MAX_WIDTH,
+              height: IMAGE_UPLOAD_MAX_HEIGHT,
+            })}
+          >
+            {t('basic.cover')}
+          </LabelWithInfo>
+          <ImageUpload
+            onFilesChange={handleFilesChange}
+            initialImageUrls={initialImageUrls}
+            onRemoveExistingImage={handleRemoveExistingImage}
+            maxFiles={1}
+          />
+        </div>
+      )}
 
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-medium">{t('basic.address')}</legend>
-        <p className="text-xs text-muted-foreground">{t('basic.addressHint')}</p>
+      <EventDateFields lockDates={lockDates} />
+      {afterDates}
+
+      <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">
+        <legend className="-ml-1 flex items-center gap-1.5 px-1 text-sm font-medium">
+          <MapPin className="h-4 w-4 text-primary" />
+          {t('basic.place')}
+          <InfoTip>{t('basic.addressHint')}</InfoTip>
+        </legend>
+        <div className="space-y-2">
+          <Label htmlFor="location">{t('basic.location')}</Label>
+          <Input
+            id="location"
+            {...register('location')}
+            placeholder={t('basic.locationPlaceholder')}
+          />
+          {errors.location && <FieldError>{errors.location.message as string}</FieldError>}
+        </div>
         <div className="space-y-2">
           <Label htmlFor="street" className="text-xs text-muted-foreground">
             {t('basic.street')}
           </Label>
           <Input id="street" autoComplete="street-address" {...register('address.street')} />
         </div>
-        <div className="grid grid-cols-[minmax(0,7rem)_1fr] gap-3">
+        <div className="grid grid-cols-[minmax(0,6rem)_1fr] gap-3 sm:grid-cols-[minmax(0,6rem)_1fr_minmax(0,11rem)]">
           <div className="space-y-2">
             <Label htmlFor="postalCode" className="text-xs text-muted-foreground">
               {t('basic.postalCode')}
@@ -285,12 +320,12 @@ export function EditEventBasicInfo({
             </Label>
             <Input id="city" autoComplete="address-level2" {...register('address.city')} />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="country" className="text-xs text-muted-foreground">
-            {t('basic.country')}
-          </Label>
-          <CountrySelect id="country" className="max-w-xs" {...register('address.country')} />
+          <div className="col-span-2 space-y-2 sm:col-span-1">
+            <Label htmlFor="country" className="text-xs text-muted-foreground">
+              {t('basic.country')}
+            </Label>
+            <CountrySelect id="country" {...register('address.country')} />
+          </div>
         </div>
         {addressErrors && (
           <FieldError>
@@ -303,33 +338,182 @@ export function EditEventBasicInfo({
         )}
       </fieldset>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="startDate">{t('basic.start')}</Label>
-          <Input
-            id="startDate"
-            type="datetime-local"
-            readOnly={lockDates}
-            aria-readonly={lockDates}
-            className={lockDates ? 'opacity-60 cursor-not-allowed' : undefined}
-            {...register('startDate')}
-          />
-          {errors.startDate && <FieldError>{errors.startDate.message as string}</FieldError>}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="endDate">{t('basic.end')}</Label>
-          <Input
-            id="endDate"
-            type="datetime-local"
-            readOnly={lockDates}
-            aria-readonly={lockDates}
-            className={lockDates ? 'opacity-60 cursor-not-allowed' : undefined}
-            {...register('endDate')}
-          />
-          {errors.endDate && <FieldError>{errors.endDate.message as string}</FieldError>}
-        </div>
-      </div>
-      {afterDates}
+      {parts.includes('description') && descriptionEditor}
+      {children}
     </FormSection>
   );
+}
+
+/**
+ * Day, start and end of the event. Most bazaars last a few hours: one day and two times,
+ * the end day only for longer markets. Picking the day fills in usual times, so only the
+ * hours are left to adjust. The form keeps both as datetime-local values.
+ */
+function EventDateFields({ lockDates }: { lockDates: boolean }) {
+  const { t } = useTranslation('organizer');
+  const {
+    watch,
+    setValue,
+    getFieldState,
+    formState: { errors },
+  } = useFormContext();
+  const startValue = (watch('startDate') as string | undefined) ?? '';
+  const endValue = (watch('endDate') as string | undefined) ?? '';
+
+  // Half-filled entries (a day without a time) are no value yet: they wait here
+  const [draft, setDraft] = useState(() => fromValues(startValue, endValue));
+  const [multiDay, setMultiDay] = useState(
+    () => !!draft.endDay && !!draft.day && draft.endDay !== draft.day
+  );
+  // A value set from outside (draft, template, reset) wins over what waits here
+  useEffect(() => {
+    setDraft((current) => {
+      const composed = toValues(current);
+      if (composed.startDate === startValue && composed.endDate === endValue) return current;
+      const next = fromValues(startValue, endValue);
+      if (!startValue && !endValue && !next.day) return { ...next, day: current.day };
+      return next;
+    });
+  }, [startValue, endValue]);
+  useEffect(() => {
+    if (draft.endDay && draft.day && draft.endDay !== draft.day) setMultiDay(true);
+  }, [draft.day, draft.endDay]);
+
+  const commit = (next: DateDraft) => {
+    setDraft(next);
+    const values = toValues(next);
+    for (const name of ['startDate', 'endDate'] as const) {
+      if (values[name] === (name === 'startDate' ? startValue : endValue)) continue;
+      setValue(name, values[name], {
+        shouldDirty: true,
+        // Checked at once once the field was left before, as typed fields are
+        shouldValidate: getFieldState(name).isTouched,
+      });
+    }
+  };
+
+  const changeDay = (day: string) => {
+    const startTime = draft.startTime || DEFAULT_START_TIME;
+    const endTime = draft.endTime || addToTime(startTime, DEFAULT_DURATION_MINUTES);
+    const endDay = multiDay && draft.endDay && draft.endDay > day ? draft.endDay : day;
+    commit({ day, startTime, endTime, endDay });
+  };
+  const changeStartTime = (startTime: string) => {
+    let endTime = draft.endTime;
+    // The end keeps its distance to the start, within the same day
+    if (startTime && draft.startTime && draft.endTime) {
+      const [h1, m1] = draft.startTime.split(':').map(Number);
+      const [h2, m2] = startTime.split(':').map(Number);
+      endTime = addToTime(draft.endTime, h2 * 60 + m2 - (h1 * 60 + m1));
+    } else if (startTime && !endTime) {
+      endTime = addToTime(startTime, DEFAULT_DURATION_MINUTES);
+    }
+    commit({ ...draft, startTime, endTime });
+  };
+  const toggleMultiDay = (checked: boolean) => {
+    setMultiDay(checked);
+    if (!checked) commit({ ...draft, endDay: draft.day });
+  };
+
+  const lockProps = {
+    readOnly: lockDates,
+    'aria-readonly': lockDates,
+    className: lockDates ? 'opacity-60 cursor-not-allowed' : undefined,
+  };
+  const startError = errors.startDate?.message as string | undefined;
+  const endError = errors.endDate?.message as string | undefined;
+
+  return (
+    <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">
+      <legend className="-ml-1 flex items-center gap-1.5 px-1 text-sm font-medium">
+        <CalendarDays className="h-4 w-4 text-primary" />
+        {t('basic.when')}
+        <InfoTip>{t('basic.whenHint')}</InfoTip>
+      </legend>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="col-span-2 space-y-2 sm:col-span-1">
+          <Label htmlFor="startDay" className="text-xs text-muted-foreground">
+            {multiDay ? t('basic.firstDay') : t('basic.day')}
+          </Label>
+          <Input
+            id="startDay"
+            type="date"
+            value={draft.day}
+            onChange={(e) => changeDay(e.target.value)}
+            {...lockProps}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="startTime" className="text-xs text-muted-foreground">
+            {t('basic.startTime')}
+          </Label>
+          <TimeInput
+            id="startTime"
+            value={draft.startTime}
+            onChange={(v) => changeStartTime(v)}
+            {...lockProps}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="endTime" className="text-xs text-muted-foreground">
+            {t('basic.endTime')}
+          </Label>
+          <TimeInput
+            id="endTime"
+            value={draft.endTime}
+            onChange={(v) => commit({ ...draft, endTime: v })}
+            {...lockProps}
+          />
+        </div>
+        {multiDay && (
+          <div className="col-span-2 space-y-2 sm:col-span-1">
+            <Label htmlFor="endDay" className="text-xs text-muted-foreground">
+              {t('basic.lastDay')}
+            </Label>
+            <Input
+              id="endDay"
+              type="date"
+              min={draft.day || undefined}
+              value={draft.endDay}
+              onChange={(e) => commit({ ...draft, endDay: e.target.value })}
+              {...lockProps}
+            />
+          </div>
+        )}
+      </div>
+      {!lockDates && (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="multiDay"
+            checked={multiDay}
+            onCheckedChange={(checked) => toggleMultiDay(!!checked)}
+          />
+          <Label htmlFor="multiDay" className="cursor-pointer text-xs font-normal">
+            {t('basic.multiDay')}
+          </Label>
+        </div>
+      )}
+      {(startError || endError) && <FieldError>{startError ?? endError}</FieldError>}
+    </fieldset>
+  );
+}
+
+interface DateDraft {
+  day: string;
+  startTime: string;
+  endTime: string;
+  endDay: string;
+}
+
+function fromValues(startDate: string, endDate: string): DateDraft {
+  const start = splitLocal(startDate);
+  const end = splitLocal(endDate);
+  return { day: start.date, startTime: start.time, endTime: end.time, endDay: end.date };
+}
+
+function toValues(draft: DateDraft): { startDate: string; endDate: string } {
+  return {
+    startDate: joinLocal(draft.day, draft.startTime),
+    endDate: joinLocal(draft.endDay || draft.day, draft.endTime),
+  };
 }

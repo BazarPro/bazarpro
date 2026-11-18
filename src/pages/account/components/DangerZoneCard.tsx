@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { useMutation, useApiClient, useQuery, useAuthActions } from '../../../lib/api/react';
 import { api } from '../../../lib/api/functions';
 import { Button } from '../../../components/ui/button';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, ShieldAlert, Trash2 } from 'lucide-react';
+import { FormSection } from '../../../components/ui/form-section';
 import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '../../../lib/errors';
 import { useTranslation } from 'react-i18next';
@@ -79,58 +80,55 @@ export function DangerZoneCard() {
   };
 
   return (
-    <div className="bg-card rounded-xl border border-destructive/20 shadow-xs overflow-hidden mb-12">
-      <div className="p-6">
-        <h3 className="text-lg font-semibold text-destructive mb-4">{t('danger.title')}</h3>
-        <div className="space-y-6">
-          <div>
-            <p className="text-sm text-muted-foreground mb-4">{t('danger.intro')}</p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                variant="outline"
-                onClick={handleExportData}
-                disabled={isExporting}
-                className="flex-1 sm:flex-none"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                {isExporting ? t('danger.exporting') : t('danger.export')}
-              </Button>
+    <FormSection
+      icon={ShieldAlert}
+      tone="destructive"
+      title={t('danger.title')}
+      info={t('danger.intro')}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Button
+          variant="outline"
+          onClick={handleExportData}
+          disabled={isExporting}
+          className="sm:flex-none"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {isExporting ? t('danger.exporting') : t('danger.export')}
+        </Button>
 
-              <ConfirmDialog
-                trigger={
-                  <Button variant="destructive" className="flex-1 sm:flex-none">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    {t('danger.delete')}
-                  </Button>
-                }
-                title={t('danger.confirmTitle')}
-                description={t('danger.confirmText', { count: deletionInfo?.graceDays ?? 30 })}
-                confirmLabel={isDeleting ? t('danger.deleting') : t('danger.confirm')}
-                loading={isDeleting}
-                onConfirm={handleDeleteAccount}
-                disabled={pastEvents.length > 0 && !settlementExported}
-                destructive
-              >
-                <PastEventsHandover
-                  events={pastEvents}
-                  exported={settlementExported}
-                  onExportedChange={setSettlementExported}
-                />
-                <div className="flex items-start gap-2 text-sm">
-                  <Checkbox
-                    id="delete-immediately"
-                    checked={immediately}
-                    onCheckedChange={(checked) => setImmediately(!!checked)}
-                  />
-                  <label htmlFor="delete-immediately" className="leading-snug">
-                    {t('danger.immediately')}
-                  </label>
-                </div>
-              </ConfirmDialog>
-            </div>
+        <ConfirmDialog
+          trigger={
+            <Button variant="destructive" className="sm:flex-none">
+              <Trash2 className="mr-2 h-4 w-4" />
+              {t('danger.delete')}
+            </Button>
+          }
+          title={t('danger.confirmTitle')}
+          description={t('danger.confirmText', { count: deletionInfo?.graceDays ?? 30 })}
+          confirmLabel={isDeleting ? t('danger.deleting') : t('danger.confirm')}
+          loading={isDeleting}
+          onConfirm={handleDeleteAccount}
+          disabled={pastEvents.length > 0 && !settlementExported}
+          destructive
+        >
+          <PastEventsHandover
+            events={pastEvents}
+            exported={settlementExported}
+            onExportedChange={setSettlementExported}
+          />
+          <div className="flex items-start gap-2 text-sm">
+            <Checkbox
+              id="delete-immediately"
+              checked={immediately}
+              onCheckedChange={(checked) => setImmediately(!!checked)}
+            />
+            <label htmlFor="delete-immediately" className="leading-snug">
+              {t('danger.immediately')}
+            </label>
           </div>
-        </div>
+        </ConfirmDialog>
       </div>
-    </div>
+    </FormSection>
   );
 }

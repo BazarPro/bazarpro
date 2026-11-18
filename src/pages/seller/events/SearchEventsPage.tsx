@@ -7,13 +7,24 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { ImageWithFallback } from '../../../components/ui/image-with-fallback';
 import { CardGridSkeleton, Loading } from '../../../components/ui/loading';
-import { Calendar, MapPin, Check, Package, LogOut, Megaphone, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import type { Doc, Id } from '../../../lib/api/types';
+import {
+  Calendar,
+  CalendarClock,
+  MapPin,
+  Check,
+  Package,
+  LogOut,
+  Megaphone,
+  Clock,
+  Users,
+  Ban,
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import type { Doc, Exclusion, Id } from '../../../lib/api/types';
 import { useState } from 'react';
 import { EventFilters } from '../../../components/events/EventFilters';
 import { EventRegistrationDialog } from '../../../components/events/EventRegistrationDialog';
-import { formatDateRangeDE } from '../../../lib/utils';
+import { cn, formatDateDE, formatDateRangeDE } from '../../../lib/utils';
 import { describeSellerSchedule } from '../../../lib/sellerFees';
 import { stripMarkdownToText } from '../../../lib/markdown';
 import { toast } from 'sonner';
@@ -21,16 +32,22 @@ import { getUserFacingErrorMessage } from '../../../lib/errors';
 import { PostRegistrationSuccessDialog } from '../../../components/events/PostRegistrationSuccessDialog';
 import { useTranslation } from 'react-i18next';
 import { formatEventPlace } from '../../../shared/eventJsonLd';
+import { describeRegistration } from '../../../components/participation/registrationText';
+import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
+import { isEventOver } from '../../../shared/eventPhase';
 
 function EventCard({
   event,
   isRegistered,
+  exclusion,
   unreadMessages = 0,
   onJoin,
   onboardingId,
 }: {
   event: Doc<'events'>;
   isRegistered: boolean;
+  /** The organizer took the seller out: no joining, no leaving */
+  exclusion?: Exclusion;
   /** New messages of the organizer; they are shown on the bazaar page */
   unreadMessages?: number;
   onJoin: (event: Doc<'events'>) => void;
@@ -64,11 +81,21 @@ function EventCard({
   const productCountLabel =
     productCount !== undefined ? t('search.products', { count: productCount }) : '…';
   const schedule = isRegistered ? describeSellerSchedule(event).rows : [];
+  // Closed, not open yet or full: say so instead of a button that only fails
+  const registration =
+    isRegistered || exclusion ? undefined : describeRegistration(event, Date.now());
+  const closedText = registration?.blocked;
 
   return (
     <div
       data-onboarding-id={onboardingId}
-      className="bg-card rounded-xl border shadow-xs overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full"
+      className={cn(
+        // The whole card opens the bazaar: the title link stretches over it (#299), the
+        // buttons on it lie above and keep their own action
+        'relative bg-card rounded-xl border shadow-xs overflow-hidden hover:shadow-md hover:border-primary/40 transition-shadow flex flex-col h-full',
+        'has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-ring has-[[data-card-link]:focus-visible]:ring-offset-2',
+        exclusion && 'border-destructive/40'
+      )}
     >
       <div className="aspect-video overflow-hidden relative">
         <ImageWithFallback
@@ -76,11 +103,17 @@ function EventCard({
           alt={event.title}
           className="w-full h-full object-cover"
         />
-        {isRegistered && (
-          <Badge variant="success" className="absolute top-2 right-2">
-            <Check /> {t('search.registered')}
-            {sellerNumber ? ` · ${t('search.sellerNumber', { number: sellerNumber })}` : ''}
+        {exclusion ? (
+          <Badge variant="destructive" className="absolute top-2 right-2">
+            <Ban /> {t('search.excluded')}
           </Badge>
+        ) : (
+          isRegistered && (
+            <Badge variant="success" className="absolute top-2 right-2">
+              <Check /> {t('search.registered')}
+              {sellerNumber ? ` · ${t('search.sellerNumber', { number: sellerNumber })}` : ''}
+            </Badge>
+          )
         )}
       </div>
       <div className="p-5 flex-1 flex flex-col">
@@ -89,7 +122,14 @@ function EventCard({
             className="text-lg font-semibold leading-snug line-clamp-2 break-words"
             title={event.title}
           >
-            {event.title}
+            <Link
+              to={`/public-events/${event._id}`}
+              state={{ from: '/browse-events' }}
+              data-card-link
+              className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+            >
+              {event.title}
+            </Link>
           </h3>
         </div>
         <div className="mb-4 flex-1">
@@ -99,6 +139,15 @@ function EventCard({
         </div>
 
         <div className="space-y-2 mb-5">
+          {exclusion && (
+            // The full notice with the reason is on the bazaar page behind "Details"
+            <div className="flex items-start gap-2 text-sm">
+              <Ban className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+              <span className="text-destructive">
+                {t('search.excludedSince', { date: formatDateDE(exclusion.excludedAt) })}
+              </span>
+            </div>
+          )}
           <div className="flex items-start gap-2 text-sm">
             <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
             <span className="text-muted-foreground">
@@ -119,12 +168,24 @@ function EventCard({
               </span>
             </div>
           ))}
+          {registration?.until && (
+            <div className="flex items-start gap-2 text-sm">
+              <CalendarClock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <span className="text-muted-foreground">{registration.until}</span>
+            </div>
+          )}
+          {registration?.spots && (
+            <div className="flex items-start gap-2 text-sm">
+              <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <span className="text-muted-foreground">{registration.spots}</span>
+            </div>
+          )}
           {unreadMessages > 0 && (
             <button
               onClick={() =>
                 navigate(`/public-events/${event._id}`, { state: { from: '/browse-events' } })
               }
-              className="flex items-center gap-2 text-sm font-medium text-destructive hover:underline"
+              className="relative z-10 flex items-center gap-2 text-sm font-medium text-destructive hover:underline"
             >
               <Megaphone className="h-4 w-4" />
               {t('search.newMessages', { count: unreadMessages })}
@@ -133,7 +194,7 @@ function EventCard({
           {isRegistered && (
             <button
               onClick={() => navigate('/my-products', { state: { filterEvent: event._id } })}
-              className="flex items-center gap-2 text-sm font-medium text-primary hover:underline transition-all cursor-pointer"
+              className="relative z-10 flex items-center gap-2 text-sm font-medium text-primary hover:underline transition-all cursor-pointer"
             >
               <Package className="h-4 w-4" />
               <span>{t('search.productsAndLabels', { products: productCountLabel })}</span>
@@ -141,7 +202,7 @@ function EventCard({
           )}
         </div>
 
-        <div className="flex gap-2 mt-auto">
+        <div className="relative z-10 flex gap-2 mt-auto">
           <Button
             variant="outline"
             className="flex-1"
@@ -153,9 +214,9 @@ function EventCard({
           >
             {t('search.details')}
           </Button>
-          {!isRegistered ? (
-            <Button className="flex-1" onClick={() => onJoin(event)}>
-              {t('search.join')}
+          {exclusion ? null : !isRegistered ? (
+            <Button className="flex-1" disabled={!!closedText} onClick={() => onJoin(event)}>
+              {closedText ?? t('search.join')}
             </Button>
           ) : (
             <ConfirmDialog
@@ -190,6 +251,9 @@ export function SearchEventsPage() {
     | Doc<'events'>[]
     | undefined;
   const unreadMessages = useQuery(api.broadcasts.getMyUnreadMessages, {}) ?? {};
+  const excludedEvents = useQuery(api.eventExclusions.getMyExcludedEvents, { includePast });
+  // The excluded bazaars are right here among the seller's own
+  useMarkNoticesSeen('participation');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date-asc');
@@ -219,14 +283,23 @@ export function SearchEventsPage() {
   };
 
   const now = Date.now();
-  const isLoading = allEvents === undefined || registeredEvents === undefined;
+  const isLoading =
+    allEvents === undefined || registeredEvents === undefined || excludedEvents === undefined;
   const registeredEventIds = new Set(registeredEvents?.map((event) => event._id));
-  const myEvents = [...(registeredEvents ?? [])].sort((a, b) => a.startDate - b.startDate);
+  const exclusions = new Map(excludedEvents?.map(({ event, exclusion }) => [event._id, exclusion]));
+  // Excluded with items handed in, they are still a seller: listed once
+  const myEvents = [
+    ...(registeredEvents ?? []),
+    ...(excludedEvents ?? [])
+      .map(({ event }) => event)
+      .filter((event) => !registeredEventIds.has(event._id)),
+  ].sort((a, b) => a.startDate - b.startDate);
 
   const search = searchTerm.toLowerCase();
   const newEvents = (allEvents ?? []).filter(
     (event) =>
       !registeredEventIds.has(event._id) &&
+      !exclusions.has(event._id) &&
       (event.title.toLowerCase().includes(search) ||
         event.description.toLowerCase().includes(search) ||
         formatEventPlace(event).toLowerCase().includes(search))
@@ -239,10 +312,11 @@ export function SearchEventsPage() {
   });
 
   const renderCard = (event: Doc<'events'>, onboardingId?: string) => (
-    <div key={event._id} className={event.endDate < now ? 'opacity-75 grayscale-[0.5]' : ''}>
+    <div key={event._id} className={isEventOver(event, now) ? 'opacity-75 grayscale-[0.5]' : ''}>
       <EventCard
         event={event}
         isRegistered={registeredEventIds.has(event._id)}
+        exclusion={exclusions.get(event._id)}
         unreadMessages={unreadMessages[event._id]?.count}
         onJoin={handleJoinClick}
         onboardingId={onboardingId}
@@ -274,7 +348,11 @@ export function SearchEventsPage() {
               )}
 
               <section aria-labelledby="new-events-heading" className="space-y-4">
-                <h2 id="new-events-heading" className="text-lg font-semibold">
+                {/* Only needed to tell it apart from the own bazaars above */}
+                <h2
+                  id="new-events-heading"
+                  className={myEvents.length > 0 ? 'text-lg font-semibold' : 'sr-only'}
+                >
                   {t('search.discover')}
                 </h2>
                 <EventFilters

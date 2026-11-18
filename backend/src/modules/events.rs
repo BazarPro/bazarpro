@@ -19,6 +19,7 @@ use uuid::Uuid;
 use super::access::{active_admins, is_platform_admin, require_admin};
 use super::category_fields::requirable_fields;
 use super::docs::{self, Event};
+use super::event_exclusions::{exclusion, has_handed_in};
 use super::event_roles::{
     self, Permission, Role, TEAM, has_any_role_or_admin, has_role_or_admin, is_bystander,
     load_vendors_with_calculations, require_permission,
@@ -43,9 +44,10 @@ pub const TIME_BOUNDARIES_JOB: &str = "events.touchTimeBoundaries";
 /// covers its minute. A boundary seen twice only costs one more refetch.
 const TIME_BOUNDARY_WINDOW: Duration = Duration::minutes(2);
 const MAX_SELLER_NOTE: usize = 2000;
-const SERVICES: [&str; 5] = [
+const SERVICES: [&str; 6] = [
     "Parkplatz",
     "Skiservice",
+    "Fahrradcodierung",
     "Gastronomie",
     "Imbiss",
     "Getränke",
@@ -75,6 +77,7 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "events.saveEventDraft" => save_event_draft);
     register!(registry, Mutation "events.deleteEventDraft" => delete_event_draft);
     register!(registry, Mutation "events.editEvent" => edit_event);
+    register!(registry, Mutation "events.setRegistrationOpen" => set_registration_open);
     register!(registry, Mutation "events.deleteEvent" => delete_event);
     register!(registry, Query "events.getMyRegisteredEvents" => get_my_registered_events);
     register!(registry, Mutation "events.leaveEvent" => leave_event);
@@ -216,7 +219,7 @@ struct ListArgs {
     include_past: Option<bool>,
 }
 
-fn time_condition(include_past: Option<bool>) -> &'static str {
+pub(crate) fn time_condition(include_past: Option<bool>) -> &'static str {
     if include_past == Some(true) {
         "true"
     } else {
@@ -749,6 +752,11 @@ struct FeaturesArgs {
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
     card_payments: Option<bool>,
+    direct_sale: Option<bool>,
+    /// Absent (older apps): switch and window stay as stored
+    registration_open: Option<bool>,
+    registration_starts_at: Option<f64>,
+    registration_ends_at: Option<f64>,
 }
 
 fn sanitize_item_limit(limit: Option<f64>) -> AppResult<Option<f64>> {
@@ -930,6 +938,52 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
                 .unwrap_or(false)
         ),
     );
+    put(
+        "directSale",
+        json!(
+            features
+                .direct_sale
+                .or(previous_bool("directSale"))
+                .unwrap_or(false)
+        ),
+    );
+    let previous_time = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
+    let sent_window = (
+        features.registration_starts_at,
+        features.registration_ends_at,
+    );
+    let previous_window = (
+        previous_time("registrationStartsAt"),
+        previous_time("registrationEndsAt"),
+    );
+    let (registration_open, (starts, ends)) = match features.registration_open {
+        Some(true) => (true, sent_window),
+        // Closed: the form hides the window and sends none. The stored one stays, like with
+        // the quick switch (`set_registration_open`), so opening again brings the deadline back
+        Some(false) if sent_window == (None, None) => (false, previous_window),
+        Some(false) => (false, sent_window),
+        // An older app sends none of it
+        None => (
+            previous_bool("registrationOpen").unwrap_or(true),
+            previous_window,
+        ),
+    };
+    for (time, key) in [
+        (starts, "registrationStartsAt"),
+        (ends, "registrationEndsAt"),
+    ] {
+        if time.is_some_and(|ms| from_ms(ms).is_none()) {
+            return Err(invalid(key));
+        }
+    }
+    if let (Some(starts), Some(ends)) = (starts, ends)
+        && ends <= starts
+    {
+        return Err(AppError::bad_request("event.registrationWindow"));
+    }
+    put("registrationOpen", json!(registration_open));
+    put("registrationStartsAt", json!(starts));
+    put("registrationEndsAt", json!(ends));
     Ok(Value::Object(stored))
 }
 
@@ -1230,11 +1284,14 @@ struct EditArgs {
 
 /// Edits an event (organizer only). A running event keeps its dates, commission and
 /// visibility; once sellers registered, fees only go down and the item limit only up.
+/// The platform admin may change everything, also of events that are over, e.g. to
+/// correct a mistake.
 async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     let user = ctx.require_user()?;
     let event = load(ctx, args.id.0).await?;
     let now = Utc::now();
-    if event.end_date < now {
+    let admin = is_platform_admin(ctx.conn(), Some(user)).await?;
+    if event.end_date < now && !admin {
         return Err(AppError::bad_request("event.pastNoEdit"));
     }
     if !has_role_or_admin(ctx.conn(), event.id, user, Role::Organizer).await? {
@@ -1249,7 +1306,7 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     let mut start = time_arg(args.start_date, "startDate")?;
     let mut end = time_arg(args.end_date, "endDate")?;
     let commission = money(args.commission, "commission")?;
-    let running = event.start_date <= now && now <= event.end_date;
+    let running = !admin && event.start_date <= now && now <= event.end_date;
     if running {
         // datetime-local inputs drop seconds, so an unchanged date may differ slightly
         let changed =
@@ -1267,7 +1324,25 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         Some(features) => sanitize_features(features, event.features.as_ref())?,
         None => event.features.clone().unwrap_or_else(|| json!({})),
     };
-    if fees_locked(ctx, &event).await? {
+    // A sale is booked the way the event was set when it was made. Switching afterwards
+    // would leave one cash summary with both kinds, and desks selling the old way
+    let direct = |features: Option<&Value>| {
+        features
+            .and_then(|f| f.get("directSale"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    };
+    if !admin && direct(Some(&features)) != direct(event.features.as_ref()) {
+        let sold: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM purchases WHERE event_id = $1)")
+                .bind(event.id)
+                .fetch_one(ctx.conn())
+                .await?;
+        if sold {
+            return Err(AppError::bad_request("event.directSaleLocked"));
+        }
+    }
+    if !admin && fees_locked(ctx, &event).await? {
         let fee = |features: Option<&Value>| {
             features
                 .and_then(|f| f.get("intakeFee"))
@@ -1292,7 +1367,9 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
             return Err(AppError::bad_request("event.limitOnlyHigher"));
         }
     }
-    let making_public = event.visibility != "public"
+    // The admin approves anyway: no request to themselves
+    let making_public = !admin
+        && event.visibility != "public"
         && args.visibility == "public"
         && ctx.state.config.mode != InstanceMode::Single;
     let logistics = args.seller_logistics.map(sanitize_logistics).transpose()?;
@@ -1372,6 +1449,51 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     Ok(())
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RegistrationArgs {
+    event_id: Id,
+    open: bool,
+}
+
+/// The quick switch on the sellers page (organizer only). Closing keeps the window, so
+/// opening again brings a deadline back. Opening means now: a planned start goes, as
+/// does a deadline already passed.
+async fn set_registration_open(ctx: &mut Ctx, args: RegistrationArgs) -> AppResult<()> {
+    let user = ctx.require_user()?;
+    let event = load(ctx, args.event_id.0).await?;
+    let now = Utc::now();
+    if event.end_date < now {
+        return Err(AppError::bad_request("event.pastNoEdit"));
+    }
+    if !has_role_or_admin(ctx.conn(), event.id, user, Role::Organizer).await? {
+        return Err(AppError::forbidden("auth.forbidden"));
+    }
+    let mut features = match event.features {
+        Some(Value::Object(features)) => features,
+        _ => Map::new(),
+    };
+    features.insert("registrationOpen".to_owned(), json!(args.open));
+    if args.open {
+        features.remove("registrationStartsAt");
+        let passed = features
+            .get("registrationEndsAt")
+            .and_then(Value::as_f64)
+            .and_then(from_ms)
+            .is_some_and(|end| end <= now);
+        if passed {
+            features.remove("registrationEndsAt");
+        }
+    }
+    sqlx::query("UPDATE events SET features = $2 WHERE id = $1")
+        .bind(event.id)
+        .bind(Value::Object(features))
+        .execute(ctx.conn())
+        .await?;
+    touch_event(ctx, event.id);
+    Ok(())
+}
+
 /// Deletes an upcoming or running event (organizer only); not when it has sales.
 async fn delete_event(ctx: &mut Ctx, args: IdArgs) -> AppResult<()> {
     let user = ctx.require_user()?;
@@ -1433,25 +1555,23 @@ async fn leave_event(ctx: &mut Ctx, args: EventArgs) -> AppResult<()> {
     if event.end_date < Utc::now() {
         return Err(AppError::bad_request("leave.past"));
     }
+    // Excluded: already out. The seller row stays, so the organizer still finds the person
+    // in the seller list and can take the exclusion back, with the same number.
+    if exclusion(ctx.conn(), event.id, user).await?.is_some() {
+        return Err(AppError::bad_request("leave.excluded"));
+    }
     let seller = docs::event_seller(ctx.conn(), event.id, user).await?;
     if seller.as_ref().is_some_and(|s| s.payout_received) {
         return Err(AppError::bad_request("leave.paidOut"));
     }
-    let handed_in: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
-        "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
-                        WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status IN {})",
-        sales::ACCEPTED_STATUSES
-    )))
-    .bind(event.id)
-    .bind(user)
-    .fetch_one(ctx.conn())
-    .await?;
-    if handed_in {
+    if has_handed_in(ctx.conn(), event.id, user).await? {
         return Err(AppError::bad_request("leave.itemsHandledIn"));
     }
+    // Rejected items stay: leaving and joining again does not announce them anew
     let products: Vec<Uuid> = sqlx::query_scalar(
         "DELETE FROM event_products ep USING products p
          WHERE ep.product_id = p.id AND ep.event_id = $1 AND p.vendor_id = $2
+           AND ep.status <> 'rejected'
          RETURNING ep.product_id",
     )
     .bind(event.id)
@@ -1475,9 +1595,10 @@ async fn get_my_product_count_for_event(ctx: &mut Ctx, args: EventArgs) -> AppRe
     let Some(user) = ctx.user else { return Ok(0) };
     ctx.read(Topic::Event(args.event_id.0));
     ctx.read(Topic::User(user));
+    // Like the item limit: a rejected item takes no place
     Ok(sqlx::query_scalar(
         "SELECT count(*) FROM event_products ep JOIN products p ON p.id = ep.product_id
-         WHERE ep.event_id = $1 AND p.vendor_id = $2",
+         WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status <> 'rejected'",
     )
     .bind(args.event_id.0)
     .bind(user)
@@ -1501,6 +1622,10 @@ struct FinancialSummary {
     total_net_revenue: Decimal,
     total_discounts: Decimal,
     total_commission: Decimal,
+    /// Sales paid to the seller at the item; the till holds only their commission
+    total_direct_sales: Decimal,
+    /// Their commission, the part of them in the till
+    total_direct_commission: Decimal,
     total_payout_soll: Decimal,
     total_paid_out: Decimal,
     total_pending_payout: Decimal,
@@ -1531,16 +1656,37 @@ async fn get_event_financial_summary(
     let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
     let payout_soll: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
     let (card_sales, card): (i64, Decimal) = sqlx::query_as(
-        "SELECT count(*), COALESCE(sum(total_amount), 0) FROM purchases
-         WHERE event_id = $1 AND payment_method = 'card'",
+        // What the desk took by card: at a direct sale only the commission
+        "SELECT count(*),
+           COALESCE(sum(CASE WHEN direct_sale THEN commission_amount ELSE total_amount END), 0)
+         FROM purchases WHERE event_id = $1 AND payment_method = 'card'",
     )
     .bind(event)
     .fetch_one(ctx.conn())
     .await?;
+    let direct: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.total_amount)
+        .sum();
+    let direct_commission: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.commission_amount)
+        .sum();
+    let taken: Decimal = purchases.iter().map(docs::Purchase::taken).sum();
 
     let vendors = load_vendors_with_calculations(ctx, event).await?;
     // A seller whose sales do not cover the intake fee pays in instead of getting paid out
     let owes = |payout: Decimal| payout < Decimal::new(-5, 3);
+    // At a direct-sale event a seller without money either way has nothing to settle; the
+    // progress counts only those who have, or who were settled anyway
+    let direct_event = docs::event(ctx.conn(), event)
+        .await?
+        .is_some_and(|event| event.resolved_features().direct_sale);
+    let to_settle = |v: &&event_roles::VendorWithCalculations| {
+        !direct_event || v.paid || v.payout.abs() >= Decimal::new(5, 3)
+    };
     let sum = |paid: bool, owing: bool| -> Decimal {
         vendors
             .iter()
@@ -1570,6 +1716,8 @@ async fn get_event_financial_summary(
         total_net_revenue: net,
         total_discounts: gross - net,
         total_commission: commission,
+        total_direct_sales: direct,
+        total_direct_commission: direct_commission,
         total_payout_soll: payout_soll,
         total_paid_out: paid_out,
         total_pending_payout: pending,
@@ -1578,12 +1726,12 @@ async fn get_event_financial_summary(
         total_fees_to_collect: to_collect.iter().map(|s| s.amount).sum(),
         sellers_to_collect: to_collect,
         // Payouts are made in cash, so with many card payments this can be negative
-        cash_in_hand_soll: net - card - paid_out + fees_collected,
+        cash_in_hand_soll: taken - card - paid_out + fees_collected,
         total_card_revenue: card,
         card_sales_count: card_sales,
         sales_count: purchases.len(),
         vendors_paid_count: vendors.iter().filter(|v| v.paid).count(),
-        vendors_total_count: vendors.len(),
+        vendors_total_count: vendors.iter().filter(to_settle).count(),
     })
 }
 
@@ -1601,21 +1749,24 @@ async fn count_pending_approvals(ctx: &mut Ctx, _: NoArgs) -> AppResult<i64> {
     .await?)
 }
 
-/// The events whose start, end or discount start lies in `(from, to]`.
+/// The events whose start, end, discount start or registration window (opening or
+/// closing) lies in `(from, to]`.
 pub async fn events_crossing_time_boundaries(
     conn: &mut sqlx::PgConnection,
     from: DateTime<Utc>,
     to: DateTime<Utc>,
 ) -> sqlx::Result<Vec<Uuid>> {
-    // discountStartsAt is kept in milliseconds, like every time in `features`
+    // Times in `features` are kept in milliseconds
     sqlx::query_scalar(
         "SELECT id FROM events,
-           LATERAL (SELECT CASE WHEN jsonb_typeof(features->'discountStartsAt') = 'number'
-             THEN to_timestamp((features->>'discountStartsAt')::double precision / 1000)
-           END AS discount_start) d
+           LATERAL (SELECT ARRAY(
+             SELECT to_timestamp((features->>key)::double precision / 1000)
+             FROM unnest(ARRAY['discountStartsAt', 'registrationStartsAt', 'registrationEndsAt']) key
+             WHERE jsonb_typeof(features->key) = 'number'
+           ) AS times) f
          WHERE (start_date > $1 AND start_date <= $2)
             OR (end_date > $1 AND end_date <= $2)
-            OR (discount_start > $1 AND discount_start <= $2)",
+            OR EXISTS (SELECT 1 FROM unnest(f.times) t WHERE t > $1 AND t <= $2)",
     )
     .bind(from)
     .bind(to)

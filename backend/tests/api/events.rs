@@ -675,6 +675,57 @@ async fn running_events_keep_dates_fees_and_visibility(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_platform_admin_changes_every_setting(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let organizer = fixtures::user(&db, "Orga").await;
+    let admin = fixtures::session(&db, fixtures::admin(&db, "Admin").await).await;
+    let running = fixtures::event(
+        &db,
+        EventSpec {
+            start_hours: -1,
+            end_hours: 5,
+            features: json!({ "intakeFee": 1, "maxItemsPerSeller": 20 }),
+            ..EventSpec::new("Läuft", organizer)
+        },
+    )
+    .await;
+    fixtures::role(&db, running, fixtures::user(&db, "Seller").await, "seller").await;
+    let mut args = edit_args(&app, &admin, running).await;
+    args["startDate"] = json!(args["startDate"].as_f64().unwrap() + HOUR);
+    args["visibility"] = json!("logged-in");
+    args["commission"] = json!(25);
+    args["features"] = json!({ "intakeFee": 3, "maxItemsPerSeller": 5, "directSale": true });
+    let result = app
+        .mutation("events.editEvent", args.clone(), Some(&admin))
+        .await;
+    assert_eq!(result.body["value"], Value::Null, "{:?}", result.body);
+    let event = app
+        .query("events.getEvent", json!({ "id": running }), Some(&admin))
+        .await
+        .body["value"]
+        .clone();
+    assert_eq!(event["startDate"], args["startDate"]);
+    assert_eq!(event["visibility"], "logged-in");
+    assert_eq!(event["features"]["intakeFee"], 3.0);
+    assert_eq!(event["features"]["maxItemsPerSeller"], 5.0);
+
+    // Also when it is over
+    let past = fixtures::event(
+        &db,
+        EventSpec {
+            start_hours: -10,
+            end_hours: -5,
+            ..EventSpec::new("Vorbei", organizer)
+        },
+    )
+    .await;
+    let mut args = edit_args(&app, &admin, past).await;
+    args["title"] = json!("Korrigiert");
+    let result = app.mutation("events.editEvent", args, Some(&admin)).await;
+    assert_eq!(result.body["value"], Value::Null, "{:?}", result.body);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn after_the_first_seller_fees_only_go_down_and_the_limit_only_up(db: PgPool) {
     let app = TestApp::new(db.clone());
     let organizer = fixtures::user(&db, "Orga").await;

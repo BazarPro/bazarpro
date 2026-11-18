@@ -16,6 +16,7 @@ export function useEventAccess(eventId: Id<'events'>) {
   const canManage = isOrganizer || (roles ?? []).includes('coorganizer');
   const allowed: readonly HelperPermission[] | undefined =
     permissions ?? (disconnected && canManage ? HELPER_PERMISSIONS : undefined);
+  const isAdmin = viewer?.systemRole === 'admin';
   return {
     /** Still loading: not known yet whether the user may be here */
     isLoading: roles === undefined || (allowed === undefined && !disconnected),
@@ -23,7 +24,9 @@ export function useEventAccess(eventId: Id<'events'>) {
     /** Organizer or helper: runs the bazaar */
     canManage,
     /** Writing to all sellers and appointing helpers: not for helpers themselves */
-    canLead: isOrganizer || viewer?.systemRole === 'admin',
+    canLead: isOrganizer || isAdmin,
+    /** Administrator of the platform: may change every setting, also of past events */
+    isAdmin,
     /** What the organizer allows the helper (#47); organizers and admins may do everything */
     can: (permission: HelperPermission) => (allowed ?? []).includes(permission),
   };

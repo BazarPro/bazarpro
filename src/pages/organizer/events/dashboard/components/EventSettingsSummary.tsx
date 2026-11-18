@@ -94,12 +94,26 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
           ? t('summary.sellers', { count: event.vendorLimit })
           : t('summary.unlimited')}
       </Row>
-      <Row label={t('summary.dropoff')}>
+      <Row label={t('summary.registration')}>
+        {!features.registrationOpen
+          ? t('summary.registrationClosed')
+          : features.registrationStartsAt !== undefined || features.registrationEndsAt !== undefined
+            ? [
+                features.registrationStartsAt !== undefined &&
+                  t('summary.fromTime', { time: timeFormat.format(features.registrationStartsAt) }),
+                features.registrationEndsAt !== undefined &&
+                  t('summary.untilTime', { time: timeFormat.format(features.registrationEndsAt) }),
+              ]
+                .filter(Boolean)
+                .join(' ')
+            : t('summary.registrationOpen')}
+      </Row>
+      <Row label={t(features.directSale ? 'summary.setup' : 'summary.dropoff')}>
         {logistics?.dropoffStart !== undefined
           ? formatRange(logistics.dropoffStart, logistics.dropoffEnd)
           : t('summary.notGiven')}
       </Row>
-      <Row label={t('summary.pickup')}>
+      <Row label={t(features.directSale ? 'summary.teardown' : 'summary.pickup')}>
         {logistics?.pickupStart !== undefined
           ? formatRange(logistics.pickupStart, logistics.pickupEnd)
           : t('summary.notGiven')}
@@ -120,6 +134,7 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
       </Row>
       <Row label={t('summary.features')}>
         <ul className="space-y-1.5">
+          <Feature on={features.directSale} title={t('summary.directSale')} />
           <Feature on={features.discounts} title={t('summary.discounts')} detail={discountDetail} />
           <Feature on={features.priceOffers} title={t('summary.offers')} />
           <Feature on={features.minimumPrice} title={t('summary.minimum')} />

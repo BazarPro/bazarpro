@@ -15,6 +15,24 @@ import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useTranslation } from 'react-i18next';
 import type { Id } from '../../../../lib/api/types';
 import { SumUpConnectionSettings } from './SumUpConnectionSettings';
+import {
+  BadgeEuro,
+  CreditCard,
+  Globe,
+  HandCoins,
+  Handshake,
+  ImageOff,
+  MessageCircleQuestion,
+  Percent,
+  Printer,
+  ShieldCheck,
+  UserCheck,
+  UserPlus,
+  type LucideIcon,
+} from 'lucide-react';
+import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
+import { Switch } from '../../../../components/ui/switch';
+import { cn } from '../../../../lib/utils';
 
 type FeatureKey =
   | 'discounts'
@@ -26,8 +44,29 @@ type FeatureKey =
   | 'priceOnLabel'
   | 'privateSellersOnly'
   | 'fixedSellerData'
+  | 'directSale'
+  | 'registrationOpen'
   | 'cardPayments';
 
+const FEATURE_ICONS: Record<FeatureKey, LucideIcon> = {
+  discounts: Percent,
+  priceOffers: BadgeEuro,
+  minimumPrice: Handshake,
+  questions: MessageCircleQuestion,
+  photosOptional: ImageOff,
+  publicCatalog: Globe,
+  priceOnLabel: Printer,
+  privateSellersOnly: UserCheck,
+  fixedSellerData: ShieldCheck,
+  directSale: HandCoins,
+  registrationOpen: UserPlus,
+  cardPayments: CreditCard,
+};
+
+/**
+ * One switch: icon, title and the switch in a row, the explanation behind an (i). What the
+ * switch opens up (e.g. the highest discount) appears below while it is on.
+ */
 function FeatureToggle({
   name,
   title,
@@ -37,7 +76,7 @@ function FeatureToggle({
 }: {
   name: FeatureKey;
   title: string;
-  description: string;
+  description: ReactNode;
   /** Set while another switch rules this one out; shows unchecked with this reason */
   disabledHint?: string;
   children?: ReactNode;
@@ -46,34 +85,45 @@ function FeatureToggle({
   const disabled = !!disabledHint;
   const enabled = !disabled && (watch(`features.${name}`) as boolean);
   const id = `feature-${name}`;
+  const Icon = FEATURE_ICONS[name];
 
   return (
     <div className={disabled ? 'opacity-60' : undefined}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+            enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <Label htmlFor={id} className={disabled ? 'font-medium' : 'cursor-pointer font-medium'}>
+            {title}
+          </Label>
+          <InfoTip>{description}</InfoTip>
+        </div>
         <Controller
           name={`features.${name}`}
           control={control}
           render={({ field }) => (
-            <Checkbox
+            <Switch
               id={id}
               checked={!disabled && !!field.value}
               disabled={disabled}
               onCheckedChange={(checked: boolean | string) => field.onChange(!!checked)}
-              className="mt-0.5"
             />
           )}
         />
-        <div className="flex-1 space-y-1">
-          <Label htmlFor={id} className={disabled ? 'font-medium' : 'cursor-pointer font-medium'}>
-            {title}
-          </Label>
-          <p className="text-sm text-muted-foreground">{description}</p>
-          {disabledHint && (
-            <p className="text-xs font-medium text-muted-foreground">{disabledHint}</p>
-          )}
-        </div>
       </div>
-      {enabled && children && <div className="mt-4 pl-7 space-y-4">{children}</div>}
+      {disabledHint && <p className="mt-1 pl-11 text-xs text-muted-foreground">{disabledHint}</p>}
+      {enabled && children && (
+        <div className="mt-3 space-y-4 pl-11 animate-in fade-in slide-in-from-top-1 duration-200">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -91,7 +141,7 @@ function CheckboxField({
   const { control } = useFormContext();
   const id = `field-${name.replace(/\W/g, '-')}`;
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-center gap-2">
       <Controller
         name={name}
         control={control}
@@ -100,16 +150,13 @@ function CheckboxField({
             id={id}
             checked={!!field.value}
             onCheckedChange={(checked: boolean | string) => field.onChange(!!checked)}
-            className="mt-0.5"
           />
         )}
       />
-      <div className="space-y-0.5">
-        <Label htmlFor={id} className="cursor-pointer">
-          {title}
-        </Label>
-        {description && <p className="text-xs text-muted-foreground">{description}</p>}
-      </div>
+      <Label htmlFor={id} className="cursor-pointer font-normal">
+        {title}
+      </Label>
+      {description && <InfoTip>{description}</InfoTip>}
     </div>
   );
 }
@@ -133,12 +180,12 @@ function RequiredFieldsPicker() {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1">
-        <p className="font-medium">{t('features.requiredFields')}</p>
-        <p className="text-sm text-muted-foreground">{t('features.requiredFieldsText')}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-sm font-medium">{t('features.requiredFields')}</p>
+        <InfoTip>{t('features.requiredFieldsText')}</InfoTip>
       </div>
       {fields.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('features.requiredFieldsNone')}</p>
+        <p className="text-xs text-muted-foreground">{t('features.requiredFieldsNone')}</p>
       ) : (
         <Controller
           name="features.requiredFields"
@@ -146,7 +193,7 @@ function RequiredFieldsPicker() {
           render={({ field }) => {
             const value = (field.value as string[] | undefined) ?? [];
             return (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
                 {fields.map((categoryField) => {
                   const id = `required-${categoryField.key}`;
                   return (
@@ -181,7 +228,7 @@ function RequiredFieldsPicker() {
  * From when sellers may give discounts. It has to lie within the event, so it can only be
  * picked once the event's dates are set; the wizard therefore asks for it after them.
  */
-export function DiscountStartField() {
+function DiscountStartField() {
   const { t } = useTranslation('organizer');
   const {
     register,
@@ -195,7 +242,9 @@ export function DiscountStartField() {
     ?.discountStartsAt;
   return (
     <div className="space-y-2">
-      <Label htmlFor="discountStartsAt">{t('features.discountFrom')}</Label>
+      <LabelWithInfo htmlFor="discountStartsAt" info={t('features.discountFromHint')}>
+        {t('features.discountFrom')}
+      </LabelWithInfo>
       <Input
         id="discountStartsAt"
         type="datetime-local"
@@ -204,9 +253,51 @@ export function DiscountStartField() {
         max={end || undefined}
         {...register('features.discountStartsAt')}
       />
-      <p className="text-xs text-muted-foreground">
-        {datesSet ? t('features.discountFromHint') : t('features.discountFromNeedsDates')}
-      </p>
+      {!datesSet && (
+        <p className="text-xs text-muted-foreground">{t('features.discountFromNeedsDates')}</p>
+      )}
+      {error && <FieldError>{error.message}</FieldError>}
+    </div>
+  );
+}
+
+/**
+ * When sellers may join on their own: from and until, both optional. Unlike the discount
+ * start it does not depend on the event's dates, so the wizard asks for it right here.
+ */
+function RegistrationWindowFields() {
+  const { t } = useTranslation('organizer');
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext();
+  const error = (errors.features as { registrationEndsAt?: { message?: string } } | undefined)
+    ?.registrationEndsAt;
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <LabelWithInfo htmlFor="registrationStartsAt" info={t('features.registrationWindowHint')}>
+            {t('features.registrationFrom')}
+          </LabelWithInfo>
+          <Input
+            id="registrationStartsAt"
+            type="datetime-local"
+            {...register('features.registrationStartsAt')}
+          />
+        </div>
+        <div className="space-y-2">
+          <LabelWithInfo htmlFor="registrationEndsAt">
+            {t('features.registrationUntil')}
+          </LabelWithInfo>
+          <Input
+            id="registrationEndsAt"
+            type="datetime-local"
+            aria-invalid={!!error}
+            {...register('features.registrationEndsAt')}
+          />
+        </div>
+      </div>
       {error && <FieldError>{error.message}</FieldError>}
     </div>
   );
@@ -221,7 +312,7 @@ export function EditEventFeatures({
   feeLock = null,
   parts = ALL_PARTS,
   showHeader = true,
-  withDiscountStart = true,
+  bare = false,
   eventId,
 }: {
   feeLock?: FeeLock;
@@ -229,8 +320,8 @@ export function EditEventFeatures({
   eventId?: Id<'events'>;
   parts?: FeaturePart[];
   showHeader?: boolean;
-  /** Off in the wizard: the dates come later, the field moves behind them */
-  withDiscountStart?: boolean;
+  /** Without its own card, e.g. the intake fee next to the commission */
+  bare?: boolean;
 }) {
   const { t } = useTranslation('organizer');
   const {
@@ -242,6 +333,7 @@ export function EditEventFeatures({
   const priceOnLabel = watch('features.priceOnLabel') as boolean;
   const labelMark = watch('features.labelMark') as string;
   const publicCatalog = watch('features.publicCatalog') as boolean;
+  const registrationOpen = watch('features.registrationOpen') as boolean;
   const needsCatalog = publicCatalog === false ? t('features.needsCatalog') : undefined;
   const featureErrors = errors.features as
     | Partial<
@@ -251,14 +343,16 @@ export function EditEventFeatures({
 
   const show = (part: FeaturePart) => parts.includes(part);
 
-  return (
-    <FormSection
-      title={showHeader ? t('features.title') : undefined}
-      description={showHeader ? t('features.intro') : undefined}
-      contentClassName={FORM_ROWS}
-    >
+  const content = (
+    <>
       {show('sale') && (
         <>
+          <FeatureToggle
+            name="directSale"
+            title={t('features.directSale')}
+            description={t('features.directSaleText')}
+          />
+
           <FeatureToggle
             name="publicCatalog"
             title={t('features.publicCatalog')}
@@ -271,9 +365,11 @@ export function EditEventFeatures({
             description={t('features.discountsText')}
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {withDiscountStart && <DiscountStartField />}
+              <DiscountStartField />
               <div className="space-y-2">
-                <Label htmlFor="maxDiscountPercent">{t('features.maxDiscount')}</Label>
+                <LabelWithInfo htmlFor="maxDiscountPercent">
+                  {t('features.maxDiscount')}
+                </LabelWithInfo>
                 <Input
                   id="maxDiscountPercent"
                   type="number"
@@ -286,9 +382,6 @@ export function EditEventFeatures({
                 )}
               </div>
             </div>
-            {!withDiscountStart && (
-              <p className="text-xs text-muted-foreground">{t('features.discountStartLater')}</p>
-            )}
           </FeatureToggle>
           {/* The field is hidden once the discounts are off, its error must not be */}
           {!discounts && featureErrors?.maxDiscountPercent && (
@@ -297,7 +390,7 @@ export function EditEventFeatures({
           <FeatureToggle
             name="priceOffers"
             title={t('features.offers')}
-            description={t('features.offersText')}
+            description={`${t('features.offersText')} ${t('features.payOnSite')}`}
             disabledHint={needsCatalog}
           />
 
@@ -319,6 +412,14 @@ export function EditEventFeatures({
               description={t('features.questionsDuringEventText')}
             />
           </FeatureToggle>
+
+          <FeatureToggle
+            name="cardPayments"
+            title={t('features.cardPayments')}
+            description={t('features.cardPaymentsText')}
+          >
+            {eventId && <SumUpConnectionSettings eventId={eventId} />}
+          </FeatureToggle>
         </>
       )}
 
@@ -332,7 +433,12 @@ export function EditEventFeatures({
 
           <RequiredFieldsPicker />
           <div className="space-y-2">
-            <Label htmlFor="maxItemsPerSeller">{t('features.maxItems')}</Label>
+            <LabelWithInfo
+              htmlFor="maxItemsPerSeller"
+              info={`${t('features.maxItemsHint')} ${feeLock ? t('features.maxItemsLocked') : t('features.maxItemsLater')}`}
+            >
+              {t('features.maxItems')}
+            </LabelWithInfo>
             <Input
               id="maxItemsPerSeller"
               type="number"
@@ -341,44 +447,36 @@ export function EditEventFeatures({
               placeholder={t('features.unlimited')}
               {...register('features.maxItemsPerSeller', { valueAsNumber: true })}
             />
-            <p className="text-xs text-muted-foreground">
-              {t('features.maxItemsHint')}{' '}
-              {feeLock ? t('features.maxItemsLocked') : t('features.maxItemsLater')}
-            </p>
             {featureErrors?.maxItemsPerSeller && (
               <FieldError>{featureErrors.maxItemsPerSeller.message}</FieldError>
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="labelFormat">{t('features.labels')}</Label>
-            <NativeSelect
-              id="labelFormat"
-              className="max-w-sm"
-              {...register('features.labelFormat')}
-            >
-              <option value="standard">{t('features.labelsLarge')}</option>
-              <option value="small">{t('features.labelsSmall')}</option>
-            </NativeSelect>
-            <p className="text-xs text-muted-foreground">{t('features.labelsHint')}</p>
-          </div>
-
-          <div className="space-y-2 rounded-lg border p-4">
-            <Label htmlFor="labelMark">{t('features.labelMark')}</Label>
-            <select
-              id="labelMark"
-              className="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-              {...register('features.labelMark')}
-            >
-              <option value="universal">{t('features.labelMarkUniversal')}</option>
-              <option value="none">{t('features.labelMarkNone')}</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {t(
-                labelMark === 'none'
-                  ? 'features.labelMarkNoneHint'
-                  : 'features.labelMarkUniversalHint'
-              )}
-            </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo htmlFor="labelFormat" info={t('features.labelsHint')}>
+                {t('features.labels')}
+              </LabelWithInfo>
+              <NativeSelect id="labelFormat" {...register('features.labelFormat')}>
+                <option value="standard">{t('features.labelsLarge')}</option>
+                <option value="small">{t('features.labelsSmall')}</option>
+              </NativeSelect>
+            </div>
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo
+                htmlFor="labelMark"
+                info={t(
+                  labelMark === 'none'
+                    ? 'features.labelMarkNoneHint'
+                    : 'features.labelMarkUniversalHint'
+                )}
+              >
+                {t('features.labelMark')}
+              </LabelWithInfo>
+              <NativeSelect id="labelMark" {...register('features.labelMark')}>
+                <option value="universal">{t('features.labelMarkUniversal')}</option>
+                <option value="none">{t('features.labelMarkNone')}</option>
+              </NativeSelect>
+            </div>
           </div>
 
           <FeatureToggle
@@ -397,6 +495,19 @@ export function EditEventFeatures({
       {show('registration') && (
         <>
           <FeatureToggle
+            name="registrationOpen"
+            title={t('features.registrationOpen')}
+            description={t('features.registrationOpenText')}
+          >
+            <RegistrationWindowFields />
+          </FeatureToggle>
+          {!registrationOpen && (
+            <p className="-mt-2 pl-11 text-xs text-muted-foreground">
+              {t('features.registrationClosedHint')}
+            </p>
+          )}
+
+          <FeatureToggle
             name="privateSellersOnly"
             title={t('features.privateSellers')}
             description={t('features.privateSellersText')}
@@ -412,39 +523,43 @@ export function EditEventFeatures({
 
       {show('fees') && (
         <div className="space-y-2">
-          <Label htmlFor="intakeFee">{t('features.intakeFee')}</Label>
-          <Input
-            id="intakeFee"
-            type="number"
-            min={0}
-            max={100}
-            step={0.5}
-            className={
-              feeLock === 'running' ? 'max-w-40 opacity-60 cursor-not-allowed' : 'max-w-40'
-            }
-            placeholder={t('features.none')}
-            readOnly={feeLock === 'running'}
-            aria-readonly={feeLock === 'running'}
-            {...register('features.intakeFee', { valueAsNumber: true })}
-          />
-          <p className="text-xs text-muted-foreground">
-            {feeLock ? feeLockHint(feeLock) : t('features.intakeFeeHint')}
-          </p>
+          <LabelWithInfo
+            htmlFor="intakeFee"
+            info={feeLock ? feeLockHint(feeLock) : t('features.intakeFeeHint')}
+          >
+            {t('features.intakeFee')}
+          </LabelWithInfo>
+          <div className="relative max-w-40">
+            <Input
+              id="intakeFee"
+              type="number"
+              min={0}
+              max={100}
+              step={0.5}
+              className={feeLock === 'running' ? 'pr-8 opacity-60 cursor-not-allowed' : 'pr-8'}
+              placeholder={t('features.none')}
+              readOnly={feeLock === 'running'}
+              aria-readonly={feeLock === 'running'}
+              {...register('features.intakeFee', { valueAsNumber: true })}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              €
+            </span>
+          </div>
+          {feeLock && <p className="text-xs text-muted-foreground">{feeLockHint(feeLock)}</p>}
           {featureErrors?.intakeFee && <FieldError>{featureErrors.intakeFee.message}</FieldError>}
         </div>
       )}
-
-      {show('sale') && (
-        <FeatureToggle
-          name="cardPayments"
-          title={t('features.cardPayments')}
-          description={t('features.cardPaymentsText')}
-        >
-          {eventId && <SumUpConnectionSettings eventId={eventId} />}
-        </FeatureToggle>
-      )}
-
-      {show('sale') && <p className="text-xs text-muted-foreground">{t('features.payOnSite')}</p>}
+    </>
+  );
+  if (bare) return content;
+  return (
+    <FormSection
+      title={showHeader ? t('features.title') : undefined}
+      description={showHeader ? t('features.intro') : undefined}
+      contentClassName={FORM_ROWS}
+    >
+      {content}
     </FormSection>
   );
 }

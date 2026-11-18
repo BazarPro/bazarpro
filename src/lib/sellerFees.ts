@@ -141,6 +141,9 @@ export function describeSellerRules(event: SellerConditionsEvent): SellerRule[] 
       allowed: true,
     });
   }
+  if (features.directSale) {
+    rules.push({ text: text('directSale'), allowed: true });
+  }
   if (features.privateSellersOnly) {
     rules.push({ text: text('privateSellers'), allowed: true });
   }
@@ -178,23 +181,31 @@ export function describeSellerRules(event: SellerConditionsEvent): SellerRule[] 
   return rules;
 }
 
-/** Hand-in and pickup times, empty when the organizer has not set them. */
+/**
+ * Hand-in and pickup times, empty when the organizer has not set them. At a direct sale
+ * sellers stand at their items themselves: the same times mean setup and teardown (#299).
+ */
 export function describeSellerSchedule(event: SellerConditionsEvent) {
   const logistics = event.sellerLogistics ?? {};
+  const direct = resolveEventFeatures(event).directSale;
   const rows: { label: string; value: string }[] = [];
   if (logistics.dropoffStart !== undefined) {
     rows.push({
-      label: text('dropoff'),
+      label: text(direct ? 'setup' : 'dropoff'),
       value: formatBerlinRange(logistics.dropoffStart, logistics.dropoffEnd, currentLocale()),
     });
   }
   if (logistics.pickupStart !== undefined) {
     rows.push({
-      label: text('pickup'),
+      label: text(direct ? 'teardown' : 'pickup'),
       value: formatBerlinRange(logistics.pickupStart, logistics.pickupEnd, currentLocale()),
     });
   }
-  return { rows, note: logistics.note?.trim() || undefined };
+  return {
+    title: text(direct ? 'scheduleDirect' : 'schedule'),
+    rows,
+    note: logistics.note?.trim() || undefined,
+  };
 }
 
 export function formatSignedEuro(amount: number) {

@@ -13,6 +13,12 @@ export interface CategoryField {
   hint?: string;
   /** Longest value; sizes stay short so they fit on the labels */
   maxLength?: number;
+  /**
+   * Sellers may not find the value (e.g. a worn frame number): a button fills in the
+   * agreed text (categoryFields.<text>.notFoundValue), the same for everyone, so it can be
+   * filtered in the records (#299). A required field stays required.
+   */
+  notFoundButton?: boolean;
 }
 
 export type CategoryFieldText =
@@ -40,7 +46,8 @@ const BIKE_FIELDS: CategoryField[] = [
     text: 'frameNumber',
     label: 'Rahmennummer',
     placeholder: 'z. B. WBK123456',
-    hint: 'Bei Rädern ab ca. 500 € dringend empfohlen.',
+    hint: 'Nicht gefunden? Schreib „nicht gefunden“ hinein – wir suchen sie vor Ort gemeinsam.',
+    notFoundButton: true,
   },
   { key: 'frameSize', text: 'frameSize', label: 'Rahmengröße', placeholder: 'z. B. 52 cm oder M' },
   { key: 'wheelSize', text: 'wheelSize', label: 'Laufradgröße', placeholder: 'z. B. 28 Zoll' },

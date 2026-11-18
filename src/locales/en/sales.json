@@ -11,7 +11,8 @@
     "salePrice": "Sale price",
     "fee": "Bazaar fee",
     "feePercent": "Bazaar fee ({{percent}} %)",
-    "payout": "Payout to the seller"
+    "payout": "Payout to the seller",
+    "receivedDirectly": "Kept by the seller (received directly from the buyer)"
   },
   "mySales": {
     "invoiceFailed": "The private invoice could not be created",
@@ -25,11 +26,13 @@
     "soldFor": "Sold for",
     "fee": "Fee",
     "forYou": "For you",
+    "receivedDirectly": "Received directly",
     "invoice": "Private invoice",
     "invoiceBuyer": "Private invoice for the buyer",
     "invoiceSeller": "Private invoice for me (with bazaar fee)",
     "totalSold": "Total sold",
     "bazaarFee": "Bazaar fee ({{percent}} %)",
+    "keptDirectly": "Already received from buyers (less commission)",
     "intakeFee": "Intake fee ({{items}} × {{perItem}} €)",
     "youGet": "You get",
     "paidFee": "Paid",

@@ -44,6 +44,7 @@ const printout = (overrides: Partial<SellerPrintout> = {}): SellerPrintout => ({
     sellerNumber: 7,
     totalRevenue: 20,
     commission: 2,
+    receivedDirectly: 0,
     intakeFee: { perItem: 0.5, items: 3, total: 1.5 },
     payout: 16.5,
     paid: false,
@@ -90,6 +91,27 @@ describe('seller printouts', () => {
       seller: { ...base.seller, intakeFee: { perItem: 0, items: 0, total: 0 } },
     });
     expect(rows).toHaveLength(2);
+  });
+
+  it('takes off what the seller got directly, so the payout of 0 adds up', () => {
+    const base = printout();
+    const direct = {
+      ...base,
+      seller: {
+        ...base.seller,
+        totalRevenue: 250,
+        commission: 25,
+        receivedDirectly: 225,
+        intakeFee: { perItem: 0, items: 0, total: 0 },
+        payout: 0,
+      },
+    };
+    expect(settlementRows(direct)).toEqual([
+      ['Verkauft (1 Artikel)', '250,00 €'],
+      ['Provision (10 %)', '-25,00 €'],
+      ['Direkt vom Käufer erhalten', '-225,00 €'],
+    ]);
+    expect(settlementTotal(direct)).toEqual(['Auszahlung', '0,00 €']);
   });
 
   it('names the seller when they owe the bazaar', () => {

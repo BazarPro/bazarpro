@@ -29,6 +29,7 @@
     "chooseTemplate": "Choose template…",
     "creationDisabled": "Creating new bazaars is currently disabled.",
     "running": "The bazaar is running. Dates, commission and visibility are locked until the end so that settlement and approval stay correct. You can still change everything else, for example from when discounts are allowed.",
+    "adminUnlocked": "You are an admin: you can change every setting, including those locked for organizers (e.g. dates, commission and fees while the bazaar runs or after the first sellers registered). Check changes to fees and direct sale carefully, they affect the settlement.",
     "creating": "Creating…",
     "draftSaved": "Draft saved",
     "draftSavedHint": "You will find it on your start page and can pick up where you left off.",
@@ -69,8 +70,15 @@
     "postalCode": "Postal code",
     "city": "Town",
     "country": "Country",
-    "start": "Start date *",
-    "end": "End date *"
+    "when": "When?",
+    "whenHint": "Pick the day: start and end are filled in, you only adjust the times. We suggest drop-off and pickup on the same day.",
+    "place": "Where?",
+    "day": "Date",
+    "firstDay": "First day",
+    "lastDay": "Last day",
+    "startTime": "Start",
+    "endTime": "End",
+    "multiDay": "Spans several days"
   },
   "map": {
     "createFailed": "The category could not be created",
@@ -85,8 +93,8 @@
     "pendingPlaceholder": "e.g. Row 1, Room 23a",
     "addToList": "Add to list",
     "pendingHint": "These categories are saved once the bazaar is created. You can change them later under “Edit”.",
-    "title": "Site map and location categories",
-    "intro": "Optional: upload a site map of the bazaar (e.g. with stalls, rows etc.) so that visitors find their way faster.",
+    "title": "Site map and locations",
+    "intro": "A site map (e.g. with stalls and rows) helps visitors find their way faster.",
     "image": "Site map (picture)",
     "categories": "Location categories"
   },
@@ -116,7 +124,9 @@
     "linkOnlyJoin": "Only people with an account who enter the code can register as sellers.",
     "linkOnlyItems": "Only registered sellers, your team and administrators see the items. Visitors who have not registered see none.",
     "limit": "Maximum number of sellers (optional)",
-    "limitPlaceholder": "e.g. 200"
+    "limitPlaceholder": "e.g. 200",
+    "visibilityHint": "Public bazaars appear on the BazarPro start page after a short check. With an access code only people who get the code from you can join.",
+    "limitHint": "Maximum number of sellers. Leave empty for no limit."
   },
   "features": {
     "title": "Features",
@@ -169,36 +179,51 @@
     "privateSellersText": "When registering, sellers confirm that they sell as private persons, not commercially.",
     "fixedData": "Fixed data for the record",
     "fixedDataText": "At the intake on site you check name and address against the ID card; if they differ, the seller corrects them in their profile first. From the first accepted item on they are fixed, and so are title, category, price and required details of every accepted item. This gives a reliable record of who offered what, e.g. for the police. Sellers need a complete profile for this.",
+    "directSale": "Direct sale: buyers pay the seller",
+    "directSaleText": "Buyer and seller agree at the item, the buyer pays the seller directly. Then the cash desk scans the label, books the sale at the agreed price and takes only the commission from the seller. Nothing is paid out after the bazaar, and the record still shows every sale.",
     "discountFromNeedsDates": "Choose the start and end of the bazaar first.",
-    "discountStartLater": "You set when the discounts start under “When and where?”, once the date is fixed.",
+    "registrationOpen": "Sellers can register",
+    "registrationOpenText": "Sellers register themselves on the bazaar page. Switched off, only the people you invite get in.",
+    "registrationFrom": "Registration from (optional)",
+    "registrationUntil": "Registration until (optional)",
+    "registrationWindowHint": "Leave empty if registration opens right away and stays open until the bazaar ends. Invitations work outside this time too.",
+    "registrationClosedHint": "Registration is closed. New sellers only get in with an invitation.",
+    "registrationWindow": "Registration must end after it begins.",
     "sumup": {
       "connectText": "Connect your SumUp account once, and every cash desk of your team charges it – in the BazarPro app with the card reader, in the browser (e.g. on a PC) with the SumUp Solo. Helpers need no SumUp login.",
       "connect": "Connect SumUp",
       "saveFirst": "Please save your changes first.",
       "organizerConnects": "The organizer has not connected a SumUp account yet. They can connect it here.",
-      "connected": "SumUp account connected · {{merchant}}",
-      "connectedNoCode": "SumUp account connected",
       "connectedToast": "SumUp is connected.",
       "disconnect": "Disconnect",
       "disconnectTitle": "Disconnect SumUp?",
       "disconnectText": "The cash desks of your team will no longer charge your SumUp account until you connect it again. You can also revoke BazarPro's access in SumUp itself.",
       "keep": "Keep connected",
       "soloTitle": "SumUp Solo for desks in the browser",
-      "soloText": "On a PC or in a browser without the BazarPro app the desk charges cards on a SumUp Solo that is online over Wi-Fi or mobile data. Log the Solo out of its SumUp account and open Connections → API → Connect on it. Then enter the code it shows here."
+      "soloText": "On a PC or in a browser without the BazarPro app the desk charges cards on a SumUp Solo that is online over Wi-Fi or mobile data. Log the Solo out of its SumUp account and open Connections → API → Connect on it. Then enter the code it shows here.",
+      "connected": "SumUp account connected · {{merchant}}",
+      "connectedNoCode": "SumUp account connected"
     }
   },
   "logistics": {
     "title": "Drop-off & pickup",
     "intro": "Sellers with registered items get an email with all information at 6 pm the evening before. Everyone not yet settled gets a pickup reminder: right after the bazaar or, if pickup starts later, 2 hours before it.",
-    "dropoffStart": "Drop-off from (optional)",
-    "dropoffEnd": "Drop-off until (optional)",
-    "pickupStart": "Pickup from (optional)",
-    "pickupEnd": "Pickup until (optional)",
+    "introDirect": "At a direct sale sellers stand at their items themselves: the times are for setup and teardown. Sellers with registered items get an email with all information at 6 pm the evening before. Everyone not yet settled gets a teardown reminder: right after the bazaar or, if teardown starts later, 2 hours before it.",
     "note": "Note for sellers (optional)",
     "notePlaceholder": "e.g. Please hand in bikes with a lock, entrance via the yard",
     "preview": "Preview of the email the evening before",
     "example": "Example with seller number 17 and 12 items.",
-    "subject": "Subject: {{subject}}"
+    "subject": "Subject: {{subject}}",
+    "dropoff": "Drop-off",
+    "pickup": "Pickup",
+    "setup": "Setup",
+    "teardown": "Teardown",
+    "day": "Day",
+    "from": "From",
+    "until": "Until",
+    "untilDay": "Until day",
+    "clear": "Clear",
+    "noteHint": "Goes into the email the evening before, e.g. where the entrance is."
   },
   "myEvents": {
     "rejected": "Rejected",
@@ -288,6 +313,8 @@
     "unlimited": "Unlimited",
     "dropoff": "Drop-off",
     "pickup": "Pickup",
+    "setup": "Setup",
+    "teardown": "Teardown",
     "notGiven": "Not given",
     "categories": "Categories",
     "services": "Services",
@@ -309,6 +336,11 @@
     "requiredFields": "Required details: {{fields}}",
     "privateSellers": "Private sellers only",
     "fixedData": "Fixed data for the record",
+    "directSale": "Direct sale, the cash desk takes only the commission",
+    "registration": "Registration",
+    "registrationOpen": "Open until the bazaar ends",
+    "registrationClosed": "Closed, by invitation only",
+    "untilTime": "until {{time}}",
     "cardPayments": "Card payments at the cash desk"
   },
   "sellers": {
@@ -371,7 +403,22 @@
       "return": "Return: give items back to sellers",
       "payout": "Settle and pay out sellers",
       "cashSummary": "See the cash summary and the settlement export"
-    }
+    },
+    "exclude": "Exclude from the bazaar",
+    "excludeTitle": "Exclude {{name}} from the bazaar?",
+    "excludeNoReturn": "The person cannot register again, not even with the access code or an invitation.",
+    "excludeItems": "Items already handed in go back in the usual return; sales and the settlement remain.",
+    "excludeMail": "The seller gets an email. You can take the exclusion back later.",
+    "excludeHasItems_one": "Not possible: {{count}} announced item",
+    "excludeHasItems_other": "Not possible: {{count}} announced items",
+    "excludeConfirm": "Exclude",
+    "excludeReasonPlaceholder": "e.g. did not pick up their items last time",
+    "excluded": "{{name}} is excluded from the bazaar",
+    "readmit": "Take exclusion back",
+    "readmitTitle": "Take back the exclusion of {{name}}?",
+    "readmitText": "The person is a seller again with their previous number and gets an email.",
+    "readmitted": "{{name}} is back in",
+    "moreFor": "More actions for {{name}}"
   },
   "settle": {
     "seller": "Seller",
@@ -400,6 +447,7 @@
     "sold": "Sold ({{count}} items)",
     "commission": "Commission ({{percent}} %)",
     "intakeFee": "Intake fee ({{items}} × {{perItem}} €)",
+    "receivedDirectly": "Received directly from the buyer",
     "pays": "{{name}} pays",
     "payout": "Payout",
     "notHandedIn_one": "{{count}} registered item was never handed in and is left out of the settlement.",
@@ -420,6 +468,7 @@
     "howTitle": "How the amount comes about",
     "income_one": "Income from {{count}} sale",
     "income_other": "Income from {{count}} sales",
+    "directSales": "Direct sales: paid to the seller, only the commission came into the till",
     "paidOut": "Already paid out to sellers",
     "inCash": "In the till",
     "card_one": "Of which paid by card ({{count}} sale)",
@@ -434,6 +483,7 @@
     "open": "Still open",
     "allPaid": "All sellers are settled. The commission stays in the till.",
     "allPaidWithFees": "All sellers are settled. The commission and the intake fees stay in the till.",
+    "directNoPayout": "Direct sale: the sellers already have their money from the buyers, nothing is to be paid out.",
     "feesToCollect": "Intake fees sellers still have to pay",
     "feesCollectedIncome": "Intake fees paid by sellers",
     "feesCollected": "Intake fee paid",
@@ -495,7 +545,26 @@
       "replayed_other": "{{count}} offline actions done",
       "refused_one": "{{count}} offline action was refused – see settlement.",
       "refused_other": "{{count}} offline actions were refused – see settlement."
-    }
+    },
+    "countRejected": "{{count}} rejected",
+    "rejectText": "They no longer appear online, cannot be sold at the cash desk and cannot be registered for this bazaar again.",
+    "rejectConfirm": "Reject",
+    "rejectionUndone": "“{{title}}” is registered again",
+    "excludedNotice": "Excluded from the bazaar on {{time}}. Handed-in items go back in the usual return.",
+    "rejectTitle_one": "Reject the item not handed in?",
+    "rejectTitle_other": "Reject {{count}} items not handed in?",
+    "rejectMail_one": "The seller gets one email listing their items.",
+    "rejectMail_other": "Each of the {{count}} sellers gets one email listing their items.",
+    "rejectUndoHint": "You can take back single rejections in the “Rejected” tab.",
+    "moreActions": "More actions",
+    "rejectNotHandedIn": "Reject items not handed in",
+    "dropoffEnded": "Drop-off ended on {{time}}.",
+    "notHandedIn_one": "One registered item was not handed in.",
+    "notHandedIn_other": "{{count}} registered items were not handed in.",
+    "notHandedInYet_one": "One registered item has not been handed in yet.",
+    "notHandedInYet_other": "{{count}} registered items have not been handed in yet.",
+    "notHandedInRejected_one": "{{count}} item rejected, the seller is informed by email",
+    "notHandedInRejected_other": "{{count}} items rejected, the sellers are informed by email"
   },
   "list": {
     "all": "All",
@@ -514,7 +583,9 @@
     "cancelSale": "Cancel sale",
     "undo": "Undo",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "rejected": "Rejected",
+    "undoRejection": "Take back"
   },
   "confirm": {
     "undoSaleTitle": "Really cancel the sale?",
@@ -693,12 +764,16 @@
     "sum_other": "Total ({{count}} items)",
     "sold_one": "<b>{{count}} item sold</b> for {{total}} €. Next buyer, please.",
     "sold_other": "<b>{{count}} items sold</b> for {{total}} €. Next buyer, please.",
+    "soldDirect_one": "<b>{{count}} item sold</b>, {{total}} € commission taken. Ready for the next sale.",
+    "soldDirect_other": "<b>{{count}} items sold</b>, {{total}} € commission taken. Ready for the next sale.",
     "offline": {
       "title": "Offline – the cash desk keeps selling",
       "text": "Prices from the item copy of {{time}}. Sales are stored on the device and booked as soon as there is internet again.",
       "pending_one": "{{count}} sale is waiting to be booked.",
       "pending_other": "{{count}} sales are waiting to be booked.",
+      "noCopyTitle": "Offline – no item data",
       "noCopy": "Offline and no item copy on this device. Selling works again with internet. Tip: open the cash desk online once before the bazaar.",
+      "browserTitle": "No connection to the server",
       "browser": "No connection to the server. Selling without internet only works in the BazarPro app.",
       "ready": "Ready for offline · item copy of {{time}}",
       "loading": "Loading the item copy for offline use…",
@@ -707,6 +782,8 @@
       "refresh": "Refresh",
       "queued_one": "<b>{{count}} item sold</b> for {{total}} € – stored offline, will be booked.",
       "queued_other": "<b>{{count}} items sold</b> for {{total}} € – stored offline, will be booked.",
+      "queuedDirect_one": "<b>{{count}} item sold</b>, {{total}} € commission taken – saved offline, will be booked later.",
+      "queuedDirect_other": "<b>{{count}} items sold</b>, {{total}} € commission taken – saved offline, will be booked later.",
       "synced_one": "{{count}} offline sale booked",
       "synced_other": "{{count}} offline sales booked",
       "conflicts_one": "{{count}} item could not be booked – see settlement.",
@@ -722,6 +799,15 @@
     "cameraOn": "Turn camera on",
     "cameraOff": "Turn camera off",
     "invoice": "Create invoice",
+    "direct": {
+      "sum_one": "Commission {{percent}} % ({{count}} item)",
+      "sum_other": "Commission {{percent}} % ({{count}} items)",
+      "paidToSeller": "Sale price, paid to the seller directly",
+      "received": "{{total}} € commission received from the seller",
+      "commission": "Commission {{amount}} €",
+      "agreed": "Agreed price",
+      "agreedPrice": "Agreed price"
+    },
     "sumup": {
       "checking": "Checking SumUp…",
       "loggedOut": "With your SumUp account the amount goes straight to the card reader. Without logging in: enter the amount on your own card terminal.",
@@ -857,7 +943,8 @@
     },
     "fileName": "Settlement",
     "fileNameSellers": "Settlement-sellers",
-    "fileNameSales": "Settlement-sales"
+    "fileNameSales": "Settlement-sales",
+    "direct": "paid directly"
   },
   "wizard": {
     "back": "Back",
@@ -867,42 +954,81 @@
     "steps": {
       "type": {
         "title": "What kind of bazaar is it?",
-        "text": "Pick a template. You can change everything later."
+        "text": "Pick a template – you can change everything later."
       },
       "sale": {
         "title": "How is it sold?",
-        "text": "The preview shows whatever you switch on."
+        "text": "Switch on what your bazaar should offer."
       },
       "items": {
         "title": "Which items?",
-        "text": "Categories, photos and the label for every item."
+        "text": "Categories, photos and labels."
       },
       "fees": {
         "title": "What do sellers pay?",
-        "text": "A commission and, if you like, an intake fee per item."
+        "text": "A commission and, if you like, an intake fee."
       },
       "registration": {
         "title": "Who can take part?",
-        "text": "Public bazaars appear on the BazarPro start page after a short check. With an access code only people who get the code from you can join."
+        "text": "Visibility, access and registration."
       },
       "basics": {
         "title": "When and where?",
-        "text": "How your bazaar appears on its page and in emails to sellers."
+        "text": "Pick the day – we suggest the other dates to match."
       },
       "logistics": {
         "title": "Drop-off and pickup",
-        "text": "When do sellers bring their items, and when do they collect what is left and their money?"
+        "text": "Already filled in to match the date – just adjust the times."
       },
       "preview": {
         "title": "This is your bazaar",
-        "text": "This is what visitors and sellers see. You can still change everything afterwards."
+        "text": "Everything at a glance. You can still change it all afterwards."
+      },
+      "details": {
+        "title": "Description and contact",
+        "text": "What visitors read on your bazaar’s page."
+      },
+      "logisticsDirect": {
+        "title": "Setup and teardown",
+        "text": "When do sellers set up and take down their stands? Already filled in to match the date – just adjust the times."
       }
     },
     "summary": {
-      "title": "Title",
-      "when": "Start",
       "where": "Location",
-      "categories": "Categories"
+      "edit": "Edit {{step}}",
+      "sale": "Sale",
+      "fees": "Fees",
+      "joining": "Joining",
+      "dropoff": "Drop-off",
+      "pickup": "Pickup",
+      "setup": "Setup",
+      "teardown": "Teardown",
+      "open": "open",
+      "commission": "{{percent}} % commission",
+      "intakeFee": "+ €{{fee}} per item",
+      "registrationOpen": "Registration open",
+      "registrationClosed": "By invitation only",
+      "plain": "Classic, at the cash desk",
+      "ready": "Ready to create",
+      "readyText": "Check the key facts – one click takes you back to the matching step.",
+      "date": "Date",
+      "items": "Items",
+      "logistics": "Drop-off & pickup",
+      "logisticsDirect": "Setup & teardown",
+      "contact": "Contact",
+      "categoryCount_one": "{{count}} category",
+      "categoryCount_other": "{{count}} categories",
+      "maxItems_one": "max. {{count}} item per seller",
+      "maxItems_other": "max. {{count}} items per seller",
+      "feat": {
+        "directSale": "Direct sale",
+        "publicCatalog": "Online catalogue",
+        "discounts": "Discounts",
+        "discountsUpTo": "Discounts up to {{percent}} %",
+        "priceOffers": "Price offers",
+        "minimumPrice": "Negotiable",
+        "questions": "Questions"
+      }
     },
     "fixErrors": "Please check the marked details.",
     "guestCreate": "Sign up and create bazaar",
@@ -963,9 +1089,12 @@
       "dateOpen": "Date to follow",
       "placeOpen": "Place to follow",
       "descriptionOpen": "Your description goes here – what there is, where to park, whether there is coffee and cake.",
+      "contactOpen": "Your contact details for questions from sellers and visitors go here.",
       "dropoff": "Drop-off",
       "sale": "Bazaar",
       "pickup": "Pickup",
+      "setup": "Setup",
+      "teardown": "Teardown",
       "open": "open",
       "browserUrl": "bazarpro.de/bazaar",
       "offersTitle": "Offers",
@@ -986,11 +1115,13 @@
       "registration": "Joining",
       "basics": "Date & place",
       "logistics": "Drop-off",
-      "preview": "Preview"
+      "logisticsDirect": "Setup",
+      "preview": "Preview",
+      "details": "Description"
     },
     "pictures": {
       "title": "Pictures",
-      "intro": "A picture makes your bazaar more inviting. You can change everything later.",
+      "intro": "A picture makes your bazaar more inviting.",
       "cover": "Cover picture",
       "coverText": "Pick a template or upload your own picture.",
       "coverPick": "Choose template “{{name}}”",
@@ -1005,7 +1136,7 @@
       "own": "Your own picture",
       "map": "Site plan",
       "mapText": "Shows visitors where to find stalls, cash desk and entrance.",
-      "locked": "You can upload your own pictures after logging in. Your bazaar is kept.",
+      "locked": "You can upload your own cover and site plan after signing in – your bazaar is kept.",
       "login": "Log in and upload",
       "noCover": "No cover picture"
     }
@@ -1204,7 +1335,8 @@
       "offer": {
         "title": "What's on offer",
         "food": "With {{services}} on site",
-        "skiService": "Ski service on site"
+        "skiService": "Ski service on site",
+        "bikeCoding": "Bike coding on site"
       },
       "sell": {
         "title": "How to sell",
@@ -1216,6 +1348,10 @@
         "dropoffAt": "Drop-off: {{time}}",
         "pickup": "Collect unsold items and your money",
         "pickupAt": "Pick-up and payout: {{time}}",
+        "setup": "Set up your stand on site",
+        "setupAt": "Setup: {{time}}",
+        "teardown": "Take down your stand and settle up",
+        "teardownAt": "Teardown and settlement: {{time}}",
         "terms": "{{commission}} % of the proceeds go to the organizer.",
         "termsWithFee": "{{commission}} % of the proceeds and a drop-off fee of €{{fee}} per item go to the organizer."
       },
@@ -1240,5 +1376,41 @@
       }
     },
     "footer": "All details on {{site}}"
+  },
+  "participation": {
+    "reason": "Reason (optional)",
+    "reasonHint": "The seller sees the reason in the app and in the email.",
+    "reasonQuoted": "Reason: {{reason}}",
+    "excluded": "Excluded",
+    "excludedSince": "Excluded on {{time}}"
+  },
+  "registrationPanel": {
+    "title": "Registration",
+    "open": "Open",
+    "full": "Fully booked",
+    "notYet": "Not open yet",
+    "closed": "Closed",
+    "opensAt": "Opens {{time}}",
+    "until": "Until {{time}}",
+    "noDeadline": "No deadline, until the bazaar",
+    "invitationOnly": "New sellers only join by invitation",
+    "close": "Close registration",
+    "reopen": "Open registration",
+    "openNow": "Open now",
+    "closedToast": "Registration closed – new sellers only join by invitation",
+    "openedToast": "Registration is open",
+    "places": "Places",
+    "left_one": "One place left",
+    "left_other": "{{count}} places left",
+    "noneLeft": "All places taken",
+    "unlimited": "No limit",
+    "unlimitedHint": "Any number of sellers can register",
+    "access": "Access",
+    "noCode": "No code",
+    "noCodeHint": "Anyone with an account can register",
+    "codeNeeded": "Sellers need this code to register",
+    "copyCode": "Copy code",
+    "copyFailed": "Copying failed",
+    "edit": "Change"
   }
 }

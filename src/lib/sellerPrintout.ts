@@ -47,6 +47,7 @@ export interface SellerPrintout {
     | 'sellerNumber'
     | 'totalRevenue'
     | 'commission'
+    | 'receivedDirectly'
     | 'intakeFee'
     | 'payout'
     | 'paid'
@@ -127,6 +128,10 @@ export function settlementRows({ event, seller, items }: SellerPrintout): string
       `${seller.commission > 0 ? '-' : ''}${formatPriceDE(seller.commission)} €`,
     ],
   ];
+  // Direct sales: the seller has this from the buyers, so it is not paid out
+  if (seller.receivedDirectly > 0.005) {
+    rows.push([settleText('receivedDirectly'), `-${formatPriceDE(seller.receivedDirectly)} €`]);
+  }
   if (seller.intakeFee.total > 0) {
     rows.push([
       settleText('intakeFee', {

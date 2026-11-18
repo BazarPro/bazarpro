@@ -11,7 +11,8 @@
     "salePrice": "Verkaufspreis",
     "fee": "Bazar-Gebühr",
     "feePercent": "Bazar-Gebühr ({{percent}} %)",
-    "payout": "Auszahlung an den Verkäufer"
+    "payout": "Auszahlung an den Verkäufer",
+    "receivedDirectly": "Bleibt beim Verkäufer (direkt vom Käufer erhalten)"
   },
   "mySales": {
     "invoiceFailed": "Privatrechnung konnte nicht erstellt werden",
@@ -25,11 +26,13 @@
     "soldFor": "Verkauft für",
     "fee": "Gebühr",
     "forYou": "Für dich",
+    "receivedDirectly": "Direkt erhalten",
     "invoice": "Privatrechnung",
     "invoiceBuyer": "Privatrechnung für den Käufer",
     "invoiceSeller": "Privatrechnung für mich (mit Bazar-Gebühr)",
     "totalSold": "Verkauft insgesamt",
     "bazaarFee": "Bazar-Gebühr ({{percent}} %)",
+    "keptDirectly": "Schon direkt vom Käufer erhalten (abzüglich Provision)",
     "intakeFee": "Annahmegebühr ({{items}} × {{perItem}} €)",
     "youGet": "Du bekommst",
     "paidFee": "Bezahlt",

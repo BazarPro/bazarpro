@@ -1190,3 +1190,194 @@ pub const BOOKS: &[Item] = &[
         &[],
     ),
 ];
+
+/// Bikes of the bike flea market, each with the frame number its record needs.
+pub const BIKE_MARKET: &[Item] = &[
+    item(
+        Cat::Bikes,
+        "very-good",
+        280.0,
+        Some("bike_city"),
+        t("Trekkingrad 28 Zoll", "Trekking bike 28 inch"),
+        t(
+            "Shimano Deore, Nabendynamo, Gepäckträger. Frisch gewartet.",
+            "Shimano Deore, hub dynamo, rack. Just serviced.",
+        ),
+        &[
+            ("frameNumber", "KH 4471 2093", "KH 4471 2093"),
+            ("frameSize", "56 cm", "56 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Kalkhoff", "Kalkhoff"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        190.0,
+        Some("bike_city"),
+        t("Hollandrad Damen", "Dutch city bike, step-through"),
+        t(
+            "Rücktritt, Korb vorne, Ständer. Kleine Kratzer am Schutzblech.",
+            "Coaster brake, front basket, kickstand. Small scratches on the mudguard.",
+        ),
+        &[
+            ("frameNumber", "GZ 88 120 457", "GZ 88 120 457"),
+            ("frameSize", "53 cm", "53 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Gazelle", "Gazelle"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        420.0,
+        Some("mtb"),
+        t("Mountainbike 27,5 Zoll", "Mountain bike 27.5 inch"),
+        t(
+            "Federgabel 120 mm, hydraulische Scheibenbremsen, 2 × 10 Gänge.",
+            "120 mm fork, hydraulic disc brakes, 2 × 10 speed.",
+        ),
+        &[
+            ("frameNumber", "CB 9X 33 812", "CB 9X 33 812"),
+            ("frameSize", "M", "M"),
+            ("wheelSize", "27,5 Zoll", "27.5 inch"),
+            ("brand", "Cube", "Cube"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        260.0,
+        Some("bike_road"),
+        t("Rennrad Stahl, Klassiker", "Classic steel road bike"),
+        t(
+            "Peugeot aus den 80ern, Rahmenschaltung, neue Bremsbeläge.",
+            "1980s Peugeot, down tube shifters, new brake pads.",
+        ),
+        &[
+            ("frameNumber", "PG 1983 0441", "PG 1983 0441"),
+            ("frameSize", "58 cm", "58 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Peugeot", "Peugeot"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        90.0,
+        Some("bike_city"),
+        t("Kinderrad 20 Zoll", "Kids' bike 20 inch"),
+        t(
+            "3-Gang-Nabe, Licht, ab etwa 6 Jahren.",
+            "3-speed hub, lights, for about 6 and up.",
+        ),
+        &[
+            ("frameNumber", "PK 20 5531", "PK 20 5531"),
+            ("frameSize", "30 cm", "30 cm"),
+            ("wheelSize", "20 Zoll", "20 inch"),
+            ("brand", "Puky", "Puky"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        950.0,
+        Some("bike_city"),
+        t("E-Bike Tiefeinsteiger", "Step-through e-bike"),
+        t(
+            "Bosch-Mittelmotor, Akku 500 Wh mit 310 Ladezyklen, Ladegerät dabei.",
+            "Bosch mid motor, 500 Wh battery with 310 charge cycles, charger included.",
+        ),
+        &[
+            ("frameNumber", "PE 7712 0815", "PE 7712 0815"),
+            ("frameSize", "50 cm", "50 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Pegasus", "Pegasus"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        720.0,
+        Some("bike_gravel"),
+        t("Gravelbike Alu", "Aluminium gravel bike"),
+        t(
+            "GRX 1 × 11, Steckachsen, 40-mm-Reifen.",
+            "GRX 1 × 11, thru axles, 40 mm tyres.",
+        ),
+        &[
+            ("frameNumber", "RS GR 2219 4", "RS GR 2219 4"),
+            ("frameSize", "L", "L"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Rose", "Rose"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        210.0,
+        Some("mtb_mountains"),
+        t("Jugendrad 26 Zoll", "Youth bike 26 inch"),
+        t(
+            "21 Gänge, V-Brakes, passt ab etwa 1,45 m.",
+            "21 speeds, V-brakes, fits from about 1.45 m.",
+        ),
+        &[
+            ("frameNumber", "GH 26 0091 7", "GH 26 0091 7"),
+            ("frameSize", "S", "S"),
+            ("wheelSize", "26 Zoll", "26 inch"),
+            ("brand", "Ghost", "Ghost"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        160.0,
+        Some("bike_city"),
+        t("Faltrad 20 Zoll", "Folding bike 20 inch"),
+        t(
+            "Passt in jeden Kofferraum, 7 Gänge, mit Tasche.",
+            "Fits any car boot, 7 speeds, with bag.",
+        ),
+        &[
+            ("frameNumber", "DH 2004 7781", "DH 2004 7781"),
+            ("frameSize", "Einheitsgröße", "One size"),
+            ("wheelSize", "20 Zoll", "20 inch"),
+            ("brand", "Dahon", "Dahon"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "ok",
+        120.0,
+        Some("bike_city"),
+        t("Cityrad Herren", "Men's city bike"),
+        t(
+            "Fährt zuverlässig, Sattel und Griffe abgenutzt.",
+            "Rides reliably, saddle and grips worn.",
+        ),
+        &[
+            ("frameNumber", "HC 3301 552", "HC 3301 552"),
+            ("frameSize", "60 cm", "60 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Hercules", "Hercules"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        1100.0,
+        Some("mtb_mountains"),
+        t("Fully 29 Zoll", "Full-suspension bike 29 inch"),
+        t(
+            "Federweg 130/120 mm, Dropper-Post, tubeless.",
+            "130/120 mm travel, dropper post, tubeless.",
+        ),
+        &[
+            ("frameNumber", "SP 29 FS 3310", "SP 29 FS 3310"),
+            ("frameSize", "L", "L"),
+            ("wheelSize", "29 Zoll", "29 inch"),
+            ("brand", "Specialized", "Specialized"),
+        ],
+    ),
+];

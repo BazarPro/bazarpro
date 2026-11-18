@@ -37,6 +37,8 @@ import { useEventAccess } from '../../../../hooks/useEventAccess';
 import { PageSkeleton } from '../../../../components/ui/loading';
 import {
   clearCachedCart,
+  commissionOf,
+  deskTakes,
   getCheckoutCameraEnabled,
   getCheckoutSoundEnabled,
   loadCachedCart,
@@ -163,6 +165,9 @@ function CashDesk() {
   // Product pages and seller IDs too, for a look at an item without internet
   const event = useQuery(api.events.getEvent, eventId ? { id: eventId as Id<'events'> } : 'skip');
   useOfflinePreparation(eventId, event, true);
+  // Direct sale: the buyer paid the seller, the desk books it and takes the commission
+  const directSale = !!event && resolveEventFeatures(event).directSale;
+  const commissionPercent = event?.commission ?? 0;
   const offline = useOfflineCheckout(eventId, ({ booked, conflicts }) => {
     if (conflicts > 0) {
       toast.warning(t('checkout.offline.conflicts', { count: conflicts }));
@@ -273,6 +278,11 @@ function CashDesk() {
   const lines = cart.map((entry) => resolved[entry.productId]);
   const allReady = cart.length > 0 && lines.every((line) => line?.ok);
   const total = lines.reduce((sum, line) => sum + (line?.ok ? line.price : 0), 0);
+  const taken = deskTakes(
+    lines.flatMap((line) => (line?.ok ? [line.price] : [])),
+    directSale,
+    commissionPercent
+  );
   const emailValid = buyerEmail.trim() === '' || EMAIL_PATTERN.test(buyerEmail.trim());
   // Card payments run over the organizer's own terminal; the desk records how it was paid
   const cardPayments = !!event && resolveEventFeatures(event).cardPayments;
@@ -291,7 +301,8 @@ function CashDesk() {
   // Offline SumUp cannot charge; the desk records a card payment by hand as before
   const viaSumUp =
     (byCard && sumUp.available && sumUp.loggedIn === true && !offline.offline) || viaSolo;
-  const belowSumUpMinimum = viaSumUp && total < SUMUP_MIN_AMOUNT;
+  // At a direct sale the card pays only the commission
+  const belowSumUpMinimum = viaSumUp && taken < SUMUP_MIN_AMOUNT;
   /** A card payment SumUp could not confirm; the cashier says whether it went through */
   const [unclear, setUnclear] = useState<{
     deskSaleId: string;
@@ -326,13 +337,20 @@ function CashDesk() {
     sumUp?: { transactionCode?: string }
   ) => {
     const card = byCard || !!sumUp;
-    const paid = ready.reduce((sum, line) => sum + line.price, 0);
+    // What the desk took: at a direct sale only the commission
+    const paid = deskTakes(
+      ready.map((line) => line.price),
+      directSale,
+      commissionPercent
+    );
     await enqueueSale(eventId!, {
       deskSaleId,
       soldAt: Date.now(),
       buyerEmail: buyerEmail.trim() || undefined,
       paymentMethod: card ? 'card' : undefined,
       cardTransactionCode: sumUp?.transactionCode,
+      // The desk took the money this way; it is booked so even if the event changes
+      directSale,
       items: ready.map((line) => ({
         eventProductId: line.request.eventProductId,
         productId: line.productId,
@@ -365,7 +383,8 @@ function CashDesk() {
       });
       setLastSale({
         count: result.purchaseIds.length,
-        total: result.total,
+        // Older backends do not send what the desk took
+        total: result.taken ?? result.total,
         queued: false,
         card: byCard,
         lines: ready,
@@ -410,7 +429,7 @@ function CashDesk() {
       });
       setLastSale({
         count: result.purchaseIds.length,
-        total: result.total,
+        total: result.taken ?? result.total,
         queued: false,
         card: true,
         lines: ready,
@@ -452,16 +471,16 @@ function CashDesk() {
     setIsSubmitting(true);
     try {
       const outcome = viaSolo
-        ? await solo.charge({ total, foreignTransactionId: deskSaleId })
+        ? await solo.charge({ total: taken, foreignTransactionId: deskSaleId })
         : await sumUp.charge({
-            total,
+            total: taken,
             foreignTransactionId: deskSaleId,
             title: event?.title,
           });
       if (outcome.status === 'successful') {
         await bookCardSale(deskSaleId, ready, outcome.transactionCode);
       } else if (outcome.status === 'unknown') {
-        setUnclear({ deskSaleId, ready, total });
+        setUnclear({ deskSaleId, ready, total: taken });
       } else {
         failedPayment(outcome);
       }
@@ -581,7 +600,15 @@ function CashDesk() {
               <CheckCircle2 className="h-5 w-5 shrink-0" />
               <p className="min-w-0 flex-1 basis-48">
                 <Trans
-                  i18nKey={lastSale.queued ? 'checkout.offline.queued' : 'checkout.sold'}
+                  i18nKey={
+                    directSale
+                      ? lastSale.queued
+                        ? 'checkout.offline.queuedDirect'
+                        : 'checkout.soldDirect'
+                      : lastSale.queued
+                        ? 'checkout.offline.queued'
+                        : 'checkout.sold'
+                  }
                   ns="organizer"
                   count={lastSale.count}
                   values={{ total: formatPriceDE(lastSale.total) }}
@@ -615,6 +642,8 @@ function CashDesk() {
                   entry={entry}
                   offline={offline.offline}
                   snapshot={offline.snapshot}
+                  directSale={directSale}
+                  commissionPercent={commissionPercent}
                   onChange={(change) => updateEntry(entry.productId, change)}
                   onRemove={() => removeEntry(entry.productId)}
                   onResolved={onResolved}
@@ -640,9 +669,19 @@ function CashDesk() {
               </div>
               {/* Sum and the way to finish stay in reach, however long the cart is */}
               <StickyActionBar className="lg:static lg:mx-0 lg:rounded-xl lg:border lg:bg-card lg:p-4 lg:backdrop-blur-none">
+                {directSale && (
+                  <div className="flex w-full items-baseline justify-between text-sm text-muted-foreground">
+                    <span>{t('checkout.direct.paidToSeller')}</span>
+                    <span className="tabular-nums">{formatPriceDE(total)} €</span>
+                  </div>
+                )}
                 <div className="flex w-full items-baseline justify-between">
-                  <span>{t('checkout.sum', { count: cart.length })}</span>
-                  <span className="text-2xl font-bold tabular-nums">{formatPriceDE(total)} €</span>
+                  <span>
+                    {directSale
+                      ? t('checkout.direct.sum', { count: cart.length, percent: commissionPercent })
+                      : t('checkout.sum', { count: cart.length })}
+                  </span>
+                  <span className="text-2xl font-bold tabular-nums">{formatPriceDE(taken)} €</span>
                 </div>
                 {cardPayments && (
                   <div className="w-full space-y-1">
@@ -696,9 +735,11 @@ function CashDesk() {
                       onCheckedChange={(checked) => setPaidFor(checked ? saleKey : null)}
                       className="size-5"
                     />
-                    {t(byCard ? 'checkout.receivedCard' : 'checkout.received', {
-                      total: formatPriceDE(total),
-                    })}
+                    {byCard
+                      ? t('checkout.receivedCard', { total: formatPriceDE(taken) })
+                      : directSale
+                        ? t('checkout.direct.received', { total: formatPriceDE(taken) })
+                        : t('checkout.received', { total: formatPriceDE(total) })}
                   </Label>
                 )}
                 {belowSumUpMinimum && (
@@ -725,7 +766,7 @@ function CashDesk() {
                       <CreditCard className="h-4 w-4 shrink-0" />
                       {isSubmitting
                         ? t('checkout.sumup.charging')
-                        : t('checkout.sumup.charge', { total: formatPriceDE(total) })}
+                        : t('checkout.sumup.charge', { total: formatPriceDE(taken) })}
                     </Button>
                   ) : (
                     <Button
@@ -777,6 +818,8 @@ function CartLine({
   entry,
   offline,
   snapshot,
+  directSale,
+  commissionPercent,
   onChange,
   onRemove,
   onResolved,
@@ -785,6 +828,9 @@ function CartLine({
   entry: CartEntry;
   offline: boolean;
   snapshot: CheckoutSnapshot | null;
+  /** The buyer paid the seller: the desk enters the agreed price, takes the commission */
+  directSale: boolean;
+  commissionPercent: number;
   onChange: (change: Partial<CartEntry>) => void;
   onRemove: () => void;
   onResolved: (productId: Id<'products'>, line: ResolvedLine | undefined) => void;
@@ -824,7 +870,8 @@ function CartLine({
       },
     };
     if (entry.choice === 'negotiated') {
-      const min = item.minimumPrice;
+      // At a direct sale any price up to the label counts, seller and buyer agreed on it
+      const min = directSale ? 0.01 : item.minimumPrice;
       if (min === undefined) return { ok: false, problem: t('checkout.problem.noNegotiation') };
       if (!Number.isFinite(negotiated) || negotiated < min || negotiated > item.listPrice) {
         return {
@@ -856,11 +903,12 @@ function CartLine({
       };
     }
     return { ok: true, price: item.listPrice, ...sale, source: 'list', request };
-  }, [item, offers, entry.choice, entry.productId, negotiated, offline, snapshot, t]);
+  }, [item, offers, entry.choice, entry.productId, negotiated, offline, snapshot, directSale, t]);
 
   useEffect(() => onResolved(entry.productId, line), [entry.productId, line, onResolved]);
 
-  const hasOptions = !!item && ((offers?.length ?? 0) > 0 || item.minimumPrice !== undefined);
+  const hasOptions =
+    !!item && (directSale || (offers?.length ?? 0) > 0 || item.minimumPrice !== undefined);
 
   return (
     <li className="flex gap-3 p-3" data-testid="checkout-line">
@@ -904,8 +952,17 @@ function CartLine({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {line?.ok && (
-              <span className="whitespace-nowrap font-semibold tabular-nums">
-                {formatPriceDE(line.price)} €
+              <span className="flex flex-col items-end">
+                <span className="whitespace-nowrap font-semibold tabular-nums">
+                  {formatPriceDE(line.price)} €
+                </span>
+                {directSale && (
+                  <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                    {t('checkout.direct.commission', {
+                      amount: formatPriceDE(commissionOf(line.price, commissionPercent)),
+                    })}
+                  </span>
+                )}
               </span>
             )}
             <Button
@@ -952,10 +1009,14 @@ function CartLine({
                   })}
                 </option>
               ))}
-              {item.minimumPrice !== undefined && (
-                <option value="negotiated">
-                  {t('checkout.negotiated', { min: formatPriceDE(item.minimumPrice) })}
-                </option>
+              {directSale ? (
+                <option value="negotiated">{t('checkout.direct.agreed')}</option>
+              ) : (
+                item.minimumPrice !== undefined && (
+                  <option value="negotiated">
+                    {t('checkout.negotiated', { min: formatPriceDE(item.minimumPrice) })}
+                  </option>
+                )
               )}
             </select>
             {entry.choice === 'negotiated' && (
@@ -964,7 +1025,9 @@ function CartLine({
                 inputMode="decimal"
                 value={entry.negotiatedInput}
                 onChange={(e) => onChange({ negotiatedInput: e.target.value })}
-                aria-label={t('checkout.negotiatedPrice')}
+                aria-label={
+                  directSale ? t('checkout.direct.agreedPrice') : t('checkout.negotiatedPrice')
+                }
                 placeholder={t('checkout.price')}
               />
             )}

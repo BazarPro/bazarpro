@@ -2,6 +2,7 @@ import { Building2, Store, UserStar, type LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
+import { Skeleton } from '../ui/skeleton';
 import { SheetHeader, SheetTitle } from '../ui/sheet';
 import { useUserRole, type UserRole } from '../../context/UserRoleContext';
 import type { Id } from '../../lib/api/types';
@@ -128,14 +129,13 @@ export function Sidebar({
         </div>
         {eventId && eventItems.length > 0 && (
           <div className="mt-5 space-y-1">
-            {eventTitle && (
-              <div
-                className="line-clamp-2 break-words px-3 pb-1 text-xs font-medium text-muted-foreground"
-                title={eventTitle}
-              >
-                {eventTitle}
-              </div>
-            )}
+            {/* One line, kept free while the title loads: the entries below stay put */}
+            <div
+              className="h-5 truncate px-3 text-xs font-medium leading-5 text-muted-foreground"
+              title={eventTitle}
+            >
+              {eventTitle ?? <Skeleton className="mt-1 h-3 w-28" />}
+            </div>
             {eventItems.map(renderItem)}
           </div>
         )}

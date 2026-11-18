@@ -87,7 +87,10 @@ export function saleRows(sales: SettlementSale[]): string[][] {
     sale.category,
     formatPriceDE(sale.listPrice),
     formatPriceDE(sale.totalAmount),
-    text(`source.${sale.priceSource}`),
+    // A direct sale was paid to the seller; the payout of 0 € is no omission
+    sale.directSale
+      ? `${text(`source.${sale.priceSource}`)}, ${text('direct')}`
+      : text(`source.${sale.priceSource}`),
     formatPriceDE(sale.commission),
     formatPriceDE(sale.payout),
   ]);

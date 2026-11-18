@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { SaleInfo } from '../../lib/api/types';
 import { cn, formatPriceDE } from '../../lib/utils';
 import { formatItemPrice } from '../../lib/productDisplay';
-import { priceSourceLabel } from '../../lib/saleBreakdown';
+import { priceSourceLabel, sellerKeeps } from '../../lib/saleBreakdown';
 import { discountedPrice } from '../../shared/eventFeatures';
 
 const CENT = 0.005;
@@ -61,7 +61,9 @@ export function ProductPrice({
         <span className={main}>{formatItemPrice(sale.totalAmount)}</span>
         {showPayout && (
           <span className={cn(aside, 'mt-0.5')}>
-            {t('card.payout', { amount: formatPriceDE(sale.payout) })}
+            {t(sale.directSale ? 'card.receivedDirectly' : 'card.payout', {
+              amount: formatPriceDE(sellerKeeps(sale)),
+            })}
           </span>
         )}
       </div>

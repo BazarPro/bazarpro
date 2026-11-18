@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use super::access::is_platform_admin;
 use super::docs::{self, User};
+use super::event_exclusions::{Exclusion, exclusions_of_event};
 use super::features::label_mark;
 use super::labels::seller_sort_code;
 use super::sales::{self, IntakeFee};
@@ -286,6 +287,28 @@ pub async fn require_team(ctx: &mut Ctx, event: Uuid) -> AppResult<Uuid> {
     Ok(user)
 }
 
+/// The bazaar lists show the places left for sellers of a bazaar with a seller limit: who
+/// joins, leaves, is excluded or changes sides with the team moves them. Other bazaars
+/// show no places, so their sellers do not make every open list load anew.
+pub async fn touch_seller_places(ctx: &mut Ctx, event: Uuid) -> sqlx::Result<()> {
+    let limited: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM events WHERE id = $1 AND vendor_limit > 0)",
+    )
+    .bind(event)
+    .fetch_one(ctx.conn())
+    .await?;
+    if limited {
+        ctx.touch(Topic::Events);
+    }
+    Ok(())
+}
+
+async fn touch_roles(ctx: &mut Ctx, event: Uuid, user: Uuid) -> sqlx::Result<()> {
+    ctx.touch(Topic::Event(event));
+    ctx.touch(Topic::User(user));
+    touch_seller_places(ctx, event).await
+}
+
 pub async fn add_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sqlx::Result<()> {
     sqlx::query(
         "INSERT INTO event_roles (event_id, user_id, role) VALUES ($1, $2, $3::event_role_kind)
@@ -296,9 +319,7 @@ pub async fn add_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sql
     .bind(role.as_str())
     .execute(ctx.conn())
     .await?;
-    ctx.touch(Topic::Event(event));
-    ctx.touch(Topic::User(user));
-    Ok(())
+    touch_roles(ctx, event, user).await
 }
 
 pub async fn remove_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sqlx::Result<()> {
@@ -308,9 +329,7 @@ pub async fn remove_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> 
         .bind(role.as_str())
         .execute(ctx.conn())
         .await?;
-    ctx.touch(Topic::Event(event));
-    ctx.touch(Topic::User(user));
-    Ok(())
+    touch_roles(ctx, event, user).await
 }
 
 /// Once a seller is paid out, the settlement is final: no more sales, returns or undos
@@ -396,6 +415,8 @@ pub struct VendorWithCalculations {
     pub intake_fee: IntakeFee,
     /// Sales minus commission and intake fee; negative when the seller owes the bazaar
     pub payout: Decimal,
+    /// Direct sales: what the seller got from the buyers and keeps, so it is not in the payout
+    pub received_directly: Decimal,
     pub paid: bool,
     pub gross_revenue: Decimal,
     pub total_discount: Decimal,
@@ -409,6 +430,8 @@ pub struct VendorWithCalculations {
     /// Bazaars with fixedSellerData: name and address are recorded (first item accepted).
     /// Before, the team checks them against the ID card and the seller may still correct them.
     pub details_recorded: Option<bool>,
+    /// The organizer took the seller out of the bazaar
+    pub excluded: Option<Exclusion>,
 }
 
 /// Sellers of an event with their sales totals and payout state. No permission check.
@@ -448,6 +471,7 @@ pub async fn load_vendors_with_calculations(
     .fetch_all(ctx.conn())
     .await?;
 
+    let mut exclusions = exclusions_of_event(ctx.conn(), event_id).await?;
     let all_purchases = docs::purchases_where(ctx.conn(), "event_id = $1", event_id).await?;
     let mut vendors = Vec::new();
     let users = docs::users(ctx.conn(), &vendor_ids).await?;
@@ -467,6 +491,7 @@ pub async fn load_vendors_with_calculations(
         let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
         let sales_payout: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
         let gross_revenue: Decimal = purchases.iter().map(|p| sales::list_price(p)).sum();
+        let received_directly: Decimal = purchases.iter().map(|p| p.received_directly()).sum();
         let seller = docs::event_seller(ctx.conn(), event_id, vendor).await?;
         if (over || user.status.as_deref() == Some("deleted"))
             && let Some(snapshot) = seller.as_ref().and_then(|s| s.seller_snapshot.as_ref())
@@ -493,6 +518,7 @@ pub async fn load_vendors_with_calculations(
             commission,
             intake_fee,
             payout: sales_payout - intake_fee.total,
+            received_directly,
             paid: seller.as_ref().is_some_and(|seller| seller.payout_received),
             gross_revenue,
             total_discount: gross_revenue - total_revenue,
@@ -505,6 +531,7 @@ pub async fn load_vendors_with_calculations(
             }),
             seller_number: seller.and_then(|seller| seller.number),
             sort_code,
+            excluded: exclusions.remove(&vendor),
         });
     }
     Ok(vendors)
@@ -665,6 +692,8 @@ async fn add_co_organizer_for_event(ctx: &mut Ctx, args: AddHelperArgs) -> AppRe
     if !has_role(ctx.conn(), event, user, Role::Seller).await? {
         return Err(AppError::bad_request("seller.notParticipant"));
     }
+    // Excluded sellers keep the role for the return of handed-in items, not for the team
+    super::event_exclusions::assert_not_excluded(ctx.conn(), event, user).await?;
     add_role(ctx, event, user, Role::Coorganizer).await?;
     // Also when already a helper: appointing again sets the rights anew
     store_permissions(ctx, event, user, args.permissions.as_deref()).await?;

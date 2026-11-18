@@ -33,6 +33,10 @@
     "returned": {
       "title": "Zurückgegeben",
       "description": "Der Artikel wurde nicht verkauft und dem Verkäufer ausgehändigt."
+    },
+    "rejected": {
+      "title": "Abgelehnt",
+      "description": "Der Artikel wurde nicht rechtzeitig abgegeben und deshalb abgelehnt. Er wird bei diesem Basar nicht angeboten."
     }
   },
   "visibility": {
@@ -63,7 +67,9 @@
     "frameNumber": {
       "label": "Rahmennummer",
       "placeholder": "z. B. WBK123456",
-      "hint": "Bei Rädern ab ca. 500 € dringend empfohlen."
+      "hint": "Nicht gefunden? Schreib „nicht gefunden“ hinein – wir suchen sie vor Ort gemeinsam.",
+      "notFound": "Nicht gefunden",
+      "notFoundValue": "nicht gefunden"
     },
     "frameSize": {
       "label": "Rahmengröße",
@@ -99,6 +105,7 @@
   "service": {
     "Parkplatz": "Parkplatz",
     "Skiservice": "Skiservice",
+    "Fahrradcodierung": "Fahrradcodierung",
     "Gastronomie": "Gastronomie",
     "Imbiss": "Imbiss",
     "Getränke": "Getränke"

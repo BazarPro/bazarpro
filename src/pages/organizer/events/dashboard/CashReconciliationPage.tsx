@@ -59,6 +59,8 @@ export function CashReconciliationPage() {
     3: 'sm:grid-cols-[1fr_auto_1fr_auto_1fr]',
     4: 'sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr]',
   }[terms];
+  // Direct sale: the sellers have their money, so there may be nobody to settle
+  const nothingToSettle = summary.vendorsTotalCount === 0 && summary.totalDirectSales > 0.005;
   const payoutProgress =
     summary.vendorsTotalCount > 0
       ? (summary.vendorsPaidCount / summary.vendorsTotalCount) * 100
@@ -153,6 +155,14 @@ export function CashReconciliationPage() {
                   {formatPriceDE(summary.totalNetRevenue)} €
                 </dd>
               </div>
+              {summary.totalDirectSales > 0.005 && (
+                <div className="flex justify-between gap-3">
+                  <dt>{t('cash.directSales')}</dt>
+                  <dd className="whitespace-nowrap font-medium">
+                    −{formatPriceDE(summary.totalDirectSales - summary.totalDirectCommission)} €
+                  </dd>
+                </div>
+              )}
               {byCard && (
                 <div className="flex justify-between gap-3">
                   <dt>{t('cash.card', { count: summary.cardSalesCount })}</dt>
@@ -205,18 +215,25 @@ export function CashReconciliationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>
-                  {t('cash.progress', {
-                    paid: summary.vendorsPaidCount,
-                    total: summary.vendorsTotalCount,
-                  })}
-                </span>
-                <span className="font-medium">{payoutProgress.toFixed(0)} %</span>
+            {nothingToSettle ? (
+              <p className="flex items-start gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/40 dark:text-green-300">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                {t('cash.directNoPayout')}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>
+                    {t('cash.progress', {
+                      paid: summary.vendorsPaidCount,
+                      total: summary.vendorsTotalCount,
+                    })}
+                  </span>
+                  <span className="font-medium">{payoutProgress.toFixed(0)} %</span>
+                </div>
+                <Progress value={payoutProgress} className="h-2" />
               </div>
-              <Progress value={payoutProgress} className="h-2" />
-            </div>
+            )}
             <dl className="space-y-2 text-sm tabular-nums">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">{t('cash.paid')}</dt>

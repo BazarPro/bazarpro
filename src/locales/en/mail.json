@@ -184,8 +184,10 @@
   "sale": {
     "price": "Sale price",
     "commission": "Commission",
+    "commissionPaid": "Commission (paid at the cash desk)",
     "payout": "Payout",
     "footnote": "You receive the payout from the organizer.",
+    "directFootnote": "You received the sale price directly from the buyer and paid the commission at the cash desk, so there is no payout.",
     "one": {
       "subject": "Sold: {{title}}",
       "heading": "Your item was sold",
@@ -221,6 +223,7 @@
     "bazaar": "Bazaar",
     "location": "Location",
     "dropoff": "Hand-in",
+    "setup": "Setup",
     "yourNumber": "Your number",
     "yourItems": "Your items",
     "contact": "Questions? You can reach the organizer at: {{contact}}",
@@ -230,23 +233,30 @@
       "items_one": "You registered {{count}} item. Print the labels beforehand (My products → Labels as PDF) and attach them to the items.",
       "items_other": "You registered {{count}} items. Print the labels beforehand (My products → Labels as PDF) and attach them to the items.",
       "dropoff": "Bring your items to the hand-in: {{dropoff}}.",
+      "setup": "Set up your stand: {{dropoff}}.",
       "digitalId": "Show the digital ID from your account at the hand-in, it makes things faster.",
+      "digitalIdSetup": "Show the digital ID from your account at setup, it makes things faster.",
       "link": "My products"
     },
     "pickup": {
       "subject": "Pickup: {{event}}",
+      "subjectTeardown": "Teardown: {{event}}",
       "heading": "Pick up your items and your money",
+      "headingTeardown": "Teardown and settlement",
       "over_one": "“{{event}}” is over. You sold {{count}} item.",
       "over_other": "“{{event}}” is over. You sold {{count}} items.",
       "more_one": " and {{count}} more",
       "more_other": " and {{count}} more",
       "toPickUp": "To pick up: {{items}}.",
+      "toTakeBack": "Take back with you: {{items}}.",
       "when": "Pickup: {{pickup}}, {{location}}.",
+      "whenTeardown": "Teardown: {{pickup}}, {{location}}.",
       "where": "Location: {{location}}.",
       "sold": "Sold",
       "feeDue": "Intake fee to pay",
       "payout": "Payout",
       "unsold": "To pick up",
+      "unsoldTeardown": "To take back",
       "link": "My sales"
     },
     "export": {
@@ -269,5 +279,40 @@
     "when": "When",
     "link": "View invitation",
     "footnote": "The organizer entered your address for this invitation. If you do not want to take part, just ignore this email."
+  },
+  "participation": {
+    "openEvent": "Open bazaar",
+    "contact": "Questions to the organizer",
+    "excluded": {
+      "subject": "You no longer take part in “{{event}}”",
+      "heading": "Excluded from the bazaar",
+      "text": "The organizer of “{{event}}” has excluded you as a seller. You cannot register again.",
+      "handedIn": "Items you already handed in come back to you in the usual return. Sales and the settlement remain."
+    },
+    "readmitted": {
+      "subject": "You can take part in “{{event}}” again",
+      "heading": "Exclusion lifted",
+      "text": "The organizer has taken back your exclusion from “{{event}}”. You are a seller there again and can register items.",
+      "join": "The organizer has taken back your exclusion from “{{event}}”. You can register as a seller again.",
+      "joinClosed": "The organizer has taken back your exclusion from “{{event}}”. Registration is closed right now: if you would like to take part, ask the organizer for an invitation."
+    },
+    "rejected": {
+      "subject_one": "“{{event}}”: one item was not handed in",
+      "subject_other": "“{{event}}”: {{count}} items were not handed in",
+      "heading_one": "Item not handed in",
+      "heading_other": "{{count}} items not handed in",
+      "text_one": "You registered this item for “{{event}}” but did not hand it in on time. It is not offered there:",
+      "text_other": "You registered these items for “{{event}}” but did not hand them in on time. They are not offered there:",
+      "item": "“{{title}}”",
+      "more_one": "{{items}} and one more",
+      "more_other": "{{items}} and {{count}} more",
+      "final_one": "It cannot be registered for this bazaar again. If you have questions, please contact the organizer.",
+      "final_other": "They cannot be registered for this bazaar again. If you have questions, please contact the organizer."
+    },
+    "rejectionUndone": {
+      "subject": "“{{event}}”: “{{title}}” is registered again",
+      "heading": "Item registered again",
+      "text": "The team of “{{event}}” has taken back the rejection of “{{title}}”. The item is registered for the bazaar again; please hand it in at the drop-off."
+    }
   }
 }
