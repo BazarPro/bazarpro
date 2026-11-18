@@ -467,6 +467,8 @@ export type SettlementExport = {
     startDate: number;
     endDate: number;
     commission: number;
+    /** Fee cap per seller; with it the seller table has its column */
+    maxFeesPerSeller?: number | undefined;
   };
   sales: SettlementSale[];
   sellers: SettlementSeller[];
@@ -1682,12 +1684,13 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
-              maxItemsTotal?: number | undefined;
+              /** null clears it; left out, the stored value stays (older apps) */
+              maxItemsTotal?: number | null | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
-              maxFeesPerSeller?: number | undefined;
+              maxFeesPerSeller?: number | null | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1740,12 +1743,13 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
-              maxItemsTotal?: number | undefined;
+              /** null clears it; left out, the stored value stays (older apps) */
+              maxItemsTotal?: number | null | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
-              maxFeesPerSeller?: number | undefined;
+              maxFeesPerSeller?: number | null | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;

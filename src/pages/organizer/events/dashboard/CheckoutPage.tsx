@@ -293,21 +293,36 @@ function CashDesk() {
 
   /** Keeps the sale on the device; the money is taken, so it is done for the buyer. */
   const queueSale = async (deskSaleId: string, ready: Extract<ResolvedLine, { ok: true }>[]) => {
-    await enqueueSale(eventId!, {
-      deskSaleId,
-      soldAt: Date.now(),
-      buyerEmail: buyerEmail.trim() || undefined,
-      // The desk took the money this way; it is booked so even if the event changes
-      directSale,
-      items: ready.map((line) => ({
-        eventProductId: line.request.eventProductId,
-        productId: line.productId,
-        title: line.title,
-        paid: line.price,
-        priceSource: line.source,
-        offerId: line.request.offerId,
-      })),
-    });
+    // What this cart takes from each seller's fee cap, so the next offline cart starts
+    // from the rest
+    const feeCapSpent: Record<string, number> = {};
+    if (directSale) {
+      for (const line of ready) {
+        const commission = commissionOfLine.get(line.productId);
+        if (line.sellerId === undefined || line.feeCapLeft === undefined || !commission) continue;
+        feeCapSpent[line.sellerId] =
+          Math.round(((feeCapSpent[line.sellerId] ?? 0) + commission) * 100) / 100;
+      }
+    }
+    await enqueueSale(
+      eventId!,
+      {
+        deskSaleId,
+        soldAt: Date.now(),
+        buyerEmail: buyerEmail.trim() || undefined,
+        // The desk took the money this way; it is booked so even if the event changes
+        directSale,
+        items: ready.map((line) => ({
+          eventProductId: line.request.eventProductId,
+          productId: line.productId,
+          title: line.title,
+          paid: line.price,
+          priceSource: line.source,
+          offerId: line.request.offerId,
+        })),
+      },
+      feeCapSpent
+    );
     setLastSale({ count: ready.length, total: taken, queued: true, lines: ready });
     nextBuyer();
   };

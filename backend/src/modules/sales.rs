@@ -224,6 +224,98 @@ pub async fn direct_commission_paid(
     .await
 }
 
+/// Holds a lock on the fee cap of one seller until the transaction ends, so two desks
+/// selling for the same seller cannot both take the rest of the cap. Desks selling for
+/// other sellers do not wait.
+pub async fn lock_seller_fees(
+    conn: &mut PgConnection,
+    event_id: Uuid,
+    seller_id: Uuid,
+) -> sqlx::Result<()> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':' || $2::text, 301))")
+        .bind(event_id)
+        .bind(seller_id)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+/// A direct sale as the cap needs it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DirectSale {
+    /// Full commission without the cap
+    pub full: Decimal,
+    /// The commission booked (counts towards the cap)
+    pub commission: Decimal,
+    /// What the desk took: the commission, less what is still owed at the settlement
+    pub taken: Decimal,
+}
+
+/// After a direct sale of the seller is undone: the room it leaves under the cap goes to
+/// the later sales that were capped, in booking order, up to their full commission. What
+/// the desk did not take for it stays owed and is settled at the payout (a negative payout
+/// of that sale). A commission never goes down here, and the sum never exceeds the cap.
+pub fn recap_direct_sales(sales: &[DirectSale], cap: Option<Decimal>) -> Vec<Decimal> {
+    let Some(cap) = cap else {
+        return sales
+            .iter()
+            .map(|sale| sale.full.max(sale.commission))
+            .collect();
+    };
+    let booked: Decimal = sales.iter().map(|sale| sale.commission).sum();
+    let mut room = (cap - booked).max(Decimal::ZERO);
+    sales
+        .iter()
+        .map(|sale| {
+            let more = (sale.full - sale.commission).max(Decimal::ZERO).min(room);
+            room -= more;
+            sale.commission + more
+        })
+        .collect()
+}
+
+/// Re-applies the cap to the seller's direct sales of the event (see recap_direct_sales).
+pub async fn recap_seller_direct_sales(
+    conn: &mut PgConnection,
+    event: &Event,
+    seller_id: Uuid,
+) -> sqlx::Result<()> {
+    let cap = event.resolved_features().max_fees_per_seller;
+    if cap.is_none() {
+        return Ok(());
+    }
+    let rows: Vec<(Uuid, Decimal, Decimal, Decimal)> = sqlx::query_as(
+        "SELECT id, total_amount, commission_amount, payout_amount FROM purchases
+         WHERE event_id = $1 AND seller_id = $2 AND direct_sale ORDER BY created_at, id",
+    )
+    .bind(event.id)
+    .bind(seller_id)
+    .fetch_all(&mut *conn)
+    .await?;
+    let sales: Vec<DirectSale> = rows
+        .iter()
+        .map(|(_, total, commission, payout)| DirectSale {
+            full: (total * event.commission / Decimal::ONE_HUNDRED).cents(),
+            commission: *commission,
+            taken: commission + payout,
+        })
+        .collect();
+    let due = recap_direct_sales(&sales, cap);
+    for ((id, ..), (sale, due)) in rows.iter().zip(sales.iter().zip(due)) {
+        if due != sale.commission {
+            sqlx::query(
+                "UPDATE purchases SET commission_amount = $2, payout_amount = $3 WHERE id = $1",
+            )
+            .bind(id)
+            .bind(due)
+            .bind(sale.taken - due)
+            .execute(&mut *conn)
+            .await?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -275,5 +367,38 @@ mod tests {
         assert_eq!(paid, euro(2000));
         // The intake fee is waived at the payout: all fees stay at the cap
         assert_eq!(fee_cap_credit(paid + euro(300), cap), euro(300));
+    }
+
+    #[test]
+    fn undoing_a_sale_makes_later_sales_owe_their_commission() {
+        let cap = Some(euro(2000));
+        let sale = |full, commission| DirectSale {
+            full: euro(full),
+            commission: euro(commission),
+            taken: euro(commission),
+        };
+        // Sale A (14 €) was undone; sale B was capped to 6 € and owes 14 € again
+        assert_eq!(
+            recap_direct_sales(&[sale(1400, 600)], cap),
+            vec![euro(1400)]
+        );
+        // Two later sales: the room is shared in booking order
+        assert_eq!(
+            recap_direct_sales(&[sale(1400, 600), sale(1400, 0)], cap),
+            vec![euro(1400), euro(600)]
+        );
+        // A sale with its full commission keeps it; the sum stays at the cap
+        let due = recap_direct_sales(&[sale(900, 600), sale(500, 0), sale(1000, 1000)], cap);
+        assert_eq!(due, vec![euro(900), euro(100), euro(1000)]);
+        assert_eq!(due.iter().sum::<Decimal>(), euro(2000));
+        // Nothing to fill: commissions stay as they are, never lower
+        assert_eq!(
+            recap_direct_sales(&[sale(1400, 1400)], cap),
+            vec![euro(1400)]
+        );
+        assert_eq!(
+            recap_direct_sales(&[sale(1400, 600)], None),
+            vec![euro(1400)]
+        );
     }
 }

@@ -30,10 +30,11 @@ export function SellerConditions({
   compact?: boolean;
 }) {
   const { t } = useTranslation('events');
+  const { intakeFee, maxFeesPerSeller } = resolveEventFeatures(event);
   const { lines, example } = describeSellerFees({
     commission: event.commission,
-    intakeFee: resolveEventFeatures(event).intakeFee,
-    maxFeesPerSeller: resolveEventFeatures(event).maxFeesPerSeller,
+    intakeFee,
+    maxFeesPerSeller,
   });
   const fieldDefinitions = useCategoryFieldDefinitions();
   const rules = describeSellerRules(event, fieldDefinitions).filter(

@@ -43,7 +43,10 @@
     "showAllOrSales": "<all>Show all</all> or <sales>go to My sales</sales>",
     "placesLeft_one": "{{count}} place left",
     "placesLeft_other": "{{count}} places left",
-    "marketFull": "bazaar full"
+    "marketFull": "bazaar full",
+    "placesOver_one": "{{count}} item more than places are free",
+    "placesOver_other": "{{count}} items more than places are free",
+    "noPlaceLeft": "There is no place left at the bazaar."
   },
   "header": {
     "title": "My items",

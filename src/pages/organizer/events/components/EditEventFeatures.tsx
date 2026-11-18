@@ -604,7 +604,8 @@ export function EditEventFeatures({
             info={`${t('features.maxFeesHint')} ${feeLock ? feeLockHint(feeLock) : t('features.maxFeesLater')}`}
             placeholder={t('features.noCap')}
             max={10_000}
-            step={1}
+            // Amounts in cents are allowed, like the backend takes them
+            step={0.01}
             feeLock={feeLock}
             error={featureErrors?.maxFeesPerSeller?.message}
           />

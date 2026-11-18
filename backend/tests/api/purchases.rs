@@ -1176,7 +1176,8 @@ async fn a_direct_sale_takes_commission_only_up_to_the_cap(db: PgPool) {
     assert_eq!(vendor["feeCapCredit"], json!(6.0), "{vendor}");
     assert_eq!(vendor["payout"], json!(0.0));
 
-    // Undone, the commission goes back; the other sales stay as booked, under the cap
+    // Undone, its commission goes back; the room under the cap goes to the other sales,
+    // which owe their full commission again
     sqlx::query(
         "INSERT INTO feature_flags (key, value) VALUES ('allow_undo_inventory_actions', true)",
     )
@@ -1192,10 +1193,27 @@ async fn a_direct_sale_takes_commission_only_up_to_the_cap(db: PgPool) {
         )
         .await;
     assert_eq!(undo.status, StatusCode::OK, "{}", undo.body);
-    assert_eq!(left(ebike).await, json!(14.0));
+    // 9 € for the trekking bike, 5 € for the city bike: 6 € of the cap are left
+    assert_eq!(desk.purchase(trekking).await.unwrap().1, 9.0);
+    assert_eq!(desk.purchase(city).await.unwrap().1, 5.0);
+    assert_eq!(left(ebike).await, json!(6.0));
     let vendor = vendor_of(&desk).await;
-    assert_eq!(vendor["commission"], json!(6.0));
-    // 6 € commission + 6 € intake fee are below the cap: the seller pays the intake fee
+    assert_eq!(vendor["commission"], json!(14.0));
+    // 14 € commission + 6 € intake fee are the cap; the desk took 6 €, the seller pays
+    // the other 8 € of commission and the intake fee at the settlement
     assert_eq!(vendor["feeCapCredit"], json!(0.0));
-    assert_eq!(vendor["payout"], json!(-6.0));
+    assert_eq!(vendor["payout"], json!(-14.0), "{vendor}");
+    assert_eq!(vendor["receivedDirectly"], json!(140.0 - 6.0));
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    // Only what the desk really took is in the till
+    assert_eq!(summary["cashInHandSoll"], json!(6.0), "{summary}");
 }

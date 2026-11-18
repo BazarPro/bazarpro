@@ -151,17 +151,27 @@ pub async fn assert_item_limit(
             ));
         }
     }
-    if let Some(limit) = features.max_items_total {
-        // Two sellers must not both get the last place
-        docs::lock_event(ctx.conn(), event.id).await?;
-        let taken = items_taking_place(ctx, event.id).await?;
-        if taken + adding > i64::from(limit) {
-            return Err(AppError::coded(
-                axum::http::StatusCode::BAD_REQUEST,
-                "event.full",
-                &[("event", &event.title), ("limit", &limit.to_string())],
-            ));
-        }
+    assert_market_space(ctx, event, adding).await
+}
+
+/// Refuses when `adding` more items would exceed the limit of the whole market
+/// (maxItemsTotal), whoever brings them: online sellers as well as walk-in sellers.
+pub async fn assert_market_space(ctx: &mut Ctx, event: &Event, adding: i64) -> AppResult<()> {
+    let Some(limit) = event.resolved_features().max_items_total else {
+        return Ok(());
+    };
+    if adding <= 0 {
+        return Ok(());
+    }
+    // Two sellers must not both get the last place
+    docs::lock_event(ctx.conn(), event.id).await?;
+    let taken = items_taking_place(ctx, event.id).await?;
+    if taken + adding > i64::from(limit) {
+        return Err(AppError::coded(
+            axum::http::StatusCode::BAD_REQUEST,
+            "event.full",
+            &[("event", &event.title), ("limit", &limit.to_string())],
+        ));
     }
     Ok(())
 }

@@ -344,7 +344,7 @@ pub async fn event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<Option<Eve
 }
 
 /// Holds the event row until the transaction ends, so checks against a limit of the whole
-/// event (the last place of the market, the rest of a seller's fee cap) run one at a time.
+/// event (the last place of the market) run one at a time.
 /// Does not block inserts that only reference the event.
 pub async fn lock_event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<()> {
     sqlx::query("SELECT 1 FROM events WHERE id = $1 FOR NO KEY UPDATE")
@@ -600,9 +600,15 @@ pub struct Purchase {
 }
 
 impl Purchase {
-    /// What came into the till for the sale
+    /// What came into the till for the sale. A direct sale whose commission was raised
+    /// after an undone sale (fee cap, #301) has a negative payout: the part the desk did not
+    /// take and the seller pays at the settlement.
     pub fn taken(&self) -> Decimal {
-        desk_takes(self.direct_sale, self.total_amount, self.commission_amount)
+        if self.direct_sale {
+            self.commission_amount + self.payout_amount.min(Decimal::ZERO)
+        } else {
+            desk_takes(false, self.total_amount, self.commission_amount)
+        }
     }
 
     /// What the seller got from the buyer at the item and keeps; 0 unless a direct sale

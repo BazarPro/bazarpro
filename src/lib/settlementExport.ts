@@ -26,10 +26,13 @@ function formatDate(timestamp: number, withTime = false): string {
 const number = (value: number | undefined) => (value !== undefined ? String(value) : '–');
 const sum = <T>(rows: T[], get: (row: T) => number) => rows.reduce((a, row) => a + get(row), 0);
 
-/** The column of the fee cap only where a seller got fees back (#301). */
+/**
+ * The column of the fee cap at every event with a cap (#301), so its layout does not
+ * change once the first seller gets fees back; a credit without a cap still shows.
+ */
 const capCredit = (seller: SettlementSeller) => seller.feeCapCredit ?? 0;
-export const hasCapColumn = (sellers: SettlementSeller[]) =>
-  sellers.some((seller) => capCredit(seller) > 0);
+export const hasCapColumn = ({ event, sellers }: Pick<SettlementExport, 'event' | 'sellers'>) =>
+  event.maxFeesPerSeller !== undefined || sellers.some((seller) => capCredit(seller) > 0);
 /** Index of the fee cap column, right after the intake fee */
 const CAP_COLUMN = 6;
 function withCap(row: string[], cap: boolean, value: string): string[] {
@@ -53,7 +56,7 @@ export function sellerHeaders(cap = false): string[] {
   );
 }
 
-export function sellerRows(sellers: SettlementSeller[], cap = hasCapColumn(sellers)): string[][] {
+export function sellerRows(sellers: SettlementSeller[], cap = false): string[][] {
   return sellers.map((seller) =>
     withCap(
       [
@@ -172,7 +175,7 @@ export function buildSettlementPdf(settlement: SettlementExport): jsPDF {
   };
 
   let y = section(text('sellers', { count: sellers.length }), 26);
-  const cap = hasCapColumn(sellers);
+  const cap = hasCapColumn(settlement);
   y = drawTable(doc, {
     columns: cap ? SELLER_COLUMNS_CAP : SELLER_COLUMNS,
     headers: sellerHeaders(cap),
@@ -196,7 +199,7 @@ export function downloadSettlementPdf(settlement: SettlementExport) {
 }
 
 export function sellersCsv(settlement: SettlementExport): string {
-  const cap = hasCapColumn(settlement.sellers);
+  const cap = hasCapColumn(settlement);
   return toCsv([sellerHeaders(cap), ...sellerRows(settlement.sellers, cap)]);
 }
 

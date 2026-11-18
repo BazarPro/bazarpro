@@ -356,7 +356,17 @@ function givenNumber(value: number | undefined): number | undefined {
   return typeof value === 'number' && !isNaN(value) ? value : undefined;
 }
 
-function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
+/**
+ * The features as the create and edit mutations take them. The market-wide item limit and
+ * the fee cap are sent as null when empty: the backend keeps a value that is left out, so
+ * an older app that does not know them cannot delete them.
+ */
+type FeaturesArgs = Omit<StoredEventFeatures, 'maxItemsTotal' | 'maxFeesPerSeller'> & {
+  maxItemsTotal: number | null;
+  maxFeesPerSeller: number | null;
+};
+
+function featuresFromForm(features: FeatureFormData): FeaturesArgs {
   return {
     discounts: features.discounts,
     discountStartsAt:
@@ -374,7 +384,7 @@ function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
     publicCatalog: features.publicCatalog,
     requiredFields: features.requiredFields,
     maxItemsPerSeller: givenNumber(features.maxItemsPerSeller),
-    maxItemsTotal: givenNumber(features.maxItemsTotal),
+    maxItemsTotal: givenNumber(features.maxItemsTotal) ?? null,
     labelFormat: features.labelFormat,
     priceOnLabel: features.priceOnLabel,
     labelMark: features.labelMark,
@@ -383,7 +393,7 @@ function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
         ? features.intakeFee
         : undefined,
     // 0 is a cap as well: no fees at all
-    maxFeesPerSeller: givenNumber(features.maxFeesPerSeller),
+    maxFeesPerSeller: givenNumber(features.maxFeesPerSeller) ?? null,
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
     directSale: features.directSale,
@@ -392,6 +402,15 @@ function featuresFromForm(features: FeatureFormData): StoredEventFeatures {
     registrationStartsAt: timeFromForm(features.registrationOpen, features.registrationStartsAt),
     registrationEndsAt: timeFromForm(features.registrationOpen, features.registrationEndsAt),
   };
+}
+
+/** The features as stored, for previews: a cleared value is just not there. */
+function storedFeatures({ maxItemsTotal, maxFeesPerSeller, ...rest }: FeaturesArgs) {
+  return {
+    ...rest,
+    maxItemsTotal: maxItemsTotal ?? undefined,
+    maxFeesPerSeller: maxFeesPerSeller ?? undefined,
+  } satisfies StoredEventFeatures;
 }
 
 /** A datetime-local value as timestamp; nothing while its switch is off. */
@@ -649,7 +668,7 @@ function WizardFinal({ type }: { type?: EventType }) {
       type={type}
       conditions={{
         commission: Number.isFinite(values.commission) ? values.commission : 0,
-        features: featuresFromForm(values.features),
+        features: storedFeatures(featuresFromForm(values.features)),
         sellerLogistics: logisticsFromForm(values.sellerLogistics),
       }}
     />
@@ -1127,7 +1146,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           eventMapImage?: Id<'_storage'>;
           clearCoverImage?: boolean;
           clearEventMapImage?: boolean;
-          features: StoredEventFeatures;
+          features: FeaturesArgs;
           sellerLogistics: StoredLogistics;
         } = {
           id: eventId,

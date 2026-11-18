@@ -92,6 +92,17 @@ describe('settlement export', () => {
     ]);
   });
 
+  it('has the fee cap column at every event with a cap, credits or not', () => {
+    const columns = (data: SettlementExport) => sellersCsv(data).split('\r\n')[0].split(';').length;
+    const capped = (sellers: SettlementSeller[]) => ({
+      ...settlement(sellers, []),
+      event: { ...settlement([], []).event, maxFeesPerSeller: 20 },
+    });
+    expect(columns(settlement([seller()], []))).toBe(8);
+    expect(columns(capped([seller()]))).toBe(9);
+    expect(columns(capped([seller({ feeCapCredit: 3 })]))).toBe(9);
+  });
+
   it('writes two CSV tables that spreadsheets open', () => {
     const data = settlement([seller()], [sale({ title: 'Rad; "Cube"' })]);
     expect(sellersCsv(data).startsWith('\uFEFFNr.;Verkäufer;Anschrift;Umsatz (€)')).toBe(true);

@@ -238,7 +238,7 @@ async fn book(
     let cap = event.resolved_features().max_fees_per_seller;
     if direct && cap.is_some() {
         // Two desks selling for the same seller at once must not both take the rest
-        docs::lock_event(ctx.conn(), event.id).await?;
+        sales::lock_seller_fees(ctx.conn(), event.id, product.vendor_id).await?;
         let paid = sales::direct_commission_paid(ctx.conn(), event.id, product.vendor_id).await?;
         commission = sales::capped_commission(commission, paid, cap);
     }
@@ -837,7 +837,18 @@ async fn get_checkout_item(
     let minimum_price = product
         .minimum_price
         .filter(|minimum| event.resolved_features().minimum_price && *minimum < list_price);
-    let caps = fee_cap_left(ctx.conn(), &event).await?;
+    let features = event.resolved_features();
+    let fee_cap_left = match features
+        .max_fees_per_seller
+        .filter(|_| features.direct_sale)
+    {
+        Some(cap) => {
+            let paid =
+                sales::direct_commission_paid(ctx.conn(), event.id, product.vendor_id).await?;
+            Some((cap - paid).max(Decimal::ZERO))
+        }
+        None => None,
+    };
     Ok(Some(CheckoutItem {
         event_product_id: relation.id,
         product_id: product.id,
@@ -851,7 +862,7 @@ async fn get_checkout_item(
         attributes: category_fields::describe_attributes(fields, product.attributes.as_ref()),
         internal_note: relation.internal_note,
         seller_id: product.vendor_id,
-        fee_cap_left: cap_left_of(&caps, product.vendor_id),
+        fee_cap_left,
         title: product.title,
     }))
 }
@@ -1257,17 +1268,26 @@ async fn undo_sale(ctx: &mut Ctx, args: UndoArgs) -> AppResult<Success> {
         .await?
         .ok_or_else(|| AppError::not_found("notFound.product"))?;
     assert_vendor_not_paid_out(ctx.conn(), relation.event_id, product.vendor_id).await?;
-    let offer: Option<Option<Uuid>> = sqlx::query_scalar(
+    if event.resolved_features().max_fees_per_seller.is_some() {
+        sales::lock_seller_fees(ctx.conn(), event.id, product.vendor_id).await?;
+    }
+    let deleted: Option<(Option<Uuid>, bool)> = sqlx::query_as(
         "DELETE FROM purchases WHERE id = (
            SELECT id FROM purchases WHERE event_id = $1 AND seller_id = $2 AND product_id = $3
            ORDER BY created_at LIMIT 1)
-         RETURNING offer_id",
+         RETURNING offer_id, direct_sale",
     )
     .bind(relation.event_id)
     .bind(product.vendor_id)
     .bind(product.id)
     .fetch_optional(ctx.conn())
     .await?;
+    // The commission of an undone direct sale no longer counts towards the fee cap: the
+    // seller's later direct sales owe theirs again, up to the cap
+    if let Some((_, true)) = deleted {
+        sales::recap_seller_direct_sales(ctx.conn(), &event, product.vendor_id).await?;
+    }
+    let offer = deleted.map(|(offer, _)| offer);
     // The buyer gets their deal back, so the offer can be redeemed at the next sale
     if let Some(Some(offer)) = offer {
         sqlx::query(

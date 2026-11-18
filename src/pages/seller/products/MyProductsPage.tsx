@@ -252,7 +252,30 @@ export function MyProductsPage() {
     return status !== 'announced';
   };
 
+  // Places of the whole market still free after this selection: a new item takes one, an
+  // announced item taken off gives its place back
+  const placesAfterSelection = (() => {
+    if (placesLeft === undefined) return undefined;
+    const selected = new Set(selectedProducts);
+    const added = selectedProducts.filter((id) => !assignedProductIds.has(id)).length;
+    const freed = [...assignedSelectableIds].filter(
+      (id) => !selected.has(id) && eventProductStatusMap.get(id as string) === 'announced'
+    ).length;
+    return placesLeft - added + freed;
+  })();
+  const isNewAtEvent = (productId: Id<'products'>) =>
+    isEventSelectionMode && !assignedProductIds.has(productId);
+
   const toggleProductSelection = (productId: Id<'products'>) => {
+    if (
+      isNewAtEvent(productId) &&
+      !selectedProducts.includes(productId) &&
+      placesAfterSelection !== undefined &&
+      placesAfterSelection <= 0
+    ) {
+      toast.error(t('myProducts.noPlaceLeft'));
+      return;
+    }
     if (isEventSelectionMode) {
       const product = productsById.get(productId);
       if (!product) return;
@@ -567,11 +590,19 @@ export function MyProductsPage() {
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
   const toggleSelectAll = () => {
     const ids = new Set<Id<'products'>>(selectableIds);
-    setSelectedProducts((prev) =>
-      allSelected
-        ? prev.filter((id) => !ids.has(id))
-        : [...prev, ...selectableIds.filter((id) => !prev.includes(id))]
-    );
+    if (allSelected) {
+      setSelectedProducts((prev) => prev.filter((id) => !ids.has(id)));
+      return;
+    }
+    let adding = selectableIds.filter((id) => !selectedSet.has(id));
+    // A market with a limit of all items: new items only as far as places are free
+    if (placesAfterSelection !== undefined) {
+      let free = Math.max(placesAfterSelection, 0);
+      const fitting = adding.filter((id) => !isNewAtEvent(id) || free-- > 0);
+      if (fitting.length < adding.length) toast.error(t('myProducts.noPlaceLeft'));
+      adding = fitting;
+    }
+    setSelectedProducts((prev) => [...prev, ...adding]);
   };
   const selectAll =
     selectableIds.length > 0 ? { allSelected, onToggle: toggleSelectAll } : undefined;
@@ -716,11 +747,13 @@ export function MyProductsPage() {
                 title={filteredEvent?.title ?? t('myProducts.event')}
                 text={[
                   t('myProducts.selectedCount', { count: selectedProducts.length }),
-                  placesLeft === undefined
+                  placesAfterSelection === undefined
                     ? undefined
-                    : placesLeft === 0
-                      ? t('myProducts.marketFull')
-                      : t('myProducts.placesLeft', { count: placesLeft }),
+                    : placesAfterSelection < 0
+                      ? t('myProducts.placesOver', { count: -placesAfterSelection })
+                      : placesAfterSelection === 0
+                        ? t('myProducts.marketFull')
+                        : t('myProducts.placesLeft', { count: placesAfterSelection }),
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -730,7 +763,11 @@ export function MyProductsPage() {
                   loading={isEventSelectionSaving}
                   type="button"
                   onClick={handleSaveEventSelection}
-                  disabled={isEventSelectionSaving || !eventSelectionStats.hasChanges}
+                  disabled={
+                    isEventSelectionSaving ||
+                    !eventSelectionStats.hasChanges ||
+                    (placesAfterSelection !== undefined && placesAfterSelection < 0)
+                  }
                   className="whitespace-nowrap"
                 >
                   {isEventSelectionSaving ? t('myProducts.saving') : t('myProducts.saveChanges')}

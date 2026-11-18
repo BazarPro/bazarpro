@@ -755,12 +755,16 @@ struct FeaturesArgs {
     #[serde(default, with = "serde_with::rust::double_option")]
     required_fields: Option<Option<Vec<String>>>,
     max_items_per_seller: Option<f64>,
-    max_items_total: Option<f64>,
+    /// Some(None) (null) clears it; left out, the stored value stays (older apps)
+    #[serde(default, with = "serde_with::rust::double_option")]
+    max_items_total: Option<Option<f64>>,
     label_format: Option<String>,
     price_on_label: Option<bool>,
     label_mark: Option<String>,
     intake_fee: Option<f64>,
-    max_fees_per_seller: Option<f64>,
+    /// Some(None) (null) clears it; left out, the stored value stays (older apps)
+    #[serde(default, with = "serde_with::rust::double_option")]
+    max_fees_per_seller: Option<Option<f64>>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
     direct_sale: Option<bool>,
@@ -841,6 +845,7 @@ fn sanitize_features(
         return Err(invalid("labelMark"));
     }
     let previous_bool = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_bool);
+    let previous_number = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
     let required_fields: Option<Vec<String>> = match features.required_fields {
         Some(fields) => fields,
         None => previous
@@ -920,7 +925,11 @@ fn sanitize_features(
     );
     put(
         "maxItemsTotal",
-        json!(sanitize_item_limit(features.max_items_total)?),
+        json!(sanitize_item_limit(
+            features
+                .max_items_total
+                .unwrap_or_else(|| previous_number("maxItemsTotal"))
+        )?),
     );
     put(
         "labelFormat",
@@ -952,7 +961,11 @@ fn sanitize_features(
     );
     put(
         "maxFeesPerSeller",
-        json!(sanitize_fee_cap(features.max_fees_per_seller)?),
+        json!(sanitize_fee_cap(
+            features
+                .max_fees_per_seller
+                .unwrap_or_else(|| previous_number("maxFeesPerSeller"))
+        )?),
     );
     put(
         "privateSellersOnly",
@@ -1956,8 +1969,8 @@ mod tests {
                     "frameNumber".into(),
                 ])),
                 intake_fee: Some(0.555),
-                max_fees_per_seller: Some(19.999),
-                max_items_total: Some(200.0),
+                max_fees_per_seller: Some(Some(19.999)),
+                max_items_total: Some(Some(200.0)),
                 ..FeaturesArgs::default()
             },
             Some(&json!({ "fixedSellerData": true, "labelMark": "universal" })),
@@ -2008,6 +2021,28 @@ mod tests {
     }
 
     #[test]
+    fn item_limit_and_fee_cap_stay_unless_cleared() {
+        let stored = json!({ "maxItemsTotal": 200.0, "maxFeesPerSeller": 20.0 });
+        // An older app does not send them: kept
+        let kept = sanitize_features(FeaturesArgs::default(), Some(&stored), &known()).unwrap();
+        assert_eq!(kept["maxItemsTotal"], 200.0);
+        assert_eq!(kept["maxFeesPerSeller"], 20.0);
+        // Sent as null: cleared
+        let cleared = sanitize_features(
+            FeaturesArgs {
+                max_items_total: Some(None),
+                max_fees_per_seller: Some(None),
+                ..FeaturesArgs::default()
+            },
+            Some(&stored),
+            &known(),
+        )
+        .unwrap();
+        assert!(cleared.get("maxItemsTotal").is_none());
+        assert!(cleared.get("maxFeesPerSeller").is_none());
+    }
+
+    #[test]
     fn feature_ranges_are_checked() {
         let err = |features: FeaturesArgs| {
             sanitize_features(features, None, &known())
@@ -2037,14 +2072,14 @@ mod tests {
         );
         assert_eq!(
             err(FeaturesArgs {
-                max_items_total: Some(0.0),
+                max_items_total: Some(Some(0.0)),
                 ..Default::default()
             }),
             Some("event.itemLimitInvalid")
         );
         assert_eq!(
             err(FeaturesArgs {
-                max_fees_per_seller: Some(-1.0),
+                max_fees_per_seller: Some(Some(-1.0)),
                 ..Default::default()
             }),
             Some("event.feeCapRange")

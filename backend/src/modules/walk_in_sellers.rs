@@ -14,7 +14,7 @@ use super::instance::EMAIL_PATTERN;
 use super::products::{
     attributes_json, check_category, check_condition, normalize_extras, price, set_images,
 };
-use super::seller_numbers::next_seller_number;
+use super::seller_numbers::{self, next_seller_number};
 use crate::error::{AppError, AppResult};
 use crate::realtime::Topic;
 use crate::register;
@@ -216,6 +216,8 @@ async fn save_walk_in_product(ctx: &mut Ctx, args: SaveArgs) -> AppResult<Uuid> 
             product.id
         }
         None => {
+            // The hall has no more room for walk-in items than for announced ones
+            seller_numbers::assert_market_space(ctx, &event, 1).await?;
             let id: Uuid = sqlx::query_scalar(
                 "INSERT INTO products (title, vendor_id, description, condition, category_id, price, ready_for_sale,
                    sold, attributes, accepts_offers, minimum_price)
