@@ -31,6 +31,7 @@ import {
 import { Badge } from '../../../../../components/ui/badge';
 import { ItemPhoto } from '../../../../../components/illustrations/ItemIllustrations';
 import { SafeMarkdown } from '../../../../../components/markdown/SafeMarkdown';
+import { EventContactCard } from '../../../../../components/events/EventContactCard';
 import { SellerConditions } from '../../../../../components/events/SellerConditions';
 import { AppBar, PhoneFrame } from '../../../../public/landing/components/demo/Illustrations';
 import { useQuery } from '../../../../../lib/api/react';
@@ -679,26 +680,18 @@ function HeroPreview({ type, values }: { type?: EventType; values: WizardValues 
   );
 }
 
-/** The contact box of the bazaar page (#299): who to ask, as the organizer wrote it. */
-function ContactPreview({ contact, className }: { contact?: string; className?: string }) {
-  const { t } = useTranslation('organizer');
-  return (
-    <div className={cn('rounded-xl border bg-card p-4 text-sm shadow-sm', className)}>
-      <h3 className="mb-2 font-semibold">{t('sidebar.contact', { ns: 'events' })}</h3>
-      {contact?.trim() ? (
-        <p className="whitespace-pre-line break-words text-muted-foreground">{contact}</p>
-      ) : (
-        <p className="text-muted-foreground italic">{t('wizard.preview.contactOpen')}</p>
-      )}
-    </div>
-  );
-}
-
 /**
  * Steps "basics" and "details": the top of the bazaar page, the description as it will
- * read and the contact box.
+ * read and, while writing it, the contact box.
  */
-export function PlacePreview({ type }: { type?: EventType }) {
+export function PlacePreview({
+  type,
+  withContact,
+}: {
+  type?: EventType;
+  /** Only in the step where the contact is written */
+  withContact?: boolean;
+}) {
   const { t } = useTranslation('organizer');
   const values = useWizardValues();
   return (
@@ -712,7 +705,13 @@ export function PlacePreview({ type }: { type?: EventType }) {
             <p className="text-muted-foreground">{t('wizard.preview.descriptionOpen')}</p>
           )}
         </div>
-        <ContactPreview contact={values.contactInfo} className="shadow-none" />
+        {withContact && (
+          <EventContactCard
+            contact={values.contactInfo}
+            empty={t('wizard.preview.contactOpen')}
+            compact
+          />
+        )}
       </div>
     </PreviewCanvas>
   );
@@ -937,7 +936,12 @@ export function EventPagePreview({
               event={conditions}
               compact
             />
-            <ContactPreview contact={values.contactInfo} />
+            <EventContactCard
+              contact={values.contactInfo}
+              empty={t('wizard.preview.contactOpen')}
+              compact
+              className="shadow-sm"
+            />
           </aside>
         </div>
       </div>

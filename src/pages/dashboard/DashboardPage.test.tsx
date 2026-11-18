@@ -163,6 +163,14 @@ describe('DashboardPage', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/events/view/o1');
   });
 
+  it('opens the selected bazaar from anywhere on its card (#299)', () => {
+    organizer([event('o1', kita.title, 3)]);
+    renderAt(<DashboardPage />);
+    const current = screen.getByTestId('current-event');
+    fireEvent.click(within(current).getByRole('link', { name: kita.title }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/events/view/o1');
+  });
+
   it('opens another event from the overview', () => {
     organizer([event('o1', kita.title, 3), event('o2', 'Fahrradbörse Ulm', 12)]);
     renderAt(<DashboardPage />);

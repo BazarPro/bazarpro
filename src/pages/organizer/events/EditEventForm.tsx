@@ -635,8 +635,9 @@ function StepPreview({ id, type }: { id: WizardStepId; type?: EventType }) {
     case 'registration':
       return <ListingPreview type={type} />;
     case 'basics':
-    case 'details':
       return <PlacePreview type={type} />;
+    case 'details':
+      return <PlacePreview type={type} withContact />;
     case 'logistics':
       return <LogisticsPreview />;
     default:

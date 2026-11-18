@@ -31,7 +31,7 @@ import { useFeatureFlags } from '../../hooks/useFeatureFlags';
 import { useInstanceConfig } from '../../hooks/useInstanceConfig';
 import { useMarkNoticesSeen } from '../../hooks/useMarkNoticesSeen';
 import { selectedOrCurrent, useSelectedEventId } from '../../lib/selectedEvent';
-import { formatDateRangeDE, formatDateTimeDE, formatPriceDE } from '../../lib/utils';
+import { cn, formatDateRangeDE, formatDateTimeDE, formatPriceDE } from '../../lib/utils';
 import { AdminOverviewPage } from '../administrator/AdminOverviewPage';
 import { formatEventPlace } from '../../shared/eventJsonLd';
 import { EventApprovalBadge } from '../../components/events/EventApprovalBadge';
@@ -276,6 +276,7 @@ function OrganizerOverview({ canCreate }: { canCreate: boolean }) {
       {draftCard}
       <BazaarHero
         testId="current-event"
+        to={`/events/view/${selected._id}`}
         event={selected}
         label={t('organizer.current')}
         badges={
@@ -466,6 +467,7 @@ function BazaarHero({
   actions,
   footer,
   testId,
+  to,
 }: {
   event: Doc<'events'>;
   label: string;
@@ -475,11 +477,20 @@ function BazaarHero({
   actions: ReactNode;
   footer?: ReactNode;
   testId?: string;
+  /** The whole card opens this page (#299); buttons and links on it keep their own */
+  to?: string;
 }) {
   // A picture that does not load leaves no empty box (e.g. a deleted file)
   const [failedImage, setFailedImage] = useState<string | null>(null);
   return (
-    <Card className="overflow-hidden sm:flex" data-testid={testId}>
+    <Card
+      className={cn(
+        'overflow-hidden sm:flex',
+        to &&
+          'relative transition-shadow hover:shadow-md hover:border-primary/40 has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-ring has-[[data-card-link]:focus-visible]:ring-offset-2'
+      )}
+      data-testid={testId}
+    >
       {event.coverImage && event.coverImage !== failedImage && (
         <StorageImage
           storageId={event.coverImage}
@@ -495,7 +506,19 @@ function BazaarHero({
           {badges}
         </div>
         {/* Full title: long names of bazaars wrap instead of being cut off */}
-        <h2 className="text-xl font-semibold break-words sm:text-2xl">{event.title}</h2>
+        <h2 className="text-xl font-semibold break-words sm:text-2xl">
+          {to ? (
+            <Link
+              to={to}
+              data-card-link
+              className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+            >
+              {event.title}
+            </Link>
+          ) : (
+            event.title
+          )}
+        </h2>
         <div className="space-y-1 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4 shrink-0" />
@@ -509,7 +532,9 @@ function BazaarHero({
           )}
         </div>
         {note}
-        <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">{actions}</div>
+        <div className="relative z-10 flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
+          {actions}
+        </div>
         {footer && <p className="text-sm">{footer}</p>}
       </CardContent>
     </Card>
