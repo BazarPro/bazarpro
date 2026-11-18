@@ -539,6 +539,13 @@ pub struct EventSeller {
     pub intake_fee_items: Option<i32>,
     /// Fees above the cap given back at the payout (#301)
     pub fee_cap_credit: Option<Decimal>,
+    /// Fee group the seller chose or the team put them in (#302)
+    pub fee_group_id: Option<String>,
+    /// When the team confirmed, assigned or took away the group
+    #[serde(with = "ms_opt")]
+    pub fee_group_decided_at: Option<DateTime<Utc>>,
+    /// The group applied at the payout
+    pub fee_group_label: Option<String>,
     #[serde(with = "ms_opt")]
     pub private_seller_confirmed_at: Option<DateTime<Utc>>,
     pub seller_snapshot: Option<Value>,
@@ -547,7 +554,8 @@ pub struct EventSeller {
 pub const EVENT_SELLER_COLUMNS: &str =
     "id, created_at, event_id, user_id, total_fee, commission_fee,
     sale_fee_fixed, sale_fee_percentage, payout_amount, payout_received, number, intake_fee,
-    intake_fee_items, fee_cap_credit, private_seller_confirmed_at, seller_snapshot";
+    intake_fee_items, fee_cap_credit, fee_group_id, fee_group_decided_at, fee_group_label,
+    private_seller_confirmed_at, seller_snapshot";
 
 pub async fn event_seller(
     conn: &mut PgConnection,

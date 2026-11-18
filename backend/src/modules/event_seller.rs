@@ -10,6 +10,7 @@ use super::event_exclusions::assert_not_excluded;
 use super::event_invitations;
 use super::event_roles::{self, Permission, Role};
 use super::features::registration_unavailable;
+use super::fee_groups;
 use super::offers::close_offers_for_event_product;
 use super::sales::{self, intake_fee_for_seller};
 use super::seller_numbers::next_seller_number;
@@ -88,6 +89,8 @@ struct JoinArgs {
     private_seller: Option<bool>,
     /// The link of an invitation by mail: replaces the access code
     invitation: Option<String>,
+    /// A fee group the seller says they belong to, checked at the intake (#302)
+    fee_group_id: Option<String>,
 }
 
 /// The current user joins the event as seller and gets the next seller number.
@@ -138,6 +141,7 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
         return Err(anyhow::anyhow!("seller role without event_sellers row").into());
     }
     let features = event.resolved_features();
+    fee_groups::check_choice(&event, args.fee_group_id.as_deref())?;
     if features.private_sellers_only && args.private_seller != Some(true) {
         return Err(AppError::bad_request("join.privateRequired"));
     }
@@ -162,14 +166,15 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     let number = next_seller_number(ctx, event.id).await?;
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO event_sellers (event_id, user_id, total_fee, commission_fee, payout_amount,
-           payout_received, number, private_seller_confirmed_at)
-         VALUES ($1, $2, 0, 0, 0, false, $3, CASE WHEN $4 THEN now() END)
+           payout_received, number, private_seller_confirmed_at, fee_group_id)
+         VALUES ($1, $2, 0, 0, 0, false, $3, CASE WHEN $4 THEN now() END, $5)
          RETURNING id",
     )
     .bind(event.id)
     .bind(user)
     .bind(number)
     .bind(features.private_sellers_only)
+    .bind(&args.fee_group_id)
     .fetch_one(ctx.conn())
     .await?;
     event_roles::add_role(ctx, event.id, user, Role::Seller).await?;
@@ -409,15 +414,19 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
     .fetch_one(ctx.conn())
     .await?;
     let fee = intake_fee_for_seller(ctx.conn(), &event, vendor, row.as_ref()).await?;
+    let fees = fee_groups::seller_fees(ctx.conn(), &event, vendor).await?;
     // Fees above the cap go back to the seller with the payout
-    let credit = sales::fee_cap_credit_of(&event, row.as_ref(), commission, &fee);
+    let credit = sales::fee_cap_credit_of(&fees, row.as_ref(), commission, &fee);
+    // The group applied, kept with the settlement (#302)
+    let group = fees.group.map(|group| group.label);
     let payout = payout - fee.total + credit;
     let credit = (!credit.is_zero()).then_some(credit);
     match row {
         Some(row) => {
             sqlx::query(
                 "UPDATE event_sellers SET commission_fee = $2, payout_amount = $3, intake_fee = $4,
-                   intake_fee_items = $5, fee_cap_credit = $6, payout_received = true
+                   intake_fee_items = $5, fee_cap_credit = $6, fee_group_label = $7,
+                   payout_received = true
                  WHERE id = $1",
             )
             .bind(row.id)
@@ -426,6 +435,7 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
             .bind(fee.total)
             .bind(fee.items as i32)
             .bind(credit)
+            .bind(&group)
             .execute(ctx.conn())
             .await?;
         }
@@ -433,8 +443,9 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
             let number = next_seller_number(ctx, event.id).await?;
             sqlx::query(
                 "INSERT INTO event_sellers (event_id, user_id, total_fee, commission_fee, payout_amount,
-                   intake_fee, intake_fee_items, fee_cap_credit, payout_received, number)
-                 VALUES ($1, $2, 0, $3, $4, $5, $6, $7, true, $8)",
+                   intake_fee, intake_fee_items, fee_cap_credit, fee_group_label, payout_received,
+                   number)
+                 VALUES ($1, $2, 0, $3, $4, $5, $6, $7, $8, true, $9)",
             )
             .bind(event.id)
             .bind(vendor)
@@ -443,6 +454,7 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
             .bind(fee.total)
             .bind(fee.items as i32)
             .bind(credit)
+            .bind(&group)
             .bind(number)
             .execute(ctx.conn())
             .await?;
@@ -460,7 +472,8 @@ async fn unmark_vendor_payout_received(ctx: &mut Ctx, args: VendorArgs) -> AppRe
     require_staff_and_seller(ctx, event, vendor, "seller.undoPayoutStaffOnly").await?;
     sqlx::query(
         "UPDATE event_sellers SET payout_received = false, commission_fee = 0, payout_amount = 0,
-           intake_fee = NULL, intake_fee_items = NULL, fee_cap_credit = NULL
+           intake_fee = NULL, intake_fee_items = NULL, fee_cap_credit = NULL,
+           fee_group_label = NULL
          WHERE event_id = $1 AND user_id = $2 AND payout_received",
     )
     .bind(event)

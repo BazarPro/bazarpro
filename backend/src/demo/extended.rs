@@ -825,6 +825,11 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                     "privateSellersOnly": true,
                     "fixedSellerData": true,
                     "maxItemsPerSeller": 40,
+                    // Helpers sell without commission and bring more (#302)
+                    "feeGroups": [{
+                        "id": "helfer", "label": "Helferinnen und Helfer", "commission": 0,
+                        "maxItemsPerSeller": 60, "assignment": "helpers",
+                    }],
                 }),
             },
             true,
@@ -1116,6 +1121,12 @@ async fn ski_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()> 
                     "photosOptional": true,
                     "priceOnLabel": true,
                     "intakeFee": 1,
+                    // Club members pay less; the intake checks the card (#302)
+                    "feeGroups": [{
+                        "id": "mitglieder", "label": "Vereinsmitglieder", "commission": 5,
+                        "assignment": "selfDeclared",
+                        "proofHint": "Mitgliedsausweis bei der Abgabe zeigen",
+                    }],
                 }),
             },
             true,

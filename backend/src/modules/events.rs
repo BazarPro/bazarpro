@@ -24,7 +24,7 @@ use super::event_roles::{
     self, Permission, Role, TEAM, has_any_role_or_admin, has_role_or_admin, is_bystander,
     load_vendors_with_calculations, require_permission,
 };
-use super::features::MAX_DISCOUNT_PERCENT;
+use super::features::{self, FeeGroupAssignment, MAX_DISCOUNT_PERCENT};
 use super::moderation::{LogEntry, log_action};
 use super::notifications::{self, Area, Content, T};
 use super::{retention, sales, seller_numbers};
@@ -772,6 +772,97 @@ struct FeaturesArgs {
     registration_open: Option<bool>,
     registration_starts_at: Option<f64>,
     registration_ends_at: Option<f64>,
+    /// Absent (older apps): the stored groups stay
+    fee_groups: Option<Vec<FeeGroupArgs>>,
+}
+
+/// One fee group as the form sends it (#302)
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct FeeGroupArgs {
+    id: String,
+    label: String,
+    commission: f64,
+    intake_fee: Option<f64>,
+    max_fees_per_seller: Option<f64>,
+    max_items_per_seller: Option<f64>,
+    assignment: FeeGroupAssignment,
+    proof_hint: Option<String>,
+}
+
+/// At most this many fee groups per bazaar
+const MAX_FEE_GROUPS: usize = 10;
+
+/// Checks the fee groups and stores them like the bazaar's own fees: cents, trimmed text.
+fn sanitize_fee_groups(groups: Vec<FeeGroupArgs>) -> AppResult<Value> {
+    if groups.len() > MAX_FEE_GROUPS {
+        return Err(AppError::bad_request("event.feeGroupsTooMany"));
+    }
+    let mut ids: Vec<String> = Vec::new();
+    let mut labels: Vec<String> = Vec::new();
+    let mut stored = Vec::new();
+    for group in groups {
+        let id = group.id.trim().to_owned();
+        let valid_id = !id.is_empty()
+            && id.len() <= 40
+            && id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        if !valid_id || ids.contains(&id) {
+            return Err(invalid("feeGroups.id"));
+        }
+        let label = group.label.trim().to_owned();
+        if label.is_empty() || label.chars().count() > 60 {
+            return Err(AppError::bad_request("event.feeGroupLabel"));
+        }
+        if labels
+            .iter()
+            .any(|other| other.to_lowercase() == label.to_lowercase())
+        {
+            return Err(AppError::bad_request("event.feeGroupLabelTwice"));
+        }
+        if !group.commission.is_finite() || !(0.0..=100.0).contains(&group.commission) {
+            return Err(AppError::bad_request("event.feeGroupCommission"));
+        }
+        let proof_hint = group
+            .proof_hint
+            .map(|hint| hint.trim().to_owned())
+            .filter(|hint| !hint.is_empty());
+        if proof_hint
+            .as_ref()
+            .is_some_and(|hint| hint.chars().count() > 200)
+        {
+            return Err(AppError::bad_request("event.feeGroupProofHint"));
+        }
+        let mut entry = Map::new();
+        entry.insert("id".into(), json!(id));
+        entry.insert("label".into(), json!(label));
+        entry.insert(
+            "commission".into(),
+            json!((group.commission * 100.0).round() / 100.0),
+        );
+        if let Some(fee) = sanitize_intake_fee(group.intake_fee)? {
+            entry.insert("intakeFee".into(), json!(fee));
+        }
+        if let Some(cap) = sanitize_fee_cap(group.max_fees_per_seller)? {
+            entry.insert("maxFeesPerSeller".into(), json!(cap));
+        }
+        if let Some(limit) = sanitize_item_limit(group.max_items_per_seller)? {
+            entry.insert("maxItemsPerSeller".into(), json!(limit));
+        }
+        entry.insert("assignment".into(), json!(group.assignment));
+        if let Some(hint) = proof_hint {
+            entry.insert("proofHint".into(), json!(hint));
+        }
+        ids.push(id);
+        labels.push(label);
+        stored.push(Value::Object(entry));
+    }
+    Ok(if stored.is_empty() {
+        Value::Null
+    } else {
+        Value::Array(stored)
+    })
 }
 
 fn sanitize_item_limit(limit: Option<f64>) -> AppResult<Option<f64>> {
@@ -1031,6 +1122,16 @@ fn sanitize_features(
     put("registrationOpen", json!(registration_open));
     put("registrationStartsAt", json!(starts));
     put("registrationEndsAt", json!(ends));
+    put(
+        "feeGroups",
+        match features.fee_groups {
+            Some(groups) => sanitize_fee_groups(groups)?,
+            None => previous
+                .and_then(|p| p.get("feeGroups"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        },
+    );
     Ok(Value::Object(stored))
 }
 
@@ -1149,6 +1250,56 @@ fn sanitize_logistics(args: LogisticsArgs) -> AppResult<Logistics> {
 
 fn time_arg(ms: f64, field: &str) -> AppResult<DateTime<Utc>> {
     from_ms(ms).ok_or_else(|| invalid(field))
+}
+
+/// Fee groups once sellers registered: none may go and none may get dearer, like the fees
+/// of the bazaar; while it runs they stay as they are. Name and hint may change.
+fn check_fee_groups_lock(
+    old: &features::EventFeatures,
+    new: &features::EventFeatures,
+    running: bool,
+) -> AppResult<()> {
+    let infinite = |value: Option<Decimal>| value.unwrap_or(Decimal::MAX);
+    for group in &old.fee_groups {
+        let Some(next) = new.fee_groups.iter().find(|next| next.id == group.id) else {
+            return Err(AppError::bad_request(if running {
+                "event.runningNoFees"
+            } else {
+                "event.feeGroupsOnlyLower"
+            }));
+        };
+        let fees = |g: &features::FeeGroup, f: &features::EventFeatures| {
+            (
+                g.commission,
+                g.intake_fee.unwrap_or_default(),
+                infinite(g.max_fees_per_seller.or(f.max_fees_per_seller)),
+            )
+        };
+        let (before, after) = (fees(group, old), fees(next, new));
+        let items = |g: &features::FeeGroup, f: &features::EventFeatures| {
+            g.max_items_per_seller
+                .or(f.max_items_per_seller)
+                .unwrap_or(u32::MAX)
+        };
+        if running {
+            if before != after || group.assignment != next.assignment {
+                return Err(AppError::bad_request("event.runningNoFees"));
+            }
+        } else if after.0 > before.0
+            || after.1 > before.1
+            || after.2 > before.2
+            || group.assignment != next.assignment
+        {
+            return Err(AppError::bad_request("event.feeGroupsOnlyLower"));
+        }
+        if items(next, new) < items(group, old) {
+            return Err(AppError::bad_request("event.limitOnlyHigher"));
+        }
+    }
+    if running && new.fee_groups.len() != old.fee_groups.len() {
+        return Err(AppError::bad_request("event.runningNoFees"));
+    }
+    Ok(())
 }
 
 fn money(value: f64, field: &str) -> AppResult<Decimal> {
@@ -1423,6 +1574,11 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         if limit(Some(&features)) < limit(event.features.as_ref()) {
             return Err(AppError::bad_request("event.limitOnlyHigher"));
         }
+        check_fee_groups_lock(
+            &event.resolved_features(),
+            &features::resolve(Some(&features)),
+            running,
+        )?;
     }
     // The admin approves anyway: no request to themselves
     let making_public = !admin

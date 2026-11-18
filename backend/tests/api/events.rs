@@ -41,7 +41,7 @@ async fn create(app: &TestApp, session: &str, args: Value) -> Uuid {
 }
 
 /// The arguments of editEvent from the current state of the event.
-async fn edit_args(app: &TestApp, session: &str, id: Uuid) -> Value {
+pub async fn edit_args(app: &TestApp, session: &str, id: Uuid) -> Value {
     let event = app
         .query("events.getEvent", json!({ "id": id }), Some(session))
         .await

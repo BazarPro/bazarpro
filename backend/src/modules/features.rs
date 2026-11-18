@@ -39,6 +39,51 @@ struct Stored {
     registration_open: Option<bool>,
     registration_starts_at: Option<f64>,
     registration_ends_at: Option<f64>,
+    fee_groups: Option<Vec<StoredFeeGroup>>,
+}
+
+/// A fee group as stored in `features.feeGroups` (#302).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredFeeGroup {
+    id: String,
+    label: String,
+    commission: f64,
+    intake_fee: Option<f64>,
+    max_fees_per_seller: Option<f64>,
+    max_items_per_seller: Option<f64>,
+    assignment: FeeGroupAssignment,
+    proof_hint: Option<String>,
+}
+
+/// How a seller gets into a fee group.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FeeGroupAssignment {
+    /// The seller says so when joining; the team checks it at the intake
+    SelfDeclared,
+    /// Everyone with a helper role at the bazaar, and whom the team puts in by hand
+    Helpers,
+}
+
+/// Sellers with own fees instead of the bazaar's, e.g. club members or helpers (#302).
+/// Each group has its own fees, not a discount: "5 % instead of 10 %".
+#[derive(Debug, Clone, PartialEq)]
+pub struct FeeGroup {
+    pub id: String,
+    /// Chosen by the organizer, e.g. "Vereinsmitglieder"
+    pub label: String,
+    /// Percent of each sale
+    pub commission: Decimal,
+    /// € per accepted item; none: no intake fee
+    pub intake_fee: Option<Decimal>,
+    /// Own fee cap; none: the bazaar's
+    pub max_fees_per_seller: Option<Decimal>,
+    /// Own item limit per seller; none: the bazaar's
+    pub max_items_per_seller: Option<u32>,
+    pub assignment: FeeGroupAssignment,
+    /// Shown to sellers, e.g. "Mitgliedsausweis bei der Abgabe zeigen"
+    pub proof_hint: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -76,6 +121,8 @@ pub struct EventFeatures {
     /// Joining is possible from / until then; either may be missing
     pub registration_starts_at: Option<DateTime<Utc>>,
     pub registration_ends_at: Option<DateTime<Utc>>,
+    /// Sellers with own fees (#302); see `fee_groups`
+    pub fee_groups: Vec<FeeGroup>,
 }
 
 /// Events created before features existed keep their old behaviour: discounts on (up to
@@ -122,6 +169,31 @@ pub fn resolve(features: Option<&Value>) -> EventFeatures {
         registration_open: stored.registration_open.unwrap_or(true),
         registration_starts_at: stored.registration_starts_at.and_then(from_ms),
         registration_ends_at: stored.registration_ends_at.and_then(from_ms),
+        fee_groups: stored
+            .fee_groups
+            .unwrap_or_default()
+            .into_iter()
+            .map(|group| FeeGroup {
+                id: group.id,
+                label: group.label,
+                commission: Decimal::from_f64_retain(group.commission)
+                    .unwrap_or_default()
+                    .max(Decimal::ZERO)
+                    .round_dp(2),
+                intake_fee: group
+                    .intake_fee
+                    .and_then(Decimal::from_f64_retain)
+                    .map(|fee| fee.max(Decimal::ZERO).cents())
+                    .filter(|fee| !fee.is_zero()),
+                max_fees_per_seller: group
+                    .max_fees_per_seller
+                    .and_then(Decimal::from_f64_retain)
+                    .map(|cap| cap.max(Decimal::ZERO).cents()),
+                max_items_per_seller: group.max_items_per_seller.map(|n| n.max(0.0) as u32),
+                assignment: group.assignment,
+                proof_hint: group.proof_hint,
+            })
+            .collect(),
     }
 }
 
@@ -245,6 +317,49 @@ pub fn shows_price_on_label(event: &Event) -> bool {
     features.price_on_label && !features.discounts
 }
 
+/// An event with these features, for tests
+#[cfg(test)]
+pub fn tests_event(features: Value) -> Event {
+    Event {
+        id: uuid::Uuid::nil(),
+        created_at: Utc::now(),
+        title: String::new(),
+        description: String::new(),
+        cover_image: None,
+        event_map_image: None,
+        location: String::new(),
+        street: None,
+        postal_code: None,
+        city: None,
+        country: None,
+        start_date: Utc::now(),
+        end_date: Utc::now(),
+        contact_info: String::new(),
+        categories: Vec::new(),
+        services: Vec::new(),
+        visibility: "public".into(),
+        is_approved: None,
+        approval_status: None,
+        approved_at: None,
+        approved_by: None,
+        rejected_at: None,
+        rejected_by: None,
+        rejection_reason: None,
+        access_code: None,
+        vendor_limit: None,
+        seller_count: None,
+        last_seller_number: None,
+        commission: Decimal::ZERO,
+        sale_fee_fixed: None,
+        sale_fee_percentage: None,
+        features: Some(features),
+        seller_logistics: None,
+        reminders_sent: None,
+        moderation: None,
+        organizer_id: uuid::Uuid::nil(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,44 +424,7 @@ mod tests {
     }
 
     fn event_with(features: Value) -> Event {
-        Event {
-            id: uuid::Uuid::nil(),
-            created_at: Utc::now(),
-            title: String::new(),
-            description: String::new(),
-            cover_image: None,
-            event_map_image: None,
-            location: String::new(),
-            street: None,
-            postal_code: None,
-            city: None,
-            country: None,
-            start_date: Utc::now(),
-            end_date: Utc::now(),
-            contact_info: String::new(),
-            categories: Vec::new(),
-            services: Vec::new(),
-            visibility: "public".into(),
-            is_approved: None,
-            approval_status: None,
-            approved_at: None,
-            approved_by: None,
-            rejected_at: None,
-            rejected_by: None,
-            rejection_reason: None,
-            access_code: None,
-            vendor_limit: None,
-            seller_count: None,
-            last_seller_number: None,
-            commission: Decimal::ZERO,
-            sale_fee_fixed: None,
-            sale_fee_percentage: None,
-            features: Some(features),
-            seller_logistics: None,
-            reminders_sent: None,
-            moderation: None,
-            organizer_id: uuid::Uuid::nil(),
-        }
+        super::tests_event(features)
     }
 
     #[test]

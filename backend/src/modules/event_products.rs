@@ -29,6 +29,7 @@ use super::event_roles::{
 };
 use super::events::{admitted_by_visibility, is_event_approved, is_live};
 use super::features::discount_unavailable;
+use super::fee_groups;
 use super::notifications::{self, Area, Content, T};
 use super::offers::{close_offers_for_event_product, reopen_closed_offers};
 use super::sales::{self, SaleInfo};
@@ -1027,6 +1028,10 @@ async fn update_product_status(ctx: &mut Ctx, args: StatusArgs) -> AppResult<Uui
     let product = docs::product(ctx.conn(), relation.product_id).await?;
     if let Some(product) = &product {
         assert_vendor_not_paid_out(ctx.conn(), relation.event_id, product.vendor_id).await?;
+        // The intake checks a self-declared fee group first (#302)
+        if args.status == Status::Available && relation.status == "announced" {
+            fee_groups::assert_group_decided(ctx.conn(), &event, product.vendor_id).await?;
+        }
     }
     if let Some(location) = args.location_category_id {
         if args.status != Status::Available {
@@ -1117,6 +1122,10 @@ async fn mark_all_vendor_products_available(
     let (event, vendor) = (args.event_id.0, args.vendor_id.0);
     require_permission(ctx, event, Permission::Intake).await?;
     assert_vendor_not_paid_out(ctx.conn(), event, vendor).await?;
+    {
+        let event = event_of(ctx, event).await?;
+        fee_groups::assert_group_decided(ctx.conn(), &event, vendor).await?;
+    }
     let seen: Option<Vec<Uuid>> = args
         .seen_product_ids
         .map(|ids| ids.into_iter().map(|id| id.0).collect());
