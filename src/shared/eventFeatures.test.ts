@@ -16,7 +16,7 @@ import {
 } from './eventFeatures';
 
 const keys = (label: string) => getFieldsForLabel(label)?.map((field) => field.key);
-const BIKE_KEYS = ['frameNumber', 'frameSize', 'wheelSize', 'brand'];
+const BIKE_KEYS = ['frameNumber', 'frameSize', 'wheelSize', 'brand', 'color'];
 
 describe('category fields by keyword', () => {
   test.each([
@@ -30,21 +30,36 @@ describe('category fields by keyword', () => {
     'Trekkingräder',
     'Rennräder & Gravelbikes',
     'BMX & Dirtbikes',
-    'Einrad',
     'Laufrad',
+    // The default categories for bikes and children's vehicles (#300)
+    'Kinderfahrräder',
+    'Laufräder',
+    'Lastenräder',
+    'E-Bikes & Pedelecs',
   ])('"%s" gets the bike fields', (label) => {
     expect(keys(label)).toEqual(BIKE_KEYS);
   });
 
-  test.each(['Radio & HiFi', 'Fahrradzubehör', 'Fahrradteile', 'Fahrradhelme', 'Sonstiges'])(
-    '"%s" gets no bike fields',
-    (label) => {
-      expect(keys(label)).not.toEqual(BIKE_KEYS);
-    }
-  );
+  // Same cases as in backend/src/modules/category_fields.rs
+  test.each([
+    'Radio & HiFi',
+    'Fahrradzubehör',
+    'Fahrradteile',
+    'Fahrradhelme',
+    'Sonstiges',
+    'Roller & Scooter',
+    'Einräder',
+    'Einrad',
+    'Bobbycars & Rutschfahrzeuge',
+    'Fahrradanhänger',
+    'Fahrrad-Kindersitze',
+  ])('"%s" gets no bike fields', (label) => {
+    expect(keys(label)).toBeUndefined();
+  });
 
   test('cycling clothes count as clothing, sports shoes as shoes', () => {
-    expect(keys('Fahrradbekleidung')).toEqual(['size', 'brand']);
+    expect(keys('Fahrradbekleidung')).toEqual(['size', 'brand', 'color']);
+    expect(keys('Skischuhe')).toEqual(['size', 'brand']);
     expect(getFieldsForLabel('Sportschuhe')?.[0].label).toBe('Größe (EU)');
     expect(getFieldsForLabel('Kleidung')?.[0].label).toBe('Größe');
     expect(getFieldsForLabel('Damenmode')?.[0].label).toBe('Größe');

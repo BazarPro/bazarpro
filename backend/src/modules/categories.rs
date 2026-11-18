@@ -270,11 +270,22 @@ async fn get_category_id(ctx: &mut Ctx, args: IdArgs) -> AppResult<Option<Uuid>>
 
 /// The default categories (German label, English name); adds the missing ones, safe to run
 /// repeatedly: `bazarpro-backend run categories.seedCategories`
-pub const DEFAULT_CATEGORIES: [(&str, &str); 11] = [
+pub const DEFAULT_CATEGORIES: [(&str, &str); 21] = [
     ("Kleidung", "Clothing"),
     ("Schuhe", "Shoes"),
     ("Sport", "Sports"),
     ("Fahrräder", "Bikes"),
+    // For bike sales and children's bazaars (#300); same list in migration 0032
+    ("Kinderfahrräder", "Children's bikes"),
+    ("Laufräder", "Balance bikes"),
+    ("Roller & Scooter", "Scooters"),
+    ("Einräder", "Unicycles"),
+    ("Bobbycars & Rutschfahrzeuge", "Ride-on toys"),
+    ("Lastenräder", "Cargo bikes"),
+    ("E-Bikes & Pedelecs", "E-bikes"),
+    ("Fahrradanhänger", "Bike trailers"),
+    ("Fahrrad-Kindersitze", "Child bike seats"),
+    ("Fahrradzubehör", "Bike accessories"),
     ("Elektronik", "Electronics"),
     ("Bücher", "Books"),
     ("Spielzeug", "Toys"),

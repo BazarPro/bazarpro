@@ -58,6 +58,35 @@ describe('event types', () => {
     expect(match('skiBazaar', 'Sport')).toBe(true);
     expect(match('bikeExchange', 'Fahrräder')).toBe(true);
     expect(match('bikeExchange', 'Radios')).toBe(false);
+    // Children's vehicles at both, cargo bikes, trailers and accessories only at the bike sale
+    for (const label of [
+      'Kinderfahrräder',
+      'Laufräder',
+      'Roller & Scooter',
+      'Einräder',
+      'Bobbycars & Rutschfahrzeuge',
+    ]) {
+      expect(match('kidsBazaar', label), label).toBe(true);
+      expect(match('bikeExchange', label), label).toBe(true);
+    }
+    for (const label of [
+      'Lastenräder',
+      'E-Bikes & Pedelecs',
+      'Fahrradanhänger',
+      'Fahrradzubehör',
+    ]) {
+      expect(match('bikeExchange', label), label).toBe(true);
+      expect(match('kidsBazaar', label), label).toBe(false);
+    }
+    expect(match('bikeExchange', 'Einrichtung')).toBe(false);
+  });
+
+  it('the bike sale follows the guide: frame number required and an intake fee', () => {
+    const bikes = findEventType('bikeExchange')!;
+    expect(bikes.features.requiredFields).toEqual(['frameNumber']);
+    expect(bikes.features.intakeFee).toBe(3);
+    expect(bikes.features.photosOptional).toBe(false);
+    expect(bikes.features.priceOffers && bikes.features.minimumPrice).toBe(true);
   });
 
   it('drafts may name a kind that no longer exists', () => {

@@ -168,7 +168,7 @@ async fn parallel_mutations_are_serialized_and_retried(db: PgPool) {
             .fetch_one(&db)
             .await
             .unwrap();
-    assert_eq!((count, distinct), (11, 11));
+    assert_eq!((count, distinct), (21, 21));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -189,9 +189,9 @@ async fn the_start_of_the_server_only_fills_an_empty_table(db: PgPool) {
 
     // A new instance gets the defaults, and a second start adds nothing
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 11);
+    assert_eq!(labels().await.len(), 21);
     start().await.unwrap();
-    assert_eq!(labels().await.len(), 11);
+    assert_eq!(labels().await.len(), 21);
 
     // An instance with categories of its own does not get the defaults back
     sqlx::query("DELETE FROM categories WHERE label <> 'Kleidung'")

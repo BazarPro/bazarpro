@@ -1088,7 +1088,7 @@
     "bikeExchange": {
       "title": "Bike sale",
       "text": "Bikes, locks and accessories: hand in, sell at the cash desk, pay out afterwards.",
-      "highlights": ["Photos required", "Negotiable price", "Large labels"],
+      "highlights": ["Photos required", "Negotiable price", "Frame number required"],
       "exampleTitle": "Bike sale",
       "exampleItems": ["City bike, 28 inch", "Children's bike 20 inch", "U-lock"]
     }

@@ -21,6 +21,8 @@ export interface EventType {
 }
 
 const BIKES = /fahrr|räder|\brad\b|rad$|bike|pedelec|\bmtb\b|bmx/i;
+/** Ridden by children, sold at children's bazaars and at bike sales */
+const KIDS_VEHICLES = /laufr|roller|scooter|einr[aä]d|bobby|rutsch/i;
 
 export const EVENT_TYPES: EventType[] = [
   {
@@ -42,7 +44,7 @@ export const EVENT_TYPES: EventType[] = [
       labelMark: 'universal',
       priceOnLabel: false,
     },
-    categoryMatch: /kind|baby|spiel|kleid|schuh|buch/i,
+    categoryMatch: new RegExp(`kind|baby|spiel|kleid|schuh|buch|${KIDS_VEHICLES.source}`, 'i'),
   },
   {
     // Second-hand for everyone, e.g. a women's clothing bazaar or a flea market
@@ -84,7 +86,9 @@ export const EVENT_TYPES: EventType[] = [
     categoryMatch: /ski|snowboard|winter|sport|schuh/i,
   },
   {
-    // Classic bike exchange: items are handed in, sold at a cash desk, paid out after
+    // Classic bike exchange as in the guide "Fahrradbörse organisieren" of the docs: bikes
+    // are handed in, sold at a cash desk, paid out after. A record for the police is the
+    // same plus private sellers only, fixed data and a limit, switched on by the organizer.
     id: 'bikeExchange',
     item: 'bike',
     examplePrices: [140, 65, 25],
@@ -95,10 +99,14 @@ export const EVENT_TYPES: EventType[] = [
       minimumPrice: true,
       questions: true,
       photosOptional: false,
+      // Against suspicion of theft, and it belongs on the purchase contract
+      requiredFields: ['frameNumber'],
+      // Charged for every accepted bike, sold or not, like in the guide
+      intakeFee: 3,
       labelFormat: 'standard',
       priceOnLabel: true,
     },
-    categoryMatch: BIKES,
+    categoryMatch: new RegExp(`${BIKES.source}|${KIDS_VEHICLES.source}`, 'i'),
   },
 ];
 

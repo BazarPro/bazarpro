@@ -44,10 +44,12 @@ const BIKE: &[CategoryField] = &[
     field("frameSize", "frameSize", "Rahmengröße"),
     field("wheelSize", "wheelSize", "Laufradgröße"),
     field("brand", "bikeBrand", "Marke"),
+    field("color", "color", "Farbe"),
 ];
 const CLOTHING: &[CategoryField] = &[
     size("clothingSize", "Größe"),
     field("brand", "brand", "Marke"),
+    field("color", "color", "Farbe"),
 ];
 const SHOES: &[CategoryField] = &[
     size("shoeSize", "Größe (EU)"),
@@ -56,6 +58,7 @@ const SHOES: &[CategoryField] = &[
 const SPORT: &[CategoryField] = &[
     size("sportSize", "Größe / Länge"),
     field("brand", "brand", "Marke"),
+    field("color", "color", "Farbe"),
 ];
 const ELECTRONICS: &[CategoryField] = &[
     field("brand", "brand", "Marke"),
@@ -77,8 +80,10 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         Rule {
             // "rad" only as a whole word or word ending, so "Radio" does not count as a bike
             matches: re(r"fahrr|räder|\brad\b|rad$|bike|pedelec|\bmtb\b|bmx"),
-            // Accessories and clothing for cyclists have no frame number
-            exclude: Some(re(r"zubehör|teile|bekleidung|helm|anhänger|schloss")),
+            // No frame number: accessories, cycling clothes, trailers, child seats, unicycles
+            exclude: Some(re(
+                r"zubehör|teile|bekleidung|helm|anhänger|schloss|sitz|einr[aä]d",
+            )),
             fields: BIKE,
         },
         Rule {
@@ -243,16 +248,60 @@ mod tests {
     fn categories_are_matched_by_keywords() {
         assert_eq!(
             keys("Fahrräder"),
-            ["frameNumber", "frameSize", "wheelSize", "brand"]
+            ["frameNumber", "frameSize", "wheelSize", "brand", "color"]
         );
         assert_eq!(keys("Kinderrad"), keys("Fahrräder"));
         assert_eq!(keys("E-Bikes / Pedelecs"), keys("Fahrräder"));
         assert!(keys("Radio").is_empty());
         assert!(keys("Fahrradzubehör").is_empty());
-        assert_eq!(keys("Damenmode"), ["size", "brand"]);
+        assert_eq!(keys("Damenmode"), ["size", "brand", "color"]);
         assert!(keys("Sondermodelle").is_empty());
         assert_eq!(keys("Skischuhe"), ["size", "brand"]);
+        assert_eq!(keys("Sport"), ["size", "brand", "color"]);
         assert_eq!(keys("Laptops"), ["brand", "model"]);
+    }
+
+    /// The default categories for bikes and children's vehicles (#300)
+    #[test]
+    fn bike_categories_have_a_frame_number_only_when_ridden_with_one() {
+        let bike = keys("Fahrräder");
+        for label in [
+            "Kinderfahrräder",
+            "Kinderrad",
+            "Laufräder",
+            "Laufrad",
+            "Lastenräder",
+            "E-Bikes & Pedelecs",
+        ] {
+            assert_eq!(keys(label), bike, "{label}");
+        }
+        for label in [
+            "Roller & Scooter",
+            "Einräder",
+            "Einrad",
+            "Bobbycars & Rutschfahrzeuge",
+            "Fahrradanhänger",
+            "Fahrrad-Kindersitze",
+            "Fahrradzubehör",
+        ] {
+            assert!(keys(label).is_empty(), "{label}");
+        }
+    }
+
+    #[test]
+    fn every_default_category_is_matched_on_purpose() {
+        for (label, _) in crate::modules::categories::DEFAULT_CATEGORIES {
+            let has_frame_number = keys(label).contains(&"frameNumber");
+            let bike = matches!(
+                label,
+                "Fahrräder"
+                    | "Kinderfahrräder"
+                    | "Laufräder"
+                    | "Lastenräder"
+                    | "E-Bikes & Pedelecs"
+            );
+            assert_eq!(has_frame_number, bike, "{label}");
+        }
     }
 
     #[test]
@@ -284,7 +333,7 @@ mod tests {
                 parent: Some(bikes),
             },
         ];
-        assert_eq!(category_fields(kids, &categories).len(), 4);
+        assert_eq!(category_fields(kids, &categories).len(), 5);
     }
 
     #[test]
@@ -297,6 +346,7 @@ mod tests {
                 "frameSize",
                 "wheelSize",
                 "brand",
+                "color",
                 "size",
                 "model"
             ]

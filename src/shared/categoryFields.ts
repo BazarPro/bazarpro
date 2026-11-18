@@ -30,6 +30,7 @@ export type CategoryFieldText =
   | 'shoeSize'
   | 'sportSize'
   | 'brand'
+  | 'color'
   | 'model';
 
 const MAX_VALUE_LENGTH = 120;
@@ -39,6 +40,14 @@ export const MAX_SIZE_LENGTH = 7;
 export function fieldMaxLength(field: CategoryField): number {
   return field.maxLength ?? MAX_VALUE_LENGTH;
 }
+
+/** Helps to find an item again on site and to describe it, e.g. a bike for the police */
+const COLOR_FIELD: CategoryField = {
+  key: 'color',
+  text: 'color',
+  label: 'Farbe',
+  placeholder: 'z. B. Rot',
+};
 
 const BIKE_FIELDS: CategoryField[] = [
   {
@@ -52,6 +61,7 @@ const BIKE_FIELDS: CategoryField[] = [
   { key: 'frameSize', text: 'frameSize', label: 'Rahmengröße', placeholder: 'z. B. 52 cm oder M' },
   { key: 'wheelSize', text: 'wheelSize', label: 'Laufradgröße', placeholder: 'z. B. 28 Zoll' },
   { key: 'brand', text: 'bikeBrand', label: 'Marke', placeholder: 'z. B. Cube' },
+  COLOR_FIELD,
 ];
 
 const CLOTHING_FIELDS: CategoryField[] = [
@@ -63,6 +73,7 @@ const CLOTHING_FIELDS: CategoryField[] = [
     maxLength: MAX_SIZE_LENGTH,
   },
   { key: 'brand', text: 'brand', label: 'Marke' },
+  COLOR_FIELD,
 ];
 
 const SHOE_FIELDS: CategoryField[] = [
@@ -85,6 +96,7 @@ const SPORT_FIELDS: CategoryField[] = [
     maxLength: MAX_SIZE_LENGTH,
   },
   { key: 'brand', text: 'brand', label: 'Marke' },
+  COLOR_FIELD,
 ];
 
 const ELECTRONICS_FIELDS: CategoryField[] = [
@@ -100,8 +112,8 @@ const FIELD_RULES: { match: RegExp; exclude?: RegExp; fields: CategoryField[] }[
   {
     // "rad" only as a whole word or word ending, so "Radio" does not count as a bike
     match: /fahrr|räder|\brad\b|rad$|bike|pedelec|\bmtb\b|bmx/i,
-    // Accessories and clothing for cyclists have no frame number
-    exclude: /zubehör|teile|bekleidung|helm|anhänger|schloss/i,
+    // No frame number: accessories, cycling clothes, trailers, child seats, unicycles
+    exclude: /zubehör|teile|bekleidung|helm|anhänger|schloss|sitz|einr[aä]d/i,
     fields: BIKE_FIELDS,
   },
   { match: /schuh|stiefel|sneaker/i, fields: SHOE_FIELDS },

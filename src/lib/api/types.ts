@@ -361,6 +361,7 @@ export type CategoryFieldText =
   | 'clothingSize'
   | 'shoeSize'
   | 'sportSize'
+  | 'color'
   | 'model';
 
 export type DiscountRules = {

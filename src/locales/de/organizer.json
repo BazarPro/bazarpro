@@ -1088,7 +1088,7 @@
     "bikeExchange": {
       "title": "Fahrradbörse",
       "text": "Räder, Schlösser und Zubehör: abgeben, an der Kasse verkaufen, danach auszahlen.",
-      "highlights": ["Fotos Pflicht", "Verhandeln (VB)", "Große Etiketten"],
+      "highlights": ["Fotos Pflicht", "Verhandeln (VB)", "Rahmennummer Pflicht"],
       "exampleTitle": "Fahrradbörse",
       "exampleItems": ["Hollandrad, 28 Zoll", "Kinderrad 20 Zoll", "Bügelschloss"]
     }
