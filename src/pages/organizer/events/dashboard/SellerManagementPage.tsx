@@ -7,6 +7,7 @@ import { SearchInput } from '../../../../components/ui/search-input';
 import { useMemo, useState } from 'react';
 import { WalkInBadge } from '../../../../components/walkIn/WalkInBadge';
 import { SellerNumberBadge } from '../../../../components/sellers/SellerNumberBadge';
+import { FeeGroupBadge, FeeGroupMenu } from '../../../../components/sellers/FeeGroupBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { useQuery } from '../../../../lib/api/react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -64,7 +65,7 @@ import { useTranslation } from 'react-i18next';
 
 const NO_LABELS: Id<'products'>[] = [];
 
-type SellerFilter = 'all' | 'open' | 'paid' | 'helpers';
+type SellerFilter = 'all' | 'open' | 'paid' | 'helpers' | 'groups';
 
 export function SellerManagementPage() {
   const { t } = useTranslation('organizer');
@@ -118,6 +119,12 @@ export function SellerManagementPage() {
     if (activeFilter === 'open') result = result.filter((v) => !v.paid);
     if (activeFilter === 'paid') result = result.filter((v) => v.paid);
     if (activeFilter === 'helpers') result = result.filter((v) => v.isHelper);
+    // Unchecked self-declarations first: they hold up the intake
+    if (activeFilter === 'groups') {
+      result = result
+        .filter((v) => v.feeGroup)
+        .sort((a, b) => Number(!!b.feeGroup?.pending) - Number(!!a.feeGroup?.pending));
+    }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase().trim();
@@ -137,6 +144,15 @@ export function SellerManagementPage() {
   const handleSelectVendor = (vendorId: Id<'users'>) => {
     navigate(`/events/view/${eventId}/products?vendor=${vendorId}`);
   };
+
+  const feeGroups = event?.features?.feeGroups ?? [];
+  const pendingGroups = (vendors ?? []).filter((v) => v.feeGroup?.pending).length;
+  const emptyText =
+    activeFilter === 'helpers' && !searchTerm
+      ? t('sellers.noHelpers')
+      : activeFilter === 'groups' && !searchTerm
+        ? t('sellerFeeGroup.noneInGroups')
+        : undefined;
 
   if (rolesLoading) return <PageSkeleton />;
   if (!canManage) return <div className="p-8 text-center">{t('sellers.noAccess')}</div>;
@@ -230,11 +246,26 @@ export function SellerManagementPage() {
           onValueChange={(v) => setActiveFilter(v as SellerFilter)}
           className="w-full sm:w-auto"
         >
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList
+            className={`grid w-full ${feeGroups.length > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}
+          >
             <TabsTrigger value="all">{t('sellers.all')}</TabsTrigger>
             <TabsTrigger value="open">{t('sellers.open')}</TabsTrigger>
             <TabsTrigger value="paid">{t('sellers.paid')}</TabsTrigger>
             <TabsTrigger value="helpers">{t('sellers.helpers')}</TabsTrigger>
+            {feeGroups.length > 0 && (
+              <TabsTrigger value="groups" className="gap-1.5">
+                {t('sellerFeeGroup.tab')}
+                {pendingGroups > 0 && (
+                  <span
+                    className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white tabular-nums"
+                    aria-label={t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
+                  >
+                    {pendingGroups}
+                  </span>
+                )}
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
 
@@ -245,6 +276,12 @@ export function SellerManagementPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
+
+      {activeFilter === 'groups' && pendingGroups > 0 && (
+        <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          {t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
+        </p>
+      )}
 
       {/* Table only where it fits; the side menu takes room on tablets, too */}
       <div className="@container">
@@ -264,9 +301,7 @@ export function SellerManagementPage() {
               {filteredVendors.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">
-                    {activeFilter === 'helpers' && !searchTerm
-                      ? t('sellers.noHelpers')
-                      : t('sellers.noneForFilter')}
+                    {emptyText ?? t('sellers.noneForFilter')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -293,6 +328,7 @@ export function SellerManagementPage() {
                               <SellerNumberBadge number={v.sellerNumber} />
                               {v.managedByEventId && <WalkInBadge />}
                               {v.excluded && <ExcludedBadge exclusion={v.excluded} />}
+                              <FeeGroupBadge group={v.feeGroup} />
                               {v.isHelper && !isOwner && (
                                 <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
                               )}
@@ -329,23 +365,33 @@ export function SellerManagementPage() {
                         <PaidBadge paid={v.paid} />
                       </TableCell>
                       <TableCell className="text-center">
-                        {isOwner ? (
-                          <Badge variant="default" className="bg-primary hover:bg-primary gap-1">
-                            <Crown className="h-3 w-3" /> {t('sellers.owner')}
-                          </Badge>
-                        ) : v.isHelper ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Badge variant="secondary" className="gap-1">
-                              <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
+                        <span className="inline-flex items-center gap-1">
+                          {isOwner ? (
+                            <Badge variant="default" className="bg-primary hover:bg-primary gap-1">
+                              <Crown className="h-3 w-3" /> {t('sellers.owner')}
                             </Badge>
-                            {canManageHelpers && (
-                              <EditPermissionsButton
-                                iconOnly
-                                onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
-                              />
-                            )}
-                          </span>
-                        ) : null}
+                          ) : v.isHelper ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Badge variant="secondary" className="gap-1">
+                                <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
+                              </Badge>
+                              {canManageHelpers && (
+                                <EditPermissionsButton
+                                  iconOnly
+                                  onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
+                                />
+                              )}
+                            </span>
+                          ) : null}
+                          {canManageHelpers && (
+                            <FeeGroupMenu
+                              eventId={eventId as Id<'events'>}
+                              vendor={v}
+                              groups={feeGroups}
+                              iconOnly
+                            />
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -361,9 +407,7 @@ export function SellerManagementPage() {
         <div className="grid gap-4 @2xl:grid-cols-2 @4xl:hidden">
           {filteredVendors.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground bg-card border rounded-xl italic @2xl:col-span-2">
-              {activeFilter === 'helpers' && !searchTerm
-                ? t('sellers.noHelpers')
-                : t('sellers.none')}
+              {emptyText ?? t('sellers.none')}
             </div>
           ) : (
             filteredVendors.map((v) => {
@@ -389,6 +433,7 @@ export function SellerManagementPage() {
                           <SellerNumberBadge number={v.sellerNumber} />
                           {v.managedByEventId && <WalkInBadge />}
                           {v.excluded && <ExcludedBadge exclusion={v.excluded} />}
+                          <FeeGroupBadge group={v.feeGroup} />
                           {isOwner && <Crown className="h-3.5 w-3.5 text-primary" />}
                           {v.isHelper && !isOwner && (
                             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -415,10 +460,17 @@ export function SellerManagementPage() {
                     </div>
                   </div>
 
-                  {canManageHelpers && !isOwner && v.isHelper && (
-                    <div className="mt-auto">
-                      <EditPermissionsButton
-                        onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
+                  {canManageHelpers && ((!isOwner && v.isHelper) || feeGroups.length > 0) && (
+                    <div className="mt-auto flex gap-2 *:flex-1">
+                      {!isOwner && v.isHelper && (
+                        <EditPermissionsButton
+                          onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
+                        />
+                      )}
+                      <FeeGroupMenu
+                        eventId={eventId as Id<'events'>}
+                        vendor={v}
+                        groups={feeGroups}
                       />
                     </div>
                   )}

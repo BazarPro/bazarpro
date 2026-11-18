@@ -39,8 +39,12 @@ function withCap(row: string[], cap: boolean, value: string): string[] {
   return cap ? [...row.slice(0, CAP_COLUMN), value, ...row.slice(CAP_COLUMN)] : row;
 }
 
-export function sellerHeaders(cap = false): string[] {
-  return withCap(
+/** The bazaar has fee groups (#302): the CSV gets a column, the PDF names it with the seller */
+export const hasGroupColumn = ({ event, sellers }: Pick<SettlementExport, 'event' | 'sellers'>) =>
+  !!event.feeGroups || sellers.some((seller) => seller.feeGroup);
+
+export function sellerHeaders(cap = false, group = false): string[] {
+  const headers = withCap(
     [
       text('number'),
       text('seller'),
@@ -54,14 +58,24 @@ export function sellerHeaders(cap = false): string[] {
     cap,
     text('feeCap')
   );
+  return group ? [...headers, text('feeGroup')] : headers;
 }
 
-export function sellerRows(sellers: SettlementSeller[], cap = false): string[][] {
-  return sellers.map((seller) =>
-    withCap(
+/**
+ * `group`: "column" adds the fee group as last column, "name" after the seller's name
+ * (the PDF, whose columns are fixed).
+ */
+export function sellerRows(
+  sellers: SettlementSeller[],
+  cap = false,
+  group: 'column' | 'name' | false = false
+): string[][] {
+  return sellers.map((seller) => {
+    const name = sellerName(seller);
+    const row = withCap(
       [
         number(seller.sellerNumber),
-        sellerName(seller),
+        group === 'name' && seller.feeGroup ? `${name} (${seller.feeGroup})` : name,
         sellerAddress(seller),
         formatPriceDE(seller.revenue),
         formatPriceDE(seller.commission),
@@ -71,8 +85,9 @@ export function sellerRows(sellers: SettlementSeller[], cap = false): string[][]
       ],
       cap,
       formatPriceDE(capCredit(seller))
-    )
-  );
+    );
+    return group === 'column' ? [...row, seller.feeGroup ?? ''] : row;
+  });
 }
 
 function sellerTotals(sellers: SettlementSeller[], cap: boolean): string[] {
@@ -179,7 +194,10 @@ export function buildSettlementPdf(settlement: SettlementExport): jsPDF {
   y = drawTable(doc, {
     columns: cap ? SELLER_COLUMNS_CAP : SELLER_COLUMNS,
     headers: sellerHeaders(cap),
-    rows: [...sellerRows(sellers, cap), sellerTotals(sellers, cap)],
+    rows: [
+      ...sellerRows(sellers, cap, hasGroupColumn(settlement) && 'name'),
+      sellerTotals(sellers, cap),
+    ],
     y,
     margin: MARGIN,
   });
@@ -200,7 +218,11 @@ export function downloadSettlementPdf(settlement: SettlementExport) {
 
 export function sellersCsv(settlement: SettlementExport): string {
   const cap = hasCapColumn(settlement);
-  return toCsv([sellerHeaders(cap), ...sellerRows(settlement.sellers, cap)]);
+  const group = hasGroupColumn(settlement);
+  return toCsv([
+    sellerHeaders(cap, group),
+    ...sellerRows(settlement.sellers, cap, group && 'column'),
+  ]);
 }
 
 export function salesCsv(settlement: SettlementExport): string {

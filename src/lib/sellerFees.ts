@@ -1,5 +1,6 @@
 import { formatPriceDE } from './utils';
 import { feeCapCredit } from '../shared/feeCap';
+import { eventFees, groupFees, type FeeGroup } from '../shared/feeGroups';
 import { resolveEventFeatures, type StoredEventFeatures } from '../shared/eventFeatures';
 import { formatBerlinRange, formatBerlinTime } from '../shared/berlinTime';
 import i18n, { currentLocale } from '../i18n';
@@ -122,6 +123,55 @@ export function describeSellerFees({ commission, intakeFee = 0, maxFeesPerSeller
       total,
     },
   };
+}
+
+export interface FeeGroupTerms {
+  group: FeeGroup;
+  /** The group's fees in short, e.g. "5 % Provision statt 10 % · keine Annahmegebühr" */
+  fees: string;
+  /** How one gets in: the proof to bring, or "for helpers" */
+  how: string;
+}
+
+/**
+ * The fee groups as sellers read them (#302): each with its own fees next to the bazaar's,
+ * so it is clear what changes ("5 % instead of 10 %").
+ */
+export function describeFeeGroups(event: SellerConditionsEvent): FeeGroupTerms[] {
+  const groups = event.features?.feeGroups ?? [];
+  const base = eventFees(event);
+  return groups.map((group) => {
+    const fees = groupFees(event, group);
+    const parts = [
+      fees.commission === base.commission
+        ? text('groupCommission', { percent: formatPercent(fees.commission) })
+        : text('groupCommissionInstead', {
+            percent: formatPercent(fees.commission),
+            base: formatPercent(base.commission),
+          }),
+      fees.intakeFee
+        ? text('groupIntakeFee', { fee: formatPriceDE(fees.intakeFee) })
+        : base.intakeFee
+          ? text('groupNoIntakeFee')
+          : undefined,
+      fees.maxFeesPerSeller !== undefined && fees.maxFeesPerSeller !== base.maxFeesPerSeller
+        ? text('groupCap', { fee: formatPriceDE(fees.maxFeesPerSeller) })
+        : undefined,
+      fees.maxItemsPerSeller !== undefined && fees.maxItemsPerSeller !== base.maxItemsPerSeller
+        ? text('groupItems', { count: fees.maxItemsPerSeller })
+        : undefined,
+    ];
+    return {
+      group,
+      fees: parts.filter(Boolean).join(' · '),
+      how:
+        group.assignment === 'helpers'
+          ? text('groupHelpers')
+          : group.proofHint
+            ? text('groupProof', { hint: group.proofHint })
+            : text('groupChecked'),
+    };
+  });
 }
 
 export interface SellerRule {

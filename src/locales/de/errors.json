@@ -90,7 +90,13 @@
     "sellerNoteTooLong": "Der Hinweis für Verkäufer darf höchstens {{max}} Zeichen haben.",
     "settlementClosed": "Die Abwicklung dieses Basars ist abgeschlossen. Verkäufe und Rückgaben lassen sich nicht mehr ändern.",
     "startMissing": "Bitte auch den Beginn der {{label}} angeben.",
-    "registrationWindow": "Das Ende der Anmeldung muss nach ihrem Beginn liegen."
+    "registrationWindow": "Das Ende der Anmeldung muss nach ihrem Beginn liegen.",
+    "feeGroupsTooMany": "Ein Basar kann höchstens 10 Gebührengruppen haben.",
+    "feeGroupLabel": "Jede Gebührengruppe braucht einen Namen mit höchstens 60 Zeichen.",
+    "feeGroupLabelTwice": "Zwei Gebührengruppen haben denselben Namen.",
+    "feeGroupCommission": "Die Provision einer Gebührengruppe liegt zwischen 0 und 100 %.",
+    "feeGroupProofHint": "Der Hinweis zum Nachweis darf höchstens 200 Zeichen lang sein.",
+    "feeGroupsOnlyLower": "Seit sich Verkäufer angemeldet haben, können Gebührengruppen nur noch günstiger werden. Entfernen oder anders zuordnen geht nicht mehr."
   },
   "feature": {
     "disabled": "Diese Aktion ist derzeit deaktiviert.",
@@ -271,5 +277,13 @@
   },
   "categoryField": {
     "inUse": "Dieses Zusatzfeld wird noch von Kategorien verwendet. Entferne es dort zuerst."
+  },
+  "feeGroup": {
+    "unconfirmed": "{{group}}: Bitte zuerst den Nachweis prüfen und die Gruppe bestätigen oder entfernen.",
+    "unknown": "Diese Gebührengruppe gibt es bei diesem Basar nicht.",
+    "decided": "Das Team hat deine Gruppe schon geprüft. Für eine Änderung sprich bitte das Team an.",
+    "locked": "Deine Artikel wurden schon angenommen. Für eine Änderung der Gruppe sprich bitte das Team an.",
+    "none": "Dieser Verkäufer hat keine Gebührengruppe angegeben.",
+    "organizerOnly": "Nur Veranstalter können Verkäufer einer Gebührengruppe zuordnen."
   }
 }

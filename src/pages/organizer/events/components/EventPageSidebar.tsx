@@ -16,6 +16,7 @@ import type { SellerConditionsEvent } from '../../../../lib/sellerFees';
 import { dateLocale } from '../../../../i18n/format';
 import { toAbsoluteUrl } from '../../../../lib/seo';
 import { useTranslation } from 'react-i18next';
+import type { Id } from '../../../../lib/api/types';
 import type { TFunction } from 'i18next';
 import { formatEventPlace } from '../../../../shared/eventJsonLd';
 import { useNowPassing } from '../../../../hooks/useNowPassing';
@@ -50,6 +51,8 @@ interface EventPageSidebarProps {
   event: EventPageSidebarEvent;
   /** Shown to everyone thinking about selling here and to registered sellers */
   conditions?: SellerConditionsEvent;
+  /** With it, a registered seller sees their fee group in the conditions */
+  eventId?: Id<'events'>;
 }
 
 const dateOptions: Intl.DateTimeFormatOptions = {
@@ -61,7 +64,7 @@ const timeOptions: Intl.DateTimeFormatOptions = {
   minute: '2-digit',
 };
 
-export function EventPageSidebar({ event, conditions }: EventPageSidebarProps) {
+export function EventPageSidebar({ event, conditions, eventId }: EventPageSidebarProps) {
   const { t } = useTranslation('events');
   const startDate = new Date(event.startDate);
   const endDate = new Date(event.endDate);
@@ -257,7 +260,12 @@ export function EventPageSidebar({ event, conditions }: EventPageSidebarProps) {
       </div>
 
       {conditions && (
-        <SellerConditions event={conditions} className="bg-card rounded-xl border p-6" compact />
+        <SellerConditions
+          event={conditions}
+          eventId={eventId}
+          className="bg-card rounded-xl border p-6"
+          compact
+        />
       )}
 
       <EventContactCard contact={event.contactInfo} />

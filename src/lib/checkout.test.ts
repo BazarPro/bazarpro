@@ -239,4 +239,10 @@ describe('what the desk takes', () => {
     // Without a cap every item pays its commission
     expect(deskCommissions([{ price: 140 }, { price: 90 }], 10)).toEqual([14, 9]);
   });
+
+  it("takes the commission of the seller's fee group", () => {
+    expect(deskCommissions([{ price: 140, commissionPercent: 5 }, { price: 90 }], 10)).toEqual([
+      7, 9,
+    ]);
+  });
 });

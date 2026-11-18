@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { describeSellerFees, describeSellerRules, describeSellerSchedule } from './sellerFees';
+import {
+  describeFeeGroups,
+  describeSellerFees,
+  describeSellerRules,
+  describeSellerSchedule,
+} from './sellerFees';
 
 describe('describeSellerFees', () => {
   it('explains commission and intake fee with an example', () => {
@@ -129,5 +134,44 @@ describe('describeSellerSchedule', () => {
     });
     expect(schedule.title).toBe('Aufbau & Abbau');
     expect(schedule.rows.map((row) => row.label)).toEqual(['Aufbau', 'Abbau']);
+  });
+});
+
+describe('describeFeeGroups', () => {
+  it("names each group with its fees next to the bazaar's and how to get in", () => {
+    const groups = describeFeeGroups({
+      commission: 10,
+      features: {
+        intakeFee: 1,
+        maxItemsPerSeller: 20,
+        feeGroups: [
+          {
+            id: 'members',
+            label: 'Vereinsmitglieder',
+            commission: 5,
+            assignment: 'selfDeclared',
+            proofHint: 'Mitgliedsausweis zeigen',
+          },
+          {
+            id: 'helpers',
+            label: 'Helfer',
+            commission: 10,
+            intakeFee: 0.5,
+            maxItemsPerSeller: 40,
+            assignment: 'helpers',
+          },
+        ],
+      },
+    });
+    expect(groups.map(({ fees, how }) => ({ fees, how }))).toEqual([
+      {
+        fees: '5 % Provision statt 10 % · keine Annahmegebühr',
+        how: 'Nachweis bei der Abgabe: Mitgliedsausweis zeigen',
+      },
+      {
+        fees: '10 % Provision · 0,50 € pro Artikel · bis zu 40 Artikel',
+        how: 'Gilt für Helfer des Basars',
+      },
+    ]);
   });
 });

@@ -182,6 +182,8 @@ export interface CommissionLine {
   sellerId?: string;
   /** What is left of the seller's fee cap before this cart; unset without a cap */
   feeCapLeft?: number;
+  /** The seller's commission when their fee group has its own (#302) */
+  commissionPercent?: number;
 }
 
 /**
@@ -190,8 +192,8 @@ export interface CommissionLine {
  */
 export function deskCommissions(lines: CommissionLine[], percent: number): number[] {
   const paid = new Map<string, number>();
-  return lines.map(({ price, sellerId, feeCapLeft }) => {
-    const commission = commissionOf(price, percent);
+  return lines.map(({ price, sellerId, feeCapLeft, commissionPercent }) => {
+    const commission = commissionOf(price, commissionPercent ?? percent);
     if (feeCapLeft === undefined || sellerId === undefined) return commission;
     const before = paid.get(sellerId) ?? 0;
     const capped = cappedCommission(commission, before, feeCapLeft);

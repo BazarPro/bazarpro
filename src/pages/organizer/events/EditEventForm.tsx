@@ -58,6 +58,8 @@ interface RegisteredTerms {
   maxItemsPerSeller?: number;
   /** Unset: no cap, the highest there is */
   maxFeesPerSeller?: number;
+  /** Fee groups sellers registered with: they stay and only get cheaper (#302) */
+  feeGroups: FeeGroup[];
 }
 import { useTranslation } from 'react-i18next';
 import { coverFile, coverForKind, DEFAULT_COVER } from '../../../lib/eventCovers';
@@ -83,6 +85,8 @@ import {
   SalePreview,
 } from './components/wizard/WizardPreviews';
 import { WizardSummary } from './components/wizard/WizardSummary';
+import { EditEventFeeGroups } from './components/EditEventFeeGroups';
+import { MAX_FEE_GROUPS, type FeeGroup } from '../../../shared/feeGroups';
 import { PageSkeleton } from '../../../components/ui/loading';
 import { isEventRunning } from '../../../shared/eventPhase';
 
@@ -203,6 +207,56 @@ const buildEventSchema = (
           .max(10_000, zodMessage('form.feeCapMax', 'organizer'))
           .optional()
           .or(z.nan()),
+        feeGroups: z
+          .array(
+            z.object({
+              id: z.string(),
+              label: z
+                .string()
+                .trim()
+                .min(1, zodMessage('feeGroups.labelRequired', 'organizer'))
+                .max(60),
+              commission: z
+                .number(zodMessage('form.minPercent', 'organizer'))
+                .min(0, zodMessage('form.feeNegative', 'organizer'))
+                .max(100, zodMessage('form.maxPercent', 'organizer', { max: 100 })),
+              intakeFee: z
+                .number()
+                .min(0, zodMessage('form.feeNegative', 'organizer'))
+                .max(100, zodMessage('form.feeMax', 'organizer'))
+                .optional()
+                .or(z.nan()),
+              maxFeesPerSeller: z
+                .number()
+                .min(0, zodMessage('form.feeNegative', 'organizer'))
+                .max(10_000, zodMessage('form.feeCapMax', 'organizer'))
+                .optional()
+                .or(z.nan()),
+              maxItemsPerSeller: z
+                .number()
+                .int(zodMessage('form.wholeNumber', 'organizer'))
+                .min(1, zodMessage('form.minOne', 'organizer'))
+                .optional()
+                .or(z.nan()),
+              assignment: z.enum(['selfDeclared', 'helpers']),
+              proofHint: z.string().max(200),
+            })
+          )
+          .max(MAX_FEE_GROUPS)
+          .superRefine((groups, ctx) => {
+            const seen = new Set<string>();
+            groups.forEach((group, index) => {
+              const label = group.label.trim().toLowerCase();
+              if (label && seen.has(label)) {
+                ctx.addIssue({
+                  code: 'custom',
+                  message: i18n.t('feeGroups.labelTwice', { ns: 'organizer' }),
+                  path: [index, 'label'],
+                });
+              }
+              seen.add(label);
+            });
+          }),
       }),
       sellerLogistics: z.object({
         dropoffStart: z.string(),
@@ -294,6 +348,49 @@ const buildEventSchema = (
           path: ['features', 'maxItemsPerSeller'],
         });
       }
+      // Fee groups sellers registered with stay (the form offers no removal) and only get
+      // cheaper; an empty cap or item limit falls back to the bazaar's
+      for (const before of terms.feeGroups) {
+        const index = data.features.feeGroups.findIndex((group) => group.id === before.id);
+        const now = data.features.feeGroups[index];
+        if (!now) continue;
+        const path = (field: string) => ['features', 'feeGroups', index, field];
+        const tooHigh = (field: string, value: number, max: number, text: string) => {
+          if (value > max) {
+            ctx.addIssue({
+              code: 'custom',
+              message: i18n.t('feeGroups.registeredMax', { ns: 'organizer', value: text }),
+              path: path(field),
+            });
+          }
+        };
+        tooHigh('commission', now.commission, before.commission, `${before.commission} %`);
+        tooHigh(
+          'intakeFee',
+          given(now.intakeFee) ?? 0,
+          before.intakeFee ?? 0,
+          `${formatPriceDE(before.intakeFee ?? 0)} €`
+        );
+        const capBefore = before.maxFeesPerSeller ?? terms.maxFeesPerSeller;
+        if (capBefore !== undefined) {
+          tooHigh(
+            'maxFeesPerSeller',
+            given(now.maxFeesPerSeller) ?? given(data.features.maxFeesPerSeller) ?? Infinity,
+            capBefore,
+            `${formatPriceDE(capBefore)} €`
+          );
+        }
+        const itemsBefore = before.maxItemsPerSeller ?? terms.maxItemsPerSeller;
+        const items =
+          given(now.maxItemsPerSeller) ?? given(data.features.maxItemsPerSeller) ?? Infinity;
+        if (itemsBefore !== undefined && items < itemsBefore) {
+          ctx.addIssue({
+            code: 'custom',
+            message: i18n.t('feeGroups.registeredMinItems', { ns: 'organizer', min: itemsBefore }),
+            path: path('maxItemsPerSeller'),
+          });
+        }
+      }
     });
 
 type EventFormData = z.infer<ReturnType<typeof buildEventSchema>>;
@@ -338,6 +435,13 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
     labelMark: features.labelMark,
     intakeFee: features.intakeFee,
     maxFeesPerSeller: features.maxFeesPerSeller,
+    feeGroups: (stored?.feeGroups ?? []).map((group) => ({
+      ...group,
+      intakeFee: group.intakeFee ?? NaN,
+      maxFeesPerSeller: group.maxFeesPerSeller ?? NaN,
+      maxItemsPerSeller: group.maxItemsPerSeller ?? NaN,
+      proofHint: group.proofHint ?? '',
+    })),
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
     directSale: features.directSale,
@@ -394,6 +498,17 @@ function featuresFromForm(features: FeatureFormData): FeaturesArgs {
         : undefined,
     // 0 is a cap as well: no fees at all
     maxFeesPerSeller: givenNumber(features.maxFeesPerSeller) ?? null,
+    // Always sent: an empty list removes the groups
+    feeGroups: features.feeGroups.map((group) => ({
+      id: group.id,
+      label: group.label.trim(),
+      commission: group.commission,
+      intakeFee: (givenNumber(group.intakeFee) ?? 0) > 0 ? group.intakeFee : undefined,
+      maxFeesPerSeller: givenNumber(group.maxFeesPerSeller),
+      maxItemsPerSeller: givenNumber(group.maxItemsPerSeller),
+      assignment: group.assignment,
+      proofHint: group.proofHint.trim() || undefined,
+    })),
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
     directSale: features.directSale,
@@ -481,7 +596,10 @@ const WIZARD_STEPS = [
     fields: ['features.maxDiscountPercent', 'features.discountStartsAt'],
   },
   { id: 'items', fields: ['categories', 'features.maxItemsPerSeller', 'features.maxItemsTotal'] },
-  { id: 'fees', fields: ['commission', 'features.intakeFee', 'features.maxFeesPerSeller'] },
+  {
+    id: 'fees',
+    fields: ['commission', 'features.intakeFee', 'features.maxFeesPerSeller', 'features.feeGroups'],
+  },
   {
     id: 'registration',
     fields: ['visibility', 'accessCode', 'vendorLimit', 'features.registrationEndsAt'],
@@ -588,6 +706,8 @@ function EventSection({
     eventMapImageUrl?: string | null;
     isRunning: boolean;
     feeLock: FeeLock;
+    /** Ids of the fee groups sellers registered with */
+    registeredFeeGroups?: string[];
   };
 }) {
   const feeLock = editing?.feeLock ?? null;
@@ -645,6 +765,7 @@ function EventSection({
         <FormSection contentClassName="grid grid-cols-1 gap-5 space-y-0 sm:grid-cols-2">
           <EditEventContact parts={['commission']} feeLock={feeLock} bare />
           <EditEventFeatures parts={['fees']} showHeader={false} feeLock={feeLock} bare />
+          <EditEventFeeGroups feeLock={feeLock} registeredIds={editing?.registeredFeeGroups} />
         </FormSection>
       );
     case 'registration':
@@ -751,6 +872,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           intakeFee: event.features?.intakeFee ?? 0,
           maxItemsPerSeller: event.features?.maxItemsPerSeller,
           maxFeesPerSeller: event.features?.maxFeesPerSeller,
+          feeGroups: event.features?.feeGroups ?? [],
         }
       : undefined;
   const eventSchema = useMemo(
@@ -1317,6 +1439,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                         eventMapImageUrl: event?.eventMapImageUrl,
                         isRunning,
                         feeLock,
+                        registeredFeeGroups: registeredTerms.current?.feeGroups.map((g) => g.id),
                       }}
                     />
                   </section>

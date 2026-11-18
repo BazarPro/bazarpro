@@ -71,6 +71,7 @@ import {
   type SellerPrintoutKind,
 } from '../../../../lib/sellerPrintout';
 import { SellerIdCheck } from '../../../../components/sellers/SellerIdCheck';
+import { FeeGroupCheck } from '../../../../components/sellers/FeeGroupCheck';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { matchingVendors, productMatcher } from '../../../../lib/productSearch';
 import { addToCachedCart } from '../../../../lib/checkout';
@@ -882,6 +883,12 @@ export function ProductManagementPage() {
                 {selectedVendor.detailsRecorded === false && (
                   <SellerIdCheck seller={selectedVendor} />
                 )}
+                {/* A self-declared fee group: confirm or remove it before the intake */}
+                <FeeGroupCheck
+                  eventId={eventId}
+                  seller={selectedVendor}
+                  groups={event?.features?.feeGroups ?? []}
+                />
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     {selectedVendor.sortCode !== undefined && (
@@ -940,7 +947,11 @@ export function ProductManagementPage() {
                       <Button
                         className="h-11 gap-2 px-6 text-base shadow-lg"
                         disabled={
-                          stats.announced === 0 || isBulkSubmitting || !!selectedVendor?.paid
+                          stats.announced === 0 ||
+                          isBulkSubmitting ||
+                          !!selectedVendor?.paid ||
+                          // The fee group is checked first (FeeGroupCheck above)
+                          !!selectedVendor?.feeGroup?.pending
                         }
                         onClick={handleBulkAccept}
                       >
@@ -955,7 +966,17 @@ export function ProductManagementPage() {
             {sellerMode === 'payout' && can('payout') && (
               <VendorSettlement
                 vendor={selectedVendor}
-                commissionPercent={event?.commission ?? 0}
+                commissionPercent={
+                  // The seller's fee group may have its own commission (#302)
+                  // (paid out: only the name of the group is kept)
+                  event?.features?.feeGroups?.find((g) =>
+                    selectedVendor.feeGroup?.id
+                      ? g.id === selectedVendor.feeGroup.id
+                      : g.label === selectedVendor.feeGroup?.label
+                  )?.commission ??
+                  event?.commission ??
+                  0
+                }
                 itemsToReturn={vendorProducts.filter((p) => p.status === 'available')}
                 soldCount={stats.sold}
                 returnedCount={stats.returned}
@@ -1099,6 +1120,15 @@ export function ProductManagementPage() {
         idCheck={
           activeProduct && vendorById.get(activeProduct.vendorId)?.detailsRecorded === false
             ? vendorById.get(activeProduct.vendorId)
+            : undefined
+        }
+        feeGroupCheck={
+          activeProduct && vendorById.get(activeProduct.vendorId)?.feeGroup?.pending
+            ? {
+                eventId,
+                seller: vendorById.get(activeProduct.vendorId)!,
+                groups: event?.features?.feeGroups ?? [],
+              }
             : undefined
         }
         onConfirm={handleExecuteAction}

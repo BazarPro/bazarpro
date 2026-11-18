@@ -202,7 +202,12 @@ export function MySalesPage() {
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">
-                      {t('mySales.bazaarFee', { percent: group.event.commissionPercent })}
+                      {group.event.feeGroup
+                        ? t('mySales.bazaarFeeGroup', {
+                            percent: group.event.commissionPercent,
+                            group: group.event.feeGroup,
+                          })
+                        : t('mySales.bazaarFee', { percent: group.event.commissionPercent })}
                     </dt>
                     <dd>
                       {group.totals.commission > 0 ? '−' : ''}

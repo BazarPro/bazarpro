@@ -39,7 +39,8 @@
     "payFee": "Pay the intake fee to the organizer",
     "nothingSold": "Nothing was sold here. The intake fee applies to every accepted item.",
     "youPay": "You pay",
-    "feeCap": "Fee cap"
+    "feeCap": "Fee cap",
+    "bazaarFeeGroup": "Bazaar fee ({{percent}} %, {{group}})"
   },
   "invoice": {
     "title": "Private invoice",

@@ -340,7 +340,9 @@
     "registrationClosed": "Geschlossen, nur mit Einladung",
     "untilTime": "bis {{time}} Uhr",
     "maxItemsTotal": "Höchstens {{count}} Artikel insgesamt",
-    "maxFees": "Höchstens {{amount}} € Gebühren pro Verkäufer"
+    "maxFees": "Höchstens {{amount}} € Gebühren pro Verkäufer",
+    "feeGroups_one": "Gebührengruppe: {{groups}}",
+    "feeGroups_other": "Gebührengruppen: {{groups}}"
   },
   "sellers": {
     "sortSheets": "Sortierblätter",
@@ -456,7 +458,8 @@
     "returnedItems": "{{count}} unverkaufte Artikel zurückgegeben",
     "saving": "Wird gespeichert…",
     "done": "Erledigt, abschließen",
-    "feeCap": "Gebühren-Deckel"
+    "feeCap": "Gebühren-Deckel",
+    "commissionGroup": "Provision ({{percent}} %, {{group}})"
   },
   "cash": {
     "title": "Abrechnung",
@@ -798,7 +801,9 @@
       "agreed": "Vereinbarter Preis",
       "agreedPrice": "Vereinbarter Preis",
       "commissionCapped": "Provision {{amount}} € · Deckel",
-      "capReached": "Gebühren-Deckel erreicht, keine Provision"
+      "capReached": "Gebühren-Deckel erreicht, keine Provision",
+      "sumMixed_one": "Provision ({{count}} Artikel)",
+      "sumMixed_other": "Provision ({{count}} Artikel)"
     }
   },
   "proof": {
@@ -884,7 +889,8 @@
     "fileNameSellers": "Abrechnung-Verkaeufer",
     "fileNameSales": "Abrechnung-Verkaeufe",
     "direct": "direkt bezahlt",
-    "feeCap": "Gebühren-Deckel (€)"
+    "feeCap": "Gebühren-Deckel (€)",
+    "feeGroup": "Gebührengruppe"
   },
   "wizard": {
     "back": "Zurück",
@@ -971,7 +977,8 @@
       },
       "maxItemsTotal_one": "max. {{count}} Artikel insgesamt",
       "maxItemsTotal_other": "max. {{count}} Artikel insgesamt",
-      "maxFees": "höchstens {{fee}} € pro Verkäufer"
+      "maxFees": "höchstens {{fee}} € pro Verkäufer",
+      "feeGroup": "{{label}}: {{percent}} %"
     },
     "fixErrors": "Bitte prüfe die markierten Angaben.",
     "guestCreate": "Konto anlegen und Basar erstellen",
@@ -1051,7 +1058,8 @@
       "mapEntrance": "Eingang",
       "maxItemsTotal": "{{count}} Plätze für Artikel insgesamt",
       "feeCap": "Höchstens {{fee}} Gebühren pro Verkäufer",
-      "feeCapExample": "Gebühren-Deckel {{fee}}"
+      "feeCapExample": "Gebühren-Deckel {{fee}}",
+      "feeGroup": "{{label}}: {{percent}} %"
     },
     "short": {
       "type": "Art",
@@ -1364,5 +1372,70 @@
     "copyCode": "Code kopieren",
     "copyFailed": "Kopieren nicht möglich",
     "edit": "Ändern"
+  },
+  "feeGroups": {
+    "title": "Gebührengruppen (optional)",
+    "hint": "Eigene Gebühren für eine Gruppe von Verkäufern, z. B. Vereinsmitglieder 5 % statt 10 % oder Helfer ohne Provision. Verkäufer sehen alle Gruppen in den Bedingungen. Wer zu mehreren Gruppen gehört, zahlt die günstigsten Gebühren.",
+    "empty": "Alle Verkäufer zahlen dieselben Gebühren. Mit einer Gruppe zahlen z. B. Vereinsmitglieder oder Helfer weniger.",
+    "unnamed": "Neue Gruppe",
+    "hasError": "Bitte prüfen",
+    "label": "Name der Gruppe",
+    "labelPlaceholder": "z. B. Vereinsmitglieder",
+    "assignmentLabel": "Wer gehört dazu?",
+    "assignment": {
+      "selfDeclared": "Verkäufer geben es bei der Anmeldung an",
+      "helpers": "Helfer des Basars",
+      "selfDeclaredShort": "Angabe bei der Anmeldung",
+      "helpersShort": "Helfer",
+      "selfDeclaredHint": "Verkäufer wählen die Gruppe bei der Anmeldung selbst. Bei der Abgabe prüft das Team den Nachweis und bestätigt die Gruppe oder entfernt sie. Vorher kann kein Artikel angenommen werden.",
+      "helpersHint": "Gilt automatisch für alle mit einer Helferrolle, solange sie sie haben. In der Verkäuferliste kannst du auch Helfer ohne Rechte zuordnen, z. B. Kuchenspender."
+    },
+    "commission": "Provision",
+    "intakeFee": "Annahmegebühr",
+    "cap": "Gebühren-Deckel",
+    "capHint": "Leer: Es gilt der Deckel des Basars.",
+    "items": "Max. Artikel",
+    "itemsHint": "Leer: Es gilt die Grenze des Basars. Die Grenze für den ganzen Markt gilt für alle.",
+    "likeBazaar": "wie Basar ({{value}})",
+    "proofHint": "Nachweis (optional)",
+    "proofHintInfo": "Steht bei der Gruppe in den Bedingungen und bei der Abgabe, damit Verkäufer ihn mitbringen.",
+    "proofHintPlaceholder": "z. B. Mitgliedsausweis bei der Abgabe zeigen",
+    "fixed": "Verkäufer haben sich mit dieser Gruppe angemeldet: Sie bleibt und kann nur günstiger werden.",
+    "cheapest": "Wer zu mehreren Gruppen gehört, zahlt die günstigsten Gebühren.",
+    "remove": "Gruppe entfernen",
+    "add": "Gebührengruppe hinzufügen",
+    "summaryCommission": "{{percent}} % Provision",
+    "summaryIntakeFee": "{{fee}} € pro Artikel",
+    "summaryNoIntakeFee": "keine Annahmegebühr",
+    "summaryCap": "höchstens {{fee}} €",
+    "summaryItems_one": "{{count}} Artikel",
+    "summaryItems_other": "{{count}} Artikel",
+    "labelRequired": "Gib der Gruppe einen Namen.",
+    "labelTwice": "Diesen Namen hat schon eine andere Gruppe.",
+    "registeredMax": "Verkäufer haben sich mit dieser Gruppe angemeldet: höchstens {{value}}.",
+    "registeredMinItems": "Verkäufer haben sich mit dieser Gruppe angemeldet: mindestens {{min}} Artikel."
+  },
+  "feeGroupCheck": {
+    "title": "Ermäßigt: {{group}} – Nachweis prüfen",
+    "text": "Der Verkäufer hat angegeben, zu dieser Gruppe zu gehören. Bestätige die Gruppe, wenn der Nachweis stimmt, sonst entferne sie: Dann gelten die normalen Gebühren. Vorher lassen sich keine Artikel annehmen.",
+    "textWithProof": "Nachweis: {{proof}}. Bestätige die Gruppe, wenn er stimmt, sonst entferne sie: Dann gelten die normalen Gebühren. Vorher lassen sich keine Artikel annehmen.",
+    "confirm": "Bestätigen",
+    "remove": "Entfernen",
+    "confirmed": "{{group}} bestätigt",
+    "removed": "{{group}} entfernt, es gelten die normalen Gebühren"
+  },
+  "sellerFeeGroup": {
+    "title": "Gebührengruppe",
+    "pending": "prüfen",
+    "pendingHint": "Selbstauskunft: Bei der Abgabe Nachweis prüfen und bestätigen oder entfernen",
+    "assign": "Gebührengruppe zuordnen",
+    "none": "Keine Gruppe",
+    "assigned": "{{name}}: {{group}}",
+    "unassigned": "{{name}}: keine Gruppe",
+    "byRole": "{{group}} gilt durch die Helferrolle, solange sie besteht.",
+    "tab": "Gruppen",
+    "noneInGroups": "Noch niemand in einer Gebührengruppe.",
+    "pendingCount_one": "{{count}} Selbstauskunft ist noch nicht geprüft. Bei der Abgabe bestätigst oder entfernst du sie.",
+    "pendingCount_other": "{{count}} Selbstauskünfte sind noch nicht geprüft. Bei der Abgabe bestätigst oder entfernst du sie."
   }
 }

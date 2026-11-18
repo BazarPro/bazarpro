@@ -1,6 +1,7 @@
 import type { LabelFormat, LabelMark } from './constants';
 import type { ErrorCode } from './errorCodes';
 import type { CategoryField } from './categoryFields';
+import type { FeeGroup } from './feeGroups';
 /**
  * Per-event feature switches chosen by the organizer. Pure helpers only, so the
  * frontend can import this file as well.
@@ -59,6 +60,11 @@ export interface EventFeatures {
    * together (src/shared/feeCap.ts); unset means no cap.
    */
   maxFeesPerSeller?: number;
+  /**
+   * Sellers with own fees, e.g. club members or helpers (src/shared/feeGroups.ts, #302);
+   * unset means none.
+   */
+  feeGroups?: FeeGroup[];
   /** Sellers confirm when joining that they sell as private persons, not as traders. */
   privateSellersOnly: boolean;
   /**

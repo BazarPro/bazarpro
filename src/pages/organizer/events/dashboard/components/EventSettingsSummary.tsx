@@ -189,6 +189,15 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
               title={t('summary.maxFees', { amount: formatPriceDE(features.maxFeesPerSeller) })}
             />
           )}
+          {(features.feeGroups?.length ?? 0) > 0 && (
+            <Feature
+              on={true}
+              title={t('summary.feeGroups', {
+                count: features.feeGroups!.length,
+                groups: features.feeGroups!.map((group) => group.label).join(', '),
+              })}
+            />
+          )}
           <Feature
             on={true}
             title={

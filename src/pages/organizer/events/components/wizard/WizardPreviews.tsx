@@ -94,6 +94,7 @@ interface WizardValues {
     labelMark?: LabelMark;
     intakeFee?: number;
     maxFeesPerSeller?: number;
+    feeGroups?: { id: string; label: string; commission: number }[];
     privateSellersOnly?: boolean;
     fixedSellerData?: boolean;
     directSale?: boolean;
@@ -565,6 +566,21 @@ export function FeesPreview({ type }: { type?: EventType }) {
             {t('wizard.preview.free')}
           </p>
         )}
+        {/* Own fees for groups of sellers (#302) */}
+        {(values.features?.feeGroups ?? [])
+          .filter((group) => group.label.trim())
+          .map((group) => (
+            <p
+              key={group.id}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground animate-in fade-in duration-300"
+            >
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              {t('wizard.preview.feeGroup', {
+                label: group.label.trim(),
+                percent: given(group.commission) ?? 0,
+              })}
+            </p>
+          ))}
       </div>
       {example && (
         <div className="mt-4 space-y-2 rounded-xl border bg-card p-4 text-xs shadow-sm">

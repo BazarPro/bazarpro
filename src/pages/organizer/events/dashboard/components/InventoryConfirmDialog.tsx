@@ -12,6 +12,7 @@ import {
 } from '../../../../../components/ui/select';
 import type { Doc, Id, VendorWithCalculations } from '../../../../../lib/api/types';
 import { SellerIdCheck } from '../../../../../components/sellers/SellerIdCheck';
+import { FeeGroupCheck } from '../../../../../components/sellers/FeeGroupCheck';
 import { formatPriceDE } from '../../../../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -28,6 +29,8 @@ interface InventoryConfirmDialogProps {
   initialNote?: string;
   /** For “accept product” only: the seller whose details the intake records (fixedSellerData). */
   idCheck?: VendorWithCalculations | undefined;
+  /** For “accept product” only: a self-declared fee group to check first (#302) */
+  feeGroupCheck?: React.ComponentProps<typeof FeeGroupCheck> | undefined;
   onConfirm: (options?: {
     locationCategoryId?: Id<'eventLocationCategories'>;
     internalNote?: string;
@@ -44,6 +47,7 @@ export function InventoryConfirmDialog({
   locationCategories,
   initialNote,
   idCheck,
+  feeGroupCheck,
   onConfirm,
   isSubmitting,
 }: InventoryConfirmDialogProps) {
@@ -127,6 +131,7 @@ export function InventoryConfirmDialog({
       }}
     >
       {type === 'markAvailable' && idCheck && <SellerIdCheck seller={idCheck} />}
+      {type === 'markAvailable' && feeGroupCheck && <FeeGroupCheck {...feeGroupCheck} />}
       {showLocationSelect && (
         <div className="grid gap-2 py-2">
           <Label htmlFor="accept-location" className="text-foreground">

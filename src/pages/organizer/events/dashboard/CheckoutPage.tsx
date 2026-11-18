@@ -74,6 +74,8 @@ export type ResolvedLine =
       /** Direct sale with a fee cap: the seller and what is left of their cap */
       sellerId?: Id<'users'>;
       feeCapLeft?: number;
+      /** The seller's commission when their fee group has its own (#302) */
+      commissionPercent?: number;
       /** For the offline queue: what the desk sold and why at this price */
       productId: Id<'products'>;
       title: string;
@@ -555,7 +557,17 @@ function CashDesk() {
                 <div className="flex w-full items-baseline justify-between">
                   <span>
                     {directSale
-                      ? t('checkout.direct.sum', { count: cart.length, percent: commissionPercent })
+                      ? ready.some(
+                          (line) =>
+                            line.commissionPercent !== undefined &&
+                            line.commissionPercent !== commissionPercent
+                        )
+                        ? // Sellers of fee groups pay their own percentage
+                          t('checkout.direct.sumMixed', { count: cart.length })
+                        : t('checkout.direct.sum', {
+                            count: cart.length,
+                            percent: commissionPercent,
+                          })
                       : t('checkout.sum', { count: cart.length })}
                   </span>
                   <span className="text-2xl font-bold tabular-nums">{formatPriceDE(taken)} €</span>
@@ -681,6 +693,7 @@ function CartLine({
       productId: entry.productId,
       sellerId: item.sellerId,
       feeCapLeft: item.feeCapLeft,
+      commissionPercent: item.commissionPercent,
       invoice: {
         description: item.attributes.map((a) => `${a.label}: ${a.value}`).join(', '),
         image: item.image ?? undefined,
@@ -777,7 +790,7 @@ function CartLine({
                 </span>
                 {directSale && (
                   <DirectCommission
-                    full={commissionOf(line.price, commissionPercent)}
+                    full={commissionOf(line.price, line.commissionPercent ?? commissionPercent)}
                     taken={commission}
                   />
                 )}

@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { CategoryField, DescribedAttribute } from '../../shared/categoryFields';
+import type { FeeGroup } from '../../shared/feeGroups';
 import type { EventProductStatus, EventServices, HelperPermission } from '../../shared/constants';
 
 export type TableName =
@@ -118,6 +119,7 @@ export interface Docs {
           labelMark?: 'universal' | 'none' | undefined;
           intakeFee?: number | undefined;
           maxFeesPerSeller?: number | undefined;
+          feeGroups?: FeeGroup[] | undefined;
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
           directSale?: boolean | undefined;
@@ -392,6 +394,7 @@ export type EventFeatures = {
   labelMark: 'universal' | 'none';
   intakeFee?: number | undefined;
   maxFeesPerSeller?: number | undefined;
+  feeGroups?: FeeGroup[] | undefined;
   privateSellersOnly: boolean;
   fixedSellerData: boolean;
   directSale: boolean;
@@ -469,6 +472,8 @@ export type SettlementExport = {
     commission: number;
     /** Fee cap per seller; with it the seller table has its column */
     maxFeesPerSeller?: number | undefined;
+    /** The bazaar has fee groups; with it the seller table has a column for them */
+    feeGroups?: boolean | undefined;
   };
   sales: SettlementSale[];
   sellers: SettlementSeller[];
@@ -504,6 +509,8 @@ export type SettlementSeller = {
   /** Negative when the seller owes the bazaar */
   payout: number;
   paid: boolean;
+  /** The fee group applied (#302) */
+  feeGroup?: string | undefined;
 };
 
 export type SaleInfo = {
@@ -591,6 +598,33 @@ export type VendorWithCalculations = {
   detailsRecorded?: boolean | undefined;
   /** The organizer took the seller out of the bazaar */
   excluded?: Exclusion | undefined;
+  /** The fee group whose fees apply (#302) */
+  feeGroup?: VendorFeeGroup | undefined;
+};
+
+/** A seller's fee group as the team sees it (#302) */
+export type VendorFeeGroup = {
+  /** Missing once paid out: then the group as settled */
+  id?: string | undefined;
+  label: string;
+  /** Self-declared and not checked yet: the intake confirms or takes it away first */
+  pending: boolean;
+  /** By the helper role, not chosen or put in */
+  byRole: boolean;
+  /** The group the seller chose or was put in, when another one applies */
+  chosen?: string | undefined;
+};
+
+/** The signed-in seller's fee group at a bazaar (#302) */
+export type MyFeeGroup = {
+  chosen?: string | undefined;
+  /** The group whose fees apply */
+  applied?: string | undefined;
+  /** Still to be checked at the intake */
+  pending: boolean;
+  decidedAt?: number | undefined;
+  /** The seller can no longer change it */
+  locked: boolean;
 };
 
 /** The organizer took a seller out of the bazaar (#252) */
@@ -1078,6 +1112,8 @@ export interface Api {
         accessCode?: string | undefined;
         privateSeller?: boolean | undefined;
         invitation?: string | undefined;
+        /** A self-declared fee group, checked at the intake (#302) */
+        feeGroupId?: string | undefined;
         eventId: Id<'events'>;
       },
       Id<'eventSeller'>
@@ -1111,6 +1147,33 @@ export interface Api {
         eventId: Id<'events'>;
         vendorUserId: Id<'users'>;
       },
+      null
+    >;
+  };
+  feeGroups: {
+    getMyFeeGroup: FunctionReference<'query', { eventId: Id<'events'> }, MyFeeGroup | null>;
+    /** The seller chooses a self-declared group, or none, until the first item is accepted */
+    chooseFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; groupId: string | null },
+      null
+    >;
+    /** The team saw the proof at the intake */
+    confirmFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; sellerId: Id<'users'> },
+      null
+    >;
+    /** The proof is missing: the bazaar's fees apply */
+    removeFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; sellerId: Id<'users'> },
+      null
+    >;
+    /** The organizer puts a seller in a group by hand, or takes them out */
+    assignFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; sellerId: Id<'users'>; groupId: string | null },
       null
     >;
   };
@@ -1165,6 +1228,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1239,6 +1303,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1315,6 +1380,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1391,6 +1457,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1477,6 +1544,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1556,6 +1624,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1630,6 +1699,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1691,6 +1761,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | null | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1750,6 +1821,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | null | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -1833,6 +1905,7 @@ export interface Api {
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
               maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
@@ -2594,6 +2667,8 @@ export interface Api {
         sellerId: Id<'users'>;
         /** Direct sale with a fee cap: the commission the seller still pays at most */
         feeCapLeft?: number;
+        /** The seller's commission in percent, when their fee group has its own (#302) */
+        commissionPercent?: number;
       } | null
     >;
     getCheckoutSnapshot: FunctionReference<
@@ -2692,7 +2767,10 @@ export interface Api {
           title: string;
           startDate: number;
           endDate: number;
+          /** The seller's commission: their fee group's or the bazaar's */
           commissionPercent: number;
+          /** The seller's fee group (#302) */
+          feeGroup?: string | undefined;
         };
         paid: boolean;
         sellerNumber: number | undefined;

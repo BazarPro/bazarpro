@@ -50,6 +50,7 @@ interface SummaryValues {
     maxItemsTotal?: number;
     maxFeesPerSeller?: number;
     intakeFee?: number;
+    feeGroups?: { id: string; label: string; commission: number }[];
     registrationOpen?: boolean;
   };
   sellerLogistics?: {
@@ -164,6 +165,15 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
     maxFees !== undefined
       ? t('wizard.summary.maxFees', { fee: formatPriceDE(maxFees) })
       : undefined,
+    // "Vereinsmitglieder: 5 %"
+    ...(features.feeGroups ?? [])
+      .filter((group) => group.label.trim())
+      .map((group) =>
+        t('wizard.summary.feeGroup', {
+          label: group.label.trim(),
+          percent: given(group.commission) ?? 0,
+        })
+      ),
   ].filter(Boolean);
 
   const joining = [
