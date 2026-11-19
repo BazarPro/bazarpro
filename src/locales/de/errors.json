@@ -94,6 +94,7 @@
     "feeGroupsTooMany": "Ein Basar kann höchstens 4 Gebührengruppen haben.",
     "feeGroupLabel": "Jede Gebührengruppe braucht einen Namen mit höchstens 60 Zeichen.",
     "feeGroupLabelTwice": "Zwei Gebührengruppen haben denselben Namen.",
+    "feeGroupHelpersTwice": "Nur eine Gebührengruppe kann für die Helfer des Basars gelten.",
     "feeGroupCommission": "Die Provision einer Gebührengruppe liegt zwischen 0 und 100 %.",
     "feeGroupProofHint": "Der Hinweis zum Nachweis darf höchstens 200 Zeichen lang sein.",
     "feeGroupsOnlyLower": "Seit sich Verkäufer angemeldet haben, können Gebührengruppen nur noch günstiger werden. Entfernen oder anders zuordnen geht nicht mehr."

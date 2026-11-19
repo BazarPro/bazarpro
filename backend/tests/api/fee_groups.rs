@@ -11,7 +11,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 /// 10 % commission, 1 € per item; members 5 % without intake fee, helpers 0 % and up to
-/// 40 items instead of 2.
+/// 40 items instead of 2, bakers (only by the team) 3 %.
 fn groups() -> Value {
     json!({
         "intakeFee": 1,
@@ -21,7 +21,9 @@ fn groups() -> Value {
             { "id": "members", "label": "Vereinsmitglieder", "commission": 5,
               "assignment": "selfDeclared", "proofHint": "Ausweis zeigen" },
             { "id": "helpers", "label": "Helfer", "commission": 0,
-              "maxItemsPerSeller": 40, "assignment": "helpers" }
+              "maxItemsPerSeller": 40, "assignment": "helpers" },
+            { "id": "bakers", "label": "Kuchenspender", "commission": 3,
+              "assignment": "manual" }
         ]
     })
 }
@@ -300,6 +302,16 @@ async fn sellers_choose_only_self_declared_groups_until_the_intake(db: PgPool) {
         )
         .await;
     assert_eq!(helpers.body["code"], "feeGroup.unknown");
+    // Groups only the team hands out cannot be chosen either
+    let bakers = m
+        .app
+        .mutation(
+            "eventSeller.joinEvent",
+            json!({ "eventId": m.event, "feeGroupId": "bakers" }),
+            Some(&session),
+        )
+        .await;
+    assert_eq!(bakers.body["code"], "feeGroup.unknown");
 
     let (seller, session) = m.join("Später", None).await;
     let choose = |group: Value| {
@@ -327,6 +339,35 @@ async fn sellers_choose_only_self_declared_groups_until_the_intake(db: PgPool) {
         choose(json!("members")).await.body["code"],
         "feeGroup.locked"
     );
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_group_only_the_team_hands_out(db: PgPool) {
+    let m = Market::new(db.clone()).await;
+    let (seller, session) = m.join("Bäcker", None).await;
+    let chosen = m
+        .app
+        .mutation(
+            "feeGroups.chooseFeeGroup",
+            json!({ "eventId": m.event, "groupId": "bakers" }),
+            Some(&session),
+        )
+        .await;
+    assert_eq!(chosen.body["code"], "feeGroup.unknown");
+    let assigned = m
+        .app
+        .mutation(
+            "feeGroups.assignFeeGroup",
+            json!({ "eventId": m.event, "sellerId": seller, "groupId": "bakers" }),
+            Some(&m.organizer),
+        )
+        .await;
+    assert_eq!(assigned.status, StatusCode::OK, "{}", assigned.body);
+    // Put in by the team: nothing left to check at the intake
+    let group = &m.vendor(seller).await["feeGroup"];
+    assert_eq!(group["label"], "Kuchenspender", "{group}");
+    assert_eq!(group["pending"], false);
+    assert_eq!(m.my_group(&session).await["applied"], "bakers");
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -454,6 +495,15 @@ async fn groups_are_checked_when_saved(db: PgPool) {
     assert_eq!(
         save(json!([group("Mitglieder", 120.0)])).await["code"],
         "event.feeGroupCommission"
+    );
+    // Helpers are in their group by role: one such group only
+    let mut helpers = group("Helfer", 0.0);
+    helpers["assignment"] = json!("helpers");
+    let mut more_helpers = group("Aufbauhelfer", 2.0);
+    more_helpers["assignment"] = json!("helpers");
+    assert_eq!(
+        save(json!([helpers, more_helpers])).await["code"],
+        "event.feeGroupHelpersTwice"
     );
     // At most 4 groups per bazaar
     let five: Vec<Value> = ["A", "B", "C", "D", "E"]

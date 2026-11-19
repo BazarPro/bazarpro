@@ -62,8 +62,11 @@ struct StoredFeeGroup {
 pub enum FeeGroupAssignment {
     /// The seller says so when joining; the team checks it at the intake
     SelfDeclared,
-    /// Everyone with a helper role at the bazaar, and whom the team puts in by hand
+    /// Everyone with a helper role at the bazaar, and whom the team puts in by hand.
+    /// At most one group per bazaar.
     Helpers,
+    /// Only whom the team puts in by hand; sellers can neither choose nor see it as choice
+    Manual,
 }
 
 /// Sellers with own fees instead of the bazaar's, e.g. club members or helpers (#302).

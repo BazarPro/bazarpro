@@ -5,7 +5,7 @@
  */
 
 /** How a seller gets into a group */
-export type FeeGroupAssignment = 'selfDeclared' | 'helpers';
+export type FeeGroupAssignment = 'selfDeclared' | 'helpers' | 'manual';
 
 export interface FeeGroup {
   id: string;
@@ -21,7 +21,9 @@ export interface FeeGroup {
   maxItemsPerSeller?: number;
   /**
    * `selfDeclared`: the seller says so when joining, the team checks it at the intake.
-   * `helpers`: everyone with a helper role, and whom the organizer puts in by hand.
+   * `helpers`: everyone with a helper role, and whom the organizer puts in by hand. At
+   * most one such group per bazaar.
+   * `manual`: only whom the organizer puts in by hand.
    */
   assignment: FeeGroupAssignment;
   /** Shown to sellers, e.g. "Mitgliedsausweis bei der Abgabe zeigen" */
@@ -88,6 +90,11 @@ export function appliedGroup(
   return (event.features?.feeGroups ?? [])
     .filter((group) => group.id === chosen || (helper && group.assignment === 'helpers'))
     .sort((a, b) => compareFees(groupFees(event, a), groupFees(event, b)))[0];
+}
+
+/** Helpers are in their group by role: every helper group after the first is one too many. */
+export function extraHelperGroups(groups: Pick<FeeGroup, 'assignment'>[]): number[] {
+  return groups.flatMap((group, index) => (group.assignment === 'helpers' ? [index] : [])).slice(1);
 }
 
 /** A new id for a group: short, URL-safe, unique enough within one bazaar */

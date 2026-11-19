@@ -210,9 +210,11 @@ export function describeFeeGroups(event: SellerConditionsEvent): FeeGroupTerms[]
     how:
       group.assignment === 'helpers'
         ? text('groupHelpers')
-        : group.proofHint
-          ? text('groupProof', { hint: group.proofHint })
-          : text('groupChecked'),
+        : group.assignment === 'manual'
+          ? text('groupManual')
+          : group.proofHint
+            ? text('groupProof', { hint: group.proofHint })
+            : text('groupChecked'),
   }));
 }
 

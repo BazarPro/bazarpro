@@ -1388,7 +1388,10 @@
       "selfDeclaredShort": "Angabe bei der Anmeldung",
       "helpersShort": "Helfer",
       "selfDeclaredHint": "Verkäufer wählen die Gruppe bei der Anmeldung selbst. Bei der Abgabe prüft das Team den Nachweis und bestätigt die Gruppe oder entfernt sie. Vorher kann kein Artikel angenommen werden.",
-      "helpersHint": "Gilt automatisch für alle mit einer Helferrolle, solange sie sie haben. In der Verkäuferliste kannst du auch Helfer ohne Rechte zuordnen, z. B. Kuchenspender."
+      "helpersHint": "Gilt automatisch für alle mit einer Helferrolle, solange sie sie haben. Du kannst auch Helfer ohne Rechte zuordnen. Nur eine Gruppe kann für die Helfer gelten.",
+      "manual": "Nur vom Veranstalter",
+      "manualShort": "vom Veranstalter vergeben",
+      "manualHint": "Verkäufer können die Gruppe nicht selbst wählen. Du ordnest sie in der Verkäuferliste oder beim Verkäufer zu, z. B. Kuchenspender oder Vorstand."
     },
     "commission": "Provision",
     "intakeFee": "Annahmegebühr",
@@ -1406,7 +1409,8 @@
     "labelRequired": "Gib der Gruppe einen Namen.",
     "labelTwice": "Diesen Namen hat schon eine andere Gruppe.",
     "registeredMax": "Verkäufer haben sich mit dieser Gruppe angemeldet: höchstens {{value}}.",
-    "registeredMinItems": "Verkäufer haben sich mit dieser Gruppe angemeldet: mindestens {{min}} Artikel."
+    "registeredMinItems": "Verkäufer haben sich mit dieser Gruppe angemeldet: mindestens {{min}} Artikel.",
+    "helpersTwice": "Es gibt schon eine Gruppe für die Helfer des Basars."
   },
   "feeGroupCheck": {
     "title": "Ermäßigt: {{group}} – Nachweis prüfen",

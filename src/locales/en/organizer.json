@@ -1388,7 +1388,10 @@
       "selfDeclaredShort": "Given at registration",
       "helpersShort": "Helpers",
       "selfDeclaredHint": "Sellers choose the group themselves when registering. At the drop-off the team checks the proof and confirms or removes the group. Until then no item can be accepted.",
-      "helpersHint": "Applies automatically to everyone with a helper role, as long as they have it. In the seller list you can also add helpers without rights, e.g. cake donors."
+      "helpersHint": "Applies automatically to everyone with a helper role, as long as they have it. You can also assign helpers without rights. Only one group can apply to helpers.",
+      "manual": "Organizer only",
+      "manualShort": "assigned by the organizer",
+      "manualHint": "Sellers cannot choose the group themselves. You assign it in the seller list or at the seller, e.g. cake donors or the board."
     },
     "commission": "Commission",
     "intakeFee": "Intake fee",
@@ -1406,7 +1409,8 @@
     "labelRequired": "Give the group a name.",
     "labelTwice": "Another group already has this name.",
     "registeredMax": "Sellers registered with this group: at most {{value}}.",
-    "registeredMinItems": "Sellers registered with this group: at least {{min}} items."
+    "registeredMinItems": "Sellers registered with this group: at least {{min}} items.",
+    "helpersTwice": "There is already a group for the helpers of the bazaar."
   },
   "feeGroupCheck": {
     "title": "Reduced: {{group}} – check the proof",

@@ -176,7 +176,7 @@ describe('describeFeeGroups', () => {
             commission: 10,
             intakeFee: 1,
             maxFeesPerSeller: 10,
-            assignment: 'selfDeclared',
+            assignment: 'manual',
           },
         ],
       },
@@ -196,7 +196,7 @@ describe('describeFeeGroups', () => {
       },
       {
         fees: 'höchstens 10,00 € Gebühren',
-        how: 'Gibst du bei der Anmeldung an, das Team prüft es bei der Abgabe',
+        how: 'Vergibt der Veranstalter',
       },
     ]);
   });

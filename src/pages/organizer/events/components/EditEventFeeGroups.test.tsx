@@ -57,6 +57,18 @@ describe('EditEventFeeGroups', () => {
     expect(screen.queryByLabelText('Nachweis (optional)')).not.toBeInTheDocument();
   });
 
+  it('offers the helpers only once and groups only the organizer hands out', () => {
+    render(
+      <Form groups={[{ ...members, id: 'helpers', label: 'Helfer', assignment: 'helpers' }]} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Gebührengruppe hinzufügen' }));
+    const assignment = screen.getByLabelText('Wer gehört dazu?');
+    expect(screen.getByRole('option', { name: 'Helfer des Basars' })).toBeDisabled();
+    fireEvent.change(assignment, { target: { value: 'manual' } });
+    expect(current[1]).toMatchObject({ assignment: 'manual' });
+    expect(screen.getByText(/vom Veranstalter vergeben$/)).toBeInTheDocument();
+  });
+
   it('shows a group in short and removes it', () => {
     render(<Form groups={[members]} />);
     expect(

@@ -233,6 +233,7 @@ export function EditEventFeeGroups({
                         htmlFor={`${domId}-assignment`}
                         label={t('feeGroups.assignmentLabel')}
                         info={t(`feeGroups.assignment.${group.assignment}Hint`)}
+                        error={error?.assignment?.message}
                       >
                         <NativeSelect
                           id={`${domId}-assignment`}
@@ -242,7 +243,16 @@ export function EditEventFeeGroups({
                           <option value="selfDeclared">
                             {t('feeGroups.assignment.selfDeclared')}
                           </option>
-                          <option value="helpers">{t('feeGroups.assignment.helpers')}</option>
+                          {/* Helpers are in their group by role: one such group per bazaar */}
+                          <option
+                            value="helpers"
+                            disabled={groups.some(
+                              (other, i) => i !== index && other.assignment === 'helpers'
+                            )}
+                          >
+                            {t('feeGroups.assignment.helpers')}
+                          </option>
+                          <option value="manual">{t('feeGroups.assignment.manual')}</option>
                         </NativeSelect>
                       </Field>
                     </div>

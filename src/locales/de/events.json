@@ -132,6 +132,7 @@
     "groupCap": "höchstens {{fee}} € Gebühren",
     "groupItems": "bis zu {{count}} Artikel",
     "groupHelpers": "Gilt für Helfer des Basars",
+    "groupManual": "Vergibt der Veranstalter",
     "groupProof": "Nachweis bei der Abgabe: {{hint}}",
     "groupChecked": "Gibst du bei der Anmeldung an, das Team prüft es bei der Abgabe",
     "myGroup": "Deine Gruppe: {{group}}",

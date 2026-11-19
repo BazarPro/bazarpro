@@ -88,7 +88,7 @@ import {
 } from './components/wizard/WizardPreviews';
 import { WizardSummary } from './components/wizard/WizardSummary';
 import { EditEventFeeGroups } from './components/EditEventFeeGroups';
-import { MAX_FEE_GROUPS, type FeeGroup } from '../../../shared/feeGroups';
+import { MAX_FEE_GROUPS, extraHelperGroups, type FeeGroup } from '../../../shared/feeGroups';
 import { PageSkeleton } from '../../../components/ui/loading';
 import { isEventRunning } from '../../../shared/eventPhase';
 
@@ -240,7 +240,7 @@ const buildEventSchema = (
                 .min(1, zodMessage('form.minOne', 'organizer'))
                 .optional()
                 .or(z.nan()),
-              assignment: z.enum(['selfDeclared', 'helpers']),
+              assignment: z.enum(['selfDeclared', 'helpers', 'manual']),
               proofHint: z.string().max(200),
             })
           )
@@ -258,6 +258,13 @@ const buildEventSchema = (
               }
               seen.add(label);
             });
+            for (const index of extraHelperGroups(groups)) {
+              ctx.addIssue({
+                code: 'custom',
+                message: i18n.t('feeGroups.helpersTwice', { ns: 'organizer' }),
+                path: [index, 'assignment'],
+              });
+            }
           }),
       }),
       sellerLogistics: z.object({

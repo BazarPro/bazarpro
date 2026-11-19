@@ -132,6 +132,7 @@
     "groupCap": "at most {{fee}} € in fees",
     "groupItems": "up to {{count}} items",
     "groupHelpers": "For helpers of the bazaar",
+    "groupManual": "Assigned by the organizer",
     "groupProof": "Proof at the drop-off: {{hint}}",
     "groupChecked": "You say so when registering, the team checks it at the drop-off",
     "myGroup": "Your group: {{group}}",

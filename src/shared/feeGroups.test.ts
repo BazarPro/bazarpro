@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { appliedGroup, compareFees, groupFees, type FeeGroup } from './feeGroups';
+import {
+  appliedGroup,
+  compareFees,
+  extraHelperGroups,
+  groupFees,
+  type FeeGroup,
+} from './feeGroups';
 
 // The same cases as the tests of backend/src/modules/fee_groups.rs
 const members: FeeGroup = {
@@ -50,5 +56,16 @@ describe('fee groups', () => {
     expect(compareFees({ commission: 5 }, { commission: 6, intakeFee: 0 })).toBeLessThan(0);
     expect(compareFees({ commission: 5, intakeFee: 1 }, { commission: 5 })).toBeGreaterThan(0);
     expect(compareFees({ commission: 5, maxFeesPerSeller: 10 }, { commission: 5 })).toBeLessThan(0);
+  });
+
+  it('allow one helper group only', () => {
+    expect(extraHelperGroups([{ assignment: 'helpers' }, { assignment: 'manual' }])).toEqual([]);
+    expect(
+      extraHelperGroups([
+        { assignment: 'selfDeclared' },
+        { assignment: 'helpers' },
+        { assignment: 'helpers' },
+      ])
+    ).toEqual([2]);
   });
 });

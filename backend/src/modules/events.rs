@@ -798,6 +798,14 @@ fn sanitize_fee_groups(groups: Vec<FeeGroupArgs>) -> AppResult<Value> {
     if groups.len() > MAX_FEE_GROUPS {
         return Err(AppError::bad_request("event.feeGroupsTooMany"));
     }
+    // Helpers are in their group by role: two such groups would put them in both
+    let helper_groups = groups
+        .iter()
+        .filter(|group| group.assignment == FeeGroupAssignment::Helpers)
+        .count();
+    if helper_groups > 1 {
+        return Err(AppError::bad_request("event.feeGroupHelpersTwice"));
+    }
     let mut ids: Vec<String> = Vec::new();
     let mut labels: Vec<String> = Vec::new();
     let mut stored = Vec::new();
