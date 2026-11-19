@@ -791,7 +791,7 @@ struct FeeGroupArgs {
 }
 
 /// At most this many fee groups per bazaar
-const MAX_FEE_GROUPS: usize = 10;
+const MAX_FEE_GROUPS: usize = 4;
 
 /// Checks the fee groups and stores them like the bazaar's own fees: cents, trimmed text.
 fn sanitize_fee_groups(groups: Vec<FeeGroupArgs>) -> AppResult<Value> {

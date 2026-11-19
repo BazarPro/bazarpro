@@ -28,7 +28,7 @@ export interface FeeGroup {
   proofHint?: string;
 }
 
-export const MAX_FEE_GROUPS = 10;
+export const MAX_FEE_GROUPS = 4;
 
 /** The fees one seller pays: the bazaar's or those of their group. */
 export interface GroupFees {

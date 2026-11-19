@@ -1375,7 +1375,7 @@
   },
   "feeGroups": {
     "title": "Fee groups (optional)",
-    "hint": "Own fees for a group of sellers, e.g. club members 5 % instead of 10 % or helpers without commission. Sellers see all groups in the conditions. Who belongs to several groups pays the cheapest fees.",
+    "hint": "Own fees for a group of sellers, e.g. club members 5 % instead of 10 % or helpers without commission. Sellers see all groups in the conditions. Up to 4 groups, each seller is in one at most.",
     "empty": "All sellers pay the same fees. With a group, e.g. club members or helpers pay less.",
     "unnamed": "New group",
     "hasError": "Please check",
@@ -1401,7 +1401,6 @@
     "proofHintInfo": "Shown with the group in the conditions and at the drop-off, so sellers bring it.",
     "proofHintPlaceholder": "e.g. Show your membership card at the drop-off",
     "fixed": "Sellers registered with this group: it stays and can only get cheaper.",
-    "cheapest": "Who belongs to several groups pays the cheapest fees.",
     "remove": "Remove group",
     "add": "Add fee group",
     "labelRequired": "Give the group a name.",
@@ -1427,9 +1426,10 @@
     "assigned": "{{name}}: {{group}}",
     "unassigned": "{{name}}: no group",
     "byRole": "{{group}} applies through the helper role, as long as it lasts.",
-    "tab": "Groups",
-    "noneInGroups": "Nobody is in a fee group yet.",
     "pendingCount_one": "{{count}} self-declaration is not checked yet. You confirm or remove it at the drop-off.",
-    "pendingCount_other": "{{count}} self-declarations are not checked yet. You confirm or remove them at the drop-off."
+    "pendingCount_other": "{{count}} self-declarations are not checked yet. You confirm or remove them at the drop-off.",
+    "filter": "Filter by fee group",
+    "allGroups": "All groups",
+    "withPending": "{{group}} ({{count}} to check)"
   }
 }

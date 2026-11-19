@@ -72,6 +72,7 @@ import {
 } from '../../../../lib/sellerPrintout';
 import { SellerIdCheck } from '../../../../components/sellers/SellerIdCheck';
 import { FeeGroupCheck } from '../../../../components/sellers/FeeGroupCheck';
+import { FeeGroupBadge, FeeGroupMenu } from '../../../../components/sellers/FeeGroupBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { matchingVendors, productMatcher } from '../../../../lib/productSearch';
 import { addToCachedCart } from '../../../../lib/checkout';
@@ -663,6 +664,17 @@ export function ProductManagementPage() {
                   <SellerNumberBadge number={selectedVendor.sellerNumber} />
                   {selectedVendor.managedByEventId && <WalkInBadge />}
                   {selectedVendor.excluded && <ExcludedBadge exclusion={selectedVendor.excluded} />}
+                  {/* The group opens its own choice: the header stays one row */}
+                  {canLead ? (
+                    <FeeGroupMenu
+                      eventId={eventId}
+                      vendor={selectedVendor}
+                      groups={event?.features?.feeGroups ?? []}
+                      badge
+                    />
+                  ) : (
+                    <FeeGroupBadge group={selectedVendor.feeGroup} />
+                  )}
                 </div>
                 <button
                   onClick={() => setIsContactExpanded(!isContactExpanded)}

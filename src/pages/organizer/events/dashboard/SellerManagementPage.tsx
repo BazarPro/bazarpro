@@ -4,6 +4,7 @@ import { clashingSortCodes } from '../../../../shared/sortCode';
 import { PageSkeleton } from '../../../../components/ui/loading';
 import { PageHeader } from '../../../../components/ui/page-header';
 import { SearchInput } from '../../../../components/ui/search-input';
+import { NativeSelect } from '../../../../components/ui/native-select';
 import { useMemo, useState } from 'react';
 import { WalkInBadge } from '../../../../components/walkIn/WalkInBadge';
 import { SellerNumberBadge } from '../../../../components/sellers/SellerNumberBadge';
@@ -65,7 +66,10 @@ import { useTranslation } from 'react-i18next';
 
 const NO_LABELS: Id<'products'>[] = [];
 
-type SellerFilter = 'all' | 'open' | 'paid' | 'helpers' | 'groups';
+type SellerFilter = 'all' | 'open' | 'paid' | 'helpers';
+
+/** All sellers, those without a group, or the id of one fee group */
+type GroupFilter = 'all' | 'none' | (string & {});
 
 export function SellerManagementPage() {
   const { t } = useTranslation('organizer');
@@ -73,6 +77,7 @@ export function SellerManagementPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<SellerFilter>('all');
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [helperPickerOpen, setHelperPickerOpen] = useState(false);
@@ -111,6 +116,15 @@ export function SellerManagementPage() {
 
   useAssignMissingSellerNumbers(eventId as Id<'events'>, vendors, canManage);
 
+  const feeGroups = event?.features?.feeGroups ?? [];
+  const pendingIn = (groupId: string) =>
+    (vendors ?? []).filter((v) => v.feeGroup?.pending && v.feeGroup.id === groupId).length;
+  // A group gone from the settings (or another bazaar's) filters nothing
+  const shownGroupFilter =
+    groupFilter === 'all' || groupFilter === 'none' || feeGroups.some((g) => g.id === groupFilter)
+      ? groupFilter
+      : 'all';
+
   const filteredVendors = useMemo(() => {
     if (!vendors) return [];
 
@@ -119,10 +133,11 @@ export function SellerManagementPage() {
     if (activeFilter === 'open') result = result.filter((v) => !v.paid);
     if (activeFilter === 'paid') result = result.filter((v) => v.paid);
     if (activeFilter === 'helpers') result = result.filter((v) => v.isHelper);
+    if (shownGroupFilter === 'none') result = result.filter((v) => !v.feeGroup);
     // Unchecked self-declarations first: they hold up the intake
-    if (activeFilter === 'groups') {
+    else if (shownGroupFilter !== 'all') {
       result = result
-        .filter((v) => v.feeGroup)
+        .filter((v) => v.feeGroup?.id === shownGroupFilter)
         .sort((a, b) => Number(!!b.feeGroup?.pending) - Number(!!a.feeGroup?.pending));
     }
 
@@ -139,20 +154,18 @@ export function SellerManagementPage() {
     }
 
     return result;
-  }, [vendors, searchTerm, activeFilter]);
+  }, [vendors, searchTerm, activeFilter, shownGroupFilter]);
 
   const handleSelectVendor = (vendorId: Id<'users'>) => {
     navigate(`/events/view/${eventId}/products?vendor=${vendorId}`);
   };
 
-  const feeGroups = event?.features?.feeGroups ?? [];
-  const pendingGroups = (vendors ?? []).filter((v) => v.feeGroup?.pending).length;
+  const pendingGroups =
+    shownGroupFilter === 'all' || shownGroupFilter === 'none' ? 0 : pendingIn(shownGroupFilter);
   const emptyText =
-    activeFilter === 'helpers' && !searchTerm
+    activeFilter === 'helpers' && !searchTerm && shownGroupFilter === 'all'
       ? t('sellers.noHelpers')
-      : activeFilter === 'groups' && !searchTerm
-        ? t('sellerFeeGroup.noneInGroups')
-        : undefined;
+      : undefined;
 
   if (rolesLoading) return <PageSkeleton />;
   if (!canManage) return <div className="p-8 text-center">{t('sellers.noAccess')}</div>;
@@ -246,38 +259,46 @@ export function SellerManagementPage() {
           onValueChange={(v) => setActiveFilter(v as SellerFilter)}
           className="w-full sm:w-auto"
         >
-          <TabsList
-            className={`grid w-full ${feeGroups.length > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}
-          >
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="all">{t('sellers.all')}</TabsTrigger>
             <TabsTrigger value="open">{t('sellers.open')}</TabsTrigger>
             <TabsTrigger value="paid">{t('sellers.paid')}</TabsTrigger>
             <TabsTrigger value="helpers">{t('sellers.helpers')}</TabsTrigger>
-            {feeGroups.length > 0 && (
-              <TabsTrigger value="groups" className="gap-1.5">
-                {t('sellerFeeGroup.tab')}
-                {pendingGroups > 0 && (
-                  <span
-                    className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white tabular-nums"
-                    aria-label={t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
-                  >
-                    {pendingGroups}
-                  </span>
-                )}
-              </TabsTrigger>
-            )}
           </TabsList>
         </Tabs>
 
-        <SearchInput
-          className="w-full sm:w-72"
-          placeholder={t('sellers.search')}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          {feeGroups.length > 0 && (
+            <NativeSelect
+              aria-label={t('sellerFeeGroup.filter')}
+              className="w-full sm:w-52"
+              value={shownGroupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+            >
+              <option value="all">{t('sellerFeeGroup.allGroups')}</option>
+              {feeGroups.map((group) => {
+                const pending = pendingIn(group.id);
+                return (
+                  <option key={group.id} value={group.id}>
+                    {pending > 0
+                      ? t('sellerFeeGroup.withPending', { group: group.label, count: pending })
+                      : group.label}
+                  </option>
+                );
+              })}
+              <option value="none">{t('sellerFeeGroup.none')}</option>
+            </NativeSelect>
+          )}
+          <SearchInput
+            className="w-full sm:w-72"
+            placeholder={t('sellers.search')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
-      {activeFilter === 'groups' && pendingGroups > 0 && (
+      {pendingGroups > 0 && (
         <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
           {t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
         </p>

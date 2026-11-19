@@ -1375,7 +1375,7 @@
   },
   "feeGroups": {
     "title": "Gebührengruppen (optional)",
-    "hint": "Eigene Gebühren für eine Gruppe von Verkäufern, z. B. Vereinsmitglieder 5 % statt 10 % oder Helfer ohne Provision. Verkäufer sehen alle Gruppen in den Bedingungen. Wer zu mehreren Gruppen gehört, zahlt die günstigsten Gebühren.",
+    "hint": "Eigene Gebühren für eine Gruppe von Verkäufern, z. B. Vereinsmitglieder 5 % statt 10 % oder Helfer ohne Provision. Verkäufer sehen alle Gruppen in den Bedingungen. Bis zu 4 Gruppen, jeder Verkäufer ist in höchstens einer.",
     "empty": "Alle Verkäufer zahlen dieselben Gebühren. Mit einer Gruppe zahlen z. B. Vereinsmitglieder oder Helfer weniger.",
     "unnamed": "Neue Gruppe",
     "hasError": "Bitte prüfen",
@@ -1401,7 +1401,6 @@
     "proofHintInfo": "Steht bei der Gruppe in den Bedingungen und bei der Abgabe, damit Verkäufer ihn mitbringen.",
     "proofHintPlaceholder": "z. B. Mitgliedsausweis bei der Abgabe zeigen",
     "fixed": "Verkäufer haben sich mit dieser Gruppe angemeldet: Sie bleibt und kann nur günstiger werden.",
-    "cheapest": "Wer zu mehreren Gruppen gehört, zahlt die günstigsten Gebühren.",
     "remove": "Gruppe entfernen",
     "add": "Gebührengruppe hinzufügen",
     "labelRequired": "Gib der Gruppe einen Namen.",
@@ -1427,9 +1426,10 @@
     "assigned": "{{name}}: {{group}}",
     "unassigned": "{{name}}: keine Gruppe",
     "byRole": "{{group}} gilt durch die Helferrolle, solange sie besteht.",
-    "tab": "Gruppen",
-    "noneInGroups": "Noch niemand in einer Gebührengruppe.",
     "pendingCount_one": "{{count}} Selbstauskunft ist noch nicht geprüft. Bei der Abgabe bestätigst oder entfernst du sie.",
-    "pendingCount_other": "{{count}} Selbstauskünfte sind noch nicht geprüft. Bei der Abgabe bestätigst oder entfernst du sie."
+    "pendingCount_other": "{{count}} Selbstauskünfte sind noch nicht geprüft. Bei der Abgabe bestätigst oder entfernst du sie.",
+    "filter": "Nach Gebührengruppe filtern",
+    "allGroups": "Alle Gruppen",
+    "withPending": "{{group}} ({{count}} prüfen)"
   }
 }

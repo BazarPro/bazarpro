@@ -331,7 +331,7 @@ export function EditEventFeeGroups({
                     )}
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-xs text-muted-foreground">
-                        {fixed ? t('feeGroups.fixed') : t('feeGroups.cheapest')}
+                        {fixed && t('feeGroups.fixed')}
                       </p>
                       <Button
                         type="button"

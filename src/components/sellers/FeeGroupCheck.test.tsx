@@ -145,4 +145,31 @@ describe('FeeGroupMenu', () => {
     rerender(<FeeGroupMenu eventId={EVENT} vendor={vendor()} groups={[]} />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('as badge: the group opens the choice, "no group" too', async () => {
+    const { rerender } = render(
+      <FeeGroupMenu eventId={EVENT} vendor={vendor()} groups={groups} badge />
+    );
+    const chip = screen.getByRole('button', { name: 'Gebührengruppe zuordnen: Keine Gruppe' });
+    expect(chip).toHaveTextContent('Keine Gruppe');
+    fireEvent.pointerDown(chip, { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: 'Vereinsmitglieder' }));
+    await waitFor(() =>
+      expect(calls['feeGroups.assignFeeGroup']).toHaveBeenCalledWith({
+        eventId: EVENT,
+        sellerId: 'u1',
+        groupId: 'members',
+      })
+    );
+
+    rerender(<FeeGroupMenu eventId={EVENT} vendor={vendor(pending)} groups={groups} badge />);
+    expect(
+      screen.getByRole('button', { name: 'Gebührengruppe zuordnen: Vereinsmitglieder' })
+    ).toHaveTextContent('Vereinsmitglieder· prüfen');
+
+    // Paid out: only the badge, nothing to choose
+    rerender(<FeeGroupMenu eventId={EVENT} vendor={vendor(pending, true)} groups={groups} badge />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText('Vereinsmitglieder')).toBeInTheDocument();
+  });
 });

@@ -70,7 +70,9 @@ test('a self-declared fee group is chosen at registration and checked at the int
   // The organizer sees the unchecked self-declaration and confirms it at the intake
   const organizer = await loginAs(page, ORGANIZER);
   await organizer.goto(`/events/view/${showcase.eventId}/sellers`);
-  await organizer.getByRole('tab', { name: /Gruppen/ }).click();
+  await organizer
+    .getByRole('combobox', { name: 'Nach Gebührengruppe filtern' })
+    .selectOption({ label: 'Vereinsmitglieder (1 prüfen)' });
   await expect(organizer.getByText('1 Selbstauskunft ist noch nicht geprüft')).toBeVisible();
   const row = organizer.getByRole('row', { name: /Vereinsmitglieder · prüfen/ });
   await row.click();
@@ -83,4 +85,11 @@ test('a self-declared fee group is chosen at registration and checked at the int
 
   await seller.reload();
   await expect(seller.getByTestId('my-fee-group')).toContainText('Vom Team bestätigt');
+
+  // The group's chip in the seller's header changes it, here back to no group
+  const chip = organizer.getByRole('button', { name: /^Gebührengruppe zuordnen/ });
+  await expect(chip).toHaveText('Vereinsmitglieder');
+  await chip.click();
+  await organizer.getByRole('menuitemradio', { name: 'Keine Gruppe' }).click();
+  await expect(chip).toHaveText('Keine Gruppe');
 });

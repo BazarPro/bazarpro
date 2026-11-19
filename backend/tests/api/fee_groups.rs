@@ -455,6 +455,13 @@ async fn groups_are_checked_when_saved(db: PgPool) {
         save(json!([group("Mitglieder", 120.0)])).await["code"],
         "event.feeGroupCommission"
     );
+    // At most 4 groups per bazaar
+    let five: Vec<Value> = ["A", "B", "C", "D", "E"]
+        .iter()
+        .map(|label| group(label, 5.0))
+        .collect();
+    assert_eq!(save(json!(five)).await["code"], "event.feeGroupsTooMany");
+    assert_eq!(save(json!(five[..4])).await["value"], Value::Null);
     let mut twice = group("mitglieder", 5.0);
     twice["id"] = json!("other");
     assert_eq!(

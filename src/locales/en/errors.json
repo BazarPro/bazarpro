@@ -91,7 +91,7 @@
     "settlementClosed": "The settlement of this bazaar is closed. Sales and returns can no longer be changed.",
     "startMissing": "Please also give the start of the {{label}}.",
     "registrationWindow": "Registration must end after it begins.",
-    "feeGroupsTooMany": "A bazaar can have at most 10 fee groups.",
+    "feeGroupsTooMany": "A bazaar can have at most 4 fee groups.",
     "feeGroupLabel": "Every fee group needs a name of at most 60 characters.",
     "feeGroupLabelTwice": "Two fee groups have the same name.",
     "feeGroupCommission": "The commission of a fee group is between 0 and 100 %.",
