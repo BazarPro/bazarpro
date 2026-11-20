@@ -17,7 +17,7 @@ import { EditEventContact } from './components/EditEventContact';
 import { EditEventAccess } from './components/EditEventAccess';
 import { EditEventMapSection } from './components/EditEventMapSection';
 import { EditEventFeatures } from './components/EditEventFeatures';
-import { FormSection } from '../../../components/ui/form-section';
+import { FormSection, FORM_ROWS } from '../../../components/ui/form-section';
 import { followEventDates, type EventTimes } from '../../../lib/eventDates';
 import { EditEventSellerInfo } from './components/EditEventSellerInfo';
 import { logisticsFromForm } from '../../../lib/sellerLogistics';
@@ -854,8 +854,10 @@ function EventSection({
       return (
         <>
           <EditEventAccess lockVisibility={editing?.isRunning} />
-          <EditEventFeatures parts={['registration']} showHeader={false} />
-          <EditEventRegion />
+          <FormSection contentClassName={FORM_ROWS}>
+            <EditEventFeatures parts={['registration']} showHeader={false} bare />
+            <EditEventRegion />
+          </FormSection>
         </>
       );
     case 'logistics':

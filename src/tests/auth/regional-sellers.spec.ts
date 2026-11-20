@@ -29,7 +29,7 @@ test('only sellers from the chosen postal codes register on their own', async ({
   await login(page, ORGANIZER);
   await page.goto(`/events/view/${showcase.eventId}/settings`);
   await page.getByRole('checkbox', { name: 'Nur Verkäufer aus der Region' }).click();
-  await expect(page.getByText('Mit dem Regler den Umkreis ziehen')).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Umkreis' })).toBeVisible();
   // The map shows the areas of the country
   await expect(page.getByRole('img', { name: 'Karte der Postleitzahlgebiete' })).toBeVisible();
   // Whatever a circle chose: start over with exactly one prefix
@@ -38,7 +38,8 @@ test('only sellers from the chosen postal codes register on their own', async ({
   const manual = page.getByLabel('Postleitzahl oder ihren Anfang hinzufügen');
   await manual.fill('7322');
   await manual.press('Enter');
-  await expect(page.getByTestId('region-summary')).toContainText('Postleitzahl 7322…');
+  await expect(page.getByTestId('region-summary')).toContainText('1 Gebiet ausgewählt');
+  await expect(page.getByRole('list', { name: 'Ausgewählte Postleitzahlen' })).toHaveText('7322…');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expectToast(page, 'Basar gespeichert');
 

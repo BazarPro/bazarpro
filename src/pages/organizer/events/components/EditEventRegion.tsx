@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Hand, LocateFixed, MapPin, MapPinned, Ruler, X } from 'lucide-react';
-import { FormSection } from '../../../../components/ui/form-section';
+import { LocateFixed, MapPin, MapPinned, X } from 'lucide-react';
+import { InfoTip } from '../../../../components/ui/info-tip';
 import { Switch } from '../../../../components/ui/switch';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
@@ -21,7 +21,7 @@ import {
   type Point,
   type PostalMapData,
 } from '../../../../lib/postalMap';
-import { compactPrefixes, formatPrefixes, postalCodeDigits } from '../../../../shared/postalCodes';
+import { compactPrefixes, postalCodeDigits } from '../../../../shared/postalCodes';
 import { COUNTRIES, type Country } from '../../../../shared/constants';
 import { cn } from '../../../../lib/utils';
 
@@ -59,7 +59,7 @@ function usePostalMap(country: Country, enabled: boolean) {
  * Only sellers from the bazaar's region join on their own (#304): the organizer picks
  * postal code areas of one country on a map, by a radius around the bazaar or their own
  * location and by tapping single areas. Invitations and the access code still let anyone
- * in, so exceptions stay possible.
+ * in, so exceptions stay possible. A switch row inside the registration settings.
  */
 export function EditEventRegion() {
   const { t } = useTranslation('organizer');
@@ -267,19 +267,29 @@ export function EditEventRegion() {
   const shownChips = showAllChips ? prefixes : prefixes.slice(0, CHIPS_SHOWN);
 
   return (
-    <FormSection
-      icon={MapPinned}
-      title={t('region.title')}
-      description={t('region.intro')}
-      action={
+    <div>
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+            enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+          )}
+        >
+          <MapPinned className="h-4 w-4" />
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <Label htmlFor="feature-regionOnly" className="cursor-pointer font-medium">
+            {t('region.title')}
+          </Label>
+          <InfoTip>{t('region.intro')}</InfoTip>
+        </div>
         <Controller
           name="features.regionOnly"
           control={control}
           render={({ field }) => (
             <Switch
               id="feature-regionOnly"
-              aria-label={t('region.title')}
-              className="ml-auto"
               checked={!!field.value}
               onCheckedChange={(checked: boolean | string) => {
                 field.onChange(!!checked);
@@ -290,67 +300,42 @@ export function EditEventRegion() {
             />
           )}
         />
-      }
-    >
+      </div>
       {enabled && (
-        <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
-          <ol className="grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-            {(
-              [
-                [MapPin, 'region.step1'],
-                [Ruler, 'region.step2'],
-                [Hand, 'region.step3'],
-              ] as const
-            ).map(([Icon, key], index) => (
-              <li key={key} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                  {index + 1}
-                </span>
-                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="leading-snug">{t(key)}</span>
-              </li>
-            ))}
-          </ol>
-
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-40 flex-1 space-y-1.5 sm:max-w-56">
-              <Label htmlFor="postalCodeCountry">{t('region.country')}</Label>
-              <CountrySelect
-                id="postalCodeCountry"
-                value={country}
-                onChange={(event) => changeCountry(asCountry(event.target.value))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-sm font-medium">{t('region.center')}</span>
-              <div
-                role="radiogroup"
-                aria-label={t('region.center')}
-                className="flex rounded-lg border bg-muted/40 p-0.5"
+        <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 sm:pl-11">
+          <div className="flex flex-wrap items-center gap-2">
+            <CountrySelect
+              id="postalCodeCountry"
+              aria-label={t('region.country')}
+              value={country}
+              onChange={(event) => changeCountry(asCountry(event.target.value))}
+              className="h-9 w-auto min-w-36"
+            />
+            <div
+              role="radiogroup"
+              aria-label={t('region.center')}
+              className="flex rounded-lg border bg-muted/40 p-0.5"
+            >
+              <CenterButton
+                active={centerMode === 'venue' || !here}
+                disabled={!venue}
+                onClick={() => chooseCenter('venue')}
+                title={venue ? undefined : t('region.venueUnknown')}
               >
-                <CenterButton
-                  active={centerMode === 'venue' || !here}
-                  disabled={!venue}
-                  onClick={() => chooseCenter('venue')}
-                  title={venue ? undefined : t('region.venueUnknown')}
-                >
-                  <MapPin className="h-3.5 w-3.5" /> {t('region.centerVenue')}
-                </CenterButton>
-                <CenterButton
-                  active={centerMode === 'here' && !!here}
-                  onClick={() => chooseCenter('here')}
-                  loading={locating}
-                >
-                  <LocateFixed className="h-3.5 w-3.5" /> {t('region.centerHere')}
-                </CenterButton>
-              </div>
+                <MapPin className="h-3.5 w-3.5" /> {t('region.centerVenue')}
+              </CenterButton>
+              <CenterButton
+                active={centerMode === 'here' && !!here}
+                onClick={() => chooseCenter('here')}
+                loading={locating}
+              >
+                <LocateFixed className="h-3.5 w-3.5" /> {t('region.centerHere')}
+              </CenterButton>
             </div>
           </div>
           {locateError && <p className="text-xs text-destructive">{locateError}</p>}
           {!venue && data && !here && (
-            <p className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
-              {t('region.venueUnknownHint')}
-            </p>
+            <p className="text-xs text-muted-foreground">{t('region.venueUnknownHint')}</p>
           )}
 
           {data && selection ? (
@@ -364,24 +349,18 @@ export function EditEventRegion() {
               here={here}
               circle={circle}
               focus={focus}
-              className="h-[340px] sm:h-[420px]"
+              className="h-[300px] sm:h-[380px]"
             />
           ) : failed ? (
             <p className="text-sm text-destructive">{t('region.mapFailed')}</p>
           ) : (
-            <Skeleton className="h-[340px] w-full rounded-xl sm:h-[420px]" />
+            <Skeleton className="h-[300px] w-full rounded-xl sm:h-[380px]" />
           )}
 
-          <div className="rounded-xl border bg-muted/30 p-3 sm:p-4">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="region-radius" className="flex items-center gap-1.5">
-                <Ruler className="h-4 w-4 text-muted-foreground" aria-hidden />
-                {t('region.radius')}
-              </Label>
-              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-semibold tabular-nums text-primary">
-                {shownKm > 0 ? t('region.km', { km: shownKm }) : t('region.radiusOff')}
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="region-radius" className="shrink-0 text-sm font-medium">
+              {t('region.radius')}
+            </Label>
             <input
               id="region-radius"
               type="range"
@@ -390,29 +369,27 @@ export function EditEventRegion() {
               step={5}
               value={shownKm}
               disabled={!center || !data}
+              title={center ? undefined : t('region.venueUnknownHint')}
               onChange={(event) => changeRadius(Number(event.target.value))}
               onPointerUp={() => commitDraft.current()}
               onKeyUp={() => commitDraft.current()}
               onBlur={() => commitDraft.current()}
-              className="mt-3 h-2 w-full cursor-pointer accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <div className="mt-1 flex justify-between text-[11px] text-muted-foreground tabular-nums">
-              <span>0</span>
-              <span>{t('region.km', { km: 50 })}</span>
-              <span>{t('region.km', { km: 100 })}</span>
-              <span>{t('region.km', { km: MAX_RADIUS_KM })}</span>
-            </div>
-            {!center && (
-              <p className="mt-2 text-xs text-muted-foreground">{t('region.radiusNeedsCenter')}</p>
-            )}
+            <span className="w-14 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
+              {shownKm > 0 ? t('region.km', { km: shownKm }) : t('region.radiusOff')}
+            </span>
           </div>
 
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-medium">
+            <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+              <span
+                className={cn('text-sm', prefixes.length ? 'font-medium' : 'text-muted-foreground')}
+                data-testid="region-summary"
+              >
                 {prefixes.length
                   ? t('region.chosen', { count: areaCount })
-                  : t('region.nothingChosen')}
+                  : t('region.summaryEmpty')}
               </span>
               {prefixes.length > 0 && (
                 <Button
@@ -488,23 +465,9 @@ export function EditEventRegion() {
             {manualError && <FieldError>{manualError}</FieldError>}
             {error && <FieldError>{error}</FieldError>}
           </div>
-
-          <p
-            className={cn(
-              'rounded-lg px-3 py-2 text-sm',
-              prefixes.length
-                ? 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-200'
-                : 'bg-muted text-muted-foreground'
-            )}
-            data-testid="region-summary"
-          >
-            {prefixes.length
-              ? t('region.summary', { codes: formatPrefixes(prefixes, 8) })
-              : t('region.summaryEmpty')}
-          </p>
         </div>
       )}
-    </FormSection>
+    </div>
   );
 }
 

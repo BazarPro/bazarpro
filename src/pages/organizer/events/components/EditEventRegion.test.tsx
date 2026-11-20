@@ -30,12 +30,13 @@ describe('EditEventRegion (#304)', () => {
     render(<Form />);
     expect(screen.queryByText('Umkreis')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Nur Verkäufer aus der Region' }));
-    expect(screen.getByText('Mit dem Regler den Umkreis ziehen')).toBeInTheDocument();
+    expect(screen.getByRole('slider')).toBeInTheDocument();
     await waitFor(() => expect(current.allowedPostalCodes).toContain('892'));
     expect(current.allowedPostalCodes).toContain('890');
     expect(current.postalCodeCountry).toBe('DE');
     expect(screen.getByRole('slider')).toHaveValue('20');
-    expect(screen.getByTestId('region-summary')).toHaveTextContent(/Postleitzahl .*892…/);
+    expect(screen.getByTestId('region-summary')).toHaveTextContent(/Gebiete ausgewählt/);
+    expect(screen.getByText('892…')).toBeInTheDocument();
 
     // The radius grows: more areas, none of the old ones lost. They are stored once the
     // slider rests, not on every step
@@ -48,7 +49,7 @@ describe('EditEventRegion (#304)', () => {
     // Let go: stored at once
     fireEvent.pointerUp(screen.getByRole('slider'));
     expect(current.allowedPostalCodes).toEqual([]);
-    expect(screen.getByTestId('region-summary')).toHaveTextContent('Wähle mindestens ein Gebiet');
+    expect(screen.getByTestId('region-summary')).toHaveTextContent('Noch kein Gebiet');
   });
 
   it('takes postal codes typed in and removes them again', async () => {
