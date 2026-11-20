@@ -709,6 +709,7 @@ async fn bike_flea_market(demo: &mut Demo<'_>, people: &People) -> anyhow::Resul
                 categories: &[Cat::Bikes],
                 cover: "cover_bikes",
                 features: json!({
+                    "eventType": "bikeExchange",
                     "directSale": true,
                     "discounts": false,
                     "priceOffers": false,
@@ -813,6 +814,7 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                 categories: &[Cat::Clothing, Cat::Shoes, Cat::Toys, Cat::Books, Cat::Other, Cat::BabyKids, Cat::Bikes, Cat::Sports, Cat::Furniture],
                 cover: "cover_clothes",
                 features: json!({
+                    "eventType": "kidsBazaar",
                     "discounts": true,
                     "discountStartsAt": millis(now - Duration::minutes(30)),
                     "maxDiscountPercent": 50,
@@ -1114,6 +1116,7 @@ async fn ski_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()> 
                 categories: &[Cat::Sports, Cat::Shoes, Cat::Clothing, Cat::Accessories],
                 cover: "cover_winter",
                 features: json!({
+                    "eventType": "skiBazaar",
                     "discounts": false,
                     "priceOffers": true,
                     "minimumPrice": true,

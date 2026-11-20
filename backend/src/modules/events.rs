@@ -55,6 +55,9 @@ const SERVICES: [&str; 6] = [
 const VISIBILITIES: [&str; 3] = ["public", "logged-in", "approved"];
 const LABEL_FORMATS: [&str; 2] = ["standard", "small"];
 const LABEL_MARKS: [&str; 2] = ["universal", "none"];
+/// Kinds of bazaars of the creation wizard (`EVENT_TYPES` in src/lib/eventTypes.ts); the
+/// conditions pick their worked example by it (#303)
+const EVENT_TYPES: [&str; 4] = ["kidsBazaar", "clothingBazaar", "skiBazaar", "bikeExchange"];
 /// What viewers outside the team see instead of the access code
 const HIDDEN_ACCESS_CODE: &str = "••••";
 
@@ -774,6 +777,9 @@ struct FeaturesArgs {
     registration_ends_at: Option<f64>,
     /// Absent (older apps): the stored groups stay
     fee_groups: Option<Vec<FeeGroupArgs>>,
+    /// The kind of bazaar (#303); null clears it, left out the stored one stays
+    #[serde(default, with = "serde_with::rust::double_option")]
+    event_type: Option<Option<String>>,
 }
 
 /// One fee group as the form sends it (#302)
@@ -942,6 +948,11 @@ fn sanitize_features(
         && !LABEL_MARKS.contains(&mark.as_str())
     {
         return Err(invalid("labelMark"));
+    }
+    if let Some(Some(kind)) = &features.event_type
+        && !EVENT_TYPES.contains(&kind.as_str())
+    {
+        return Err(invalid("eventType"));
     }
     let previous_bool = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_bool);
     let previous_number = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
@@ -1136,6 +1147,16 @@ fn sanitize_features(
             Some(groups) => sanitize_fee_groups(groups)?,
             None => previous
                 .and_then(|p| p.get("feeGroups"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        },
+    );
+    put(
+        "eventType",
+        match features.event_type {
+            Some(kind) => json!(kind),
+            None => previous
+                .and_then(|p| p.get("eventType"))
                 .cloned()
                 .unwrap_or(Value::Null),
         },
@@ -2204,6 +2225,34 @@ mod tests {
         .unwrap();
         assert!(cleared.get("maxItemsTotal").is_none());
         assert!(cleared.get("maxFeesPerSeller").is_none());
+    }
+
+    #[test]
+    fn event_type_is_known_and_stays_unless_cleared() {
+        let sanitize = |event_type, previous: Option<&Value>| {
+            sanitize_features(
+                FeaturesArgs {
+                    event_type,
+                    ..FeaturesArgs::default()
+                },
+                previous,
+                &known(),
+            )
+        };
+        let stored = sanitize(Some(Some("bikeExchange".into())), None).unwrap();
+        assert_eq!(stored["eventType"], "bikeExchange");
+        // Not sent by an older client: kept
+        assert_eq!(
+            sanitize(None, Some(&stored)).unwrap()["eventType"],
+            "bikeExchange"
+        );
+        assert!(
+            sanitize(Some(None), Some(&stored))
+                .unwrap()
+                .get("eventType")
+                .is_none()
+        );
+        assert!(sanitize(Some(Some("flea".into())), None).is_err());
     }
 
     #[test]
