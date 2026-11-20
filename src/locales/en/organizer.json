@@ -201,7 +201,10 @@
     "maxFees": "Fee cap per seller in € (optional)",
     "noCap": "no cap",
     "maxFeesHint": "A seller pays at most this much commission and intake fee in total, e.g. €20 for expensive bikes. Whatever is above it goes back to them with the settlement. At a direct sale the cash desk then takes no more commission.",
-    "maxFeesLater": "Once the first seller has registered, you can only lower it."
+    "maxFeesLater": "Once the first seller has registered, you can only lower it.",
+    "feeExample": "Worked example for sellers",
+    "feeExampleHint": "The conditions work out an example that fits the kind of bazaar, e.g. one bike for 150 € instead of six items for 5 € each.",
+    "feeExampleNeutral": "General"
   },
   "logistics": {
     "title": "Drop-off & pickup",
@@ -1059,7 +1062,8 @@
       "maxItemsTotal": "{{count}} places for items in total",
       "feeCap": "At most {{fee}} of fees per seller",
       "feeCapExample": "Fee cap {{fee}}",
-      "feeGroup": "{{label}}: {{advantages}}"
+      "feeGroup": "{{label}}: {{advantages}}",
+      "example": "Worked example"
     },
     "short": {
       "type": "Kind",

@@ -1,5 +1,6 @@
 import { FormSection, FORM_ROWS } from '../../../../components/ui/form-section';
 import { NativeSelect } from '../../../../components/ui/native-select';
+import { EVENT_TYPES } from '../../../../lib/eventTypes';
 import { FieldError } from '../../../../components/ui/field-error';
 import type { ReactNode } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
@@ -365,8 +366,11 @@ export function EditEventFeatures({
   parts = ALL_PARTS,
   showHeader = true,
   bare = false,
+  feeExampleKind = false,
 }: {
   feeLock?: FeeLock;
+  /** The kind of bazaar for the worked example of the conditions (#303); the wizard asks first */
+  feeExampleKind?: boolean;
   parts?: FeaturePart[];
   showHeader?: boolean;
   /** Without its own card, e.g. the intake fee next to the commission */
@@ -609,6 +613,21 @@ export function EditEventFeatures({
             feeLock={feeLock}
             error={featureErrors?.maxFeesPerSeller?.message}
           />
+          {feeExampleKind && (
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo htmlFor="eventType" info={t('features.feeExampleHint')}>
+                {t('features.feeExample')}
+              </LabelWithInfo>
+              <NativeSelect id="eventType" {...register('features.eventType')}>
+                <option value="">{t('features.feeExampleNeutral')}</option>
+                {EVENT_TYPES.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {t(`eventTypes.${type.id}.title`)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          )}
         </>
       )}
     </>

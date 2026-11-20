@@ -84,6 +84,11 @@ export interface EventFeatures {
   registrationStartsAt?: number;
   /** Joining ends at this time; unset: with the bazaar. */
   registrationEndsAt?: number;
+  /**
+   * The kind of bazaar chosen in the creation wizard (`EVENT_TYPES` in src/lib/eventTypes.ts),
+   * e.g. "bikeExchange"; the conditions pick their worked example by it (#303). Unset: none.
+   */
+  eventType?: string;
 }
 
 export type StoredEventFeatures = Partial<EventFeatures>;
