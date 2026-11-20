@@ -54,7 +54,10 @@
     "excludedHandedIn": "Bereits abgegebene Artikel bekommst du wie gewohnt bei der Rückgabe zurück.",
     "closedHint": "Neue Verkäufer kommen nur mit einer Einladung des Veranstalters hinein.",
     "notPossible": "Eine Anmeldung ist gerade nicht möglich.",
-    "fullHint": "Alle Plätze für Verkäufer sind vergeben. Frag beim Veranstalter nach, falls doch noch einer frei wird."
+    "fullHint": "Alle Plätze für Verkäufer sind vergeben. Frag beim Veranstalter nach, falls doch noch einer frei wird.",
+    "regionOnly": "Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahl {{codes}} ({{country}}).",
+    "regionYours": "Laut deinem Profil kommst du aus {{code}} ({{country}}).",
+    "regionHint": "Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung oder dem Zugangscode."
   },
   "profile": {
     "firstNameRequired": "Vorname ist erforderlich",
@@ -167,7 +170,9 @@
     "exampleGroup": "Für {{label}}: {{amount}}.",
     "noPublicCatalogDetails": "Käufer sehen sie erst vor Ort, das QR-Etikett zeigt dort den Preis.",
     "fixedDataDetails": "Ab deinem ersten angenommenen Artikel sind sie fest, ebenso die Angaben zu angenommenen Artikeln. Der Veranstalter führt darüber einen Nachweis.",
-    "directSaleDetails": "Ihr einigt euch auf den Preis, danach bucht die Kasse den Verkauf zum vereinbarten Preis. Dort zahlst du nur die Provision."
+    "directSaleDetails": "Ihr einigt euch auf den Preis, danach bucht die Kasse den Verkauf zum vereinbarten Preis. Dort zahlst du nur die Provision.",
+    "region": "Nur für Verkäufer aus der Region: Postleitzahl {{codes}} ({{country}})",
+    "regionDetails": "Maßgeblich ist die Postleitzahl in deinem Profil. Mit einer Einladung oder dem Zugangscode des Veranstalters kannst du auch von woanders mitmachen."
   },
   "sidebar": {
     "details": "Basar-Details",
@@ -243,7 +248,8 @@
     "until": "Anmeldung bis {{time}}",
     "full": "Alle Plätze belegt",
     "spotsLeft_one": "Nur noch ein Platz von {{limit}} frei",
-    "spotsLeft_other": "Noch {{count}} von {{limit}} Plätzen frei"
+    "spotsLeft_other": "Noch {{count}} von {{limit}} Plätzen frei",
+    "region": "Nur aus PLZ {{codes}}"
   },
   "rejections": {
     "title_one": "Ein Artikel nicht abgegeben",

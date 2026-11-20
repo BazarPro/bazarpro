@@ -18,6 +18,7 @@ import type { EventVisibility } from '../../../../../shared/constants';
 import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { localTime } from '../../../../../lib/eventDates';
 import type { FeeGroup } from '../../../../../shared/feeGroups';
+import { formatPrefixes } from '../../../../../shared/postalCodes';
 import { formGroupAdvantages } from '../../../../../lib/sellerFees';
 
 /** The steps a fact of the summary leads back to. */
@@ -54,6 +55,8 @@ interface SummaryValues {
     intakeFee?: number;
     feeGroups?: FeeGroup[];
     registrationOpen?: boolean;
+    regionOnly?: boolean;
+    allowedPostalCodes?: string[];
   };
   sellerLogistics?: {
     dropoffStart?: string;
@@ -183,6 +186,9 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
     features.registrationOpen === false
       ? t('wizard.summary.registrationClosed')
       : t('wizard.summary.registrationOpen'),
+    features.regionOnly && features.allowedPostalCodes?.length
+      ? t('region.short', { codes: formatPrefixes(features.allowedPostalCodes, 4) })
+      : undefined,
   ].filter(Boolean);
 
   const time = (value?: string) => {

@@ -18,6 +18,7 @@ import {
   Clock,
   Users,
   Ban,
+  MapPinned,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Doc, Exclusion, Id } from '../../../lib/api/types';
@@ -178,6 +179,12 @@ function EventCard({
             <div className="flex items-start gap-2 text-sm">
               <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
               <span className="text-muted-foreground">{registration.spots}</span>
+            </div>
+          )}
+          {registration?.region && (
+            <div className="flex items-start gap-2 text-sm">
+              <MapPinned className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <span className="text-muted-foreground">{registration.region}</span>
             </div>
           )}
           {unreadMessages > 0 && (

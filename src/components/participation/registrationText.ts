@@ -1,5 +1,6 @@
 import i18n from '../../i18n';
 import { formatDateTimeDE } from '../../lib/utils';
+import { formatPrefixes, postalRegion } from '../../shared/postalCodes';
 import {
   getRegistrationState,
   type RegistrationState,
@@ -38,6 +39,16 @@ export interface RegistrationInfo {
   until?: string;
   /** While open with a seller limit: "Noch 12 von 50 Plätzen frei" */
   spots?: string;
+  /** Only for sellers from the region (#304): "Nur aus PLZ 89…, 7322…" */
+  region?: string;
+}
+
+/** "Nur aus PLZ 89…, 7322…" for a bazaar of its region; undefined for everyone else. */
+export function regionText(event: RegistrationEvent): string | undefined {
+  const region = postalRegion(event.features);
+  return region
+    ? i18n.t('registration.region', { ns: 'events', codes: formatPrefixes(region.prefixes, 4) })
+    : undefined;
 }
 
 /**
@@ -72,5 +83,7 @@ export function describeRegistration(
       left === undefined
         ? undefined
         : i18n.t('registration.spotsLeft', { ns: 'events', count: left, limit: event.vendorLimit }),
+    // An invitation passes the region
+    region: admission === 'invitation' ? undefined : regionText(event),
   };
 }

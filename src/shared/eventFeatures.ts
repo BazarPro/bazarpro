@@ -89,6 +89,14 @@ export interface EventFeatures {
    * e.g. "bikeExchange"; the conditions pick their worked example by it (#303). Unset: none.
    */
   eventType?: string;
+  /**
+   * Only sellers whose postal code starts with one of these join on their own (#304), e.g.
+   * "89" or "7322"; unset or empty: everyone. Invitations and the access code pass it.
+   * See src/shared/postalCodes.ts.
+   */
+  allowedPostalCodes?: string[];
+  /** The country of these postal codes (ISO 3166-1 alpha-2); unset: Germany */
+  postalCodeCountry?: string;
 }
 
 export type StoredEventFeatures = Partial<EventFeatures>;

@@ -52,6 +52,16 @@ describe('describeRegistration with an admission', () => {
   });
 });
 
+describe('describeRegistration of a bazaar for its region (#304)', () => {
+  const regional = { features: { allowedPostalCodes: ['89', '7322'] } };
+
+  it('names the postal codes, except for invited people', () => {
+    expect(describeRegistration(regional, now).region).toBe('Nur aus PLZ 89…, 7322…');
+    expect(describeRegistration(regional, now, 'invitation').region).toBeUndefined();
+    expect(describeRegistration({ features: {} }, now).region).toBeUndefined();
+  });
+});
+
 describe('spotsLeft', () => {
   it('counts only with a limit and the number of sellers', () => {
     expect(spotsLeft({ vendorLimit: 10, sellerCount: 4 })).toBe(6);

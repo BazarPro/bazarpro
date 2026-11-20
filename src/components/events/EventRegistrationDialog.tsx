@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Label } from '../ui/label';
-import { CalendarClock, Users } from 'lucide-react';
+import { CalendarClock, MapPin, Users } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Checkbox } from '../ui/checkbox';
 import { resolveEventFeatures } from '../../shared/eventFeatures';
+import { admitsPostalCode, formatPrefixes, postalRegion } from '../../shared/postalCodes';
+import { countryName } from '../../i18n/countries';
 import {
   describeRegistration,
   type Admission,
@@ -95,15 +97,37 @@ export function EventRegistrationDialog({
   const registration: RegistrationInfo = describeRegistration(conditions, Date.now(), admission);
   // The team needs no access code
   const needsCode = hasAccessCode && !team;
+  // A bazaar for its region (#304): an invitation, the team and the access code pass it
+  const region = postalRegion(conditions.features);
+  const outsideRegion =
+    !!region &&
+    !admission &&
+    !hasAccessCode &&
+    !!user &&
+    !hasMissingProfileData &&
+    !admitsPostalCode(region, user.zipCode, user.country);
   const blocked = exclusion
     ? [
         t('join.excluded'),
         exclusion.reason && t('join.excludedReason', { reason: exclusion.reason }),
       ]
-    : registration.blocked && [
-        registration.blocked,
-        registration.invitationHelps ? t('join.closedHint') : t('join.fullHint'),
-      ];
+    : registration.blocked
+      ? [
+          registration.blocked,
+          registration.invitationHelps ? t('join.closedHint') : t('join.fullHint'),
+        ]
+      : outsideRegion && [
+          t('join.regionOnly', {
+            codes: formatPrefixes(region.prefixes, 12),
+            country: countryName(region.country),
+          }),
+          user.zipCode &&
+            t('join.regionYours', {
+              code: user.zipCode,
+              country: countryName(user.country || 'DE'),
+            }),
+          t('join.regionHint'),
+        ];
 
   const handleJoin = async () => {
     setErrorMessage(null);
@@ -186,7 +210,7 @@ export function EventRegistrationDialog({
                 </Alert>
               )}
 
-              {(registration.until || registration.spots) && (
+              {(registration.until || registration.spots || registration.region) && (
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   {registration.until && (
                     <span className="inline-flex items-center gap-1.5">
@@ -198,6 +222,12 @@ export function EventRegistrationDialog({
                     <span className="inline-flex items-center gap-1.5">
                       <Users className="h-4 w-4" />
                       {registration.spots}
+                    </span>
+                  )}
+                  {registration.region && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      {registration.region}
                     </span>
                   )}
                 </div>

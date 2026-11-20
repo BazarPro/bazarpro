@@ -69,6 +69,7 @@ import { WizardPictures } from './components/wizard/WizardPictures';
 import { zodMessage } from '../../../i18n/zodMessage';
 import i18n from '../../../i18n';
 import { EventTypePicker } from './components/EventTypePicker';
+import { EditEventRegion } from './components/EditEventRegion';
 import { placeFromLocation, type EventPlace } from '../../../shared/eventJsonLd';
 import {
   EVENT_TYPES,
@@ -199,6 +200,10 @@ const buildEventSchema = (
         registrationEndsAt: z.string(),
         /** The kind of bazaar (#303); empty: none */
         eventType: z.string(),
+        /** Only sellers from the region (#304); the prefixes stay while it is off */
+        regionOnly: z.boolean(),
+        allowedPostalCodes: z.array(z.string()),
+        postalCodeCountry: z.string(),
         intakeFee: z
           .number()
           .min(0, zodMessage('form.feeNegative', 'organizer'))
@@ -310,6 +315,14 @@ const buildEventSchema = (
       {
         ...zodMessage('features.registrationWindow', 'organizer'),
         path: ['features', 'registrationEndsAt'],
+      }
+    )
+    .refine(
+      ({ features: { regionOnly, allowedPostalCodes } }) =>
+        !regionOnly || allowedPostalCodes.length > 0,
+      {
+        ...zodMessage('region.required', 'organizer'),
+        path: ['features', 'allowedPostalCodes'],
       }
     )
     .superRefine((data, ctx) => {
@@ -464,6 +477,9 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
       ? formatForDateTimeLocal(features.registrationEndsAt)
       : '',
     eventType: findEventType(features.eventType)?.id ?? '',
+    regionOnly: (features.allowedPostalCodes?.length ?? 0) > 0,
+    allowedPostalCodes: features.allowedPostalCodes ?? [],
+    postalCodeCountry: features.postalCodeCountry ?? '',
   };
 }
 
@@ -533,6 +549,12 @@ function featuresFromForm(features: FeatureFormData): FeaturesArgs {
     registrationStartsAt: timeFromForm(features.registrationOpen, features.registrationStartsAt),
     registrationEndsAt: timeFromForm(features.registrationOpen, features.registrationEndsAt),
     eventType: features.eventType || null,
+    // Always sent: an empty list lets everyone in again
+    allowedPostalCodes: features.regionOnly ? features.allowedPostalCodes : [],
+    postalCodeCountry:
+      features.regionOnly && features.allowedPostalCodes.length > 0
+        ? features.postalCodeCountry || 'DE'
+        : undefined,
   };
 }
 
@@ -620,7 +642,13 @@ const WIZARD_STEPS = [
   },
   {
     id: 'registration',
-    fields: ['visibility', 'accessCode', 'vendorLimit', 'features.registrationEndsAt'],
+    fields: [
+      'visibility',
+      'accessCode',
+      'vendorLimit',
+      'features.registrationEndsAt',
+      'features.allowedPostalCodes',
+    ],
   },
   { id: 'logistics', fields: ['sellerLogistics'] },
   // The words for the bazaar page last, with the page growing next to them
@@ -827,6 +855,7 @@ function EventSection({
         <>
           <EditEventAccess lockVisibility={editing?.isRunning} />
           <EditEventFeatures parts={['registration']} showHeader={false} />
+          <EditEventRegion />
         </>
       );
     case 'logistics':

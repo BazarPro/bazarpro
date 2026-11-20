@@ -129,6 +129,15 @@ describe('describeSellerFees', () => {
 });
 
 describe('describeSellerRules', () => {
+  it('names the region first (#304)', () => {
+    const { duties } = describeSellerRules({
+      commission: 0,
+      features: { allowedPostalCodes: ['4'], postalCodeCountry: 'AT', photosOptional: true },
+    });
+    expect(duties[0].text).toBe('Nur für Verkäufer aus der Region: Postleitzahl 4… (Österreich)');
+    expect(duties[0].details).toMatch(/^Maßgeblich ist die Postleitzahl in deinem Profil/);
+  });
+
   it('splits what sellers must do from what they can do', () => {
     const { duties, options } = describeSellerRules({
       commission: 0,

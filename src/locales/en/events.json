@@ -54,7 +54,10 @@
     "excludedHandedIn": "Items you already handed in come back to you in the usual return.",
     "closedHint": "New sellers only get in with an invitation from the organizer.",
     "notPossible": "Registration is not possible right now.",
-    "fullHint": "All places for sellers are taken. Ask the organizer in case one becomes free."
+    "fullHint": "All places for sellers are taken. Ask the organizer in case one becomes free.",
+    "regionOnly": "This bazaar is only for sellers from its region: postal code {{codes}} ({{country}}).",
+    "regionYours": "According to your profile you are from {{code}} ({{country}}).",
+    "regionHint": "If you would like to take part anyway, ask the organizer for an invitation or the access code."
   },
   "profile": {
     "firstNameRequired": "First name is required",
@@ -167,7 +170,9 @@
     "exampleGroup": "For {{label}}: {{amount}}.",
     "noPublicCatalogDetails": "Buyers see them on site only, where the QR label shows the price.",
     "fixedDataDetails": "Once your first item is accepted, they are fixed, and so are the details of accepted items. The organizer keeps a record of them.",
-    "directSaleDetails": "You agree on the price, then the cash desk books the sale at that price. There you only pay the commission."
+    "directSaleDetails": "You agree on the price, then the cash desk books the sale at that price. There you only pay the commission.",
+    "region": "Only for sellers from the region: postal code {{codes}} ({{country}})",
+    "regionDetails": "What counts is the postal code in your profile. With an invitation or the organizer’s access code you can take part from elsewhere too."
   },
   "sidebar": {
     "details": "Bazaar details",
@@ -243,7 +248,8 @@
     "until": "Registration until {{time}}",
     "full": "All places taken",
     "spotsLeft_one": "Only one of {{limit}} places left",
-    "spotsLeft_other": "{{count}} of {{limit}} places left"
+    "spotsLeft_other": "{{count}} of {{limit}} places left",
+    "region": "Only postal codes {{codes}}"
   },
   "rejections": {
     "title_one": "One item not handed in",

@@ -8,6 +8,8 @@ import i18n, { currentLocale } from '../i18n';
 import { dateLocale } from '../i18n/format';
 import { requirableFields, type CategoryField } from '../shared/categoryFields';
 import { categoryFieldText } from '../i18n/categoryFields';
+import { countryName } from '../i18n/countries';
+import { formatPrefixes, postalRegion } from '../shared/postalCodes';
 
 function text(key: string, values?: Record<string, unknown>): string {
   return i18n.t(`conditions.${key}` as never, { ns: 'events', ...values }) as string;
@@ -263,6 +265,16 @@ export function describeSellerRules(
     allowed: true,
   });
   const duties: SellerRule[] = [];
+  const region = postalRegion(event.features);
+  if (region) {
+    duties.push(
+      rule(
+        'region',
+        { codes: formatPrefixes(region.prefixes, 12), country: countryName(region.country) },
+        'regionDetails'
+      )
+    );
+  }
   if (features.maxItemsPerSeller) {
     duties.push(rule('maxItems', { max: features.maxItemsPerSeller }));
   }

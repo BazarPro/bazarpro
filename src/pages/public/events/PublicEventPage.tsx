@@ -1,7 +1,17 @@
 import { EmptyState } from '../../../components/ui/empty-state';
 import { usePublicQuery } from '../../../hooks/usePublicQuery';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Ban, CalendarClock, Check, Clock, Plus, Tag, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  Ban,
+  CalendarClock,
+  Check,
+  Clock,
+  MapPin,
+  Plus,
+  Tag,
+  Users,
+} from 'lucide-react';
 import { useMutation, useQuery, useAuthState } from '../../../lib/api/react';
 import { api } from '../../../lib/api/functions';
 
@@ -298,7 +308,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
                 {t('page.join')}
               </Button>
               {/* How long and how many: who hesitates sees it is worth hurrying */}
-              {(registration.until || registration.spots) && (
+              {(registration.until || registration.spots || registration.region) && (
                 <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-white/85 md:justify-end">
                   {registration.until && (
                     <span className="inline-flex items-center gap-1.5">
@@ -310,6 +320,12 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
                     <span className="inline-flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5" />
                       {registration.spots}
+                    </span>
+                  )}
+                  {registration.region && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {registration.region}
                     </span>
                   )}
                 </p>

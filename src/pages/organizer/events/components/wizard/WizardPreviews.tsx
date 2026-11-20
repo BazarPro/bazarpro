@@ -29,6 +29,7 @@ import {
   Users,
   Warehouse,
 } from 'lucide-react';
+import { formatPrefixes } from '../../../../../shared/postalCodes';
 import { Badge } from '../../../../../components/ui/badge';
 import { ItemPhoto } from '../../../../../components/illustrations/ItemIllustrations';
 import { SafeMarkdown } from '../../../../../components/markdown/SafeMarkdown';
@@ -98,6 +99,8 @@ interface WizardValues {
     maxFeesPerSeller?: number;
     feeGroups?: FeeGroup[];
     privateSellersOnly?: boolean;
+    regionOnly?: boolean;
+    allowedPostalCodes?: string[];
     fixedSellerData?: boolean;
     directSale?: boolean;
     eventType?: string;
@@ -626,6 +629,12 @@ export function ListingPreview({ type }: { type?: EventType }) {
     chips.push({
       icon: <Users className="h-3 w-3" />,
       text: t('wizard.preview.spots', { count: limit }),
+    });
+  }
+  if (features.regionOnly && features.allowedPostalCodes?.length) {
+    chips.push({
+      icon: <MapPin className="h-3 w-3" />,
+      text: t('region.short', { codes: formatPrefixes(features.allowedPostalCodes, 3) }),
     });
   }
   if (features.privateSellersOnly) {

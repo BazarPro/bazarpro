@@ -304,7 +304,7 @@ export interface Docs {
     senderId: Id<'users'>;
     subject: string;
     body: string;
-    audience: 'pickup' | 'all' | 'accepted';
+    audience: 'pickup' | 'all' | 'accepted' | 'withoutItems';
     important: boolean;
     recipientIds: Id<'users'>[];
     createdAt: number;
@@ -352,7 +352,7 @@ export interface Docs {
 }
 
 export type BroadcastView = {
-  audience?: 'pickup' | 'all' | 'accepted' | undefined;
+  audience?: 'pickup' | 'all' | 'accepted' | 'withoutItems' | undefined;
   recipientCount?: number | undefined;
   subject: string;
   body: string;
@@ -602,6 +602,8 @@ export type VendorWithCalculations = {
   feeGroup?: VendorFeeGroup | undefined;
   /** The seller's commission in percent: their group's or the bazaar's; once paid out the one settled with */
   commissionPercent: number;
+  /** Has not announced any item yet (#304); not for the team, walk-in or excluded sellers */
+  withoutItems?: boolean | undefined;
 };
 
 /** A seller's fee group as the team sees it (#302) */
@@ -656,7 +658,7 @@ export interface Api {
   broadcasts: {
     getBroadcastPreview: FunctionReference<
       'query',
-      { eventId: Id<'events'>; audience: 'pickup' | 'all' | 'accepted' },
+      { eventId: Id<'events'>; audience: 'pickup' | 'all' | 'accepted' | 'withoutItems' },
       { recipients: number; left: number; importantLeft: number }
     >;
     sendSellerBroadcast: FunctionReference<
@@ -665,7 +667,7 @@ export interface Api {
         eventId: Id<'events'>;
         subject: string;
         body: string;
-        audience: 'pickup' | 'all' | 'accepted';
+        audience: 'pickup' | 'all' | 'accepted' | 'withoutItems';
         important: boolean;
       },
       number
@@ -1121,6 +1123,12 @@ export interface Api {
       Id<'eventSeller'>
     >;
     removeSellerAndCoorganizerRoles: FunctionReference<'mutation', EmptyObject, false | null>;
+    /** Unregisters every seller without items (#304); returns how many */
+    removeSellersWithoutItems: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; message?: string | undefined },
+      number
+    >;
     isEventSellerForEvent: FunctionReference<'query', { eventId: Id<'events'> }, boolean>;
     checkAccessCode: FunctionReference<
       'mutation',
