@@ -1,3 +1,4 @@
+import type { PostalCodesByCountry } from './postalCodes';
 import type { LabelFormat, LabelMark } from './constants';
 import type { ErrorCode } from './errorCodes';
 import type { CategoryField } from './categoryFields';
@@ -90,13 +91,11 @@ export interface EventFeatures {
    */
   eventType?: string;
   /**
-   * Only sellers whose postal code starts with one of these join on their own (#304), e.g.
-   * "89" or "7322"; unset or empty: everyone. Invitations and the access code pass it.
-   * See src/shared/postalCodes.ts.
+   * Only sellers whose postal code starts with one of the prefixes of their country join
+   * on their own (#304), e.g. `{ DE: ['89', '7322'], AT: ['6'] }`; unset or empty:
+   * everyone. Invitations and the access code pass it. See src/shared/postalCodes.ts.
    */
-  allowedPostalCodes?: string[];
-  /** The country of these postal codes (ISO 3166-1 alpha-2); unset: Germany */
-  postalCodeCountry?: string;
+  allowedPostalCodes?: PostalCodesByCountry;
 }
 
 export type StoredEventFeatures = Partial<EventFeatures>;

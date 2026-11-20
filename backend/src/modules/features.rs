@@ -1,5 +1,7 @@
 //! Per-event feature switches chosen by the organizer.
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::Deserialize;
@@ -11,6 +13,9 @@ use crate::shape::from_ms;
 
 /// Highest discount a seller may ever grant, regardless of the event setting.
 pub const MAX_DISCOUNT_PERCENT: u32 = 50;
+
+/// Countries of addresses and postal code regions (ISO 3166-1 alpha-2), in this order.
+pub const COUNTRIES: [&str; 5] = ["DE", "AT", "CH", "LI", "LU"];
 
 /// `features` as stored; absent fields take the defaults below.
 #[derive(Debug, Default, Deserialize)]
@@ -40,8 +45,8 @@ struct Stored {
     registration_starts_at: Option<f64>,
     registration_ends_at: Option<f64>,
     fee_groups: Option<Vec<StoredFeeGroup>>,
-    allowed_postal_codes: Option<Vec<String>>,
-    postal_code_country: Option<String>,
+    /// `{"DE": ["89"], "AT": ["6"]}`
+    allowed_postal_codes: Option<BTreeMap<String, Vec<String>>>,
 }
 
 /// A fee group as stored in `features.feeGroups` (#302).
@@ -132,13 +137,12 @@ pub struct EventFeatures {
     pub postal_codes: Option<PostalCodes>,
 }
 
-/// The region of a bazaar: postal codes of one country that start with one of the
-/// prefixes, e.g. "89" or "7322" (#304).
+/// The region of a bazaar: postal codes that start with one of the prefixes of their
+/// country, e.g. "89" or "7322" in Germany and "6" in Austria (#304).
 #[derive(Debug, Clone, PartialEq)]
 pub struct PostalCodes {
-    /// ISO 3166-1 alpha-2, e.g. "DE"
-    pub country: String,
-    pub prefixes: Vec<String>,
+    /// ISO 3166-1 alpha-2, e.g. "DE", with its prefixes; in the order of `COUNTRIES`
+    pub countries: Vec<(String, Vec<String>)>,
 }
 
 /// Digits of a postal code: "L-1234" in Luxembourg is "1234".
@@ -168,17 +172,24 @@ impl PostalCodes {
     /// Whether a seller with this postal code and country is from the region.
     pub fn admits(&self, postal_code: &str, country: Option<&str>) -> bool {
         let digits = postal_code_digits(postal_code);
-        profile_country(country) == self.country
-            && self
-                .prefixes
-                .iter()
-                .any(|prefix| digits.starts_with(prefix.as_str()))
+        let country = profile_country(country);
+        self.countries
+            .iter()
+            .filter(|(code, _)| *code == country)
+            .flat_map(|(_, prefixes)| prefixes)
+            .any(|prefix| digits.starts_with(prefix.as_str()))
     }
 
-    /// "89…, 7322… (DE)" for messages.
+    /// "89…, 7322… (DE), 6… (AT)" for messages.
     pub fn describe(&self) -> String {
-        let prefixes: Vec<String> = self.prefixes.iter().map(|p| format!("{p}…")).collect();
-        format!("{} ({})", prefixes.join(", "), self.country)
+        self.countries
+            .iter()
+            .map(|(country, prefixes)| {
+                let prefixes: Vec<String> = prefixes.iter().map(|p| format!("{p}…")).collect();
+                format!("{} ({country})", prefixes.join(", "))
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 }
 
@@ -251,20 +262,21 @@ pub fn resolve(features: Option<&Value>) -> EventFeatures {
                 proof_hint: group.proof_hint,
             })
             .collect(),
-        postal_codes: stored
-            .allowed_postal_codes
-            .map(|prefixes| {
-                prefixes
-                    .iter()
-                    .map(|prefix| postal_code_digits(prefix))
-                    .filter(|prefix| !prefix.is_empty())
-                    .collect::<Vec<_>>()
-            })
-            .filter(|prefixes| !prefixes.is_empty())
-            .map(|prefixes| PostalCodes {
-                country: profile_country(stored.postal_code_country.as_deref()),
-                prefixes,
-            }),
+        postal_codes: stored.allowed_postal_codes.and_then(|stored| {
+            let countries: Vec<(String, Vec<String>)> = COUNTRIES
+                .iter()
+                .filter_map(|&country| {
+                    let prefixes: Vec<String> = stored
+                        .get(country)?
+                        .iter()
+                        .map(|prefix| postal_code_digits(prefix))
+                        .filter(|prefix| !prefix.is_empty())
+                        .collect();
+                    (!prefixes.is_empty()).then(|| (country.to_owned(), prefixes))
+                })
+                .collect();
+            (!countries.is_empty()).then_some(PostalCodes { countries })
+        }),
     }
 }
 
@@ -545,9 +557,9 @@ mod tests {
     }
 
     #[test]
-    fn the_region_admits_postal_codes_of_its_country() {
+    fn the_region_admits_postal_codes_of_its_countries() {
         let features = resolve(Some(&json!({
-            "allowedPostalCodes": ["89", "7322"], "postalCodeCountry": "DE"
+            "allowedPostalCodes": { "DE": ["89", "7322"] }
         })));
         let refused = |code: Option<&str>, country: Option<&str>| {
             postal_code_refused(&features, code, country)
@@ -566,11 +578,28 @@ mod tests {
         );
         // Luxembourg writes "L-" in front
         let luxembourg = resolve(Some(&json!({
-            "allowedPostalCodes": ["49"], "postalCodeCountry": "LU"
+            "allowedPostalCodes": { "LU": ["49"] }
         })));
         assert_eq!(
             postal_code_refused(&luxembourg, Some("L-4968"), Some("LU")),
             None
+        );
+        // A region across the border: each country with its own prefixes
+        let border = resolve(Some(&json!({
+            "allowedPostalCodes": { "AT": ["69"], "DE": ["88"], "FR": ["67"] }
+        })));
+        let admitted = |code: &str, country: &str| {
+            postal_code_refused(&border, Some(code), Some(country)).is_none()
+        };
+        assert!(admitted("88131", "DE"));
+        assert!(admitted("6900", "Österreich"));
+        assert!(!admitted("6900", "DE"));
+        assert!(!admitted("88131", "AT"));
+        // Countries without a map are ignored
+        assert!(!admitted("67000", "FR"));
+        assert_eq!(
+            border.postal_codes.unwrap().describe(),
+            "88… (DE), 69… (AT)"
         );
         // No region: everyone
         assert_eq!(postal_code_refused(&resolve(None), None, None), None);

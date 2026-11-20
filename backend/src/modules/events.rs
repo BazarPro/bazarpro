@@ -14,6 +14,7 @@ use rust_decimal::prelude::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use serde_with::skip_serializing_none;
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::access::{active_admins, is_platform_admin, require_admin};
@@ -24,7 +25,7 @@ use super::event_roles::{
     self, Permission, Role, TEAM, has_any_role_or_admin, has_role_or_admin, is_bystander,
     load_vendors_with_calculations, require_permission,
 };
-use super::features::{self, FeeGroupAssignment, MAX_DISCOUNT_PERCENT};
+use super::features::{self, COUNTRIES, FeeGroupAssignment, MAX_DISCOUNT_PERCENT};
 use super::moderation::{LogEntry, log_action};
 use super::notifications::{self, Area, Content, T};
 use super::{retention, sales, seller_numbers};
@@ -780,20 +781,47 @@ struct FeaturesArgs {
     /// The kind of bazaar (#303); null clears it, left out the stored one stays
     #[serde(default, with = "serde_with::rust::double_option")]
     event_type: Option<Option<String>>,
-    /// Prefixes of the postal codes whose sellers may join (#304); null or empty: everyone,
-    /// left out (older apps): the stored ones stay
+    /// Prefixes of the postal codes whose sellers may join, per country (#304), e.g.
+    /// `{"DE": ["89"], "AT": ["6"]}`; null or empty: everyone, left out (older apps): the
+    /// stored ones stay
     #[serde(default, with = "serde_with::rust::double_option")]
-    allowed_postal_codes: Option<Option<Vec<String>>>,
-    /// The country of these postal codes; left out: the stored one, else Germany
-    #[serde(default, with = "serde_with::rust::double_option")]
-    postal_code_country: Option<Option<String>>,
+    allowed_postal_codes: Option<Option<BTreeMap<String, Vec<String>>>>,
 }
 
 /// Most prefixes a bazaar's region may have; the map joins whole areas to shorter ones
 const MAX_POSTAL_PREFIXES: usize = 500;
 
-/// The region of the bazaar (#304): digits only, 1 to 5 of them, without prefixes another
-/// one already covers ("89" covers "890"). Empty: no region.
+/// The region of the bazaar (#304) per country: known countries only, each with digits
+/// only, 1 to 5 of them, without prefixes another one already covers ("89" covers
+/// "890"). Countries without prefixes go; empty: no region.
+fn sanitize_postal_region(
+    countries: BTreeMap<String, Vec<String>>,
+) -> AppResult<BTreeMap<String, Vec<String>>> {
+    let mut region = BTreeMap::new();
+    let mut total = 0;
+    for (country, prefixes) in countries {
+        let country = country.trim().to_ascii_uppercase();
+        if !COUNTRIES.contains(&country.as_str()) {
+            return Err(invalid("allowedPostalCodes"));
+        }
+        let prefixes = sanitize_postal_codes(prefixes)?;
+        total += prefixes.len();
+        if !prefixes.is_empty() {
+            region.insert(country, prefixes);
+        }
+    }
+    if total > MAX_POSTAL_PREFIXES {
+        return Err(AppError::coded(
+            StatusCode::BAD_REQUEST,
+            "event.postalCodesTooMany",
+            &[("max", &MAX_POSTAL_PREFIXES.to_string())],
+        ));
+    }
+    Ok(region)
+}
+
+/// Prefixes of one country: digits only, 1 to 5 of them, without those another one
+/// already covers ("89" covers "890").
 fn sanitize_postal_codes(prefixes: Vec<String>) -> AppResult<Vec<String>> {
     let mut clean: Vec<String> = Vec::new();
     for prefix in prefixes {
@@ -819,13 +847,6 @@ fn sanitize_postal_codes(prefixes: Vec<String>) -> AppResult<Vec<String>> {
         {
             kept.push(prefix);
         }
-    }
-    if kept.len() > MAX_POSTAL_PREFIXES {
-        return Err(AppError::coded(
-            StatusCode::BAD_REQUEST,
-            "event.postalCodesTooMany",
-            &[("max", &MAX_POSTAL_PREFIXES.to_string())],
-        ));
     }
     kept.sort();
     Ok(kept)
@@ -1202,29 +1223,13 @@ fn sanitize_features(
     );
     let previous_postal = |key: &str| previous.and_then(|p| p.get(key)).cloned();
     let postal_codes = match features.allowed_postal_codes {
-        Some(prefixes) => sanitize_postal_codes(prefixes.unwrap_or_default())?,
+        Some(region) => sanitize_postal_region(region.unwrap_or_default())?,
         None => previous_postal("allowedPostalCodes")
             .and_then(|value| serde_json::from_value(value).ok())
             .unwrap_or_default(),
     };
-    let postal_country = match features.postal_code_country {
-        Some(country) => country,
-        None => {
-            previous_postal("postalCodeCountry").and_then(|value| value.as_str().map(str::to_owned))
-        }
-    };
-    if postal_country
-        .as_deref()
-        .is_some_and(|country| !COUNTRIES.contains(&country))
-    {
-        return Err(invalid("postalCodeCountry"));
-    }
     if !postal_codes.is_empty() {
         put("allowedPostalCodes", json!(postal_codes));
-        put(
-            "postalCodeCountry",
-            json!(postal_country.unwrap_or_else(|| "DE".to_owned())),
-        );
     }
     put(
         "eventType",
@@ -1275,9 +1280,6 @@ struct Address {
     city: Option<String>,
     country: Option<String>,
 }
-
-/// Countries the address form offers (ISO 3166-1 alpha-2).
-const COUNTRIES: [&str; 5] = ["DE", "AT", "CH", "LI", "LU"];
 
 fn sanitize_address(args: Option<AddressArgs>) -> AppResult<Address> {
     let part = |value: Option<String>, max: usize| -> AppResult<Option<String>> {

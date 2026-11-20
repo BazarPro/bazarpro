@@ -53,12 +53,14 @@ describe('describeRegistration with an admission', () => {
 });
 
 describe('describeRegistration of a bazaar for its region (#304)', () => {
-  const regional = { features: { allowedPostalCodes: ['89', '7322'] } };
+  const regional = { features: { allowedPostalCodes: { DE: ['89', '7322'] } } };
 
   it('names the postal codes, except for invited people', () => {
     expect(describeRegistration(regional, now).region).toBe('Nur aus PLZ 89…, 7322…');
     expect(describeRegistration(regional, now, 'invitation').region).toBeUndefined();
     expect(describeRegistration({ features: {} }, now).region).toBeUndefined();
+    const border = { features: { allowedPostalCodes: { DE: ['88'], AT: ['69'] } } };
+    expect(describeRegistration(border, now).region).toBe('Nur aus PLZ 88… (DE), 69… (AT)');
   });
 });
 

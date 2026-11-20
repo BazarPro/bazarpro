@@ -1,4 +1,4 @@
-import { formatPrefixes, postalRegion } from '../../../../../shared/postalCodes';
+import { formatRegion, postalRegion } from '../../../../../shared/postalCodes';
 import { countryName } from '../../../../../i18n/countries';
 import type { ReactNode } from 'react';
 import { Check, Minus } from 'lucide-react';
@@ -158,8 +158,8 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
           {region && (
             <Feature
               on={true}
-              title={t('region.short', { codes: formatPrefixes(region.prefixes, 8) })}
-              detail={countryName(region.country)}
+              title={t('region.short', { codes: formatRegion(region, 8) })}
+              detail={region.parts.map((part) => countryName(part.country)).join(', ')}
             />
           )}
           <Feature on={features.privateSellersOnly} title={t('summary.privateSellers')} />

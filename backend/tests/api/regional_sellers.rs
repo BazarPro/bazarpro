@@ -144,7 +144,7 @@ impl Bazaar {
 }
 
 fn region() -> Value {
-    json!({ "allowedPostalCodes": ["89", "7322"], "postalCodeCountry": "DE", "photosOptional": true })
+    json!({ "allowedPostalCodes": { "DE": ["89", "7322"], "AT": ["69"] }, "photosOptional": true })
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -163,10 +163,13 @@ async fn only_sellers_from_the_region_join(db: PgPool) {
         refused.body["message"]
             .as_str()
             .unwrap()
-            .contains("89…, 7322… (DE)"),
+            .contains("89…, 7322… (DE), 69… (AT)"),
         "{}",
         refused.body
     );
+    // Across the border with its own prefixes
+    let (_, dornbirn) = b.person("Dornbirn", Some("6900"), "AT").await;
+    assert_eq!(b.join(&dornbirn, json!({})).await.status, StatusCode::OK);
     // The same digits in another country are another place
     let (_, graz) = b.person("Graz", Some("8900"), "AT").await;
     assert_eq!(
@@ -228,9 +231,9 @@ async fn invitations_codes_and_the_team_pass_the_region(db: PgPool) {
 async fn the_region_is_saved_short_and_checked(db: PgPool) {
     let b = Bazaar::new(db, json!({})).await;
     let edit = |features: Value| b.edit(features);
-    let saved = edit(
-        json!({ "allowedPostalCodes": ["890", " 89 ", "7322", "73"], "postalCodeCountry": "DE" }),
-    )
+    let saved = edit(json!({ "allowedPostalCodes": {
+        "DE": ["890", " 89 ", "7322", "73"], "at": ["6"], "CH": []
+    } }))
     .await;
     assert_eq!(saved.status, StatusCode::OK, "{}", saved.body);
     let features: Value = sqlx::query_scalar("SELECT features FROM events WHERE id = $1")
@@ -238,8 +241,8 @@ async fn the_region_is_saved_short_and_checked(db: PgPool) {
         .fetch_one(&b.db)
         .await
         .unwrap();
-    assert_eq!(features["allowedPostalCodes"], json!(["73", "89"]));
-    assert_eq!(features["postalCodeCountry"], "DE");
+    let saved_region = json!({ "AT": ["6"], "DE": ["73", "89"] });
+    assert_eq!(features["allowedPostalCodes"], saved_region);
 
     // Other settings leave it alone, an empty list takes it away
     assert_eq!(
@@ -251,15 +254,17 @@ async fn the_region_is_saved_short_and_checked(db: PgPool) {
         .fetch_one(&b.db)
         .await
         .unwrap();
-    assert_eq!(features["allowedPostalCodes"], json!(["73", "89"]));
+    assert_eq!(features["allowedPostalCodes"], saved_region);
 
-    let wrong = edit(json!({ "allowedPostalCodes": ["89a"] })).await;
+    let wrong = edit(json!({ "allowedPostalCodes": { "DE": ["89a"] } })).await;
     assert_eq!(wrong.body["code"], "event.postalCodeInvalid");
-    let wrong = edit(json!({ "allowedPostalCodes": ["89"], "postalCodeCountry": "FR" })).await;
+    let wrong = edit(json!({ "allowedPostalCodes": { "FR": ["89"] } })).await;
     assert_eq!(wrong.status, StatusCode::BAD_REQUEST);
 
     assert_eq!(
-        edit(json!({ "allowedPostalCodes": [] })).await.status,
+        edit(json!({ "allowedPostalCodes": { "DE": [] } }))
+            .await
+            .status,
         StatusCode::OK
     );
     let features: Value = sqlx::query_scalar("SELECT features FROM events WHERE id = $1")
@@ -268,7 +273,6 @@ async fn the_region_is_saved_short_and_checked(db: PgPool) {
         .await
         .unwrap();
     assert!(features.get("allowedPostalCodes").is_none(), "{features}");
-    assert!(features.get("postalCodeCountry").is_none(), "{features}");
 }
 
 /// Anna announced an item, Ben did not, Cleo had one rejected; plus a helper, a walk-in

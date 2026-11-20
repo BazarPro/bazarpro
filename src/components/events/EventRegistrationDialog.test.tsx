@@ -66,7 +66,7 @@ describe('EventRegistrationDialog', () => {
 
   it('keeps sellers from elsewhere out of a bazaar for its region (#304)', () => {
     answers.current['users.viewer'] = { _id: 'u1', zipCode: '10115', country: 'DE' };
-    renderDialog({ allowedPostalCodes: ['89', '7322'], postalCodeCountry: 'DE' });
+    renderDialog({ allowedPostalCodes: { DE: ['89', '7322'] } });
     expect(
       screen.getByText(
         'Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahl 89…, 7322… (Deutschland).'
@@ -78,7 +78,7 @@ describe('EventRegistrationDialog', () => {
 
   it('lets sellers from the region and invited people in (#304)', () => {
     answers.current['users.viewer'] = { _id: 'u1', zipCode: '89073', country: 'DE' };
-    renderDialog({ allowedPostalCodes: ['89'] });
+    renderDialog({ allowedPostalCodes: { DE: ['89'] } });
     expect(screen.getByText('Nur aus PLZ 89…')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Anmelden bestätigen' })).toBeEnabled();
   });

@@ -92,6 +92,7 @@ import { EditEventFeeGroups } from './components/EditEventFeeGroups';
 import { MAX_FEE_GROUPS, extraHelperGroups, type FeeGroup } from '../../../shared/feeGroups';
 import { PageSkeleton } from '../../../components/ui/loading';
 import { isEventRunning } from '../../../shared/eventPhase';
+import { compactRegion, regionSize } from '../../../shared/postalCodes';
 
 /**
  * @param getOriginalStartDate start date of the event being edited (datetime-local string);
@@ -202,8 +203,8 @@ const buildEventSchema = (
         eventType: z.string(),
         /** Only sellers from the region (#304); the prefixes stay while it is off */
         regionOnly: z.boolean(),
-        allowedPostalCodes: z.array(z.string()),
-        postalCodeCountry: z.string(),
+        /** Prefixes per country, e.g. { DE: ['89'], AT: ['6'] } */
+        allowedPostalCodes: z.record(z.string(), z.array(z.string())),
         intakeFee: z
           .number()
           .min(0, zodMessage('form.feeNegative', 'organizer'))
@@ -319,7 +320,7 @@ const buildEventSchema = (
     )
     .refine(
       ({ features: { regionOnly, allowedPostalCodes } }) =>
-        !regionOnly || allowedPostalCodes.length > 0,
+        !regionOnly || regionSize(allowedPostalCodes) > 0,
       {
         ...zodMessage('region.required', 'organizer'),
         path: ['features', 'allowedPostalCodes'],
@@ -477,9 +478,8 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
       ? formatForDateTimeLocal(features.registrationEndsAt)
       : '',
     eventType: findEventType(features.eventType)?.id ?? '',
-    regionOnly: (features.allowedPostalCodes?.length ?? 0) > 0,
-    allowedPostalCodes: features.allowedPostalCodes ?? [],
-    postalCodeCountry: features.postalCodeCountry ?? '',
+    regionOnly: regionSize(features.allowedPostalCodes) > 0,
+    allowedPostalCodes: features.allowedPostalCodes ?? {},
   };
 }
 
@@ -549,12 +549,8 @@ function featuresFromForm(features: FeatureFormData): FeaturesArgs {
     registrationStartsAt: timeFromForm(features.registrationOpen, features.registrationStartsAt),
     registrationEndsAt: timeFromForm(features.registrationOpen, features.registrationEndsAt),
     eventType: features.eventType || null,
-    // Always sent: an empty list lets everyone in again
-    allowedPostalCodes: features.regionOnly ? features.allowedPostalCodes : [],
-    postalCodeCountry:
-      features.regionOnly && features.allowedPostalCodes.length > 0
-        ? features.postalCodeCountry || 'DE'
-        : undefined,
+    // Always sent: none lets everyone in again
+    allowedPostalCodes: features.regionOnly ? compactRegion(features.allowedPostalCodes) : {},
   };
 }
 

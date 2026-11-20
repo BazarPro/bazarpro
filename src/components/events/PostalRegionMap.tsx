@@ -3,9 +3,22 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Maximize2, Minus, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
-import { unitsPerKm, type Point, type PostalArea, type PostalMapData } from '../../lib/postalMap';
+import { countryName } from '../../i18n/countries';
+import {
+  splitKey,
+  unitsPerKm,
+  type CombinedMap,
+  type Point,
+  type PostalArea,
+} from '../../lib/postalMap';
 
-/** What the map shows in full: the circle around a point, or the whole country. */
+/** What the map draws: the areas of one or more countries, see `combineMaps` */
+export type MapData = Pick<
+  CombinedMap,
+  'bounds' | 'outline' | 'areas' | 'regions' | 'towns' | 'attribution'
+>;
+
+/** What the map shows in full: the circle around a point, or all of the map. */
 export type MapFocus = { center: Point; km: number } | 'country';
 
 interface View {
@@ -47,10 +60,11 @@ const MAX_STRETCH = 2.5;
 const WHEEL_SETTLE_MS = 160;
 
 export interface PostalRegionMapProps {
-  data: PostalMapData;
+  data: MapData;
+  /** Keys of the areas, e.g. "DE:890" */
   selected: ReadonlySet<string>;
   partial: ReadonlySet<string>;
-  onToggle: (prefix: string) => void;
+  onToggle: (key: string) => void;
   /** The bazaar's place */
   venue?: Point;
   venueLabel?: string;
@@ -64,7 +78,7 @@ export interface PostalRegionMapProps {
 }
 
 /**
- * The postal code areas of one country to pick a bazaar's region (#304): areas are picked
+ * The postal code areas of the countries to pick a bazaar's region (#304): areas are picked
  * by tap or click, the circle shows the radius chosen beside the map. Drag to move; the
  * buttons, two fingers or Ctrl and the wheel zoom. Plain SVG without map tiles, so no
  * third party learns who looks at it.
@@ -553,7 +567,7 @@ export const PostalRegionMap = memo(function PostalRegionMap({
           ref={placeTooltip}
           className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+12px)] whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs font-medium text-background shadow-md"
         >
-          {t('region.areaTooltip', { prefix: hovered })}
+          {areaName(hovered, t('region.areaTooltip', { prefix: splitKey(hovered).prefix }))}
           {' · '}
           {selected.has(hovered) ? t('region.areaRemove') : t('region.areaAdd')}
         </div>
@@ -579,18 +593,23 @@ export const PostalRegionMap = memo(function PostalRegionMap({
           <Minus className="h-4 w-4" />
         </MapButton>
         <MapButton
-          label={t('region.wholeCountry')}
+          label={t('region.wholeMap')}
           onClick={() => countryView && map.settle(countryView)}
         >
           <Maximize2 className="h-3.5 w-3.5" />
         </MapButton>
       </div>
       <p className="pointer-events-none absolute bottom-1 right-2 text-[10px] text-muted-foreground/80">
-        {data.country === 'DE' ? '© OpenStreetMap' : '© GeoNames'}
+        {data.attribution}
       </p>
     </div>
   );
 });
+
+/** "PLZ 690… (Österreich)" for the key "AT:690". */
+function areaName(key: string, label: string): string {
+  return key.includes(':') ? `${label} (${countryName(splitKey(key).country)})` : label;
+}
 
 /** Whether a drawing for `drawn` shows `next` whole, and not stretched too far. */
 function covers(drawn: View, next: View, size: Size): boolean {
@@ -646,7 +665,7 @@ const MapShapes = memo(function MapShapes({
   selected,
   partial,
 }: {
-  data: PostalMapData;
+  data: MapData;
   selected: ReadonlySet<string>;
   partial: ReadonlySet<string>;
 }) {
@@ -751,7 +770,7 @@ interface LabelOrder {
   regions: PostalArea[];
 }
 
-function labelOrder(data: PostalMapData): LabelOrder {
+function labelOrder(data: MapData): LabelOrder {
   const sizes = data.areas.map((area) => area.s).sort((a, b) => a - b);
   return {
     median: sizes[Math.floor(sizes.length / 2)] ?? 0,
@@ -805,7 +824,7 @@ class TakenBoxes {
 function placeLabels(
   order: LabelOrder,
   areas: PostalArea[],
-  data: PostalMapData,
+  data: MapData,
   view: View,
   size: Size,
   venue?: Point,
@@ -883,7 +902,7 @@ function placeLabels(
     for (const area of areas) {
       if (area.s / upp < 30) continue;
       place(
-        { key: `a${area.p}`, x: area.c[0], y: area.c[1], text: area.p, kind: 'area' },
+        { key: `a${area.p}`, x: area.c[0], y: area.c[1], text: area.l ?? area.p, kind: 'area' },
         22,
         12,
         false
@@ -893,7 +912,13 @@ function placeLabels(
     for (const region of order.regions) {
       if (region.s / upp < 26) continue;
       place(
-        { key: `r${region.p}`, x: region.c[0], y: region.c[1], text: region.p, kind: 'region' },
+        {
+          key: `r${region.p}`,
+          x: region.c[0],
+          y: region.c[1],
+          text: region.l ?? region.p,
+          kind: 'region',
+        },
         20,
         14,
         false

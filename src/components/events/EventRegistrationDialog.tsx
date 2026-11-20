@@ -7,7 +7,7 @@ import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Checkbox } from '../ui/checkbox';
 import { resolveEventFeatures } from '../../shared/eventFeatures';
-import { admitsPostalCode, formatPrefixes, postalRegion } from '../../shared/postalCodes';
+import { admitsPostalCode, formatRegion, postalRegion } from '../../shared/postalCodes';
 import { countryName } from '../../i18n/countries';
 import {
   describeRegistration,
@@ -118,8 +118,7 @@ export function EventRegistrationDialog({
         ]
       : outsideRegion && [
           t('join.regionOnly', {
-            codes: formatPrefixes(region.prefixes, 12),
-            country: countryName(region.country),
+            codes: formatRegion(region, 12, countryName),
           }),
           user.zipCode &&
             t('join.regionYours', {

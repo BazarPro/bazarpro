@@ -1,5 +1,10 @@
-import type { Country } from '../shared/constants';
-import { compactPrefixes, postalCodeDigits } from '../shared/postalCodes';
+import { COUNTRIES, type Country } from '../shared/constants';
+import {
+  compactPrefixes,
+  compactRegion,
+  postalCodeDigits,
+  type PostalCodesByCountry,
+} from '../shared/postalCodes';
 
 /**
  * The postal code maps of the registration settings (#304), built by
@@ -26,6 +31,8 @@ export interface PostalArea {
   d: string;
   c: Point;
   s: number;
+  /** On a map of several countries: the prefix shown, while `p` is the key "AT:690" */
+  l?: string;
 }
 
 export type Point = [number, number];
@@ -284,4 +291,102 @@ export function prefixesFromSelection(
     }
   }
   return compactPrefixes([...prefixes, ...finer]);
+}
+
+/**
+ * The maps of several countries as one, so a region near a border reaches across it:
+ * areas and regions are keyed "AT:690" (see `areaKey`), each still labelled "690".
+ */
+export interface CombinedMap {
+  maps: PostalMapData[];
+  bounds: [number, number, number, number];
+  outline: string;
+  areas: PostalArea[];
+  regions: PostalArea[];
+  towns: PostalMapData['towns'];
+  attribution: string;
+}
+
+export function areaKey(country: Country, prefix: string): string {
+  return `${country}:${prefix}`;
+}
+
+export function splitKey(key: string): { country: Country; prefix: string } {
+  const [country, prefix = ''] = key.split(':');
+  return { country: country as Country, prefix };
+}
+
+const keyed = (country: Country, areas: PostalArea[]) =>
+  areas.map((area) => ({ ...area, p: areaKey(country, area.p), l: area.p }));
+
+export function combineMaps(maps: PostalMapData[]): CombinedMap {
+  const bounds: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const map of maps) {
+    bounds[0] = Math.min(bounds[0], map.bounds[0]);
+    bounds[1] = Math.min(bounds[1], map.bounds[1]);
+    bounds[2] = Math.max(bounds[2], map.bounds[2]);
+    bounds[3] = Math.max(bounds[3], map.bounds[3]);
+  }
+  const sources = [
+    maps.some((map) => map.country === 'DE') && '© OpenStreetMap',
+    maps.some((map) => map.country !== 'DE') && '© GeoNames',
+  ].filter(Boolean);
+  return {
+    maps,
+    bounds,
+    outline: maps.map((map) => map.outline).join(''),
+    areas: maps.flatMap((map) => keyed(map.country, map.areas)),
+    regions: maps.flatMap((map) => keyed(map.country, map.regions)),
+    towns: maps.flatMap((map) => map.towns),
+    attribution: sources.join(' · '),
+  };
+}
+
+/** The maps of all countries of the app, loaded once. */
+export function loadAllPostalMaps(): Promise<PostalMapData[]> {
+  return Promise.all(COUNTRIES.map(loadPostalMap));
+}
+
+/** `areasWithin` on every country: the keys of the areas the circle covers. */
+export function keysWithin(combined: CombinedMap, center: Point, km: number): string[] {
+  return combined.maps.flatMap((map) =>
+    areasWithin(map, center, km).map((prefix) => areaKey(map.country, prefix))
+  );
+}
+
+/** `selectionFromPrefixes` on every country, with keys instead of prefixes. */
+export function selectionFromRegion(
+  combined: CombinedMap,
+  region: PostalCodesByCountry
+): MapSelection {
+  const result: MapSelection = { areas: new Set(), partial: new Set(), finer: [] };
+  for (const map of combined.maps) {
+    const key = (prefix: string) => areaKey(map.country, prefix);
+    const selection = selectionFromPrefixes(map, region[map.country] ?? []);
+    for (const prefix of selection.areas) result.areas.add(key(prefix));
+    for (const prefix of selection.partial) result.partial.add(key(prefix));
+    result.finer.push(...selection.finer.map(key));
+  }
+  return result;
+}
+
+/** `prefixesFromSelection` on every country: the region to store for the chosen keys. */
+export function regionFromSelection(
+  combined: CombinedMap,
+  keys: ReadonlySet<string>,
+  finer: string[] = []
+): PostalCodesByCountry {
+  const region: PostalCodesByCountry = {};
+  for (const map of combined.maps) {
+    const own = (list: Iterable<string>) =>
+      [...list].map(splitKey).filter((key) => key.country === map.country);
+    const areas = new Set(own(keys).map((key) => key.prefix));
+    const prefixes = prefixesFromSelection(
+      map,
+      areas,
+      own(finer).map((key) => key.prefix)
+    );
+    if (prefixes.length) region[map.country] = prefixes;
+  }
+  return compactRegion(region);
 }

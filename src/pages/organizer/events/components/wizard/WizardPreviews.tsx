@@ -29,7 +29,11 @@ import {
   Users,
   Warehouse,
 } from 'lucide-react';
-import { formatPrefixes } from '../../../../../shared/postalCodes';
+import {
+  formatRegion,
+  postalRegion,
+  type PostalCodesByCountry,
+} from '../../../../../shared/postalCodes';
 import { Badge } from '../../../../../components/ui/badge';
 import { ItemPhoto } from '../../../../../components/illustrations/ItemIllustrations';
 import { SafeMarkdown } from '../../../../../components/markdown/SafeMarkdown';
@@ -100,7 +104,7 @@ interface WizardValues {
     feeGroups?: FeeGroup[];
     privateSellersOnly?: boolean;
     regionOnly?: boolean;
-    allowedPostalCodes?: string[];
+    allowedPostalCodes?: PostalCodesByCountry;
     fixedSellerData?: boolean;
     directSale?: boolean;
     eventType?: string;
@@ -631,10 +635,11 @@ export function ListingPreview({ type }: { type?: EventType }) {
       text: t('wizard.preview.spots', { count: limit }),
     });
   }
-  if (features.regionOnly && features.allowedPostalCodes?.length) {
+  const region = features.regionOnly ? postalRegion(features) : undefined;
+  if (region) {
     chips.push({
       icon: <MapPin className="h-3 w-3" />,
-      text: t('region.short', { codes: formatPrefixes(features.allowedPostalCodes, 3) }),
+      text: t('region.short', { codes: formatRegion(region, 3) }),
     });
   }
   if (features.privateSellersOnly) {

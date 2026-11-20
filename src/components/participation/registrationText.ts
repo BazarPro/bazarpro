@@ -1,6 +1,6 @@
 import i18n from '../../i18n';
 import { formatDateTimeDE } from '../../lib/utils';
-import { formatPrefixes, postalRegion } from '../../shared/postalCodes';
+import { formatRegion, postalRegion } from '../../shared/postalCodes';
 import {
   getRegistrationState,
   type RegistrationState,
@@ -47,7 +47,7 @@ export interface RegistrationInfo {
 export function regionText(event: RegistrationEvent): string | undefined {
   const region = postalRegion(event.features);
   return region
-    ? i18n.t('registration.region', { ns: 'events', codes: formatPrefixes(region.prefixes, 4) })
+    ? i18n.t('registration.region', { ns: 'events', codes: formatRegion(region, 4) })
     : undefined;
 }
 

@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import germany from '../../assets/postal-areas/DE.json';
-import { positionOf, type PostalMapData } from '../../lib/postalMap';
+import { combineMaps, positionOf, type PostalMapData } from '../../lib/postalMap';
 import { PostalRegionMap, type PostalRegionMapProps } from './PostalRegionMap';
 
-const data = germany as PostalMapData;
-const venue = positionOf(data, '89231')!;
+const germanMap = germany as PostalMapData;
+const data = combineMaps([germanMap]);
+const venue = positionOf(germanMap, '89231')!;
 
 // jsdom lays nothing out: the map gets its size from here
 const sizes = vi.hoisted(() => ({ width: 600, height: 400 }));
@@ -34,8 +35,8 @@ function renderMap(props: Partial<PostalRegionMapProps> = {}) {
   const view = render(
     <PostalRegionMap
       data={data}
-      selected={new Set(['890', '892'])}
-      partial={new Set(['732'])}
+      selected={new Set(['DE:890', 'DE:892'])}
+      partial={new Set(['DE:732'])}
       onToggle={onToggle}
       venue={venue}
       venueLabel="Stadthalle"
@@ -63,8 +64,8 @@ describe('PostalRegionMap (#304)', () => {
     const { area, container } = renderMap();
     expect(screen.getByRole('img', { name: 'Karte der Postleitzahlgebiete' })).toBeInTheDocument();
     expect(container.querySelectorAll('path[data-prefix]')).toHaveLength(data.areas.length);
-    expect(area('890').getAttribute('class')).toContain('fill-primary/45');
-    expect(area('732').getAttribute('fill')).toBe('url(#postal-partial)');
+    expect(area('DE:890').getAttribute('class')).toContain('fill-primary/45');
+    expect(area('DE:732').getAttribute('fill')).toBe('url(#postal-partial)');
     expect(screen.getByText('20 km')).toBeInTheDocument();
     expect(screen.getByText('Stadthalle')).toBeInTheDocument();
     // Zoomed in: towns and postal areas around Ulm
@@ -75,13 +76,13 @@ describe('PostalRegionMap (#304)', () => {
   it('toggles an area by click, not after dragging the map', () => {
     const { area, onToggle } = renderMap();
     const svg = screen.getByRole('img');
-    fireEvent.pointerDown(area('893'), pointer(100, 100));
-    fireEvent.pointerUp(area('893'), pointer(101, 100));
-    expect(onToggle).toHaveBeenCalledWith('893');
+    fireEvent.pointerDown(area('DE:893'), pointer(100, 100));
+    fireEvent.pointerUp(area('DE:893'), pointer(101, 100));
+    expect(onToggle).toHaveBeenCalledWith('DE:893');
 
     onToggle.mockClear();
     const before = svg.getAttribute('viewBox');
-    fireEvent.pointerDown(area('893'), pointer(100, 100));
+    fireEvent.pointerDown(area('DE:893'), pointer(100, 100));
     fireEvent.pointerMove(svg, pointer(160, 130));
     fireEvent.pointerUp(svg, pointer(160, 130));
     expect(onToggle).not.toHaveBeenCalled();
@@ -139,10 +140,14 @@ describe('PostalRegionMap (#304)', () => {
 
   it('names the area under the mouse', () => {
     const { area } = renderMap();
-    fireEvent.pointerMove(area('893'), pointer(200, 200));
-    expect(screen.getByText(/PLZ 893… · antippen zum Hinzufügen/)).toBeInTheDocument();
-    fireEvent.pointerMove(area('890'), pointer(210, 200));
-    expect(screen.getByText(/PLZ 890… · antippen zum Entfernen/)).toBeInTheDocument();
+    fireEvent.pointerMove(area('DE:893'), pointer(200, 200));
+    expect(
+      screen.getByText(/PLZ 893… \(Deutschland\) · antippen zum Hinzufügen/)
+    ).toBeInTheDocument();
+    fireEvent.pointerMove(area('DE:890'), pointer(210, 200));
+    expect(
+      screen.getByText(/PLZ 890… \(Deutschland\) · antippen zum Entfernen/)
+    ).toBeInTheDocument();
     fireEvent.pointerLeave(screen.getByRole('img'));
     expect(screen.queryByText(/PLZ 890…/)).not.toBeInTheDocument();
   });
@@ -157,7 +162,7 @@ describe('PostalRegionMap (#304)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Verkleinern' }));
     fireEvent.click(screen.getByRole('button', { name: 'Verkleinern' }));
     expect(width()).toBeGreaterThan(start);
-    fireEvent.click(screen.getByRole('button', { name: 'Ganzes Land zeigen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ganze Karte zeigen' }));
     // The country: regions of two digits instead of single areas
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(width()).toBeGreaterThan(5000);

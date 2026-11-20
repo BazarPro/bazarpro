@@ -7,21 +7,27 @@ import { Switch } from '../../../../components/ui/switch';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
-import { CountrySelect } from '../../../../components/ui/country-select';
 import { FieldError } from '../../../../components/ui/field-error';
 import { Skeleton } from '../../../../components/ui/skeleton';
 import { PostalRegionMap, type MapFocus } from '../../../../components/events/PostalRegionMap';
 import {
-  areasWithin,
-  loadPostalMap,
+  areaKey,
+  combineMaps,
+  keysWithin,
+  loadAllPostalMaps,
   positionOf,
-  prefixesFromSelection,
   project,
-  selectionFromPrefixes,
+  regionFromSelection,
+  selectionFromRegion,
+  type CombinedMap,
   type Point,
-  type PostalMapData,
 } from '../../../../lib/postalMap';
-import { compactPrefixes, postalCodeDigits } from '../../../../shared/postalCodes';
+import {
+  compactRegion,
+  parseTypedCode,
+  regionSize,
+  type PostalCodesByCountry,
+} from '../../../../shared/postalCodes';
 import { COUNTRIES, type Country } from '../../../../shared/constants';
 import { cn } from '../../../../lib/utils';
 
@@ -36,30 +42,29 @@ function asCountry(value: string | undefined): Country {
   return COUNTRIES.find((code) => code === value) ?? 'DE';
 }
 
-/** The map of a country, loaded while the region is on. */
-function usePostalMap(country: Country, enabled: boolean) {
-  const [state, setState] = useState<{ country: Country; data?: PostalMapData; failed?: boolean }>({
-    country,
-  });
+/** The maps of all countries as one, loaded while the region is on. */
+function usePostalMaps(enabled: boolean) {
+  const [state, setState] = useState<{ data?: CombinedMap; failed?: boolean }>({});
   useEffect(() => {
     if (!enabled) return;
     let current = true;
-    loadPostalMap(country).then(
-      (data) => current && setState({ country, data }),
-      () => current && setState({ country, failed: true })
+    loadAllPostalMaps().then(
+      (maps) => current && setState({ data: combineMaps(maps) }),
+      () => current && setState({ failed: true })
     );
     return () => {
       current = false;
     };
-  }, [country, enabled]);
-  return state.country === country ? state : { country };
+  }, [enabled]);
+  return state;
 }
 
 /**
  * Only sellers from the bazaar's region join on their own (#304): the organizer picks
- * postal code areas of one country on a map, by a radius around the bazaar or their own
- * location and by tapping single areas. Invitations and the access code still let anyone
- * in, so exceptions stay possible. A switch row inside the registration settings.
+ * postal code areas on a map, by a radius around the bazaar or their own location and by
+ * tapping single areas. The map holds every country of the app, so a region near a border
+ * reaches across it. Invitations and the access code still let anyone in, so exceptions
+ * stay possible. A switch row inside the registration settings.
  */
 export function EditEventRegion() {
   const { t } = useTranslation('organizer');
@@ -69,15 +74,15 @@ export function EditEventRegion() {
     formState: { errors },
   } = useFormContext();
   const enabled = !!useWatch({ control, name: 'features.regionOnly' });
-  const watchedPrefixes = useWatch({ control, name: 'features.allowedPostalCodes' }) as
-    | string[]
+  const watchedRegion = useWatch({ control, name: 'features.allowedPostalCodes' }) as
+    | PostalCodesByCountry
     | undefined;
-  const prefixes = useMemo(() => watchedPrefixes ?? [], [watchedPrefixes]);
-  const country = asCountry(useWatch({ control, name: 'features.postalCodeCountry' }) as string);
+  const region = useMemo(() => watchedRegion ?? {}, [watchedRegion]);
+  const count = regionSize(region);
   const venueCode = (useWatch({ control, name: 'address.postalCode' }) as string) ?? '';
-  const venueCountry = useWatch({ control, name: 'address.country' }) as string | undefined;
+  const home = asCountry((useWatch({ control, name: 'address.country' }) as string) || 'DE');
   const venueName = (useWatch({ control, name: 'location' }) as string) ?? '';
-  const { data, failed } = usePostalMap(country, enabled);
+  const { data, failed } = usePostalMaps(enabled);
 
   const [radiusKm, setRadiusKm] = useState(0);
   const [centerMode, setCenterMode] = useState<'venue' | 'here'>('venue');
@@ -89,20 +94,17 @@ export function EditEventRegion() {
   const [showAllChips, setShowAllChips] = useState(false);
   const [focusOverride, setFocusOverride] = useState<MapFocus>();
 
-  const venue = useMemo(
-    () =>
-      data && asCountry(venueCountry || 'DE') === country && venueCode
-        ? positionOf(data, venueCode)
-        : undefined,
-    [data, venueCode, venueCountry, country]
-  );
+  const venue = useMemo(() => {
+    const map = data?.maps.find((candidate) => candidate.country === home);
+    return map && venueCode ? positionOf(map, venueCode) : undefined;
+  }, [data, venueCode, home]);
   const center = centerMode === 'here' && here ? here : venue;
   const selection = useMemo(
-    () => (data ? selectionFromPrefixes(data, prefixes) : undefined),
-    [data, prefixes]
+    () => (data ? selectionFromRegion(data, region) : undefined),
+    [data, region]
   );
 
-  const store = (next: string[]) =>
+  const store = (next: PostalCodesByCountry) =>
     setValue('features.allowedPostalCodes', next, { shouldDirty: true, shouldValidate: true });
 
   /** The areas after moving the circle: what the old one chose goes, what the new one covers comes. */
@@ -113,8 +115,8 @@ export function EditEventRegion() {
       to: { center?: Point; km: number }
     ) => {
       if (!data) return undefined;
-      const before = new Set(from.center ? areasWithin(data, from.center, from.km) : []);
-      const after = to.center ? areasWithin(data, to.center, to.km) : [];
+      const before = new Set(from.center ? keysWithin(data, from.center, from.km) : []);
+      const after = to.center ? keysWithin(data, to.center, to.km) : [];
       const areas = new Set([...base].filter((area) => !before.has(area)));
       for (const area of after) areas.add(area);
       return areas;
@@ -127,7 +129,7 @@ export function EditEventRegion() {
   ) => {
     if (!selection) return;
     const areas = circleAreas(draftAreas ?? selection.areas, from, to);
-    if (data && areas) store(prefixesFromSelection(data, areas, selection.finer));
+    if (data && areas) store(regionFromSelection(data, areas, selection.finer));
   };
 
   // While the slider moves, its circle and areas show on the map only; they are stored,
@@ -147,7 +149,7 @@ export function EditEventRegion() {
     clearTimeout(draftTimer.current);
     if (draftKm === undefined) return;
     if (data && selection && draftAreas) {
-      store(prefixesFromSelection(data, draftAreas, selection.finer));
+      store(regionFromSelection(data, draftAreas, selection.finer));
     }
     setRadiusKm(draftKm);
     setDraftKm(undefined);
@@ -161,12 +163,12 @@ export function EditEventRegion() {
   };
 
   // Switched on for the first time: a circle around the bazaar shows at once what happens
-  const started = useRef(prefixes.length > 0);
+  const started = useRef(count > 0);
   useEffect(() => {
     if (!enabled || started.current || !data || !venue) return;
     started.current = true;
     setRadiusKm(DEFAULT_RADIUS_KM);
-    store(prefixesFromSelection(data, new Set(areasWithin(data, venue, DEFAULT_RADIUS_KM))));
+    store(regionFromSelection(data, new Set(keysWithin(data, venue, DEFAULT_RADIUS_KM))));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the map is there
   }, [enabled, data, venue]);
 
@@ -180,15 +182,15 @@ export function EditEventRegion() {
     [center, shownKm]
   );
 
-  const toggle = (prefix: string) => {
+  const toggle = (key: string) => {
     if (!data || !selection) return;
     commitDraft.current();
     const areas = new Set(draftAreas ?? selection.areas);
-    if (areas.has(prefix)) areas.delete(prefix);
-    else areas.add(prefix);
+    if (areas.has(key)) areas.delete(key);
+    else areas.add(key);
     // A finer prefix inside the area is covered by it, or goes with it
-    const finer = selection.finer.filter((code) => !code.startsWith(prefix));
-    store(prefixesFromSelection(data, areas, finer));
+    const finer = selection.finer.filter((code) => !code.startsWith(key));
+    store(regionFromSelection(data, areas, finer));
   };
 
   const toggleRef = useRef(toggle);
@@ -233,38 +235,49 @@ export function EditEventRegion() {
   };
 
   const addManual = () => {
-    const digits = postalCodeDigits(manual);
-    if (
-      !digits ||
-      !data ||
-      digits.length > data.digits ||
-      /[^\d\s-]/i.test(manual.replace(/^L-/i, ''))
-    ) {
-      setManualError(t('region.manualInvalid', { digits: data?.digits ?? 5 }));
+    const typed = parseTypedCode(manual, home);
+    const map = typed && data?.maps.find((candidate) => candidate.country === typed.country);
+    if (!typed || !map || typed.digits.length > map.digits) {
+      setManualError(t('region.manualInvalid'));
       return;
     }
     setManualError(undefined);
     setManual('');
-    store(compactPrefixes([...prefixes, digits]));
+    store(
+      compactRegion({
+        ...region,
+        [typed.country]: [...(region[typed.country] ?? []), typed.digits],
+      })
+    );
   };
 
-  const remove = (prefix: string) => store(prefixes.filter((code) => code !== prefix));
+  const remove = (country: Country, prefix: string) =>
+    store(
+      compactRegion({
+        ...region,
+        [country]: (region[country] ?? []).filter((code) => code !== prefix),
+      })
+    );
 
-  const changeCountry = (next: Country) => {
-    setValue('features.postalCodeCountry', next, { shouldDirty: true });
+  const clear = () => {
     clearTimeout(draftTimer.current);
     setDraftKm(undefined);
-    store([]);
+    store({});
     setRadiusKm(0);
-    setCenterMode('venue');
-    setFocusOverride(undefined);
   };
 
   const error = (errors.features as { allowedPostalCodes?: { message?: string } } | undefined)
     ?.allowedPostalCodes?.message;
   const shownAreas = draftAreas ?? selection?.areas;
   const areaCount = selection && shownAreas ? shownAreas.size + selection.partial.size : 0;
-  const shownChips = showAllChips ? prefixes : prefixes.slice(0, CHIPS_SHOWN);
+  const chips = COUNTRIES.flatMap((country) =>
+    (region[country] ?? []).map((prefix) => ({ country, prefix }))
+  );
+  // The country shows once the region leaves the bazaar's own
+  const abroad = chips.some((chip) => chip.country !== home);
+  const chipName = ({ country, prefix }: { country: Country; prefix: string }) =>
+    abroad ? `${country} ${prefix}` : prefix;
+  const shownChips = showAllChips ? chips : chips.slice(0, CHIPS_SHOWN);
 
   return (
     <div>
@@ -291,12 +304,7 @@ export function EditEventRegion() {
             <Switch
               id="feature-regionOnly"
               checked={!!field.value}
-              onCheckedChange={(checked: boolean | string) => {
-                field.onChange(!!checked);
-                if (checked && !prefixes.length) {
-                  setValue('features.postalCodeCountry', asCountry(venueCountry || 'DE'));
-                }
-              }}
+              onCheckedChange={(checked: boolean | string) => field.onChange(!!checked)}
             />
           )}
         />
@@ -304,13 +312,6 @@ export function EditEventRegion() {
       {enabled && (
         <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 sm:pl-11">
           <div className="flex flex-wrap items-center gap-2">
-            <CountrySelect
-              id="postalCodeCountry"
-              aria-label={t('region.country')}
-              value={country}
-              onChange={(event) => changeCountry(asCountry(event.target.value))}
-              className="h-9 w-auto min-w-36"
-            />
             <div
               role="radiogroup"
               aria-label={t('region.center')}
@@ -384,48 +385,36 @@ export function EditEventRegion() {
           <div className="space-y-2">
             <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
               <span
-                className={cn('text-sm', prefixes.length ? 'font-medium' : 'text-muted-foreground')}
+                className={cn('text-sm', count ? 'font-medium' : 'text-muted-foreground')}
                 data-testid="region-summary"
               >
-                {prefixes.length
-                  ? t('region.chosen', { count: areaCount })
-                  : t('region.summaryEmpty')}
+                {count ? t('region.chosen', { count: areaCount }) : t('region.summaryEmpty')}
               </span>
-              {prefixes.length > 0 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    clearTimeout(draftTimer.current);
-                    setDraftKm(undefined);
-                    store([]);
-                    setRadiusKm(0);
-                  }}
-                >
+              {count > 0 && (
+                <Button type="button" variant="ghost" size="sm" onClick={clear}>
                   {t('region.clear')}
                 </Button>
               )}
             </div>
-            {prefixes.length > 0 && (
+            {count > 0 && (
               <ul className="flex flex-wrap gap-1.5" aria-label={t('region.chosenCodes')}>
-                {shownChips.map((prefix) => (
+                {shownChips.map((chip) => (
                   <li
-                    key={prefix}
+                    key={areaKey(chip.country, chip.prefix)}
                     className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 py-0.5 pl-2.5 pr-1 text-xs font-medium tabular-nums text-primary"
                   >
-                    {t('region.prefix', { prefix })}
+                    {t('region.prefix', { prefix: chipName(chip) })}
                     <button
                       type="button"
-                      onClick={() => remove(prefix)}
-                      aria-label={t('region.removePrefix', { prefix })}
+                      onClick={() => remove(chip.country, chip.prefix)}
+                      aria-label={t('region.removePrefix', { prefix: chipName(chip) })}
                       className="rounded-full p-0.5 hover:bg-primary/15"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </li>
                 ))}
-                {prefixes.length > CHIPS_SHOWN && (
+                {chips.length > CHIPS_SHOWN && (
                   <li>
                     <button
                       type="button"
@@ -434,7 +423,7 @@ export function EditEventRegion() {
                     >
                       {showAllChips
                         ? t('region.fewer')
-                        : t('region.more', { count: prefixes.length - CHIPS_SHOWN })}
+                        : t('region.more', { count: chips.length - CHIPS_SHOWN })}
                     </button>
                   </li>
                 )}

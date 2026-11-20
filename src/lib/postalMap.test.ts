@@ -3,6 +3,11 @@ import germany from '../assets/postal-areas/DE.json';
 import {
   areaContains,
   areasWithin,
+  combineMaps,
+  keysWithin,
+  loadAllPostalMaps,
+  regionFromSelection,
+  selectionFromRegion,
   distanceKm,
   loadPostalMap,
   pathRings,
@@ -66,6 +71,23 @@ describe('postal map (#304)', () => {
     expect(selection.areas.has('890')).toBe(true);
     expect(selection.partial.has('732')).toBe(true);
     expect(selection.finer).toEqual(['7322']);
+  });
+
+  it('joins the countries into one map with keyed areas', async () => {
+    const combined = combineMaps(await loadAllPostalMaps());
+    expect(combined.attribution).toBe('© OpenStreetMap · © GeoNames');
+    const bregenz = combined.areas.find((area) => area.p === 'AT:690')!;
+    expect(bregenz.l).toBe('690');
+    // Lindau: the circle reaches Austria, and both are stored per country
+    const lindau = project(9.6844, 47.5459);
+    const keys = keysWithin(combined, lindau, 15);
+    expect(keys).toEqual(expect.arrayContaining(['DE:881', 'AT:690']));
+    const region = regionFromSelection(combined, new Set(['DE:881', 'AT:690']), ['DE:7322']);
+    expect(region).toEqual({ DE: ['7322', '881'], AT: ['690'] });
+    const selection = selectionFromRegion(combined, region);
+    expect([...selection.areas]).toEqual(expect.arrayContaining(['DE:881', 'AT:690']));
+    expect(selection.partial.has('DE:732')).toBe(true);
+    expect(selection.finer).toEqual(['DE:7322']);
   });
 
   it('loads every country of the app', async () => {
