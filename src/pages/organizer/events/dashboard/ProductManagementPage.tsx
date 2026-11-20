@@ -72,7 +72,7 @@ import {
 } from '../../../../lib/sellerPrintout';
 import { SellerIdCheck } from '../../../../components/sellers/SellerIdCheck';
 import { FeeGroupCheck } from '../../../../components/sellers/FeeGroupCheck';
-import { FeeGroupBadge, FeeGroupMenu } from '../../../../components/sellers/FeeGroupBadge';
+import { FeeGroupBadge, FeeGroupSubMenu } from '../../../../components/sellers/FeeGroupBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { matchingVendors, productMatcher } from '../../../../lib/productSearch';
 import { addToCachedCart } from '../../../../lib/checkout';
@@ -227,6 +227,12 @@ export function ProductManagementPage() {
     !selectedVendor.managedByEventId &&
     event?.organizerId !== selectedVendor._id;
   const [helperAction, setHelperAction] = useState<HelperAction | null>(null);
+  // The fee group by hand: organizer only, chosen in the "…" menu like the helper rights
+  const canChooseFeeGroup =
+    canLead &&
+    !!selectedVendor &&
+    !selectedVendor.paid &&
+    (event?.features?.feeGroups?.length ?? 0) > 0;
 
   const stats = useMemo(() => {
     const announced = vendorProducts.filter((p) => p.status === 'announced').length;
@@ -664,17 +670,7 @@ export function ProductManagementPage() {
                   <SellerNumberBadge number={selectedVendor.sellerNumber} />
                   {selectedVendor.managedByEventId && <WalkInBadge />}
                   {selectedVendor.excluded && <ExcludedBadge exclusion={selectedVendor.excluded} />}
-                  {/* The group opens its own choice: the header stays one row */}
-                  {canLead ? (
-                    <FeeGroupMenu
-                      eventId={eventId}
-                      vendor={selectedVendor}
-                      groups={event?.features?.feeGroups ?? []}
-                      badge
-                    />
-                  ) : (
-                    <FeeGroupBadge group={selectedVendor.feeGroup} />
-                  )}
+                  <FeeGroupBadge group={selectedVendor.feeGroup} />
                 </div>
                 <button
                   onClick={() => setIsContactExpanded(!isContactExpanded)}
@@ -730,7 +726,9 @@ export function ProductManagementPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {(canManageHelper || (canExclude && !selectedVendor.excluded)) && (
+              {(canChooseFeeGroup ||
+                canManageHelper ||
+                (canExclude && !selectedVendor.excluded)) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -742,6 +740,13 @@ export function ProductManagementPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="max-w-xs">
+                    {canChooseFeeGroup && (
+                      <FeeGroupSubMenu
+                        eventId={eventId}
+                        vendor={selectedVendor}
+                        groups={event?.features?.feeGroups ?? []}
+                      />
+                    )}
                     {canManageHelper && selectedVendor.isHelper && (
                       <DropdownMenuItem
                         onSelect={() => setHelperAction({ mode: 'edit', vendor: selectedVendor })}
@@ -758,7 +763,7 @@ export function ProductManagementPage() {
                     )}
                     {canExclude && !selectedVendor.excluded && (
                       <>
-                        {canManageHelper && <DropdownMenuSeparator />}
+                        {(canManageHelper || canChooseFeeGroup) && <DropdownMenuSeparator />}
                         {/* Announced items would be lost: the team rejects them first */}
                         <DropdownMenuItem
                           variant="destructive"

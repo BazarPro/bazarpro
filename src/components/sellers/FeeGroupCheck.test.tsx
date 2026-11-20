@@ -6,7 +6,8 @@ import { getFunctionName } from '../../lib/api/functions';
 import type { Id, VendorWithCalculations } from '../../lib/api/types';
 import type { FeeGroup } from '../../shared/feeGroups';
 import { FeeGroupCheck } from './FeeGroupCheck';
-import { FeeGroupBadge, FeeGroupMenu } from './FeeGroupBadge';
+import { FeeGroupBadge, FeeGroupSubMenu } from './FeeGroupBadge';
+import { DropdownMenu, DropdownMenuContent } from '../ui/dropdown-menu';
 
 vi.mock('../../lib/api/react', () => ({ useQuery: vi.fn(), useMutation: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -85,15 +86,26 @@ describe('FeeGroupBadge', () => {
   });
 });
 
-describe('FeeGroupMenu', () => {
+/** The submenu sits in the seller's open "…" menu. */
+function renderSubMenu(v: VendorWithCalculations, g: FeeGroup[] = groups) {
+  return render(
+    <DropdownMenu open>
+      <DropdownMenuContent>
+        <FeeGroupSubMenu eventId={EVENT} vendor={v} groups={g} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const openSubMenu = () =>
+  fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Gebührengruppe zuordnen' }), {
+    key: 'ArrowRight',
+  });
+
+describe('FeeGroupSubMenu', () => {
   it('puts a seller in a group and takes them out', async () => {
-    render(<FeeGroupMenu eventId={EVENT} vendor={vendor()} groups={groups} />);
-    const open = () =>
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'Gebührengruppe zuordnen' }), {
-        button: 0,
-        ctrlKey: false,
-      });
-    open();
+    renderSubMenu(vendor());
+    openSubMenu();
     fireEvent.click(await screen.findByRole('menuitemradio', { name: 'Helfer' }));
     await waitFor(() =>
       expect(calls['feeGroups.assignFeeGroup']).toHaveBeenCalledWith({
@@ -106,24 +118,10 @@ describe('FeeGroupMenu', () => {
   });
 
   it('explains a group by role and takes the chosen one out', async () => {
-    render(
-      <FeeGroupMenu
-        eventId={EVENT}
-        vendor={vendor({
-          id: 'helpers',
-          label: 'Helfer',
-          pending: false,
-          byRole: true,
-          chosen: 'members',
-        })}
-        groups={groups}
-        iconOnly
-      />
+    renderSubMenu(
+      vendor({ id: 'helpers', label: 'Helfer', pending: false, byRole: true, chosen: 'members' })
     );
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Gebührengruppe zuordnen' }), {
-      button: 0,
-      ctrlKey: false,
-    });
+    openSubMenu();
     expect(await screen.findByText(/gilt durch die Helferrolle/)).toBeInTheDocument();
     expect(screen.getByRole('menuitemradio', { name: 'Vereinsmitglieder' })).toBeChecked();
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Keine Gruppe' }));
@@ -138,38 +136,10 @@ describe('FeeGroupMenu', () => {
   });
 
   it('is not offered for paid-out sellers or without groups', () => {
-    const { container, rerender } = render(
-      <FeeGroupMenu eventId={EVENT} vendor={vendor(undefined, true)} groups={groups} />
-    );
-    expect(container).toBeEmptyDOMElement();
-    rerender(<FeeGroupMenu eventId={EVENT} vendor={vendor()} groups={[]} />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it('as badge: the group opens the choice, "no group" too', async () => {
-    const { rerender } = render(
-      <FeeGroupMenu eventId={EVENT} vendor={vendor()} groups={groups} badge />
-    );
-    const chip = screen.getByRole('button', { name: 'Gebührengruppe zuordnen: Keine Gruppe' });
-    expect(chip).toHaveTextContent('Keine Gruppe');
-    fireEvent.pointerDown(chip, { button: 0, ctrlKey: false });
-    fireEvent.click(await screen.findByRole('menuitemradio', { name: 'Vereinsmitglieder' }));
-    await waitFor(() =>
-      expect(calls['feeGroups.assignFeeGroup']).toHaveBeenCalledWith({
-        eventId: EVENT,
-        sellerId: 'u1',
-        groupId: 'members',
-      })
-    );
-
-    rerender(<FeeGroupMenu eventId={EVENT} vendor={vendor(pending)} groups={groups} badge />);
-    expect(
-      screen.getByRole('button', { name: 'Gebührengruppe zuordnen: Vereinsmitglieder' })
-    ).toHaveTextContent('Vereinsmitglieder· prüfen');
-
-    // Paid out: only the badge, nothing to choose
-    rerender(<FeeGroupMenu eventId={EVENT} vendor={vendor(pending, true)} groups={groups} badge />);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getByText('Vereinsmitglieder')).toBeInTheDocument();
+    const { unmount } = renderSubMenu(vendor(pending, true));
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+    unmount();
+    renderSubMenu(vendor(), []);
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
   });
 });

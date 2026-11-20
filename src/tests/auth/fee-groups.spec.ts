@@ -86,10 +86,12 @@ test('a self-declared fee group is chosen at registration and checked at the int
   await seller.reload();
   await expect(seller.getByTestId('my-fee-group')).toContainText('Vom Team bestätigt');
 
-  // The group's chip in the seller's header changes it, here back to no group
-  const chip = organizer.getByRole('button', { name: /^Gebührengruppe zuordnen/ });
-  await expect(chip).toHaveText('Vereinsmitglieder');
-  await chip.click();
+  // The seller's "…" menu changes the group, here back to no group
+  const badge = organizer.getByTitle('Gebührengruppe', { exact: true });
+  await expect(badge).toHaveText('Vereinsmitglieder');
+  await organizer.getByRole('button', { name: /^Weitere Aktionen für / }).click();
+  await organizer.getByRole('menuitem', { name: 'Gebührengruppe zuordnen' }).click();
   await organizer.getByRole('menuitemradio', { name: 'Keine Gruppe' }).click();
-  await expect(chip).toHaveText('Keine Gruppe');
+  await expectToast(organizer, /: keine Gruppe$/);
+  await expect(badge).toBeHidden();
 });

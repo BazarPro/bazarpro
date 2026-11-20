@@ -8,7 +8,7 @@ import { NativeSelect } from '../../../../components/ui/native-select';
 import { useMemo, useState } from 'react';
 import { WalkInBadge } from '../../../../components/walkIn/WalkInBadge';
 import { SellerNumberBadge } from '../../../../components/sellers/SellerNumberBadge';
-import { FeeGroupBadge, FeeGroupMenu } from '../../../../components/sellers/FeeGroupBadge';
+import { FeeGroupBadge } from '../../../../components/sellers/FeeGroupBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { useQuery } from '../../../../lib/api/react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -35,7 +35,6 @@ import {
   Megaphone,
   Plus,
   Printer,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { formatPriceDE } from '../../../../lib/utils';
 import type { VendorWithCalculations } from '../../../../lib/api/types';
@@ -386,33 +385,15 @@ export function SellerManagementPage() {
                         <PaidBadge paid={v.paid} />
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="inline-flex items-center gap-1">
-                          {isOwner ? (
-                            <Badge variant="default" className="bg-primary hover:bg-primary gap-1">
-                              <Crown className="h-3 w-3" /> {t('sellers.owner')}
-                            </Badge>
-                          ) : v.isHelper ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Badge variant="secondary" className="gap-1">
-                                <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
-                              </Badge>
-                              {canManageHelpers && (
-                                <EditPermissionsButton
-                                  iconOnly
-                                  onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
-                                />
-                              )}
-                            </span>
-                          ) : null}
-                          {canManageHelpers && (
-                            <FeeGroupMenu
-                              eventId={eventId as Id<'events'>}
-                              vendor={v}
-                              groups={feeGroups}
-                              iconOnly
-                            />
-                          )}
-                        </span>
+                        {isOwner ? (
+                          <Badge variant="default" className="bg-primary hover:bg-primary gap-1">
+                            <Crown className="h-3 w-3" /> {t('sellers.owner')}
+                          </Badge>
+                        ) : v.isHelper ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
+                          </Badge>
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -480,21 +461,6 @@ export function SellerManagementPage() {
                       <PaidBadge paid={v.paid} />
                     </div>
                   </div>
-
-                  {canManageHelpers && ((!isOwner && v.isHelper) || feeGroups.length > 0) && (
-                    <div className="mt-auto flex gap-2 *:flex-1">
-                      {!isOwner && v.isHelper && (
-                        <EditPermissionsButton
-                          onClick={() => setHelperAction({ mode: 'edit', vendor: v })}
-                        />
-                      )}
-                      <FeeGroupMenu
-                        eventId={eventId as Id<'events'>}
-                        vendor={v}
-                        groups={feeGroups}
-                      />
-                    </div>
-                  )}
                 </div>
               );
             })
@@ -565,27 +531,5 @@ function PaidBadge({ paid }: { paid?: boolean }) {
     <Badge variant="outline" className="whitespace-nowrap">
       {t('sellers.open')}
     </Badge>
-  );
-}
-
-/** Changes what the helper may do; the dialog also takes the helper role back. */
-function EditPermissionsButton({ onClick, iconOnly }: { onClick: () => void; iconOnly?: boolean }) {
-  const { t } = useTranslation('organizer');
-  const label = t('sellers.editPermissions');
-  return (
-    <Button
-      variant="ghost"
-      size={iconOnly ? 'icon' : 'sm'}
-      title={label}
-      aria-label={label}
-      className={iconOnly ? 'text-muted-foreground' : 'w-full gap-2 text-muted-foreground'}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-    >
-      <SlidersHorizontal className="h-4 w-4" />
-      {!iconOnly && label}
-    </Button>
   );
 }
