@@ -418,7 +418,7 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
     // Fees above the cap go back to the seller with the payout
     let credit = sales::fee_cap_credit_of(&fees, row.as_ref(), commission, &fee);
     // The group applied, kept with the settlement (#302)
-    let group = fees.group.map(|group| group.label);
+    let group = fees.group.as_ref().map(|group| group.label.clone());
     let payout = payout - fee.total + credit;
     let credit = (!credit.is_zero()).then_some(credit);
     match row {
@@ -426,7 +426,7 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
             sqlx::query(
                 "UPDATE event_sellers SET commission_fee = $2, payout_amount = $3, intake_fee = $4,
                    intake_fee_items = $5, fee_cap_credit = $6, fee_group_label = $7,
-                   payout_received = true
+                   commission_percent = $8, payout_received = true
                  WHERE id = $1",
             )
             .bind(row.id)
@@ -436,6 +436,7 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
             .bind(fee.items as i32)
             .bind(credit)
             .bind(&group)
+            .bind(fees.commission)
             .execute(ctx.conn())
             .await?;
         }
@@ -443,9 +444,9 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
             let number = next_seller_number(ctx, event.id).await?;
             sqlx::query(
                 "INSERT INTO event_sellers (event_id, user_id, total_fee, commission_fee, payout_amount,
-                   intake_fee, intake_fee_items, fee_cap_credit, fee_group_label, payout_received,
-                   number)
-                 VALUES ($1, $2, 0, $3, $4, $5, $6, $7, $8, true, $9)",
+                   intake_fee, intake_fee_items, fee_cap_credit, fee_group_label, commission_percent,
+                   payout_received, number)
+                 VALUES ($1, $2, 0, $3, $4, $5, $6, $7, $8, $9, true, $10)",
             )
             .bind(event.id)
             .bind(vendor)
@@ -455,6 +456,7 @@ async fn record_payout(ctx: &mut Ctx, event_id: Uuid, vendor: Uuid) -> AppResult
             .bind(fee.items as i32)
             .bind(credit)
             .bind(&group)
+            .bind(fees.commission)
             .bind(number)
             .execute(ctx.conn())
             .await?;
@@ -473,7 +475,7 @@ async fn unmark_vendor_payout_received(ctx: &mut Ctx, args: VendorArgs) -> AppRe
     sqlx::query(
         "UPDATE event_sellers SET payout_received = false, commission_fee = 0, payout_amount = 0,
            intake_fee = NULL, intake_fee_items = NULL, fee_cap_credit = NULL,
-           fee_group_label = NULL
+           fee_group_label = NULL, commission_percent = NULL
          WHERE event_id = $1 AND user_id = $2 AND payout_received",
     )
     .bind(event)

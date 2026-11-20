@@ -600,6 +600,8 @@ export type VendorWithCalculations = {
   excluded?: Exclusion | undefined;
   /** The fee group whose fees apply (#302) */
   feeGroup?: VendorFeeGroup | undefined;
+  /** The seller's commission in percent: their group's or the bazaar's; once paid out the one settled with */
+  commissionPercent: number;
 };
 
 /** A seller's fee group as the team sees it (#302) */

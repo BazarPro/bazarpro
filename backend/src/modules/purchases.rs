@@ -1475,10 +1475,20 @@ async fn get_my_sales(ctx: &mut Ctx, _: NoArgs) -> AppResult<Vec<SalesGroup>> {
         let fee_cap_credit =
             sales::fee_cap_credit_of(&fees, seller.as_ref(), commission, &intake_fee);
         let paid = seller.as_ref().is_some_and(|s| s.payout_received);
-        let fee_group = if paid {
-            seller.as_ref().and_then(|s| s.fee_group_label.clone())
+        // Paid out: group and rate as settled, not as the settings are now
+        let (fee_group, commission_percent) = if paid {
+            (
+                seller.as_ref().and_then(|s| s.fee_group_label.clone()),
+                seller
+                    .as_ref()
+                    .and_then(|s| s.commission_percent)
+                    .unwrap_or(fees.commission),
+            )
         } else {
-            fees.group.as_ref().map(|group| group.label.clone())
+            (
+                fees.group.as_ref().map(|group| group.label.clone()),
+                fees.commission,
+            )
         };
         let payout: Decimal = items.iter().map(|i| i.sale.payout).sum::<Decimal>()
             - intake_fee.total
@@ -1489,7 +1499,7 @@ async fn get_my_sales(ctx: &mut Ctx, _: NoArgs) -> AppResult<Vec<SalesGroup>> {
                 title: event.title.clone(),
                 start_date: event.start_date,
                 end_date: event.end_date,
-                commission_percent: fees.commission,
+                commission_percent,
                 fee_group,
             },
             paid: seller.as_ref().is_some_and(|s| s.payout_received),

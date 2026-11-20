@@ -285,6 +285,7 @@
     "decided": "Das Team hat deine Gruppe schon geprüft. Für eine Änderung sprich bitte das Team an.",
     "locked": "Deine Artikel wurden schon angenommen. Für eine Änderung der Gruppe sprich bitte das Team an.",
     "none": "Dieser Verkäufer hat keine Gebührengruppe angegeben.",
-    "organizerOnly": "Nur Veranstalter können Verkäufer einer Gebührengruppe zuordnen."
+    "organizerOnly": "Nur Veranstalter können Verkäufer einer Gebührengruppe zuordnen.",
+    "decidedOrganizerOnly": "Diese Gruppe wurde schon geprüft oder zugeordnet. Ändern können sie nur Veranstalter."
   }
 }

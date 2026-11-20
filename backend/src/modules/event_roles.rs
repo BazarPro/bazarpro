@@ -438,6 +438,9 @@ pub struct VendorWithCalculations {
     pub excluded: Option<Exclusion>,
     /// The fee group whose fees apply (#302)
     pub fee_group: Option<VendorFeeGroup>,
+    /// The seller's commission in percent: their group's or the bazaar's; once paid out the
+    /// one settled with
+    pub commission_percent: Decimal,
 }
 
 /// A seller's fee group as the team sees it.
@@ -537,9 +540,17 @@ pub async fn load_vendors_with_calculations(
             Membership::default()
         };
         let fees = member.fees(&event);
+        // A group still to be checked shows, marked pending, though its fees do not apply yet
+        let shown = member.claimed(&event);
+        let pending = member.pending(&event).is_some();
         let paid = seller.as_ref().is_some_and(|seller| seller.payout_received);
+        let commission_percent = seller
+            .as_ref()
+            .filter(|_| paid)
+            .and_then(|seller| seller.commission_percent)
+            .unwrap_or(fees.commission);
         let fee_group = match (
-            &fees.group,
+            &shown.group,
             seller.as_ref().and_then(|s| s.fee_group_label.clone()),
         ) {
             // Paid out: the group as settled
@@ -554,7 +565,7 @@ pub async fn load_vendors_with_calculations(
             (Some(group), _) => Some(VendorFeeGroup {
                 id: Some(group.id.clone()),
                 label: group.label.clone(),
-                pending: member.pending(&event, &fees).is_some(),
+                pending,
                 by_role: member.stored.as_deref() != Some(group.id.as_str()),
                 chosen: member.stored.clone().filter(|chosen| *chosen != group.id),
             }),
@@ -594,6 +605,7 @@ pub async fn load_vendors_with_calculations(
             sort_code,
             excluded: exclusions.remove(&vendor),
             fee_group,
+            commission_percent,
         });
     }
     Ok(vendors)

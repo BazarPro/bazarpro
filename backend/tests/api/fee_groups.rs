@@ -238,6 +238,24 @@ async fn a_self_declared_group_is_checked_before_the_first_item(db: PgPool) {
     .await
     .unwrap();
     assert_eq!(label.as_deref(), Some("Vereinsmitglieder"));
+    // The rate as settled, even when the group changes afterwards
+    sqlx::query(
+        "UPDATE events SET features = jsonb_set(features, '{feeGroups,0,commission}', '7')
+         WHERE id = $1",
+    )
+    .bind(m.event)
+    .execute(&db)
+    .await
+    .unwrap();
+    assert_eq!(m.vendor(seller).await["commissionPercent"], json!(5.0));
+    let sales = m
+        .app
+        .query("purchases.getMySales", json!({}), Some(&session))
+        .await;
+    assert_eq!(
+        sales.body["value"][0]["event"]["commissionPercent"],
+        json!(5.0)
+    );
     let export = m
         .app
         .query(
@@ -593,4 +611,150 @@ async fn after_the_first_seller_groups_only_get_cheaper(db: PgPool) {
     let new = json!({ "id": "kids", "label": "Schüler", "commission": 0,
                       "assignment": "selfDeclared" });
     assert_eq!(save(json!([cheaper, new])).await["value"], Value::Null);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn an_unchecked_group_does_not_count_when_the_helper_role_goes(db: PgPool) {
+    let m = Market::new(db.clone()).await;
+    let (seller, _) = m.join("Helfendes Mitglied", Some("members")).await;
+    let made = m
+        .app
+        .mutation(
+            "eventRoles.addCoOrganizerForEvent",
+            json!({ "eventId": m.event, "userId": seller, "permissions": [] }),
+            Some(&m.organizer),
+        )
+        .await;
+    assert_eq!(made.status, StatusCode::OK, "{}", made.body);
+    // As helper the helper group applies: nothing to check at the intake
+    let (product, relation) = m.announced(seller, "Tandem", 100.0).await;
+    let accepted = m.accept(relation, &m.organizer).await;
+    assert_eq!(accepted.status, StatusCode::OK, "{}", accepted.body);
+    m.sell(relation).await;
+    assert_eq!(m.commission(product).await, 0.0);
+
+    // Without the role: the bazaar's 10 %, not the 5 % of the group nobody checked
+    let removed = m
+        .app
+        .mutation(
+            "eventRoles.removeCoOrganizerForEvent",
+            json!({ "eventId": m.event, "userId": seller }),
+            Some(&m.organizer),
+        )
+        .await;
+    assert_eq!(removed.status, StatusCode::OK, "{}", removed.body);
+    assert_eq!(m.commission(product).await, 10.0);
+    let vendor = m.vendor(seller).await;
+    assert_eq!(vendor["feeGroup"]["pending"], true, "{vendor}");
+    assert_eq!(vendor["commissionPercent"], json!(10.0));
+    // Once the team saw the proof
+    let confirmed = m
+        .team("feeGroups.confirmFeeGroup", seller, &m.organizer)
+        .await;
+    assert_eq!(confirmed.status, StatusCode::OK, "{}", confirmed.body);
+    assert_eq!(m.commission(product).await, 5.0);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_intake_only_decides_on_groups_still_to_be_checked(db: PgPool) {
+    let m = Market::new(db.clone()).await;
+    let helper = fixtures::user(&db, "Helfer").await;
+    fixtures::role(&db, m.event, helper, "seller").await;
+    fixtures::role(&db, m.event, helper, "coorganizer").await;
+    let helper = fixtures::session(&db, helper).await;
+
+    // Put in by the organizer: helpers cannot take it away or confirm it
+    let (baker, _) = m.join("Bäcker", None).await;
+    let assigned = m
+        .app
+        .mutation(
+            "feeGroups.assignFeeGroup",
+            json!({ "eventId": m.event, "sellerId": baker, "groupId": "bakers" }),
+            Some(&m.organizer),
+        )
+        .await;
+    assert_eq!(assigned.status, StatusCode::OK, "{}", assigned.body);
+    for action in ["feeGroups.removeFeeGroup", "feeGroups.confirmFeeGroup"] {
+        let refused = m.team(action, baker, &helper).await;
+        assert_eq!(refused.status, StatusCode::FORBIDDEN, "{}", refused.body);
+        assert_eq!(refused.body["code"], "feeGroup.decidedOrganizerOnly");
+    }
+    assert_eq!(m.vendor(baker).await["feeGroup"]["label"], "Kuchenspender");
+    // The organizer may
+    let removed = m
+        .team("feeGroups.removeFeeGroup", baker, &m.organizer)
+        .await;
+    assert_eq!(removed.status, StatusCode::OK, "{}", removed.body);
+
+    // Without a group there is nothing to take away, and the seller may still choose one
+    let (seller, session) = m.join("Ohne", None).await;
+    let none = m.team("feeGroups.removeFeeGroup", seller, &helper).await;
+    assert_eq!(none.body["code"], "feeGroup.none", "{}", none.body);
+    let chosen = m
+        .app
+        .mutation(
+            "feeGroups.chooseFeeGroup",
+            json!({ "eventId": m.event, "groupId": "members" }),
+            Some(&session),
+        )
+        .await;
+    assert_eq!(chosen.status, StatusCode::OK, "{}", chosen.body);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn excluding_a_helper_books_their_sales_anew(db: PgPool) {
+    let desk = Desk::new(db.clone(), groups()).await;
+    fixtures::event_seller(&db, desk.event, desk.seller, 1, false).await;
+    fixtures::role(&db, desk.event, desk.seller, "coorganizer").await;
+    let (product, relation) = desk.item("Lastenrad", 300.0).await;
+    desk.sell(json!({ "eventProductId": relation })).await;
+    assert_eq!(desk.purchase(product).await.unwrap().1, 0.0);
+    let excluded = desk
+        .app
+        .mutation(
+            "eventExclusions.exclude",
+            json!({ "eventId": desk.event, "userId": desk.seller }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(excluded.status, StatusCode::OK, "{}", excluded.body);
+    assert_eq!(desk.purchase(product).await.unwrap().1, 30.0);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_cheaper_group_gives_back_what_the_desk_took_for_a_direct_sale(db: PgPool) {
+    let mut features = groups();
+    features["directSale"] = json!(true);
+    let desk = Desk::new(db.clone(), features).await;
+    fixtures::event_seller(&db, desk.event, desk.seller, 1, false).await;
+    let (product, relation) = desk.item("Faltrad", 100.0).await;
+    let sold = desk
+        .cart(json!([{ "eventProductId": relation }]), None)
+        .await;
+    assert_eq!(sold.status, StatusCode::OK, "{}", sold.body);
+    assert_eq!(sold.body["value"]["taken"], json!(10.0));
+    // Made a helper: 0 %, the 10 € the desk took come back with the payout
+    let made = desk
+        .app
+        .mutation(
+            "eventRoles.addCoOrganizerForEvent",
+            json!({ "eventId": desk.event, "userId": desk.seller, "permissions": [] }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(made.status, StatusCode::OK, "{}", made.body);
+    let (_, commission, payout, _, _) = desk.purchase(product).await.unwrap();
+    assert_eq!((commission, payout), (0.0, 10.0));
+    let vendors = desk
+        .app
+        .query(
+            "eventRoles.getVendorsForEvent",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    let vendor = &vendors.body["value"][0];
+    // 100 € sales − 0 € commission − 90 € kept from the buyer = 10 € payout
+    assert_eq!(vendor["receivedDirectly"], json!(90.0), "{vendor}");
+    assert_eq!(vendor["payout"], json!(10.0));
 }

@@ -91,7 +91,11 @@ describe('MyFeeGroup', () => {
     mine = { chosen: 'members', applied: 'members', pending: true, locked: false };
     render(<MyFeeGroup eventId={EVENT} event={event} />);
     expect(screen.getByText('Deine Gruppe: Vereinsmitglieder')).toBeInTheDocument();
-    expect(screen.getByText('Das Team prüft deine Angabe bei der Abgabe.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Das Team prüft deine Angabe bei der Abgabe\. Bis dahin gelten die normalen Gebühren/
+      )
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Ändern' }));
     fireEvent.click(screen.getByLabelText(/Nein, ich zahle/));
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));

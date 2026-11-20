@@ -80,7 +80,9 @@ impl SellerFees {
 }
 
 /// Which of two fee sets is cheaper for the seller: the lower commission, then the lower
-/// intake fee, then the lower cap. The app sorts the same (cheaperFees in feeGroups.ts).
+/// intake fee, then the lower cap. The app sorts the same (compareFees in feeGroups.ts).
+/// Deliberately not by the expected total: that would need the seller's items and could
+/// switch the group with every sale. The editor tells organizers that commission decides.
 fn compare(a: &SellerFees, b: &SellerFees) -> Ordering {
     let key = |f: &SellerFees| {
         (
@@ -124,18 +126,30 @@ impl Membership {
         }
     }
 
-    pub fn fees(&self, event: &Event) -> SellerFees {
+    /// The fees as the seller claims them, counting a self-declared group nobody checked yet
+    pub fn claimed(&self, event: &Event) -> SellerFees {
         fees_for(event, self.stored.as_deref(), self.helper)
     }
 
-    /// A self-declared group the team has not checked yet, and it is the one that applies
-    pub fn pending<'a>(&self, event: &Event, fees: &'a SellerFees) -> Option<&'a FeeGroup> {
-        fees.group.as_ref().filter(|group| {
+    /// A self-declared group the team has not checked yet, and it would be the one that
+    /// applies
+    pub fn pending(&self, event: &Event) -> Option<FeeGroup> {
+        self.claimed(event).group.filter(|group| {
             self.decided_at.is_none()
                 && group.assignment == FeeGroupAssignment::SelfDeclared
                 && self.stored.as_deref() == Some(group.id.as_str())
-                && !event.resolved_features().fee_groups.is_empty()
         })
+    }
+
+    /// The fees that apply: an unchecked self-declaration does not count until the team
+    /// confirms it, so nobody is booked, limited or settled by a group nobody checked. That
+    /// matters for a helper who chose a group and loses the role after items were accepted.
+    pub fn fees(&self, event: &Event) -> SellerFees {
+        if self.pending(event).is_some() {
+            fees_for(event, None, self.helper)
+        } else {
+            self.claimed(event)
+        }
     }
 }
 
@@ -169,6 +183,9 @@ pub async fn seller_fees(
     Ok(membership(conn, event, seller).await?.fees(event))
 }
 
+/// Seller, stored group, when the team decided on it, helper
+type FeeBookRow = (Uuid, Option<String>, Option<DateTime<Utc>>, bool);
+
 /// The fees of every seller of the event, for the cash desk and the lists. Sellers without
 /// a group pay the bazaar's.
 pub struct FeeBook {
@@ -181,21 +198,26 @@ impl FeeBook {
         let default = SellerFees::of_event(event);
         let mut by_seller = HashMap::new();
         if !event.resolved_features().fee_groups.is_empty() {
-            let rows: Vec<(Uuid, Option<String>, bool)> = sqlx::query_as(
-                "SELECT u.user_id, s.fee_group_id, bool_or(u.helper) FROM (
+            let rows: Vec<FeeBookRow> = sqlx::query_as(
+                "SELECT u.user_id, s.fee_group_id, s.fee_group_decided_at, bool_or(u.helper) FROM (
                    SELECT user_id, false AS helper FROM event_sellers
                    WHERE event_id = $1 AND fee_group_id IS NOT NULL
                    UNION ALL SELECT user_id, true FROM event_roles
                    WHERE event_id = $1 AND role = 'coorganizer'
                  ) u
                  LEFT JOIN event_sellers s ON s.event_id = $1 AND s.user_id = u.user_id
-                 GROUP BY u.user_id, s.fee_group_id",
+                 GROUP BY u.user_id, s.fee_group_id, s.fee_group_decided_at",
             )
             .bind(event.id)
             .fetch_all(conn)
             .await?;
-            for (seller, stored, helper) in rows {
-                by_seller.insert(seller, fees_for(event, stored.as_deref(), helper));
+            for (seller, stored, decided_at, helper) in rows {
+                let member = Membership {
+                    stored,
+                    decided_at,
+                    helper,
+                };
+                by_seller.insert(seller, member.fees(event));
             }
         }
         Ok(Self { default, by_seller })
@@ -214,8 +236,7 @@ pub async fn assert_group_decided(
     seller: Uuid,
 ) -> AppResult<()> {
     let member = membership(conn, event, seller).await?;
-    let fees = member.fees(event);
-    if let Some(group) = member.pending(event, &fees) {
+    if let Some(group) = member.pending(event) {
         return Err(AppError::coded(
             axum::http::StatusCode::BAD_REQUEST,
             "feeGroup.unconfirmed",
@@ -368,13 +389,13 @@ async fn get_my_fee_group(ctx: &mut Ctx, args: EventArgs) -> AppResult<Option<My
         return Ok(None);
     }
     let member = membership(ctx.conn(), &event, user).await?;
-    let fees = member.fees(&event);
-    let pending = member.pending(&event, &fees).is_some();
+    let pending = member.pending(&event).is_some();
     let locked = member.decided_at.is_some()
         || has_accepted_items(ctx.conn(), event_id, user).await?
         || event.end_date < Utc::now();
     Ok(Some(MyFeeGroup {
-        applied: fees.group.map(|group| group.id),
+        // A pending group shows as applied, marked as still to be checked
+        applied: member.claimed(&event).group.map(|group| group.id),
         chosen: member.stored,
         pending,
         decided_at: member.decided_at,
@@ -463,13 +484,39 @@ async fn decide(
     Ok(())
 }
 
+/// Who may confirm or take away the seller's group: helpers with the intake right only a
+/// self-declared group still to be checked, anything else changes money the organizer set,
+/// so organizers only. Returns who decides and the stored group; none stored is refused.
+async fn require_decider(ctx: &mut Ctx, event: &Event, seller: Uuid) -> AppResult<Uuid> {
+    let by = require_permission(ctx, event.id, Permission::Intake).await?;
+    let row = docs::event_seller(ctx.conn(), event.id, seller).await?;
+    let Some(stored) = row.as_ref().and_then(|row| row.fee_group_id.clone()) else {
+        // Nothing to confirm or take away, e.g. from a screen not up to date
+        return Err(AppError::bad_request("feeGroup.none"));
+    };
+    let unchecked = row
+        .as_ref()
+        .is_some_and(|row| row.fee_group_decided_at.is_none())
+        && event
+            .resolved_features()
+            .fee_groups
+            .iter()
+            .any(|g| g.id == stored && g.assignment == FeeGroupAssignment::SelfDeclared);
+    if !unchecked
+        && !event_roles::has_role_or_admin(ctx.conn(), event.id, by, Role::Organizer).await?
+    {
+        return Err(AppError::forbidden("feeGroup.decidedOrganizerOnly"));
+    }
+    Ok(by)
+}
+
 /// The team saw the proof (e.g. the member card) at the intake. Helpers with the intake
-/// right may do it.
+/// right may do it while the group is still to be checked.
 async fn confirm_fee_group(ctx: &mut Ctx, args: SellerArgs) -> AppResult<()> {
-    let (event_id, seller) = (args.event_id.0, args.seller_id.0);
-    let by = require_permission(ctx, event_id, Permission::Intake).await?;
-    let event = event_of(ctx, event_id).await?;
-    let stored = docs::event_seller(ctx.conn(), event_id, seller)
+    let event = event_of(ctx, args.event_id.0).await?;
+    let seller = args.seller_id.0;
+    let by = require_decider(ctx, &event, seller).await?;
+    let stored = docs::event_seller(ctx.conn(), event.id, seller)
         .await?
         .and_then(|row| row.fee_group_id);
     let exists = event
@@ -485,9 +532,9 @@ async fn confirm_fee_group(ctx: &mut Ctx, args: SellerArgs) -> AppResult<()> {
 
 /// The proof is missing: the seller pays the bazaar's fees (or a helper group's).
 async fn remove_fee_group(ctx: &mut Ctx, args: SellerArgs) -> AppResult<()> {
-    let (event_id, seller) = (args.event_id.0, args.seller_id.0);
-    let by = require_permission(ctx, event_id, Permission::Intake).await?;
-    let event = event_of(ctx, event_id).await?;
+    let event = event_of(ctx, args.event_id.0).await?;
+    let seller = args.seller_id.0;
+    let by = require_decider(ctx, &event, seller).await?;
     decide(ctx, &event, seller, by, Some(None)).await
 }
 
@@ -586,16 +633,21 @@ mod tests {
             decided_at: None,
             helper: false,
         };
-        let fees = member.fees(&event);
-        assert!(member.pending(&event, &fees).is_some());
+        assert!(member.pending(&event).is_some());
+        // Until checked the bazaar's fees and item limit apply
+        assert_eq!(member.fees(&event), SellerFees::of_event(&event));
+        assert_eq!(member.claimed(&event).commission, Decimal::new(5, 0));
         // As helper the helper group applies, nothing to check
         member.helper = true;
-        let fees = member.fees(&event);
-        assert!(member.pending(&event, &fees).is_none());
+        assert!(member.pending(&event).is_none());
+        assert_eq!(
+            member.fees(&event).group.map(|g| g.id),
+            Some("helpers".to_owned())
+        );
         member.helper = false;
         member.decided_at = Some(Utc::now());
-        let fees = member.fees(&event);
-        assert!(member.pending(&event, &fees).is_none());
+        assert!(member.pending(&event).is_none());
+        assert_eq!(member.fees(&event).commission, Decimal::new(5, 0));
     }
 
     #[test]

@@ -1375,7 +1375,7 @@
   },
   "feeGroups": {
     "title": "Gebührengruppen (optional)",
-    "hint": "Eigene Gebühren für eine Gruppe von Verkäufern, z. B. Vereinsmitglieder 5 % statt 10 % oder Helfer ohne Provision. Verkäufer sehen alle Gruppen in den Bedingungen. Bis zu 4 Gruppen, jeder Verkäufer ist in höchstens einer.",
+    "hint": "Eigene Gebühren für eine Gruppe von Verkäufern, z. B. Vereinsmitglieder 5 % statt 10 % oder Helfer ohne Provision. Verkäufer sehen alle Gruppen in den Bedingungen. Bis zu 4 Gruppen, jeder Verkäufer ist in höchstens einer. Wer zu zwei Gruppen gehört (z. B. Helfer und Mitglied), bekommt die mit der niedrigeren Provision, bei gleicher Provision die mit der niedrigeren Annahmegebühr. Eine hohe Annahmegebühr macht eine Gruppe also nicht teurer als eine mit mehr Provision.",
     "empty": "Alle Verkäufer zahlen dieselben Gebühren. Mit einer Gruppe zahlen z. B. Vereinsmitglieder oder Helfer weniger.",
     "unnamed": "Neue Gruppe",
     "hasError": "Bitte prüfen",
@@ -1387,7 +1387,7 @@
       "helpers": "Helfer des Basars",
       "selfDeclaredShort": "Angabe bei der Anmeldung",
       "helpersShort": "Helfer",
-      "selfDeclaredHint": "Verkäufer wählen die Gruppe bei der Anmeldung selbst. Bei der Abgabe prüft das Team den Nachweis und bestätigt die Gruppe oder entfernt sie. Vorher kann kein Artikel angenommen werden.",
+      "selfDeclaredHint": "Verkäufer wählen die Gruppe bei der Anmeldung selbst. Bei der Abgabe prüft das Team den Nachweis und bestätigt die Gruppe oder entfernt sie. Vorher kann kein Artikel angenommen werden. Bis dahin gelten die normalen Gebühren und das normale Artikellimit.",
       "helpersHint": "Gilt automatisch für alle mit einer Helferrolle, solange sie sie haben. Du kannst auch Helfer ohne Rechte zuordnen. Nur eine Gruppe kann für die Helfer gelten.",
       "manual": "Nur vom Veranstalter",
       "manualShort": "vom Veranstalter vergeben",

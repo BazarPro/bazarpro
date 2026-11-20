@@ -127,7 +127,7 @@ pub async fn assert_item_limit(
     if adding <= 0 {
         return Ok(());
     }
-    // A fee group may allow more items (#302)
+    // A fee group may allow more items (#302); a self-declared one only once checked
     let limit = super::fee_groups::seller_fees(ctx.conn(), event, vendor)
         .await?
         .max_items_per_seller;

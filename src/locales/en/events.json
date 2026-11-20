@@ -136,7 +136,7 @@
     "groupProof": "Proof at the drop-off: {{hint}}",
     "groupChecked": "You say so when registering, the team checks it at the drop-off",
     "myGroup": "Your group: {{group}}",
-    "myGroupPending": "The team checks it at the drop-off.",
+    "myGroupPending": "The team checks it at the drop-off. Until then the normal fees and item limit apply.",
     "myGroupConfirmed": "Confirmed by the team.",
     "myGroupNone": "You pay the regular fees.",
     "myGroupChange": "Change",

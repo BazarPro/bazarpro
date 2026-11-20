@@ -978,17 +978,8 @@ export function ProductManagementPage() {
             {sellerMode === 'payout' && can('payout') && (
               <VendorSettlement
                 vendor={selectedVendor}
-                commissionPercent={
-                  // The seller's fee group may have its own commission (#302)
-                  // (paid out: only the name of the group is kept)
-                  event?.features?.feeGroups?.find((g) =>
-                    selectedVendor.feeGroup?.id
-                      ? g.id === selectedVendor.feeGroup.id
-                      : g.label === selectedVendor.feeGroup?.label
-                  )?.commission ??
-                  event?.commission ??
-                  0
-                }
+                // The seller's fee group may have its own commission (#302); paid out: as settled
+                commissionPercent={selectedVendor.commissionPercent}
                 itemsToReturn={vendorProducts.filter((p) => p.status === 'available')}
                 soldCount={stats.sold}
                 returnedCount={stats.returned}

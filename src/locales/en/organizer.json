@@ -1375,7 +1375,7 @@
   },
   "feeGroups": {
     "title": "Fee groups (optional)",
-    "hint": "Own fees for a group of sellers, e.g. club members 5 % instead of 10 % or helpers without commission. Sellers see all groups in the conditions. Up to 4 groups, each seller is in one at most.",
+    "hint": "Own fees for a group of sellers, e.g. club members 5 % instead of 10 % or helpers without commission. Sellers see all groups in the conditions. Up to 4 groups, each seller is in one at most. Who belongs to two groups (e.g. helper and member) gets the one with the lower commission, at equal commission the one with the lower intake fee. So a high intake fee does not make a group count as dearer than one with more commission.",
     "empty": "All sellers pay the same fees. With a group, e.g. club members or helpers pay less.",
     "unnamed": "New group",
     "hasError": "Please check",
@@ -1387,7 +1387,7 @@
       "helpers": "Helpers of the bazaar",
       "selfDeclaredShort": "Given at registration",
       "helpersShort": "Helpers",
-      "selfDeclaredHint": "Sellers choose the group themselves when registering. At the drop-off the team checks the proof and confirms or removes the group. Until then no item can be accepted.",
+      "selfDeclaredHint": "Sellers choose the group themselves when registering. At the drop-off the team checks the proof and confirms or removes the group. Until then no item can be accepted. Until then the normal fees and item limit apply.",
       "helpersHint": "Applies automatically to everyone with a helper role, as long as they have it. You can also assign helpers without rights. Only one group can apply to helpers.",
       "manual": "Organizer only",
       "manualShort": "assigned by the organizer",

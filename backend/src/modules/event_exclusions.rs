@@ -186,6 +186,8 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
     let was_helper = event_roles::has_role(ctx.conn(), event.id, user, Role::Coorganizer).await?;
     if was_helper {
         event_roles::remove_role(ctx, event.id, user, Role::Coorganizer).await?;
+        // A helper group no longer applies: their sales are booked anew (#302)
+        super::fee_groups::after_role_change(ctx, event.id, user).await?;
         // Their devices may keep the keys of the sellers' ID codes
         super::offline::renew_check_in_keys(ctx, event.id).await?;
     }

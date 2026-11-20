@@ -136,7 +136,7 @@
     "groupProof": "Nachweis bei der Abgabe: {{hint}}",
     "groupChecked": "Gibst du bei der Anmeldung an, das Team prüft es bei der Abgabe",
     "myGroup": "Deine Gruppe: {{group}}",
-    "myGroupPending": "Das Team prüft deine Angabe bei der Abgabe.",
+    "myGroupPending": "Das Team prüft deine Angabe bei der Abgabe. Bis dahin gelten die normalen Gebühren und das normale Artikellimit.",
     "myGroupConfirmed": "Vom Team bestätigt.",
     "myGroupNone": "Du zahlst die normalen Gebühren.",
     "myGroupChange": "Ändern",
