@@ -43,6 +43,8 @@ enum Audience {
     Accepted,
     /// Sellers with unsold items still to pick up
     Pickup,
+    /// Sellers who have not announced any item yet (#304), e.g. "Bitte bis Freitag anmelden"
+    WithoutItems,
 }
 
 impl Audience {
@@ -51,6 +53,7 @@ impl Audience {
             Self::All => "all",
             Self::Accepted => "accepted",
             Self::Pickup => "pickup",
+            Self::WithoutItems => "withoutItems",
         }
     }
 }
@@ -67,6 +70,7 @@ async fn recipients(ctx: &mut Ctx, event: Uuid, audience: Audience) -> sqlx::Res
             "EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
                      WHERE ep.event_id = r.event_id AND p.vendor_id = r.user_id AND ep.status = 'available')"
         }
+        Audience::WithoutItems => super::event_seller::WITHOUT_ITEMS,
     };
     sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
         "SELECT r.user_id FROM event_roles r WHERE r.event_id = $1 AND r.role = 'seller' AND {items}

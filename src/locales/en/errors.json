@@ -97,7 +97,9 @@
     "feeGroupHelpersTwice": "Only one fee group can apply to the helpers of the bazaar.",
     "feeGroupCommission": "The commission of a fee group is between 0 and 100 %.",
     "feeGroupProofHint": "The proof hint may be at most 200 characters long.",
-    "feeGroupsOnlyLower": "Since sellers have registered, fee groups can only get cheaper. They can no longer be removed or assigned differently."
+    "feeGroupsOnlyLower": "Since sellers have registered, fee groups can only get cheaper. They can no longer be removed or assigned differently.",
+    "postalCodeInvalid": "“{{code}}” is neither a postal code nor the start of one. Please use digits only, at most five.",
+    "postalCodesTooMany": "Please choose at most {{max}} postal code areas."
   },
   "feature": {
     "disabled": "This action is currently disabled.",
@@ -112,7 +114,9 @@
     "profileIncomplete": "Please complete your name, address and phone in your profile first.",
     "closed": "Registration for this bazaar is closed.",
     "notYet": "Registration for this bazaar has not opened yet.",
-    "excluded": "The organizer has excluded you from this bazaar."
+    "excluded": "The organizer has excluded you from this bazaar.",
+    "postalCode": "This bazaar is only for sellers from its region: postal codes {{codes}}. If you would like to take part anyway, ask the organizer for an invitation.",
+    "postalCodeMissing": "Please add your postal code to your profile first: this bazaar is only for sellers from its region."
   },
   "leave": {
     "itemsHandledIn": "You cannot withdraw while items are already accepted, sold or returned.",
@@ -236,7 +240,9 @@
     "paidOutNoSales": "The seller has already been paid out, no more sales are possible.",
     "paidOutUndoFirst": "The seller is already settled. Undo the payout first to change their items.",
     "payoutStaffOnly": "Only organizers and helpers can mark payouts as done.",
-    "undoPayoutStaffOnly": "Only organizers and helpers can undo payouts."
+    "undoPayoutStaffOnly": "Only organizers and helpers can undo payouts.",
+    "unregisterPast": "Nobody can be unregistered after the bazaar.",
+    "unregisterMessageTooLong": "The message may be at most {{max}} characters long."
   },
   "settings": {
     "domainFormat": "Please enter the domain without https://, e.g. bazaar.example.org.",

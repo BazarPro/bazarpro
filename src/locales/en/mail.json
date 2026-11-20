@@ -313,6 +313,14 @@
       "subject": "“{{event}}”: “{{title}}” is registered again",
       "heading": "Item registered again",
       "text": "The team of “{{event}}” has taken back the rejection of “{{title}}”. The item is registered for the bazaar again; please hand it in at the drop-off."
+    },
+    "unregistered": {
+      "subject": "You have been unregistered from “{{event}}”",
+      "heading": "Unregistered from the bazaar",
+      "text": "The organizer of “{{event}}” has unregistered you as a seller because you have not registered any items yet. Your place is now free for others.",
+      "message": "Message from the organizer: {{message}}",
+      "join": "You can register again while places are left.",
+      "joinClosed": "Registration is closed at the moment. If you would still like to take part, ask the organizer."
     }
   }
 }

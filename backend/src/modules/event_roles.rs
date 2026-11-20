@@ -441,6 +441,8 @@ pub struct VendorWithCalculations {
     /// The seller's commission in percent: their group's or the bazaar's; once paid out the
     /// one settled with
     pub commission_percent: Decimal,
+    /// Has not announced any item yet (#304, `event_seller::WITHOUT_ITEMS`)
+    pub without_items: Option<bool>,
 }
 
 /// A seller's fee group as the team sees it.
@@ -500,6 +502,7 @@ pub async fn load_vendors_with_calculations(
     .await?;
 
     let mut exclusions = exclusions_of_event(ctx.conn(), event_id).await?;
+    let without_items = super::event_seller::sellers_without_items(ctx.conn(), event_id).await?;
     let all_purchases = docs::purchases_where(ctx.conn(), "event_id = $1", event_id).await?;
     let mut vendors = Vec::new();
     let users = docs::users(ctx.conn(), &vendor_ids).await?;
@@ -606,6 +609,7 @@ pub async fn load_vendors_with_calculations(
             excluded: exclusions.remove(&vendor),
             fee_group,
             commission_percent,
+            without_items: without_items.contains(&vendor).then_some(true),
         });
     }
     Ok(vendors)

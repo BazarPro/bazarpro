@@ -40,6 +40,8 @@ struct Stored {
     registration_starts_at: Option<f64>,
     registration_ends_at: Option<f64>,
     fee_groups: Option<Vec<StoredFeeGroup>>,
+    allowed_postal_codes: Option<Vec<String>>,
+    postal_code_country: Option<String>,
 }
 
 /// A fee group as stored in `features.feeGroups` (#302).
@@ -126,6 +128,58 @@ pub struct EventFeatures {
     pub registration_ends_at: Option<DateTime<Utc>>,
     /// Sellers with own fees (#302); see `fee_groups`
     pub fee_groups: Vec<FeeGroup>,
+    /// Only sellers from these postal codes join on their own (#304); none: everyone
+    pub postal_codes: Option<PostalCodes>,
+}
+
+/// The region of a bazaar: postal codes of one country that start with one of the
+/// prefixes, e.g. "89" or "7322" (#304).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PostalCodes {
+    /// ISO 3166-1 alpha-2, e.g. "DE"
+    pub country: String,
+    pub prefixes: Vec<String>,
+}
+
+/// Digits of a postal code: "L-1234" in Luxembourg is "1234".
+pub fn postal_code_digits(code: &str) -> String {
+    code.chars().filter(char::is_ascii_digit).collect()
+}
+
+/// The country of a profile as a code; profiles without one are from Germany, like the
+/// address of a bazaar. Older profiles may hold the name ("Deutschland").
+fn profile_country(country: Option<&str>) -> String {
+    let Some(country) = country.map(str::trim).filter(|country| !country.is_empty()) else {
+        return "DE".to_owned();
+    };
+    let upper = country.to_uppercase();
+    match upper.as_str() {
+        "DEUTSCHLAND" | "GERMANY" => "DE",
+        "ÖSTERREICH" | "AUSTRIA" => "AT",
+        "SCHWEIZ" | "SWITZERLAND" => "CH",
+        "LUXEMBURG" | "LUXEMBOURG" => "LU",
+        "LIECHTENSTEIN" => "LI",
+        _ => &upper,
+    }
+    .to_owned()
+}
+
+impl PostalCodes {
+    /// Whether a seller with this postal code and country is from the region.
+    pub fn admits(&self, postal_code: &str, country: Option<&str>) -> bool {
+        let digits = postal_code_digits(postal_code);
+        profile_country(country) == self.country
+            && self
+                .prefixes
+                .iter()
+                .any(|prefix| digits.starts_with(prefix.as_str()))
+    }
+
+    /// "89…, 7322… (DE)" for messages.
+    pub fn describe(&self) -> String {
+        let prefixes: Vec<String> = self.prefixes.iter().map(|p| format!("{p}…")).collect();
+        format!("{} ({})", prefixes.join(", "), self.country)
+    }
 }
 
 /// Events created before features existed keep their old behaviour: discounts on (up to
@@ -197,6 +251,35 @@ pub fn resolve(features: Option<&Value>) -> EventFeatures {
                 proof_hint: group.proof_hint,
             })
             .collect(),
+        postal_codes: stored
+            .allowed_postal_codes
+            .map(|prefixes| {
+                prefixes
+                    .iter()
+                    .map(|prefix| postal_code_digits(prefix))
+                    .filter(|prefix| !prefix.is_empty())
+                    .collect::<Vec<_>>()
+            })
+            .filter(|prefixes| !prefixes.is_empty())
+            .map(|prefixes| PostalCodes {
+                country: profile_country(stored.postal_code_country.as_deref()),
+                prefixes,
+            }),
+    }
+}
+
+/// Why a seller with this profile may not join a bazaar limited to a region; None when
+/// they may. Without a postal code in the profile the app asks for it first.
+pub fn postal_code_refused(
+    features: &EventFeatures,
+    postal_code: Option<&str>,
+    country: Option<&str>,
+) -> Option<&'static str> {
+    let region = features.postal_codes.as_ref()?;
+    match postal_code.map(str::trim).filter(|code| !code.is_empty()) {
+        None => Some("join.postalCodeMissing"),
+        Some(code) if !region.admits(code, country) => Some("join.postalCode"),
+        Some(_) => None,
     }
 }
 
@@ -459,6 +542,39 @@ mod tests {
             registration_unavailable(&window(Some(ms(-1)), Some(ms(1))), now),
             None
         );
+    }
+
+    #[test]
+    fn the_region_admits_postal_codes_of_its_country() {
+        let features = resolve(Some(&json!({
+            "allowedPostalCodes": ["89", "7322"], "postalCodeCountry": "DE"
+        })));
+        let refused = |code: Option<&str>, country: Option<&str>| {
+            postal_code_refused(&features, code, country)
+        };
+        assert_eq!(refused(Some("89073"), Some("DE")), None);
+        assert_eq!(refused(Some(" 73223 "), Some("de")), None);
+        // Profiles without a country are from Germany, older ones may name it
+        assert_eq!(refused(Some("89073"), None), None);
+        assert_eq!(refused(Some("89073"), Some("Deutschland")), None);
+        assert_eq!(refused(Some("88400"), Some("DE")), Some("join.postalCode"));
+        assert_eq!(refused(Some("8900"), Some("AT")), Some("join.postalCode"));
+        assert_eq!(refused(None, Some("DE")), Some("join.postalCodeMissing"));
+        assert_eq!(
+            refused(Some("  "), Some("DE")),
+            Some("join.postalCodeMissing")
+        );
+        // Luxembourg writes "L-" in front
+        let luxembourg = resolve(Some(&json!({
+            "allowedPostalCodes": ["49"], "postalCodeCountry": "LU"
+        })));
+        assert_eq!(
+            postal_code_refused(&luxembourg, Some("L-4968"), Some("LU")),
+            None
+        );
+        // No region: everyone
+        assert_eq!(postal_code_refused(&resolve(None), None, None), None);
+        assert_eq!(features.postal_codes.unwrap().describe(), "89…, 7322… (DE)");
     }
 
     #[test]

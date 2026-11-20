@@ -780,6 +780,55 @@ struct FeaturesArgs {
     /// The kind of bazaar (#303); null clears it, left out the stored one stays
     #[serde(default, with = "serde_with::rust::double_option")]
     event_type: Option<Option<String>>,
+    /// Prefixes of the postal codes whose sellers may join (#304); null or empty: everyone,
+    /// left out (older apps): the stored ones stay
+    #[serde(default, with = "serde_with::rust::double_option")]
+    allowed_postal_codes: Option<Option<Vec<String>>>,
+    /// The country of these postal codes; left out: the stored one, else Germany
+    #[serde(default, with = "serde_with::rust::double_option")]
+    postal_code_country: Option<Option<String>>,
+}
+
+/// Most prefixes a bazaar's region may have; the map joins whole areas to shorter ones
+const MAX_POSTAL_PREFIXES: usize = 500;
+
+/// The region of the bazaar (#304): digits only, 1 to 5 of them, without prefixes another
+/// one already covers ("89" covers "890"). Empty: no region.
+fn sanitize_postal_codes(prefixes: Vec<String>) -> AppResult<Vec<String>> {
+    let mut clean: Vec<String> = Vec::new();
+    for prefix in prefixes {
+        let trimmed = prefix.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if !trimmed.chars().all(|c| c.is_ascii_digit()) || trimmed.len() > 5 {
+            return Err(AppError::coded(
+                StatusCode::BAD_REQUEST,
+                "event.postalCodeInvalid",
+                &[("code", trimmed)],
+            ));
+        }
+        clean.push(trimmed.to_owned());
+    }
+    clean.sort_by(|a, b| a.len().cmp(&b.len()).then_with(|| a.cmp(b)));
+    let mut kept: Vec<String> = Vec::new();
+    for prefix in clean {
+        if !kept
+            .iter()
+            .any(|shorter| prefix.starts_with(shorter.as_str()))
+        {
+            kept.push(prefix);
+        }
+    }
+    if kept.len() > MAX_POSTAL_PREFIXES {
+        return Err(AppError::coded(
+            StatusCode::BAD_REQUEST,
+            "event.postalCodesTooMany",
+            &[("max", &MAX_POSTAL_PREFIXES.to_string())],
+        ));
+    }
+    kept.sort();
+    Ok(kept)
 }
 
 /// One fee group as the form sends it (#302)
@@ -1151,6 +1200,32 @@ fn sanitize_features(
                 .unwrap_or(Value::Null),
         },
     );
+    let previous_postal = |key: &str| previous.and_then(|p| p.get(key)).cloned();
+    let postal_codes = match features.allowed_postal_codes {
+        Some(prefixes) => sanitize_postal_codes(prefixes.unwrap_or_default())?,
+        None => previous_postal("allowedPostalCodes")
+            .and_then(|value| serde_json::from_value(value).ok())
+            .unwrap_or_default(),
+    };
+    let postal_country = match features.postal_code_country {
+        Some(country) => country,
+        None => {
+            previous_postal("postalCodeCountry").and_then(|value| value.as_str().map(str::to_owned))
+        }
+    };
+    if postal_country
+        .as_deref()
+        .is_some_and(|country| !COUNTRIES.contains(&country))
+    {
+        return Err(invalid("postalCodeCountry"));
+    }
+    if !postal_codes.is_empty() {
+        put("allowedPostalCodes", json!(postal_codes));
+        put(
+            "postalCodeCountry",
+            json!(postal_country.unwrap_or_else(|| "DE".to_owned())),
+        );
+    }
     put(
         "eventType",
         match features.event_type {

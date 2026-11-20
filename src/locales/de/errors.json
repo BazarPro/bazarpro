@@ -97,7 +97,9 @@
     "feeGroupHelpersTwice": "Nur eine Gebührengruppe kann für die Helfer des Basars gelten.",
     "feeGroupCommission": "Die Provision einer Gebührengruppe liegt zwischen 0 und 100 %.",
     "feeGroupProofHint": "Der Hinweis zum Nachweis darf höchstens 200 Zeichen lang sein.",
-    "feeGroupsOnlyLower": "Seit sich Verkäufer angemeldet haben, können Gebührengruppen nur noch günstiger werden. Entfernen oder anders zuordnen geht nicht mehr."
+    "feeGroupsOnlyLower": "Seit sich Verkäufer angemeldet haben, können Gebührengruppen nur noch günstiger werden. Entfernen oder anders zuordnen geht nicht mehr.",
+    "postalCodeInvalid": "„{{code}}“ ist keine Postleitzahl und kein Anfang davon. Bitte nur Ziffern, höchstens fünf.",
+    "postalCodesTooMany": "Bitte wähle höchstens {{max}} Postleitzahlbereiche."
   },
   "feature": {
     "disabled": "Diese Aktion ist derzeit deaktiviert.",
@@ -112,7 +114,9 @@
     "profileIncomplete": "Bitte vervollständige zuerst Name, Anschrift und Telefon in deinem Profil.",
     "closed": "Die Anmeldung für diesen Basar ist geschlossen.",
     "notYet": "Die Anmeldung für diesen Basar ist noch nicht geöffnet.",
-    "excluded": "Der Veranstalter hat dich von diesem Basar ausgeschlossen."
+    "excluded": "Der Veranstalter hat dich von diesem Basar ausgeschlossen.",
+    "postalCode": "Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahlen {{codes}}. Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung.",
+    "postalCodeMissing": "Bitte trag zuerst deine Postleitzahl in dein Profil ein: Dieser Basar ist nur für Verkäufer aus seiner Region."
   },
   "leave": {
     "itemsHandledIn": "Du kannst dich nicht abmelden, solange Artikel bereits angenommen, verkauft oder zurückgegeben sind.",
@@ -236,7 +240,9 @@
     "paidOutNoSales": "Verkäufer wurde bereits ausbezahlt, weitere Verkäufe sind nicht mehr möglich.",
     "paidOutUndoFirst": "Der Verkäufer ist bereits abgerechnet. Nimm zuerst die Auszahlung zurück, um seine Artikel zu ändern.",
     "payoutStaffOnly": "Nur Veranstalter und Helfer können Auszahlungen als erledigt markieren",
-    "undoPayoutStaffOnly": "Nur Veranstalter und Helfer können Auszahlungen zurücknehmen"
+    "undoPayoutStaffOnly": "Nur Veranstalter und Helfer können Auszahlungen zurücknehmen",
+    "unregisterPast": "Nach dem Basar kann niemand mehr abgemeldet werden.",
+    "unregisterMessageTooLong": "Die Nachricht darf höchstens {{max}} Zeichen lang sein."
   },
   "settings": {
     "domainFormat": "Bitte gib die Domain ohne https:// an, z. B. basar.example.org.",
