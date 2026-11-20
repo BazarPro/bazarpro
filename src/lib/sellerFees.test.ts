@@ -5,62 +5,138 @@ import {
   describeSellerFees,
   describeSellerRules,
   describeSellerSchedule,
+  feesFromForm,
 } from './sellerFees';
 
 describe('describeSellerFees', () => {
-  it('explains commission and intake fee with an example', () => {
-    const { lines, example } = describeSellerFees({ commission: 10, intakeFee: 0.5 });
-    expect(lines).toEqual([
-      '10 % Provision vom Verkaufspreis jedes verkauften Artikels',
-      '0,50 € Annahmegebühr pro angenommenem Artikel, auch wenn er nicht verkauft wird',
-    ]);
-    expect(example).toEqual({
-      intro: 'Du gibst 10 Artikel ab, 6 davon werden für je 5,00 € verkauft.',
-      rows: [
-        { label: '6 × 5,00 € verkauft', amount: 30 },
-        { label: '10 % Provision', amount: -3 },
-        { label: 'Annahmegebühr 10 × 0,50 €', amount: -5 },
-      ],
-      total: 22,
-    });
-  });
-
-  it('names the fee cap and gives back what is above it in the example', () => {
+  it('explains commission and intake fee with a neutral example without a kind', () => {
     const { lines, example } = describeSellerFees({
       commission: 10,
-      intakeFee: 3,
-      maxFeesPerSeller: 20,
+      features: { intakeFee: 0.5 },
     });
-    expect(lines.at(-1)).toBe('Du zahlst höchstens 20,00 € Gebühren, alles zusammen');
-    // 3 € commission + 30 € intake fee: 13 € come back
-    expect(example?.rows.at(-1)).toEqual({
-      label: 'Gebühren-Deckel 20,00 €',
-      amount: 13,
-      credit: true,
+    expect(lines).toEqual([
+      '10 % Provision auf jeden verkauften Artikel',
+      '0,50 € Annahmegebühr pro angenommenem Artikel, verkauft oder nicht',
+    ]);
+    expect(example).toEqual({
+      text:
+        'Gibst du 5 Artikel ab und verkaufst davon 3 Artikel für je 20,00 €, bekommst du ' +
+        '51,50 € (60,00 € − 6,00 € Provision − 2,50 € Annahmegebühr).',
+      total: 51.5,
+      groups: [],
     });
-    expect(example?.total).toBe(10);
-    // Below the cap the example has nothing to give back
-    const below = describeSellerFees({ commission: 10, intakeFee: 0.5, maxFeesPerSeller: 20 });
-    expect(below.example?.rows).toHaveLength(3);
   });
 
-  it('goes negative when the fee is higher than the sales', () => {
-    expect(describeSellerFees({ commission: 0, intakeFee: 4 }).example?.total).toBe(-10);
+  it('fits the example to the kind of bazaar (#303)', () => {
+    const bike = (features = {}) =>
+      describeSellerFees({ commission: 10, features: { eventType: 'bikeExchange', ...features } })
+        .example?.text;
+    // Without an intake fee, what is not sold costs nothing: only the sale counts
+    expect(bike()).toBe(
+      'Verkaufst du ein Rad für 150,00 €, bekommst du 135,00 € (150,00 € − 15,00 € Provision).'
+    );
+    expect(bike({ intakeFee: 3 })).toBe(
+      'Gibst du 2 Räder ab und verkaufst davon ein Rad für 150,00 €, bekommst du 129,00 € ' +
+        '(150,00 € − 15,00 € Provision − 6,00 € Annahmegebühr).'
+    );
+    expect(
+      describeSellerFees({ commission: 15, features: { eventType: 'kidsBazaar' } }).example?.text
+    ).toBe('Verkaufst du 6 Teile für je 5,00 €, bekommst du 25,50 € (30,00 € − 4,50 € Provision).');
+    // A kind that no longer exists: neutral
+    expect(
+      describeSellerFees({ commission: 10, features: { eventType: 'gone' } }).example?.text
+    ).toMatch(/^Verkaufst du 3 Artikel für je 20,00 €/);
+  });
+
+  it('names the fee cap and takes it into the example', () => {
+    const { lines, example } = describeSellerFees({
+      commission: 10,
+      features: { intakeFee: 3, maxFeesPerSeller: 20, eventType: 'kidsBazaar' },
+    });
+    expect(lines.at(-1)).toBe('Höchstens 20,00 € Gebühren insgesamt');
+    // 3 € commission + 30 € intake fee, capped at 20 €
+    expect(example?.text).toBe(
+      'Gibst du 10 Teile ab und verkaufst davon 6 Teile für je 5,00 €, bekommst du 10,00 € ' +
+        '(30,00 € − 20,00 € Gebühren, gedeckelt).'
+    );
+    // Below the cap the fees are listed one by one
+    const below = describeSellerFees({
+      commission: 10,
+      features: { intakeFee: 0.5, maxFeesPerSeller: 20 },
+    });
+    expect(below.example?.text).toMatch(/− 6,00 € Provision − 2,50 € Annahmegebühr\)\.$/);
+  });
+
+  it('says what the seller pays when the fees are higher than the sales', () => {
+    const { example } = describeSellerFees({
+      commission: 0,
+      features: { intakeFee: 4, eventType: 'kidsBazaar' },
+    });
+    expect(example?.total).toBe(-10);
+    expect(example?.text).toMatch(/, zahlst du 10,00 € \(30,00 € − 40,00 € Annahmegebühr\)\.$/);
+  });
+
+  it('adds the payout of fee groups that pay less (#302)', () => {
+    const { example } = describeSellerFees({
+      commission: 10,
+      features: {
+        eventType: 'bikeExchange',
+        feeGroups: [
+          { id: 'm', label: 'Vereinsmitglieder', commission: 5, assignment: 'selfDeclared' },
+          // Same fees, more items: nothing to add
+          {
+            id: 'h',
+            label: 'Helfer',
+            commission: 10,
+            maxItemsPerSeller: 9,
+            assignment: 'helpers',
+          },
+        ],
+      },
+    });
+    expect(example?.groups).toEqual(['Für Vereinsmitglieder: 142,50 €.']);
   });
 
   it('has nothing to explain without fees', () => {
     expect(describeSellerFees({ commission: 0 })).toEqual({ lines: [], example: null });
     expect(describeSellerFees({ commission: 7.5 }).lines[0]).toMatch(/^7,5 % Provision/);
   });
+
+  it('reads the event form the same way, where empty numbers are NaN', () => {
+    const event = feesFromForm({
+      commission: 10,
+      features: {
+        intakeFee: NaN,
+        maxFeesPerSeller: NaN,
+        eventType: 'bikeExchange',
+        feeGroups: [
+          {
+            id: 'm',
+            label: 'Mitglieder',
+            commission: NaN,
+            intakeFee: NaN,
+            maxFeesPerSeller: NaN,
+            maxItemsPerSeller: NaN,
+            assignment: 'selfDeclared',
+          },
+        ],
+      },
+    });
+    const { example } = describeSellerFees(event);
+    expect(example?.text).toMatch(/^Verkaufst du ein Rad für 150,00 €, bekommst du 135,00 €/);
+    expect(example?.groups).toEqual(['Für Mitglieder: 150,00 €.']);
+  });
 });
 
 describe('describeSellerRules', () => {
-  it('names the item limit and every price feature', () => {
-    const rules = describeSellerRules({
+  it('splits what sellers must do from what they can do', () => {
+    const { duties, options } = describeSellerRules({
       commission: 0,
       features: {
         maxItemsPerSeller: 40,
         photosOptional: true,
+        fixedSellerData: true,
+        privateSellersOnly: true,
         discounts: true,
         maxDiscountPercent: 30,
         // 15:00 in Berlin (summer time)
@@ -70,40 +146,43 @@ describe('describeSellerRules', () => {
         questions: true,
       },
     });
-    expect(rules.map((rule) => rule.text)).toEqual([
+    expect(duties.map((rule) => rule.text)).toEqual([
       'Bis zu 40 Artikel pro Verkäufer',
-      'Fotos sind freiwillig',
-      'Während des Basars ab 15:00 Uhr kannst du deine Preise um bis zu 30 % senken',
-      'Käufer können dir online Preise vorschlagen, du entscheidest',
-      'Verhandeln an der Kasse: Du legst einen Mindestpreis fest, bis zu dem die Kasse heruntergehen darf',
-      'Käufer können öffentlich Fragen zu deinen Artikeln stellen',
+      'Ausweis mitbringen: Name und Anschrift werden vor Ort geprüft',
+      'Nur für Privatleute, nicht gewerblich',
     ]);
-    expect(rules.every((rule) => rule.allowed)).toBe(true);
+    expect(duties[1].details).toMatch(/^Ab deinem ersten angenommenen Artikel/);
+    expect(options.map((rule) => rule.text)).toEqual([
+      'Rabatte bis 30 % während des Basars, ab 15:00 Uhr',
+      'Käufer können dir online Preise vorschlagen, du entscheidest',
+      'Verhandeln an der Kasse bis zu deinem Mindestpreis',
+      'Käufer können online Fragen zu deinen Artikeln stellen',
+    ]);
+    expect([...duties, ...options].every((rule) => rule.allowed)).toBe(true);
   });
 
   it('tells how many places of the whole market are left', () => {
     const rules = (itemPlacesLeft?: number) =>
-      describeSellerRules({ commission: 0, features: { maxItemsTotal: 200 }, itemPlacesLeft })[1];
+      describeSellerRules({
+        commission: 0,
+        features: { maxItemsTotal: 200, photosOptional: true },
+        itemPlacesLeft,
+      }).duties[0];
     expect(rules().text).toBe('Höchstens 200 Artikel auf dem ganzen Basar');
     expect(rules(23).text).toBe('Höchstens 200 Artikel auf dem ganzen Basar, noch 23 Plätze frei');
-    expect(rules(0)).toEqual({
+    expect(rules(0)).toMatchObject({
       text: 'Der Basar ist voll: Alle 200 Plätze für Artikel sind vergeben',
       allowed: false,
     });
   });
 
-  it('says what is not offered', () => {
-    const rules = describeSellerRules({
+  it('leaves out what the bazaar does not offer (#303)', () => {
+    const { duties, options } = describeSellerRules({
       commission: 0,
       features: { discounts: false, priceOffers: false, minimumPrice: false },
     });
-    expect(rules[0].text).toBe('Beliebig viele Artikel pro Verkäufer');
-    expect(rules[1].text).toBe('Jeder Artikel braucht mindestens ein Foto');
-    expect(rules.filter((rule) => !rule.allowed).map((rule) => rule.text)).toEqual([
-      'Keine Rabatte während des Basars',
-      'Keine Preisvorschläge von Käufern',
-      'Kein Verhandeln an der Kasse, es gilt dein Preis',
-    ]);
+    expect(duties.map((rule) => rule.text)).toEqual(['Mindestens ein Foto pro Artikel']);
+    expect(options).toEqual([]);
   });
 });
 

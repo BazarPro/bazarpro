@@ -9,12 +9,33 @@ import { compactSelection, groupCategories } from '../shared/categoryTree';
  */
 export type EventTypeId = 'kidsBazaar' | 'clothingBazaar' | 'skiBazaar' | 'bikeExchange';
 
+/**
+ * The worked example of the conditions (#303): what a typical seller hands in and sells.
+ * `noun` names the items in it (events: conditions.exampleItems.<noun>).
+ */
+export interface FeeExampleCase {
+  handedIn: number;
+  sold: number;
+  price: number;
+  noun: 'item' | 'piece' | 'bike';
+}
+
+/** For a bazaar of no known kind */
+export const NEUTRAL_FEE_EXAMPLE: FeeExampleCase = {
+  handedIn: 5,
+  sold: 3,
+  price: 20,
+  noun: 'item',
+};
+
 export interface EventType {
   id: EventTypeId;
   /** Drawing for the picker and the previews of the wizard */
   item: ItemKind;
   /** Prices of the example items in the previews (titles: eventTypes.<id>.exampleItems) */
   examplePrices: [number, number, number];
+  /** What sellers of such a bazaar typically hand in and sell, for the worked example */
+  feeExample: FeeExampleCase;
   commission: number;
   features: StoredEventFeatures;
   /**
@@ -35,6 +56,7 @@ export const EVENT_TYPES: EventType[] = [
     // Many small items per seller: small labels, no photos needed, discounts at the end
     id: 'kidsBazaar',
     item: 'kids',
+    feeExample: { handedIn: 10, sold: 6, price: 5, noun: 'piece' },
     examplePrices: [9, 15, 6],
     commission: 15,
     features: {
@@ -57,6 +79,7 @@ export const EVENT_TYPES: EventType[] = [
     // Second-hand for everyone, e.g. a women's clothing bazaar or a flea market
     id: 'clothingBazaar',
     item: 'clothing',
+    feeExample: { handedIn: 8, sold: 5, price: 12, noun: 'piece' },
     examplePrices: [35, 24, 28],
     commission: 10,
     features: {
@@ -78,6 +101,7 @@ export const EVENT_TYPES: EventType[] = [
     // Fewer, pricier items: a negotiable price and questions about size and condition
     id: 'skiBazaar',
     item: 'ski',
+    feeExample: { handedIn: 3, sold: 2, price: 60, noun: 'item' },
     examplePrices: [90, 45, 25],
     commission: 10,
     features: {
@@ -98,6 +122,7 @@ export const EVENT_TYPES: EventType[] = [
     // same plus private sellers only, fixed data and a limit, switched on by the organizer.
     id: 'bikeExchange',
     item: 'bike',
+    feeExample: { handedIn: 2, sold: 1, price: 150, noun: 'bike' },
     examplePrices: [140, 65, 25],
     commission: 10,
     features: {
@@ -122,6 +147,11 @@ export const EVENT_TYPES: EventType[] = [
 /** The type of a draft or of the picker; drafts from before may name a removed one. */
 export function findEventType(id: string | undefined): EventType | undefined {
   return EVENT_TYPES.find((type) => type.id === id);
+}
+
+/** The worked example for a kind of bazaar (`features.eventType`); neutral without one. */
+export function feeExampleFor(eventType: string | undefined): FeeExampleCase {
+  return findEventType(eventType)?.feeExample ?? NEUTRAL_FEE_EXAMPLE;
 }
 
 /**

@@ -201,7 +201,10 @@
     "maxFees": "Gebühren-Deckel pro Verkäufer in € (optional)",
     "noCap": "kein Deckel",
     "maxFeesHint": "Ein Verkäufer zahlt insgesamt höchstens so viel Provision und Annahmegebühr, z. B. 20 € bei teuren Rädern. Was darüber liegt, geht bei der Abrechnung an ihn zurück. Beim Direktverkauf nimmt die Kasse dann keine Provision mehr.",
-    "maxFeesLater": "Sobald sich der erste Verkäufer angemeldet hat, kannst du ihn nur noch senken."
+    "maxFeesLater": "Sobald sich der erste Verkäufer angemeldet hat, kannst du ihn nur noch senken.",
+    "feeExample": "Rechenbeispiel für Verkäufer",
+    "feeExampleHint": "Die Bedingungen rechnen ein Beispiel, das zur Art des Basars passt, z. B. ein Rad für 150 € statt sechs Teile für je 5 €.",
+    "feeExampleNeutral": "Allgemein"
   },
   "logistics": {
     "title": "Abgabe & Abholung",
@@ -1059,7 +1062,8 @@
       "maxItemsTotal": "{{count}} Plätze für Artikel insgesamt",
       "feeCap": "Höchstens {{fee}} Gebühren pro Verkäufer",
       "feeCapExample": "Gebühren-Deckel {{fee}}",
-      "feeGroup": "{{label}}: {{advantages}}"
+      "feeGroup": "{{label}}: {{advantages}}",
+      "example": "Rechenbeispiel"
     },
     "short": {
       "type": "Art",

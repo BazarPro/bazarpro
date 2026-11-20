@@ -41,7 +41,7 @@ import { coverUrl } from '../../../../../lib/eventCovers';
 import { EVENT_TYPES, type EventType } from '../../../../../lib/eventTypes';
 import {
   describeSellerFees,
-  formatSignedEuro,
+  feesFromForm,
   type SellerConditionsEvent,
   formGroupAdvantages,
 } from '../../../../../lib/sellerFees';
@@ -100,6 +100,7 @@ interface WizardValues {
     privateSellersOnly?: boolean;
     fixedSellerData?: boolean;
     directSale?: boolean;
+    eventType?: string;
   };
   sellerLogistics?: {
     dropoffStart?: string;
@@ -518,8 +519,13 @@ export function FeesPreview({ type }: { type?: EventType }) {
   const kept = cap === undefined ? fullCommission : Math.min(fullCommission, Math.max(cap, 0));
   const sellerGets = Math.max(price - kept, 0);
   const sellerShare = price > 0 ? (sellerGets / price) * 100 : 100;
-  // The worked example sellers also see in the conditions
-  const { example } = describeSellerFees({ commission, intakeFee, maxFeesPerSeller: cap });
+  // The worked example sellers also see in the conditions, for the chosen kind of bazaar
+  const { example } = describeSellerFees(
+    feesFromForm({
+      ...values,
+      features: { ...values.features, eventType: values.features?.eventType || type?.id },
+    })
+  );
 
   return (
     <PreviewCanvas caption={t('wizard.preview.sellerView')}>
@@ -585,26 +591,14 @@ export function FeesPreview({ type }: { type?: EventType }) {
           ))}
       </div>
       {example && (
-        <div className="mt-4 space-y-2 rounded-xl border bg-card p-4 text-xs shadow-sm">
-          <p className="text-xs text-muted-foreground">{example.intro}</p>
-          <dl className="space-y-1">
-            {example.rows.map((row) => (
-              <div
-                key={row.label}
-                className={cn(
-                  'flex justify-between gap-3',
-                  row.credit && 'font-medium text-emerald-700 dark:text-emerald-400'
-                )}
-              >
-                <dt>{row.label}</dt>
-                <dd className="tabular-nums">{formatSignedEuro(row.amount)}</dd>
-              </div>
-            ))}
-            <div className="flex justify-between gap-3 border-t pt-1 font-semibold">
-              <dt>{t('wizard.preview.sellerGets')}</dt>
-              <dd className="tabular-nums">{formatPriceDE(example.total)} €</dd>
-            </div>
-          </dl>
+        <div className="mt-4 space-y-1 rounded-xl border bg-card p-4 text-xs shadow-sm animate-in fade-in duration-300">
+          <p className="font-semibold">{t('wizard.preview.example')}</p>
+          <p className="text-muted-foreground">{example.text}</p>
+          {example.groups.map((group) => (
+            <p key={group} className="text-muted-foreground">
+              {group}
+            </p>
+          ))}
         </div>
       )}
     </PreviewCanvas>

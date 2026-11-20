@@ -197,6 +197,8 @@ const buildEventSchema = (
         registrationOpen: z.boolean(),
         registrationStartsAt: z.string(),
         registrationEndsAt: z.string(),
+        /** The kind of bazaar (#303); empty: none */
+        eventType: z.string(),
         intakeFee: z
           .number()
           .min(0, zodMessage('form.feeNegative', 'organizer'))
@@ -461,6 +463,7 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
     registrationEndsAt: features.registrationEndsAt
       ? formatForDateTimeLocal(features.registrationEndsAt)
       : '',
+    eventType: findEventType(features.eventType)?.id ?? '',
   };
 }
 
@@ -474,9 +477,13 @@ function givenNumber(value: number | undefined): number | undefined {
  * the fee cap are sent as null when empty: the backend keeps a value that is left out, so
  * an older app that does not know them cannot delete them.
  */
-type FeaturesArgs = Omit<StoredEventFeatures, 'maxItemsTotal' | 'maxFeesPerSeller'> & {
+type FeaturesArgs = Omit<
+  StoredEventFeatures,
+  'maxItemsTotal' | 'maxFeesPerSeller' | 'eventType'
+> & {
   maxItemsTotal: number | null;
   maxFeesPerSeller: number | null;
+  eventType: string | null;
 };
 
 function featuresFromForm(features: FeatureFormData): FeaturesArgs {
@@ -525,15 +532,17 @@ function featuresFromForm(features: FeatureFormData): FeaturesArgs {
     registrationOpen: features.registrationOpen,
     registrationStartsAt: timeFromForm(features.registrationOpen, features.registrationStartsAt),
     registrationEndsAt: timeFromForm(features.registrationOpen, features.registrationEndsAt),
+    eventType: features.eventType || null,
   };
 }
 
 /** The features as stored, for previews: a cleared value is just not there. */
-function storedFeatures({ maxItemsTotal, maxFeesPerSeller, ...rest }: FeaturesArgs) {
+function storedFeatures({ maxItemsTotal, maxFeesPerSeller, eventType, ...rest }: FeaturesArgs) {
   return {
     ...rest,
     maxItemsTotal: maxItemsTotal ?? undefined,
     maxFeesPerSeller: maxFeesPerSeller ?? undefined,
+    eventType: eventType ?? undefined,
   } satisfies StoredEventFeatures;
 }
 
@@ -803,7 +812,13 @@ function EventSection({
       return (
         <FormSection contentClassName="grid grid-cols-1 gap-5 space-y-0 sm:grid-cols-2">
           <EditEventContact parts={['commission']} feeLock={feeLock} bare />
-          <EditEventFeatures parts={['fees']} showHeader={false} feeLock={feeLock} bare />
+          <EditEventFeatures
+            parts={['fees']}
+            showHeader={false}
+            feeLock={feeLock}
+            feeExampleKind={!!editing}
+            bare
+          />
           <EditEventFeeGroups feeLock={feeLock} registeredIds={editing?.registeredFeeGroups} />
         </FormSection>
       );
@@ -1095,7 +1110,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       coverTemplate: current.coverImageFile ? undefined : coverForKind(type.item),
       commission: type.commission,
       categories: matching.length > 0 ? matching : current.categories,
-      features: featuresToForm(type.features),
+      // Kept with the bazaar: the conditions show an example that fits it (#303)
+      features: featuresToForm({ ...type.features, eventType: type.id }),
     });
     setEventType(id);
     setStep(1);
@@ -1251,7 +1267,12 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       ...current,
       ...draft.values,
       coverTemplate: draft.values.coverTemplate ?? undefined,
-      features: { ...current.features, ...withoutNulls(draft.values.features) },
+      features: {
+        ...current.features,
+        ...withoutNulls(draft.values.features),
+        // Drafts from before #303 only knew the kind beside the values
+        eventType: draft.values.features?.eventType ?? findEventType(draft.eventType)?.id ?? '',
+      },
     });
     setPendingLocationCategories(draft.pendingLocationCategories);
     setEventType(findEventType(draft.eventType)?.id);

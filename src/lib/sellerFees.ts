@@ -3,6 +3,7 @@ import { feeCapCredit } from '../shared/feeCap';
 import { eventFees, groupFees, type FeeGroup } from '../shared/feeGroups';
 import { resolveEventFeatures, type StoredEventFeatures } from '../shared/eventFeatures';
 import { formatBerlinRange, formatBerlinTime } from '../shared/berlinTime';
+import { feeExampleFor, type FeeExampleCase } from './eventTypes';
 import i18n, { currentLocale } from '../i18n';
 import { dateLocale } from '../i18n/format';
 import { requirableFields, type CategoryField } from '../shared/categoryFields';
@@ -43,29 +44,50 @@ export function feeLockHint(lock: 'running' | 'sellers'): string {
   return i18n.t(`feeLock.${lock}` as never, { ns: 'organizer' }) as string;
 }
 
-/** Example for sellers: 10 items handed in, 6 of them sold for 5 € each. */
-const EXAMPLE = { handedIn: 10, sold: 6, price: 5 };
-
-export interface ExampleRow {
-  label: string;
-  /** Signed: income positive, fees negative */
-  amount: number;
-  /** Fees given back by the cap */
-  credit?: boolean;
-}
-
 export interface FeeExample {
-  intro: string;
-  rows: ExampleRow[];
+  /**
+   * One sentence, e.g. "Verkaufst du ein Rad für 150,00 €, bekommst du 135,00 €
+   * (150,00 € − 15,00 € Provision)."
+   */
+  text: string;
   /** Payout when positive, otherwise what the seller pays */
   total: number;
+  /** The same for the fee groups whose payout differs, e.g. "Für Mitglieder: 142,50 €." */
+  groups: string[];
 }
 
-/** What sellers pay, in plain words, with a worked example; empty without fees. */
-export function describeSellerFees({ commission, intakeFee = 0, maxFeesPerSeller }: SellerFees): {
+/** What one seller pays for the example: the fees together and what the cap gives back. */
+function exampleFees(
+  { commission, intakeFee = 0, maxFeesPerSeller }: SellerFees,
+  { handedIn, sold, price }: FeeExampleCase
+) {
+  const revenue = sold * price;
+  const commissionFee = commission > 0 ? Math.round(revenue * commission) / 100 : 0;
+  const intake = intakeFee > 0 ? Math.round(handedIn * intakeFee * 100) / 100 : 0;
+  const full = commissionFee + intake;
+  const fees = full - feeCapCredit(full, maxFeesPerSeller);
+  return {
+    revenue,
+    commissionFee,
+    intake,
+    fees,
+    total: Math.round((revenue - fees) * 100) / 100,
+  };
+}
+
+const euro = (amount: number) => `${formatPriceDE(amount)} €`;
+
+/**
+ * What sellers pay, in plain words, with a worked example in one sentence that fits the
+ * kind of bazaar (`features.eventType`, #303); empty without fees. Intake fee, cap and
+ * fee groups only show up when the bazaar has them.
+ */
+export function describeSellerFees(event: SellerConditionsEvent): {
   lines: string[];
   example: FeeExample | null;
 } {
+  const fees = eventFees(event);
+  const { commission, intakeFee = 0, maxFeesPerSeller } = fees;
   const lines: string[] = [];
   if (commission > 0) {
     lines.push(text('commissionLine', { percent: formatPercent(commission) }));
@@ -78,51 +100,36 @@ export function describeSellerFees({ commission, intakeFee = 0, maxFeesPerSeller
     lines.push(text('feeCapLine', { fee: formatPriceDE(maxFeesPerSeller) }));
   }
 
-  const revenue = EXAMPLE.sold * EXAMPLE.price;
-  const rows: ExampleRow[] = [
-    {
-      label: text('exampleSold', { sold: EXAMPLE.sold, price: formatPriceDE(EXAMPLE.price) }),
-      amount: revenue,
-    },
-  ];
-  if (commission > 0) {
-    rows.push({
-      label: text('exampleCommission', { percent: formatPercent(commission) }),
-      amount: -Math.round(revenue * commission) / 100,
-    });
-  }
-  if (intakeFee > 0) {
-    rows.push({
-      label: text('exampleIntakeFee', {
-        handedIn: EXAMPLE.handedIn,
-        fee: formatPriceDE(intakeFee),
-      }),
-      amount: -Math.round(EXAMPLE.handedIn * intakeFee * 100) / 100,
-    });
-  }
-  // Fees are the negative rows; what is above the cap comes back
-  const fees = -rows.reduce((sum, row) => sum + Math.min(row.amount, 0), 0);
-  const credit = feeCapCredit(fees, maxFeesPerSeller);
-  if (credit > 0) {
-    rows.push({
-      label: text('exampleFeeCap', { fee: formatPriceDE(maxFeesPerSeller ?? 0) }),
-      amount: credit,
-      credit: true,
-    });
-  }
-  const total = Math.round(rows.reduce((sum, row) => sum + row.amount, 0) * 100) / 100;
-  return {
-    lines,
-    example: {
-      intro: text('exampleIntro', {
-        handedIn: EXAMPLE.handedIn,
-        sold: EXAMPLE.sold,
-        price: formatPriceDE(EXAMPLE.price),
-      }),
-      rows,
-      total,
-    },
-  };
+  const kind = feeExampleFor(event.features?.eventType);
+  const { revenue, commissionFee, intake, fees: paid, total } = exampleFees(fees, kind);
+  const items = text(`exampleItems.${kind.noun}`, { count: kind.sold, price: euro(kind.price) });
+  // Without an intake fee, what is handed in but not sold costs nothing: leave it out
+  const sale =
+    intake > 0
+      ? text('exampleHandIn', {
+          handedIn: text(`exampleHandedIn.${kind.noun}`, { count: kind.handedIn }),
+          items,
+        })
+      : text('exampleSale', { items });
+  const parts =
+    paid < commissionFee + intake
+      ? [text('exampleCapped', { amount: euro(paid) })]
+      : [
+          commissionFee > 0 ? text('exampleCommission', { amount: euro(commissionFee) }) : '',
+          intake > 0 ? text('exampleIntakeFee', { amount: euro(intake) }) : '',
+        ].filter(Boolean);
+  const exampleText = text('exampleSentence', {
+    sale,
+    result: text(total >= 0 ? 'exampleGet' : 'examplePay', { amount: euro(Math.abs(total)) }),
+    parts: [euro(revenue), ...parts].join(' − '),
+  });
+  const groups = (event.features?.feeGroups ?? []).flatMap((group) => {
+    const own = exampleFees(groupFees(event, group), kind).total;
+    return own === total || !group.label.trim()
+      ? []
+      : [text('exampleGroup', { label: group.label.trim(), amount: euro(own) })];
+  });
+  return { lines, example: { text: exampleText, total, groups } };
 }
 
 export interface FeeGroupTerms {
@@ -171,35 +178,49 @@ export function feeGroupAdvantages(event: SellerConditionsEvent, group: FeeGroup
 const givenNumber = (value: number | undefined) =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
+interface FormFeeValues {
+  commission?: number;
+  features?: {
+    intakeFee?: number;
+    maxFeesPerSeller?: number;
+    maxItemsPerSeller?: number;
+    feeGroups?: FeeGroup[];
+    eventType?: string;
+  };
+}
+
+const formGroup = (group: FeeGroup): FeeGroup => ({
+  ...group,
+  commission: givenNumber(group.commission) ?? 0,
+  intakeFee: givenNumber(group.intakeFee),
+  maxFeesPerSeller: givenNumber(group.maxFeesPerSeller),
+  maxItemsPerSeller: givenNumber(group.maxItemsPerSeller),
+});
+
+/**
+ * The fees of the event form as an event, where empty numbers are NaN: for the previews of
+ * the wizard, which explain them the same way as the conditions.
+ */
+export function feesFromForm(values: FormFeeValues): SellerConditionsEvent {
+  const features = values.features ?? {};
+  return {
+    commission: Math.min(Math.max(givenNumber(values.commission) ?? 0, 0), 100),
+    features: {
+      intakeFee: Math.max(givenNumber(features.intakeFee) ?? 0, 0) || undefined,
+      maxFeesPerSeller: givenNumber(features.maxFeesPerSeller),
+      maxItemsPerSeller: givenNumber(features.maxItemsPerSeller),
+      feeGroups: (features.feeGroups ?? []).map(formGroup),
+      eventType: features.eventType || undefined,
+    },
+  };
+}
+
 /**
  * `feeGroupAdvantages` from the values of the event form, where empty numbers are NaN,
  * e.g. "5 % Provision statt 10 % · bis zu 40 Artikel".
  */
-export function formGroupAdvantages(
-  values: {
-    commission?: number;
-    features?: { intakeFee?: number; maxFeesPerSeller?: number; maxItemsPerSeller?: number };
-  },
-  group: FeeGroup
-): string {
-  const features = values.features ?? {};
-  return feeGroupAdvantages(
-    {
-      commission: givenNumber(values.commission) ?? 0,
-      features: {
-        intakeFee: givenNumber(features.intakeFee),
-        maxFeesPerSeller: givenNumber(features.maxFeesPerSeller),
-        maxItemsPerSeller: givenNumber(features.maxItemsPerSeller),
-      },
-    },
-    {
-      ...group,
-      commission: givenNumber(group.commission) ?? 0,
-      intakeFee: givenNumber(group.intakeFee),
-      maxFeesPerSeller: givenNumber(group.maxFeesPerSeller),
-      maxItemsPerSeller: givenNumber(group.maxItemsPerSeller),
-    }
-  ).join(' · ');
+export function formGroupAdvantages(values: FormFeeValues, group: FeeGroup): string {
+  return feeGroupAdvantages(feesFromForm(values), formGroup(group)).join(' · ');
 }
 
 /** The fee groups as sellers read them (#302): each with its advantages and how to get in. */
@@ -220,94 +241,78 @@ export function describeFeeGroups(event: SellerConditionsEvent): FeeGroupTerms[]
 
 export interface SellerRule {
   text: string;
-  /** false for something the bazaar does not offer */
+  /** More about it, shown on request */
+  details?: string;
+  /** false when it keeps the seller out, e.g. a full market */
   allowed: boolean;
 }
 
-/** Item limit, photos and the price features of the bazaar, as sellers read them. */
+/**
+ * What applies to sellers besides the fees (#303), only what the bazaar has, not what it
+ * lacks: `duties` (limits, required details, ID, private sale), then `options` (discounts,
+ * offers, minimum price, questions).
+ */
 export function describeSellerRules(
   event: SellerConditionsEvent,
   fieldDefinitions?: readonly CategoryField[]
-): SellerRule[] {
+): { duties: SellerRule[]; options: SellerRule[] } {
   const features = resolveEventFeatures(event);
-  const rules: SellerRule[] = [
-    {
-      text: features.maxItemsPerSeller
-        ? text('maxItems', { max: features.maxItemsPerSeller })
-        : text('unlimitedItems'),
-      allowed: true,
-    },
-    {
-      text: features.photosOptional ? text('photosOptional') : text('photosRequired'),
-      allowed: true,
-    },
-  ];
+  const rule = (key: string, values?: Record<string, unknown>, details?: string): SellerRule => ({
+    text: text(key, values),
+    details: details && text(details),
+    allowed: true,
+  });
+  const duties: SellerRule[] = [];
+  if (features.maxItemsPerSeller) {
+    duties.push(rule('maxItems', { max: features.maxItemsPerSeller }));
+  }
   if (features.maxItemsTotal) {
     const left = event.itemPlacesLeft;
-    rules.splice(1, 0, {
-      text:
-        left === 0
-          ? text('marketFull', { max: features.maxItemsTotal })
-          : left !== undefined
-            ? text('placesLeft', { count: left, max: features.maxItemsTotal })
-            : text('maxItemsTotal', { max: features.maxItemsTotal }),
+    duties.push({
+      ...rule(left === 0 ? 'marketFull' : left !== undefined ? 'placesLeft' : 'maxItemsTotal', {
+        count: left,
+        max: features.maxItemsTotal,
+      }),
       allowed: left !== 0,
     });
   }
-  if (!features.publicCatalog) {
-    rules.push({ text: text('noPublicCatalog'), allowed: true });
-  }
+  if (!features.photosOptional) duties.push(rule('photosRequired'));
   const required = requirableFields(fieldDefinitions).filter((field) =>
     features.requiredFields?.includes(field.key)
   );
   if (required.length > 0) {
-    rules.push({
-      text: text('requiredFields', {
+    duties.push(
+      rule('requiredFields', {
         fields: required
           .map((field) => categoryFieldText(field, 'label') ?? field.label)
           .join(', '),
-      }),
-      allowed: true,
-    });
+      })
+    );
   }
-  if (features.directSale) {
-    rules.push({ text: text('directSale'), allowed: true });
+  if (features.fixedSellerData) duties.push(rule('fixedData', undefined, 'fixedDataDetails'));
+  if (features.privateSellersOnly) duties.push(rule('privateSellers'));
+  if (features.directSale) duties.push(rule('directSale', undefined, 'directSaleDetails'));
+  if (!features.publicCatalog) {
+    duties.push(rule('noPublicCatalog', undefined, 'noPublicCatalogDetails'));
   }
-  if (features.privateSellersOnly) {
-    rules.push({ text: text('privateSellers'), allowed: true });
-  }
-  if (features.fixedSellerData) {
-    rules.push({ text: text('fixedData'), allowed: true });
-  }
+
+  const options: SellerRule[] = [];
   if (features.discounts) {
-    rules.push({
-      text:
-        features.discountStartsAt !== undefined
-          ? text('discountsFrom', {
-              time: formatBerlinTime(features.discountStartsAt),
-              percent: features.maxDiscountPercent,
-            })
-          : text('discounts', { percent: features.maxDiscountPercent }),
-      allowed: true,
-    });
-  } else {
-    rules.push({ text: text('noDiscounts'), allowed: false });
+    options.push(
+      features.discountStartsAt !== undefined
+        ? rule('discountsFrom', {
+            time: formatBerlinTime(features.discountStartsAt),
+            percent: features.maxDiscountPercent,
+          })
+        : rule('discounts', { percent: features.maxDiscountPercent })
+    );
   }
-  rules.push(
-    features.priceOffers
-      ? { text: text('offers'), allowed: true }
-      : { text: text('noOffers'), allowed: false },
-    features.minimumPrice
-      ? { text: text('minimumPrice'), allowed: true }
-      : { text: text('noMinimumPrice'), allowed: false }
-  );
+  if (features.priceOffers) options.push(rule('offers'));
+  if (features.minimumPrice) options.push(rule('minimumPrice'));
   if (features.questions) {
-    rules.push({
-      text: features.questionsDuringEventOnly ? text('questionsDuringEvent') : text('questions'),
-      allowed: true,
-    });
+    options.push(rule(features.questionsDuringEventOnly ? 'questionsDuringEvent' : 'questions'));
   }
-  return rules;
+  return { duties, options };
 }
 
 /**
