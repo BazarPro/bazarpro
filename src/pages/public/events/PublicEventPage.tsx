@@ -425,7 +425,11 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
             )}
             <ReportButton targetType="event" targetId={event._id} label={t('page.report')} />
           </div>
-          <EventPageSidebar event={event} conditions={event} />
+          <EventPageSidebar
+            event={event}
+            conditions={event}
+            eventId={isSeller ? event._id : undefined}
+          />
         </div>
 
         <EventRegistrationDialog

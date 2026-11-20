@@ -340,7 +340,9 @@
     "registrationClosed": "Closed, by invitation only",
     "untilTime": "until {{time}}",
     "maxItemsTotal": "At most {{count}} items in total",
-    "maxFees": "At most €{{amount}} of fees per seller"
+    "maxFees": "At most €{{amount}} of fees per seller",
+    "feeGroups_one": "Fee group: {{groups}}",
+    "feeGroups_other": "Fee groups: {{groups}}"
   },
   "sellers": {
     "sortSheets": "Sorting sheets",
@@ -456,7 +458,8 @@
     "returnedItems": "{{count}} unsold items returned",
     "saving": "Saving…",
     "done": "Done, finish",
-    "feeCap": "Fee cap"
+    "feeCap": "Fee cap",
+    "commissionGroup": "Commission ({{percent}} %, {{group}})"
   },
   "cash": {
     "title": "Settlement",
@@ -798,7 +801,9 @@
       "agreed": "Agreed price",
       "agreedPrice": "Agreed price",
       "commissionCapped": "Commission {{amount}} € · cap",
-      "capReached": "Fee cap reached, no commission"
+      "capReached": "Fee cap reached, no commission",
+      "sumMixed_one": "Commission ({{count}} item)",
+      "sumMixed_other": "Commission ({{count}} items)"
     }
   },
   "proof": {
@@ -884,7 +889,8 @@
     "fileNameSellers": "Settlement-sellers",
     "fileNameSales": "Settlement-sales",
     "direct": "paid directly",
-    "feeCap": "Fee cap (€)"
+    "feeCap": "Fee cap (€)",
+    "feeGroup": "Fee group"
   },
   "wizard": {
     "back": "Back",
@@ -971,7 +977,8 @@
       },
       "maxItemsTotal_one": "max. {{count}} item in total",
       "maxItemsTotal_other": "max. {{count}} items in total",
-      "maxFees": "at most €{{fee}} per seller"
+      "maxFees": "at most €{{fee}} per seller",
+      "feeGroup": "{{label}}: {{advantages}}"
     },
     "fixErrors": "Please check the marked details.",
     "guestCreate": "Sign up and create bazaar",
@@ -1051,7 +1058,8 @@
       "mapEntrance": "Entrance",
       "maxItemsTotal": "{{count}} places for items in total",
       "feeCap": "At most {{fee}} of fees per seller",
-      "feeCapExample": "Fee cap {{fee}}"
+      "feeCapExample": "Fee cap {{fee}}",
+      "feeGroup": "{{label}}: {{advantages}}"
     },
     "short": {
       "type": "Kind",
@@ -1364,5 +1372,68 @@
     "copyCode": "Copy code",
     "copyFailed": "Copying failed",
     "edit": "Change"
+  },
+  "feeGroups": {
+    "title": "Fee groups (optional)",
+    "hint": "Own fees for a group of sellers, e.g. club members 5 % instead of 10 % or helpers without commission. Sellers see all groups in the conditions. Up to 4 groups, each seller is in one at most. Who belongs to two groups (e.g. helper and member) gets the one with the lower commission, at equal commission the one with the lower intake fee. So a high intake fee does not make a group count as dearer than one with more commission.",
+    "empty": "All sellers pay the same fees. With a group, e.g. club members or helpers pay less.",
+    "unnamed": "New group",
+    "hasError": "Please check",
+    "label": "Name of the group",
+    "labelPlaceholder": "e.g. Club members",
+    "assignmentLabel": "Who belongs to it?",
+    "assignment": {
+      "selfDeclared": "Given at registration",
+      "helpers": "Helpers of the bazaar",
+      "selfDeclaredShort": "Given at registration",
+      "helpersShort": "Helpers",
+      "selfDeclaredHint": "Sellers choose the group themselves when registering. At the drop-off the team checks the proof and confirms or removes the group. Until then no item can be accepted. Until then the normal fees and item limit apply.",
+      "helpersHint": "Applies automatically to everyone with a helper role, as long as they have it. You can also assign helpers without rights. Only one group can apply to helpers.",
+      "manual": "Organizer only",
+      "manualShort": "assigned by the organizer",
+      "manualHint": "Sellers cannot choose the group themselves. You assign it in the seller list or at the seller, e.g. cake donors or the board."
+    },
+    "commission": "Commission",
+    "intakeFee": "Intake fee",
+    "cap": "Fee cap",
+    "capHint": "Empty: the bazaar's cap applies.",
+    "items": "Max. items",
+    "itemsHint": "Empty: the bazaar's limit applies. The limit for the whole market applies to everyone.",
+    "likeBazaar": "like bazaar ({{value}})",
+    "proofHint": "Proof (optional)",
+    "proofHintInfo": "Shown with the group in the conditions and at the drop-off, so sellers bring it.",
+    "proofHintPlaceholder": "e.g. Show your membership card at the drop-off",
+    "fixed": "Sellers registered with this group: it stays and can only get cheaper.",
+    "remove": "Remove group",
+    "add": "Add fee group",
+    "labelRequired": "Give the group a name.",
+    "labelTwice": "Another group already has this name.",
+    "registeredMax": "Sellers registered with this group: at most {{value}}.",
+    "registeredMinItems": "Sellers registered with this group: at least {{min}} items.",
+    "helpersTwice": "There is already a group for the helpers of the bazaar."
+  },
+  "feeGroupCheck": {
+    "title": "Reduced: {{group}} – check the proof",
+    "text": "The seller says they belong to this group. Confirm the group if the proof is right, otherwise remove it: then the regular fees apply. Until then no item can be accepted.",
+    "textWithProof": "Proof: {{proof}}. Confirm the group if it is right, otherwise remove it: then the regular fees apply. Until then no item can be accepted.",
+    "confirm": "Confirm",
+    "remove": "Remove",
+    "confirmed": "{{group}} confirmed",
+    "removed": "{{group}} removed, the regular fees apply"
+  },
+  "sellerFeeGroup": {
+    "title": "Fee group",
+    "pending": "check",
+    "pendingHint": "Self-declared: check the proof at the drop-off and confirm or remove it",
+    "assign": "Assign fee group",
+    "none": "No group",
+    "assigned": "{{name}}: {{group}}",
+    "unassigned": "{{name}}: no group",
+    "byRole": "{{group}} applies through the helper role, as long as it lasts.",
+    "pendingCount_one": "{{count}} self-declaration is not checked yet. You confirm or remove it at the drop-off.",
+    "pendingCount_other": "{{count}} self-declarations are not checked yet. You confirm or remove them at the drop-off.",
+    "filter": "Filter by fee group",
+    "allGroups": "All groups",
+    "withPending": "{{group}} ({{count}} to check)"
   }
 }

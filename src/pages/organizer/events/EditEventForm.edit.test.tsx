@@ -92,6 +92,8 @@ function renderAt(path: string) {
 beforeEach(() => {
   editEvent.mockClear();
   createEvent.mockClear();
+  // The wizard keeps every change as draft in the browser; each test starts afresh
+  localStorage.clear();
 });
 
 describe('editing an event', () => {

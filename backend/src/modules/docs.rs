@@ -539,6 +539,15 @@ pub struct EventSeller {
     pub intake_fee_items: Option<i32>,
     /// Fees above the cap given back at the payout (#301)
     pub fee_cap_credit: Option<Decimal>,
+    /// Fee group the seller chose or the team put them in (#302)
+    pub fee_group_id: Option<String>,
+    /// When the team confirmed, assigned or took away the group
+    #[serde(with = "ms_opt")]
+    pub fee_group_decided_at: Option<DateTime<Utc>>,
+    /// The group applied at the payout
+    pub fee_group_label: Option<String>,
+    /// The commission percent applied at the payout
+    pub commission_percent: Option<Decimal>,
     #[serde(with = "ms_opt")]
     pub private_seller_confirmed_at: Option<DateTime<Utc>>,
     pub seller_snapshot: Option<Value>,
@@ -547,7 +556,8 @@ pub struct EventSeller {
 pub const EVENT_SELLER_COLUMNS: &str =
     "id, created_at, event_id, user_id, total_fee, commission_fee,
     sale_fee_fixed, sale_fee_percentage, payout_amount, payout_received, number, intake_fee,
-    intake_fee_items, fee_cap_credit, private_seller_confirmed_at, seller_snapshot";
+    intake_fee_items, fee_cap_credit, fee_group_id, fee_group_decided_at, fee_group_label,
+    commission_percent, private_seller_confirmed_at, seller_snapshot";
 
 pub async fn event_seller(
     conn: &mut PgConnection,
@@ -600,12 +610,13 @@ pub struct Purchase {
 }
 
 impl Purchase {
-    /// What came into the till for the sale. A direct sale whose commission was raised
-    /// after an undone sale (fee cap, #301) has a negative payout: the part the desk did not
-    /// take and the seller pays at the settlement.
+    /// What came into the till for the sale. At a direct sale the desk took the commission
+    /// as it was then; when it changed since (fee cap #301, fee group #302) the payout of
+    /// the sale holds the difference: negative what the seller still owes, positive what
+    /// they get back. Either way commission and payout together are what the desk took.
     pub fn taken(&self) -> Decimal {
         if self.direct_sale {
-            self.commission_amount + self.payout_amount.min(Decimal::ZERO)
+            self.commission_amount + self.payout_amount
         } else {
             desk_takes(false, self.total_amount, self.commission_amount)
         }

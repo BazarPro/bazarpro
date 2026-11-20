@@ -317,6 +317,8 @@ pub async fn redeem(
         .await?;
     if helper && !event_roles::has_role(ctx.conn(), event, user, Role::Organizer).await? {
         event_roles::add_role(ctx, event, user, Role::Coorganizer).await?;
+        // Helpers may pay the fees of a helper group (#302)
+        super::fee_groups::after_role_change(ctx, event, user).await?;
     }
     ctx.touch(Topic::Event(event));
     Ok(())

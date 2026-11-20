@@ -71,6 +71,8 @@ import {
   type SellerPrintoutKind,
 } from '../../../../lib/sellerPrintout';
 import { SellerIdCheck } from '../../../../components/sellers/SellerIdCheck';
+import { FeeGroupCheck } from '../../../../components/sellers/FeeGroupCheck';
+import { FeeGroupBadge, FeeGroupSubMenu } from '../../../../components/sellers/FeeGroupBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { matchingVendors, productMatcher } from '../../../../lib/productSearch';
 import { addToCachedCart } from '../../../../lib/checkout';
@@ -225,6 +227,12 @@ export function ProductManagementPage() {
     !selectedVendor.managedByEventId &&
     event?.organizerId !== selectedVendor._id;
   const [helperAction, setHelperAction] = useState<HelperAction | null>(null);
+  // The fee group by hand: organizer only, chosen in the "…" menu like the helper rights
+  const canChooseFeeGroup =
+    canLead &&
+    !!selectedVendor &&
+    !selectedVendor.paid &&
+    (event?.features?.feeGroups?.length ?? 0) > 0;
 
   const stats = useMemo(() => {
     const announced = vendorProducts.filter((p) => p.status === 'announced').length;
@@ -662,6 +670,7 @@ export function ProductManagementPage() {
                   <SellerNumberBadge number={selectedVendor.sellerNumber} />
                   {selectedVendor.managedByEventId && <WalkInBadge />}
                   {selectedVendor.excluded && <ExcludedBadge exclusion={selectedVendor.excluded} />}
+                  <FeeGroupBadge group={selectedVendor.feeGroup} />
                 </div>
                 <button
                   onClick={() => setIsContactExpanded(!isContactExpanded)}
@@ -717,7 +726,9 @@ export function ProductManagementPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {(canManageHelper || (canExclude && !selectedVendor.excluded)) && (
+              {(canChooseFeeGroup ||
+                canManageHelper ||
+                (canExclude && !selectedVendor.excluded)) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -729,6 +740,13 @@ export function ProductManagementPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="max-w-xs">
+                    {canChooseFeeGroup && (
+                      <FeeGroupSubMenu
+                        eventId={eventId}
+                        vendor={selectedVendor}
+                        groups={event?.features?.feeGroups ?? []}
+                      />
+                    )}
                     {canManageHelper && selectedVendor.isHelper && (
                       <DropdownMenuItem
                         onSelect={() => setHelperAction({ mode: 'edit', vendor: selectedVendor })}
@@ -745,7 +763,7 @@ export function ProductManagementPage() {
                     )}
                     {canExclude && !selectedVendor.excluded && (
                       <>
-                        {canManageHelper && <DropdownMenuSeparator />}
+                        {(canManageHelper || canChooseFeeGroup) && <DropdownMenuSeparator />}
                         {/* Announced items would be lost: the team rejects them first */}
                         <DropdownMenuItem
                           variant="destructive"
@@ -882,6 +900,12 @@ export function ProductManagementPage() {
                 {selectedVendor.detailsRecorded === false && (
                   <SellerIdCheck seller={selectedVendor} />
                 )}
+                {/* A self-declared fee group: confirm or remove it before the intake */}
+                <FeeGroupCheck
+                  eventId={eventId}
+                  seller={selectedVendor}
+                  groups={event?.features?.feeGroups ?? []}
+                />
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     {selectedVendor.sortCode !== undefined && (
@@ -940,7 +964,11 @@ export function ProductManagementPage() {
                       <Button
                         className="h-11 gap-2 px-6 text-base shadow-lg"
                         disabled={
-                          stats.announced === 0 || isBulkSubmitting || !!selectedVendor?.paid
+                          stats.announced === 0 ||
+                          isBulkSubmitting ||
+                          !!selectedVendor?.paid ||
+                          // The fee group is checked first (FeeGroupCheck above)
+                          !!selectedVendor?.feeGroup?.pending
                         }
                         onClick={handleBulkAccept}
                       >
@@ -955,7 +983,8 @@ export function ProductManagementPage() {
             {sellerMode === 'payout' && can('payout') && (
               <VendorSettlement
                 vendor={selectedVendor}
-                commissionPercent={event?.commission ?? 0}
+                // The seller's fee group may have its own commission (#302); paid out: as settled
+                commissionPercent={selectedVendor.commissionPercent}
                 itemsToReturn={vendorProducts.filter((p) => p.status === 'available')}
                 soldCount={stats.sold}
                 returnedCount={stats.returned}
@@ -1099,6 +1128,15 @@ export function ProductManagementPage() {
         idCheck={
           activeProduct && vendorById.get(activeProduct.vendorId)?.detailsRecorded === false
             ? vendorById.get(activeProduct.vendorId)
+            : undefined
+        }
+        feeGroupCheck={
+          activeProduct && vendorById.get(activeProduct.vendorId)?.feeGroup?.pending
+            ? {
+                eventId,
+                seller: vendorById.get(activeProduct.vendorId)!,
+                groups: event?.features?.feeGroups ?? [],
+              }
             : undefined
         }
         onConfirm={handleExecuteAction}

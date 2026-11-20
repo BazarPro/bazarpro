@@ -21,6 +21,7 @@ import { useFeatureFlags } from '../../hooks/useFeatureFlags';
 import { getUserFacingErrorMessage } from '../../lib/errors';
 import { ValidateProfileInformation } from './ValidateProfileInformation';
 import { SellerConditions } from './SellerConditions';
+import { FeeGroupChoice } from './FeeGroups';
 import type { SellerConditionsEvent } from '../../lib/sellerFees';
 import { useTranslation } from 'react-i18next';
 
@@ -56,6 +57,7 @@ export function EventRegistrationDialog({
   const { t } = useTranslation('events');
   const askPrivateSeller = resolveEventFeatures(conditions).privateSellersOnly;
   const [privateSeller, setPrivateSeller] = useState(false);
+  const [feeGroup, setFeeGroup] = useState<string | null>(null);
   const [accessCode, setAccessCode] = useState('');
   const [accessCodeValid, setAccessCodeValid] = useState<boolean | null>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -112,6 +114,7 @@ export function EventRegistrationDialog({
         accessCode: needsCode ? accessCode : undefined,
         invitation,
         ...(askPrivateSeller ? { privateSeller } : {}),
+        ...(feeGroup ? { feeGroupId: feeGroup } : {}),
       });
       toast.success(t('join.joined', { event: eventTitle }));
       onSuccess();
@@ -243,6 +246,14 @@ export function EventRegistrationDialog({
                 <SellerConditions
                   event={conditions}
                   className="rounded-lg border bg-muted/30 p-4"
+                />
+              )}
+              {(!needsCode || accessCodeValid) && !hasMissingProfileData && (
+                <FeeGroupChoice
+                  event={conditions}
+                  value={feeGroup}
+                  onChange={setFeeGroup}
+                  disabled={isJoining}
                 />
               )}
               {(!needsCode || accessCodeValid) && !hasMissingProfileData && askPrivateSeller && (

@@ -17,6 +17,8 @@ import { VISIBILITY_OPTIONS } from '../../../../../constants/records';
 import type { EventVisibility } from '../../../../../shared/constants';
 import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { localTime } from '../../../../../lib/eventDates';
+import type { FeeGroup } from '../../../../../shared/feeGroups';
+import { formGroupAdvantages } from '../../../../../lib/sellerFees';
 
 /** The steps a fact of the summary leads back to. */
 export type SummaryStep =
@@ -50,6 +52,7 @@ interface SummaryValues {
     maxItemsTotal?: number;
     maxFeesPerSeller?: number;
     intakeFee?: number;
+    feeGroups?: FeeGroup[];
     registrationOpen?: boolean;
   };
   sellerLogistics?: {
@@ -164,6 +167,15 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
     maxFees !== undefined
       ? t('wizard.summary.maxFees', { fee: formatPriceDE(maxFees) })
       : undefined,
+    // "Vereinsmitglieder: 5 %"
+    ...(features.feeGroups ?? [])
+      .filter((group) => group.label.trim())
+      .map((group) =>
+        t('wizard.summary.feeGroup', {
+          label: group.label.trim(),
+          advantages: formGroupAdvantages(values, group),
+        })
+      ),
   ].filter(Boolean);
 
   const joining = [

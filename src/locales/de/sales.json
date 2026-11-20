@@ -39,7 +39,8 @@
     "payFee": "Annahmegebühr beim Veranstalter bezahlen",
     "nothingSold": "Hier wurde nichts verkauft. Die Annahmegebühr fällt für jeden angenommenen Artikel an.",
     "youPay": "Du zahlst",
-    "feeCap": "Gebühren-Deckel"
+    "feeCap": "Gebühren-Deckel",
+    "bazaarFeeGroup": "Bazar-Gebühr ({{percent}} %, {{group}})"
   },
   "invoice": {
     "title": "Privatrechnung",

@@ -180,7 +180,12 @@ export function VendorSettlement({
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">
-                {t('settle.commission', { percent: commissionPercent })}
+                {vendor.feeGroup
+                  ? t('settle.commissionGroup', {
+                      percent: commissionPercent,
+                      group: vendor.feeGroup.label,
+                    })
+                  : t('settle.commission', { percent: commissionPercent })}
               </dt>
               <dd className="whitespace-nowrap">
                 {vendor.commission > 0 ? '−' : ''}

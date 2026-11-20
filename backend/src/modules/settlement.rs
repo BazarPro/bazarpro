@@ -36,6 +36,8 @@ struct ExportEvent {
     commission: Decimal,
     /// Fee cap per seller (#301); with it the seller table has a column for it
     max_fees_per_seller: Option<Decimal>,
+    /// The bazaar has fee groups (#302); with it the seller table has a column for them
+    fee_groups: bool,
 }
 
 #[skip_serializing_none]
@@ -76,6 +78,8 @@ struct ExportSeller {
     /// Negative when the seller owes the bazaar
     payout: Decimal,
     paid: bool,
+    /// The fee group applied (#302)
+    fee_group: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -144,12 +148,14 @@ async fn get_export(ctx: &mut Ctx, args: EventArgs) -> AppResult<Export> {
             fee_cap_credit: vendor.fee_cap_credit,
             payout: vendor.payout,
             paid: vendor.paid,
+            fee_group: vendor.fee_group.map(|group| group.label),
         })
         .collect();
     sellers.sort_by_key(|seller| seller.seller_number.unwrap_or(i32::MAX));
     Ok(Export {
         event: ExportEvent {
             max_fees_per_seller: event.resolved_features().max_fees_per_seller,
+            fee_groups: !event.resolved_features().fee_groups.is_empty(),
             location: event.place(),
             title: event.title,
             start_date: event.start_date,

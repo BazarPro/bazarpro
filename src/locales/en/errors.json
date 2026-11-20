@@ -90,7 +90,14 @@
     "sellerNoteTooLong": "The note for sellers may have at most {{max}} characters.",
     "settlementClosed": "The settlement of this bazaar is closed. Sales and returns can no longer be changed.",
     "startMissing": "Please also give the start of the {{label}}.",
-    "registrationWindow": "Registration must end after it begins."
+    "registrationWindow": "Registration must end after it begins.",
+    "feeGroupsTooMany": "A bazaar can have at most 4 fee groups.",
+    "feeGroupLabel": "Every fee group needs a name of at most 60 characters.",
+    "feeGroupLabelTwice": "Two fee groups have the same name.",
+    "feeGroupHelpersTwice": "Only one fee group can apply to the helpers of the bazaar.",
+    "feeGroupCommission": "The commission of a fee group is between 0 and 100 %.",
+    "feeGroupProofHint": "The proof hint may be at most 200 characters long.",
+    "feeGroupsOnlyLower": "Since sellers have registered, fee groups can only get cheaper. They can no longer be removed or assigned differently."
   },
   "feature": {
     "disabled": "This action is currently disabled.",
@@ -271,5 +278,14 @@
   },
   "categoryField": {
     "inUse": "Categories still use this extra field. Remove it there first."
+  },
+  "feeGroup": {
+    "unconfirmed": "{{group}}: Please check the proof first and confirm or remove the group.",
+    "unknown": "This fee group does not exist at this bazaar.",
+    "decided": "The team has already checked your group. Please talk to the team to change it.",
+    "locked": "Your items have already been accepted. Please talk to the team to change your group.",
+    "none": "This seller has not given a fee group.",
+    "organizerOnly": "Only organizers can put sellers in a fee group.",
+    "decidedOrganizerOnly": "This group has already been checked or was assigned. Only organizers can change it."
   }
 }

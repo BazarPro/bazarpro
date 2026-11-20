@@ -17,6 +17,7 @@ pub mod event_seller;
 pub mod events;
 pub mod feature_flags;
 pub mod features;
+pub mod fee_groups;
 pub mod instance;
 pub mod labels;
 pub mod messages;
@@ -55,6 +56,7 @@ pub fn register_all() -> Registry {
     event_seller::register(&mut registry);
     events::register(&mut registry);
     feature_flags::register(&mut registry);
+    fee_groups::register(&mut registry);
     instance::register(&mut registry);
     labels::register(&mut registry);
     messages::register(&mut registry);

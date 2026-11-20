@@ -103,6 +103,18 @@ describe('settlement export', () => {
     expect(columns(capped([seller({ feeCapCredit: 3 })]))).toBe(9);
   });
 
+  it('names the fee group of each seller', () => {
+    const data = {
+      ...settlement([seller({ feeGroup: 'Vereinsmitglieder' }), seller({ sellerNumber: 8 })], []),
+      event: { ...settlement([], []).event, feeGroups: true },
+    };
+    const [header, first, second] = sellersCsv(data).split('\r\n');
+    expect(header.split(';').at(-1)).toBe('Gebührengruppe');
+    expect(first.split(';').at(-1)).toBe('Vereinsmitglieder');
+    expect(second.split(';').at(-1)).toBe('');
+    expect(sellerRows(data.sellers, false, 'name')[0][1]).toBe('Anna Rad (Vereinsmitglieder)');
+  });
+
   it('writes two CSV tables that spreadsheets open', () => {
     const data = settlement([seller()], [sale({ title: 'Rad; "Cube"' })]);
     expect(sellersCsv(data).startsWith('\uFEFFNr.;Verkäufer;Anschrift;Umsatz (€)')).toBe(true);

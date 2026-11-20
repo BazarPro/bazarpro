@@ -124,11 +124,14 @@ pub async fn assert_item_limit(
     vendor: Uuid,
     adding: i64,
 ) -> AppResult<()> {
-    let features = event.resolved_features();
     if adding <= 0 {
         return Ok(());
     }
-    if let Some(limit) = features.max_items_per_seller {
+    // A fee group may allow more items (#302); a self-declared one only once checked
+    let limit = super::fee_groups::seller_fees(ctx.conn(), event, vendor)
+        .await?
+        .max_items_per_seller;
+    if let Some(limit) = limit {
         let current: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
             "SELECT count(*) FROM event_products ep JOIN products p ON p.id = ep.product_id
              WHERE ep.event_id = $1 AND p.vendor_id = $2 AND {TAKING_PLACE}"

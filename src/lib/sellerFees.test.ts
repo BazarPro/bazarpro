@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { describeSellerFees, describeSellerRules, describeSellerSchedule } from './sellerFees';
+import {
+  describeFeeGroups,
+  formGroupAdvantages,
+  describeSellerFees,
+  describeSellerRules,
+  describeSellerSchedule,
+} from './sellerFees';
 
 describe('describeSellerFees', () => {
   it('explains commission and intake fee with an example', () => {
@@ -129,5 +135,85 @@ describe('describeSellerSchedule', () => {
     });
     expect(schedule.title).toBe('Aufbau & Abbau');
     expect(schedule.rows.map((row) => row.label)).toEqual(['Aufbau', 'Abbau']);
+  });
+});
+
+describe('describeFeeGroups', () => {
+  it('names only what a group changes and how to get in', () => {
+    const groups = describeFeeGroups({
+      commission: 10,
+      features: {
+        intakeFee: 1,
+        maxItemsPerSeller: 20,
+        maxFeesPerSeller: 20,
+        feeGroups: [
+          {
+            id: 'members',
+            label: 'Vereinsmitglieder',
+            commission: 5,
+            assignment: 'selfDeclared',
+            proofHint: 'Mitgliedsausweis zeigen',
+          },
+          // Same commission: only the item limit and the intake fee count
+          {
+            id: 'helpers',
+            label: 'Helfer',
+            commission: 10,
+            intakeFee: 0.5,
+            maxItemsPerSeller: 40,
+            assignment: 'helpers',
+          },
+          {
+            id: 'kids',
+            label: 'Schüler',
+            commission: 10,
+            intakeFee: 1,
+            assignment: 'selfDeclared',
+          },
+          {
+            id: 'cap',
+            label: 'Profis',
+            commission: 10,
+            intakeFee: 1,
+            maxFeesPerSeller: 10,
+            assignment: 'manual',
+          },
+        ],
+      },
+    });
+    expect(groups.map(({ fees, how }) => ({ fees, how }))).toEqual([
+      {
+        fees: '5 % Provision statt 10 % · keine Annahmegebühr',
+        how: 'Nachweis bei der Abgabe: Mitgliedsausweis zeigen',
+      },
+      {
+        fees: '0,50 € pro Artikel statt 1,00 € · bis zu 40 Artikel',
+        how: 'Gilt für Helfer des Basars',
+      },
+      {
+        fees: 'gleiche Gebühren wie alle',
+        how: 'Gibst du bei der Anmeldung an, das Team prüft es bei der Abgabe',
+      },
+      {
+        fees: 'höchstens 10,00 € Gebühren',
+        how: 'Vergibt der Veranstalter',
+      },
+    ]);
+  });
+
+  it('reads the values of the event form, where empty numbers are NaN', () => {
+    expect(
+      formGroupAdvantages(
+        { commission: 10, features: { intakeFee: NaN, maxItemsPerSeller: 20 } },
+        {
+          id: 'g',
+          label: 'Helfer',
+          commission: NaN,
+          intakeFee: 2,
+          maxItemsPerSeller: NaN,
+          assignment: 'helpers',
+        }
+      )
+    ).toBe('0 % Provision statt 10 % · 2,00 € pro Artikel');
   });
 });

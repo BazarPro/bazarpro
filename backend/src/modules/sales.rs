@@ -10,6 +10,7 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::docs::{Event, EventSeller, Purchase};
+use super::fee_groups::{self, SellerFees};
 use crate::error::{AppError, AppResult};
 use crate::money::Cents;
 use crate::shape::ms;
@@ -135,16 +136,17 @@ pub async fn accepted_items_by_seller(
     Ok(rows.into_iter().collect())
 }
 
-/// Intake fee of one seller, given the accepted items (see accepted_items_by_seller).
+/// Intake fee of one seller, given the accepted items (see accepted_items_by_seller) and
+/// the fees that apply to them (their group's or the bazaar's).
 pub fn intake_fee_of(
-    event: &Event,
+    fees: &SellerFees,
     seller: Option<&EventSeller>,
     accepted_items: i64,
 ) -> IntakeFee {
     if let Some(stored) = stored_fee(seller) {
         return stored;
     }
-    match event.resolved_features().intake_fee {
+    match fees.intake_fee {
         Some(per_item) if per_item > Decimal::ZERO => fee_for(per_item, accepted_items),
         _ => NO_FEE,
     }
@@ -160,11 +162,8 @@ pub async fn intake_fee_for_seller(
     if let Some(stored) = stored_fee(seller) {
         return Ok(stored);
     }
-    let Some(per_item) = event
-        .resolved_features()
-        .intake_fee
-        .filter(|fee| *fee > Decimal::ZERO)
-    else {
+    let fees = fee_groups::seller_fees(&mut *conn, event, seller_id).await?;
+    let Some(per_item) = fees.intake_fee.filter(|fee| *fee > Decimal::ZERO) else {
         return Ok(NO_FEE);
     };
     let items: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
@@ -194,7 +193,7 @@ pub fn capped_commission(commission: Decimal, paid: Decimal, cap: Option<Decimal
 
 /// The fee cap credit of one seller: as stored at the payout, otherwise from the setting.
 pub fn fee_cap_credit_of(
-    event: &Event,
+    fees: &SellerFees,
     seller: Option<&EventSeller>,
     commission: Decimal,
     intake_fee: &IntakeFee,
@@ -202,10 +201,7 @@ pub fn fee_cap_credit_of(
     if let Some(seller) = seller.filter(|seller| seller.payout_received) {
         return seller.fee_cap_credit.unwrap_or(Decimal::ZERO);
     }
-    fee_cap_credit(
-        commission + intake_fee.total,
-        event.resolved_features().max_fees_per_seller,
-    )
+    fee_cap_credit(commission + intake_fee.total, fees.max_fees_per_seller)
 }
 
 /// Commissions the seller paid at the desk for direct sales of the event so far.
@@ -280,7 +276,8 @@ pub async fn recap_seller_direct_sales(
     event: &Event,
     seller_id: Uuid,
 ) -> sqlx::Result<()> {
-    let cap = event.resolved_features().max_fees_per_seller;
+    let fees = fee_groups::seller_fees(&mut *conn, event, seller_id).await?;
+    let cap = fees.max_fees_per_seller;
     if cap.is_none() {
         return Ok(());
     }
@@ -295,7 +292,7 @@ pub async fn recap_seller_direct_sales(
     let sales: Vec<DirectSale> = rows
         .iter()
         .map(|(_, total, commission, payout)| DirectSale {
-            full: (total * event.commission / Decimal::ONE_HUNDRED).cents(),
+            full: fees.commission_of(*total).unwrap_or(*commission),
             commission: *commission,
             taken: commission + payout,
         })

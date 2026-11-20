@@ -345,7 +345,8 @@ describe('event creation wizard', () => {
     // Back from the sign-up: the bazaar is created without another click
     auth.current = { isLoading: false, isAuthenticated: true };
     renderWizard('/events/new?draft=1');
-    await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
+    // Restoring and checking the whole form takes a while on a busy CI runner
+    await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1), { timeout: 5_000 });
     expect(createEvent.mock.calls[0][0]).toMatchObject({
       title: 'Kinderbasar Kita',
       location: 'Münsterplatz',

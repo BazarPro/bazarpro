@@ -49,6 +49,8 @@ import {
   eventDraftTitle,
   loadEventDraft,
   saveEventDraft,
+  draftJson,
+  withoutNulls,
 } from '../../../lib/eventDraft';
 
 /** Fees and item limit sellers registered with; they may only get better for sellers. */
@@ -58,6 +60,8 @@ interface RegisteredTerms {
   maxItemsPerSeller?: number;
   /** Unset: no cap, the highest there is */
   maxFeesPerSeller?: number;
+  /** Fee groups sellers registered with: they stay and only get cheaper (#302) */
+  feeGroups: FeeGroup[];
 }
 import { useTranslation } from 'react-i18next';
 import { coverFile, coverForKind, DEFAULT_COVER } from '../../../lib/eventCovers';
@@ -83,6 +87,8 @@ import {
   SalePreview,
 } from './components/wizard/WizardPreviews';
 import { WizardSummary } from './components/wizard/WizardSummary';
+import { EditEventFeeGroups } from './components/EditEventFeeGroups';
+import { MAX_FEE_GROUPS, extraHelperGroups, type FeeGroup } from '../../../shared/feeGroups';
 import { PageSkeleton } from '../../../components/ui/loading';
 import { isEventRunning } from '../../../shared/eventPhase';
 
@@ -203,6 +209,63 @@ const buildEventSchema = (
           .max(10_000, zodMessage('form.feeCapMax', 'organizer'))
           .optional()
           .or(z.nan()),
+        feeGroups: z
+          .array(
+            z.object({
+              id: z.string(),
+              label: z
+                .string()
+                .trim()
+                .min(1, zodMessage('feeGroups.labelRequired', 'organizer'))
+                .max(60),
+              commission: z
+                .number(zodMessage('form.minPercent', 'organizer'))
+                .min(0, zodMessage('form.feeNegative', 'organizer'))
+                .max(100, zodMessage('form.maxPercent', 'organizer', { max: 100 })),
+              intakeFee: z
+                .number()
+                .min(0, zodMessage('form.feeNegative', 'organizer'))
+                .max(100, zodMessage('form.feeMax', 'organizer'))
+                .optional()
+                .or(z.nan()),
+              maxFeesPerSeller: z
+                .number()
+                .min(0, zodMessage('form.feeNegative', 'organizer'))
+                .max(10_000, zodMessage('form.feeCapMax', 'organizer'))
+                .optional()
+                .or(z.nan()),
+              maxItemsPerSeller: z
+                .number()
+                .int(zodMessage('form.wholeNumber', 'organizer'))
+                .min(1, zodMessage('form.minOne', 'organizer'))
+                .optional()
+                .or(z.nan()),
+              assignment: z.enum(['selfDeclared', 'helpers', 'manual']),
+              proofHint: z.string().max(200),
+            })
+          )
+          .max(MAX_FEE_GROUPS)
+          .superRefine((groups, ctx) => {
+            const seen = new Set<string>();
+            groups.forEach((group, index) => {
+              const label = group.label.trim().toLowerCase();
+              if (label && seen.has(label)) {
+                ctx.addIssue({
+                  code: 'custom',
+                  message: i18n.t('feeGroups.labelTwice', { ns: 'organizer' }),
+                  path: [index, 'label'],
+                });
+              }
+              seen.add(label);
+            });
+            for (const index of extraHelperGroups(groups)) {
+              ctx.addIssue({
+                code: 'custom',
+                message: i18n.t('feeGroups.helpersTwice', { ns: 'organizer' }),
+                path: [index, 'assignment'],
+              });
+            }
+          }),
       }),
       sellerLogistics: z.object({
         dropoffStart: z.string(),
@@ -294,6 +357,49 @@ const buildEventSchema = (
           path: ['features', 'maxItemsPerSeller'],
         });
       }
+      // Fee groups sellers registered with stay (the form offers no removal) and only get
+      // cheaper; an empty cap or item limit falls back to the bazaar's
+      for (const before of terms.feeGroups) {
+        const index = data.features.feeGroups.findIndex((group) => group.id === before.id);
+        const now = data.features.feeGroups[index];
+        if (!now) continue;
+        const path = (field: string) => ['features', 'feeGroups', index, field];
+        const tooHigh = (field: string, value: number, max: number, text: string) => {
+          if (value > max) {
+            ctx.addIssue({
+              code: 'custom',
+              message: i18n.t('feeGroups.registeredMax', { ns: 'organizer', value: text }),
+              path: path(field),
+            });
+          }
+        };
+        tooHigh('commission', now.commission, before.commission, `${before.commission} %`);
+        tooHigh(
+          'intakeFee',
+          given(now.intakeFee) ?? 0,
+          before.intakeFee ?? 0,
+          `${formatPriceDE(before.intakeFee ?? 0)} €`
+        );
+        const capBefore = before.maxFeesPerSeller ?? terms.maxFeesPerSeller;
+        if (capBefore !== undefined) {
+          tooHigh(
+            'maxFeesPerSeller',
+            given(now.maxFeesPerSeller) ?? given(data.features.maxFeesPerSeller) ?? Infinity,
+            capBefore,
+            `${formatPriceDE(capBefore)} €`
+          );
+        }
+        const itemsBefore = before.maxItemsPerSeller ?? terms.maxItemsPerSeller;
+        const items =
+          given(now.maxItemsPerSeller) ?? given(data.features.maxItemsPerSeller) ?? Infinity;
+        if (itemsBefore !== undefined && items < itemsBefore) {
+          ctx.addIssue({
+            code: 'custom',
+            message: i18n.t('feeGroups.registeredMinItems', { ns: 'organizer', min: itemsBefore }),
+            path: path('maxItemsPerSeller'),
+          });
+        }
+      }
     });
 
 type EventFormData = z.infer<ReturnType<typeof buildEventSchema>>;
@@ -338,6 +444,13 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
     labelMark: features.labelMark,
     intakeFee: features.intakeFee,
     maxFeesPerSeller: features.maxFeesPerSeller,
+    feeGroups: (stored?.feeGroups ?? []).map((group) => ({
+      ...group,
+      intakeFee: group.intakeFee ?? NaN,
+      maxFeesPerSeller: group.maxFeesPerSeller ?? NaN,
+      maxItemsPerSeller: group.maxItemsPerSeller ?? NaN,
+      proofHint: group.proofHint ?? '',
+    })),
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
     directSale: features.directSale,
@@ -394,6 +507,17 @@ function featuresFromForm(features: FeatureFormData): FeaturesArgs {
         : undefined,
     // 0 is a cap as well: no fees at all
     maxFeesPerSeller: givenNumber(features.maxFeesPerSeller) ?? null,
+    // Always sent: an empty list removes the groups
+    feeGroups: features.feeGroups.map((group) => ({
+      id: group.id,
+      label: group.label.trim(),
+      commission: group.commission,
+      intakeFee: (givenNumber(group.intakeFee) ?? 0) > 0 ? group.intakeFee : undefined,
+      maxFeesPerSeller: givenNumber(group.maxFeesPerSeller),
+      maxItemsPerSeller: givenNumber(group.maxItemsPerSeller),
+      assignment: group.assignment,
+      proofHint: group.proofHint.trim() || undefined,
+    })),
     privateSellersOnly: features.privateSellersOnly,
     fixedSellerData: features.fixedSellerData,
     directSale: features.directSale,
@@ -481,7 +605,10 @@ const WIZARD_STEPS = [
     fields: ['features.maxDiscountPercent', 'features.discountStartsAt'],
   },
   { id: 'items', fields: ['categories', 'features.maxItemsPerSeller', 'features.maxItemsTotal'] },
-  { id: 'fees', fields: ['commission', 'features.intakeFee', 'features.maxFeesPerSeller'] },
+  {
+    id: 'fees',
+    fields: ['commission', 'features.intakeFee', 'features.maxFeesPerSeller', 'features.feeGroups'],
+  },
   {
     id: 'registration',
     fields: ['visibility', 'accessCode', 'vendorLimit', 'features.registrationEndsAt'],
@@ -497,11 +624,16 @@ function WizardHeader({
   step,
   onGoTo,
   onCancel,
+  onContinueLater,
+  savingLater,
   disabled,
 }: {
   step: number;
   onGoTo: (step: number) => void;
   onCancel: () => void;
+  /** Signed in: keeps the bazaar in the account to finish later */
+  onContinueLater?: () => void;
+  savingLater?: boolean;
   disabled: boolean;
 }) {
   const { t } = useTranslation('organizer');
@@ -517,10 +649,35 @@ function WizardHeader({
         <span className="whitespace-nowrap text-sm text-muted-foreground lg:hidden">
           {t('wizard.progress', { step: step + 1, total: WIZARD_STEPS.length })}
         </span>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={disabled}>
-          <X className="h-4 w-4" />
-          {t('actions.cancel', { ns: 'common' })}
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          {/* Up here, not in the bar at the bottom: on phones it would take a row of its own */}
+          {onContinueLater && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onContinueLater}
+              loading={savingLater}
+              disabled={disabled || savingLater}
+            >
+              <Bookmark className="h-4 w-4" />
+              {t('form.continueLater')}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            disabled={disabled}
+            aria-label={t('actions.cancel', { ns: 'common' })}
+          >
+            <X className="h-4 w-4" />
+            <span className={onContinueLater ? 'hidden sm:inline' : undefined}>
+              {t('actions.cancel', { ns: 'common' })}
+            </span>
+          </Button>
+        </div>
       </div>
       <ol className="flex gap-1">
         {WIZARD_STEPS.map((candidate, index) => (
@@ -588,6 +745,8 @@ function EventSection({
     eventMapImageUrl?: string | null;
     isRunning: boolean;
     feeLock: FeeLock;
+    /** Ids of the fee groups sellers registered with */
+    registeredFeeGroups?: string[];
   };
 }) {
   const feeLock = editing?.feeLock ?? null;
@@ -645,6 +804,7 @@ function EventSection({
         <FormSection contentClassName="grid grid-cols-1 gap-5 space-y-0 sm:grid-cols-2">
           <EditEventContact parts={['commission']} feeLock={feeLock} bare />
           <EditEventFeatures parts={['fees']} showHeader={false} feeLock={feeLock} bare />
+          <EditEventFeeGroups feeLock={feeLock} registeredIds={editing?.registeredFeeGroups} />
         </FormSection>
       );
     case 'registration':
@@ -751,6 +911,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           intakeFee: event.features?.intakeFee ?? 0,
           maxItemsPerSeller: event.features?.maxItemsPerSeller,
           maxFeesPerSeller: event.features?.maxFeesPerSeller,
+          feeGroups: event.features?.feeGroups ?? [],
         }
       : undefined;
   const eventSchema = useMemo(
@@ -904,6 +1065,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
 
   // Creating goes through a wizard that explains each group of settings
   const [step, setStep] = useState(0);
+  const stepRef = useRef(step);
+  stepRef.current = step;
   // Every new step starts at the top: after it rendered, so a shorter step cannot stop
   // the scrolling half way (on phones the buttons sit far below the start)
   const shownStep = useRef(step);
@@ -955,6 +1118,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     }
     toast.error(t('wizard.fixErrors'));
   };
+  const [continuedDraftAt, setContinuedDraftAt] = useState<number>();
   const keepDraft = (draftStep: number, submitted = false) =>
     saveEventDraft<DraftValues>({
       values: draftValues(methods.getValues()),
@@ -962,6 +1126,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       eventType,
       step: draftStep,
       submitted,
+      continues: continuedDraftAt,
     });
   // Signed in, a bazaar can wait on the server with gaps; it comes back on the start
   // page (DashboardPage) and when the wizard opens again
@@ -969,7 +1134,6 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
   // There is only one saved draft: saving another bazaar over it asks first. That is the
   // case when the wizard did not continue it (e.g. started from the landing page) or it
   // changed elsewhere meanwhile.
-  const [continuedDraftAt, setContinuedDraftAt] = useState<number>();
   const [confirmReplace, setConfirmReplace] = useState(false);
   const replacesOtherDraft = !!serverDraft && serverDraft.updatedAt !== continuedDraftAt;
   const continueLater = async () => {
@@ -977,13 +1141,14 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     setSavingDraft(true);
     try {
       await saveServerDraft({
-        draft: {
+        // As JSON keeps them: empty numbers (NaN) would come back as null
+        draft: draftJson({
           values: draftValues(methods.getValues()),
           pendingLocationCategories,
           eventType,
           step,
           savedAt: Date.now(),
-        },
+        }),
       });
       clearEventDraft();
       toast.success(t('form.draftSaved'), { description: t('form.draftSavedHint') });
@@ -999,7 +1164,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       const fields = WIZARD_STEPS[step].fields;
       if (fields.length > 0 && !(await methods.trigger(fields as never))) return;
     }
-    if (isGuest) keepDraft(next);
+    if (next > 0) keepDraft(next);
     setStep(next);
   };
 
@@ -1009,8 +1174,11 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     navigate(`/login?redirect=${encodeURIComponent('/events/new')}`);
   };
 
-  // Last step without an account: keep the bazaar and create it right after the sign-up
+  // Last step without an account: keep the bazaar and create it right after the sign-up.
+  // A change still waiting for the autosave must not save it again without that mark.
+  const guestSubmitted = useRef(false);
   const onGuestSubmit = () => {
+    guestSubmitted.current = true;
     keepDraft(step, true);
     navigate(`/register?redirect=${encodeURIComponent(CREATE_DRAFT_PATH)}`);
   };
@@ -1069,7 +1237,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     const saved = serverDraft?.draft as Omit<EventDraft<DraftValues>, 'savedAt'> | undefined;
     const continuesSaved =
       !!saved && !!serverDraft && (!local || serverDraft.updatedAt > local.savedAt);
-    if (continuesSaved) setContinuedDraftAt(serverDraft.updatedAt);
+    // A draft kept in this browser may continue the saved one as well
+    setContinuedDraftAt(continuesSaved ? serverDraft.updatedAt : local?.continues);
     const draft = continuesSaved ? { ...saved, savedAt: serverDraft.updatedAt } : local;
     if (!draft) {
       // The link of the confirmation mail may open in another browser than the wizard
@@ -1082,7 +1251,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       ...current,
       ...draft.values,
       coverTemplate: draft.values.coverTemplate ?? undefined,
-      features: { ...current.features, ...draft.values.features },
+      features: { ...current.features, ...withoutNulls(draft.values.features) },
     });
     setPendingLocationCategories(draft.pendingLocationCategories);
     setEventType(findEventType(draft.eventType)?.id);
@@ -1094,6 +1263,26 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when auth and categories are known
   }, [isEditing, isAuthLoading, categories, isAuthenticated, serverDraft]);
+  // Every change waits in this browser (also for signed-in organizers), so a reload or a
+  // closed tab loses nothing; "continue later" keeps it in the account
+  const keepDraftRef = useRef(keepDraft);
+  keepDraftRef.current = keepDraft;
+  useEffect(() => {
+    if (isEditing) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const subscription = methods.watch(() => {
+      if (!draftHandled.current) return;
+      clearTimeout(timer);
+      // Not on the first step: nothing is typed yet, and a discarded draft stays gone
+      timer = setTimeout(() => {
+        if (stepRef.current > 0) keepDraftRef.current(stepRef.current, guestSubmitted.current);
+      }, 600);
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
+  }, [isEditing, methods]);
   // Next render: onSubmit then sees the restored storage locations
   useEffect(() => {
     if (!creatingDraft) return;
@@ -1317,6 +1506,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                         eventMapImageUrl: event?.eventMapImageUrl,
                         isRunning,
                         feeLock,
+                        registeredFeeGroups: registeredTerms.current?.feeGroups.map((g) => g.id),
                       }}
                     />
                   </section>
@@ -1395,6 +1585,12 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                     clearEventDraft();
                     navigate('/');
                   }}
+                  onContinueLater={
+                    !isGuest && step > 0
+                      ? () => (replacesOtherDraft ? setConfirmReplace(true) : void continueLater())
+                      : undefined
+                  }
+                  savingLater={savingDraft}
                   disabled={isSubmitting}
                 />
                 <div
@@ -1467,26 +1663,6 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
 
                 <div aria-hidden className="flex-1" />
                 <StickyActionBar>
-                  {/*
-                    Guests keep their draft in the browser anyway, until they sign up. On
-                    phones the label needs its own row below back and next: an icon alone
-                    does not say that the bazaar is kept for later
-                  */}
-                  {!isGuest && step > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="order-last w-full sm:order-none sm:w-auto"
-                      onClick={() =>
-                        replacesOtherDraft ? setConfirmReplace(true) : void continueLater()
-                      }
-                      loading={savingDraft}
-                      disabled={isSubmitting || savingDraft}
-                    >
-                      <Bookmark className="h-4 w-4" />
-                      {t('form.continueLater')}
-                    </Button>
-                  )}
                   {step > 0 && (
                     <Button
                       type="button"

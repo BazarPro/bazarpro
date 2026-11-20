@@ -43,7 +43,9 @@ import {
   describeSellerFees,
   formatSignedEuro,
   type SellerConditionsEvent,
+  formGroupAdvantages,
 } from '../../../../../lib/sellerFees';
+import type { FeeGroup } from '../../../../../shared/feeGroups';
 import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
 import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
@@ -94,6 +96,7 @@ interface WizardValues {
     labelMark?: LabelMark;
     intakeFee?: number;
     maxFeesPerSeller?: number;
+    feeGroups?: FeeGroup[];
     privateSellersOnly?: boolean;
     fixedSellerData?: boolean;
     directSale?: boolean;
@@ -565,6 +568,21 @@ export function FeesPreview({ type }: { type?: EventType }) {
             {t('wizard.preview.free')}
           </p>
         )}
+        {/* Own fees for groups of sellers (#302) */}
+        {(values.features?.feeGroups ?? [])
+          .filter((group) => group.label.trim())
+          .map((group) => (
+            <p
+              key={group.id}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground animate-in fade-in duration-300"
+            >
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              {t('wizard.preview.feeGroup', {
+                label: group.label.trim(),
+                advantages: formGroupAdvantages(values, group),
+              })}
+            </p>
+          ))}
       </div>
       {example && (
         <div className="mt-4 space-y-2 rounded-xl border bg-card p-4 text-xs shadow-sm">

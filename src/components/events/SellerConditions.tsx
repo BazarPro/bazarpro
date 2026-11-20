@@ -1,6 +1,7 @@
 import { Check, ClipboardList, Coins, X, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
+  describeFeeGroups,
   describeSellerFees,
   describeSellerRules,
   describeSellerSchedule,
@@ -11,6 +12,8 @@ import { resolveEventFeatures } from '../../shared/eventFeatures';
 import { useCategoryFieldDefinitions } from '../../hooks/useCategoryFields';
 import { cn, formatPriceDE } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import type { Id } from '../../lib/api/types';
+import { FeeGroupList, MyFeeGroup } from './FeeGroups';
 
 /**
  * What sellers agree to at a bazaar: fees with a worked example, item limit, price
@@ -23,11 +26,14 @@ export function SellerConditions({
   className,
   id,
   compact = false,
+  eventId,
 }: {
   event: SellerConditionsEvent;
   className?: string;
   id?: string;
   compact?: boolean;
+  /** With it, a registered seller sees their fee group there (#302) */
+  eventId?: Id<'events'>;
 }) {
   const { t } = useTranslation('events');
   const { intakeFee, maxFeesPerSeller } = resolveEventFeatures(event);
@@ -41,6 +47,7 @@ export function SellerConditions({
     (rule) => !compact || rule.allowed
   );
   const schedule = describeSellerSchedule(event);
+  const groups = describeFeeGroups(event);
 
   return (
     <div id={id} className={className}>
@@ -50,6 +57,7 @@ export function SellerConditions({
 
       <div className="divide-y [&>section]:py-4 [&>section:first-child]:pt-0 [&>section:last-child]:pb-0">
         <ConditionsSection title={t('conditions.fees')}>
+          {eventId && <MyFeeGroup eventId={eventId} event={event} />}
           {lines.length === 0 ? (
             <ul>
               <ConditionLine text={t('conditions.noFees')} />
@@ -61,6 +69,7 @@ export function SellerConditions({
               ))}
             </ul>
           )}
+          <FeeGroupList groups={groups} />
           {example && !compact && (
             <div className="mt-3 rounded-md border bg-background p-3 text-sm">
               <p className="font-medium">{t('conditions.example')}</p>
