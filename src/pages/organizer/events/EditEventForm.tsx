@@ -1174,8 +1174,11 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     navigate(`/login?redirect=${encodeURIComponent('/events/new')}`);
   };
 
-  // Last step without an account: keep the bazaar and create it right after the sign-up
+  // Last step without an account: keep the bazaar and create it right after the sign-up.
+  // A change still waiting for the autosave must not save it again without that mark.
+  const guestSubmitted = useRef(false);
   const onGuestSubmit = () => {
+    guestSubmitted.current = true;
     keepDraft(step, true);
     navigate(`/register?redirect=${encodeURIComponent(CREATE_DRAFT_PATH)}`);
   };
@@ -1272,7 +1275,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       clearTimeout(timer);
       // Not on the first step: nothing is typed yet, and a discarded draft stays gone
       timer = setTimeout(() => {
-        if (stepRef.current > 0) keepDraftRef.current(stepRef.current);
+        if (stepRef.current > 0) keepDraftRef.current(stepRef.current, guestSubmitted.current);
       }, 600);
     });
     return () => {
