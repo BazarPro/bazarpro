@@ -37,11 +37,17 @@ describe('EditEventRegion (#304)', () => {
     expect(screen.getByRole('slider')).toHaveValue('20');
     expect(screen.getByTestId('region-summary')).toHaveTextContent(/Postleitzahl .*892…/);
 
-    // The radius grows: more areas, none of the old ones lost
+    // The radius grows: more areas, none of the old ones lost. They are stored once the
+    // slider rests, not on every step
+    const stored = current.allowedPostalCodes;
     fireEvent.change(screen.getByRole('slider'), { target: { value: '60' } });
+    expect(screen.getByRole('slider')).toHaveValue('60');
+    expect(current.allowedPostalCodes).toBe(stored);
     await waitFor(() => expect(current.allowedPostalCodes.length).toBeGreaterThan(3));
     fireEvent.change(screen.getByRole('slider'), { target: { value: '0' } });
-    await waitFor(() => expect(current.allowedPostalCodes).toEqual([]));
+    // Let go: stored at once
+    fireEvent.pointerUp(screen.getByRole('slider'));
+    expect(current.allowedPostalCodes).toEqual([]);
     expect(screen.getByTestId('region-summary')).toHaveTextContent('Wähle mindestens ein Gebiet');
   });
 

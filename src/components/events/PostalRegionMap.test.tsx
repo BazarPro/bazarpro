@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import germany from '../../assets/postal-areas/DE.json';
 import { positionOf, type PostalMapData } from '../../lib/postalMap';
-import { PostalRegionMap } from './PostalRegionMap';
+import { PostalRegionMap, type PostalRegionMapProps } from './PostalRegionMap';
 
 const data = germany as PostalMapData;
 const venue = positionOf(data, '89231')!;
@@ -29,7 +29,7 @@ afterAll(() => {
   }
 });
 
-function renderMap(props: Partial<Parameters<typeof PostalRegionMap>[0]> = {}) {
+function renderMap(props: Partial<PostalRegionMapProps> = {}) {
   const onToggle = vi.fn();
   const view = render(
     <PostalRegionMap
@@ -86,6 +86,55 @@ describe('PostalRegionMap (#304)', () => {
     fireEvent.pointerUp(svg, pointer(160, 130));
     expect(onToggle).not.toHaveBeenCalled();
     expect(svg.getAttribute('viewBox')).not.toBe(before);
+  });
+
+  it('moves the drawing while dragging and draws it anew once let go', () => {
+    renderMap();
+    const svg = screen.getByRole('img');
+    const before = svg.getAttribute('viewBox');
+    fireEvent.pointerDown(svg, pointer(100, 100));
+    fireEvent.pointerMove(svg, pointer(130, 110));
+    // Moved on screen only: the large SVG stays as it is
+    expect(svg.getAttribute('viewBox')).toBe(before);
+    const [x, y] = svg.parentElement!.style.transform.match(/-?[\d.]+/g)!.map(Number);
+    expect([Math.round(x), Math.round(y)]).toEqual([30, 10]);
+    fireEvent.pointerUp(svg, pointer(130, 110));
+    expect(svg.getAttribute('viewBox')).not.toBe(before);
+    expect(svg.parentElement!.style.transform).toBe('');
+  });
+
+  it('zooms with two fingers', () => {
+    renderMap();
+    const svg = screen.getByRole('img');
+    const width = () => Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+    const start = width();
+    const finger = (pointerId: number, x: number) => ({
+      pointerId,
+      pointerType: 'touch',
+      isPrimary: pointerId === 1,
+      clientX: x,
+      clientY: 200,
+    });
+    fireEvent.pointerDown(svg, finger(1, 250));
+    fireEvent.pointerDown(svg, finger(2, 350));
+    fireEvent.pointerMove(svg, finger(2, 450));
+    fireEvent.pointerUp(svg, finger(2, 450));
+    fireEvent.pointerUp(svg, finger(1, 250));
+    expect(width()).toBeCloseTo(start / 2);
+  });
+
+  it('zooms with Ctrl and the wheel, not with the wheel alone', async () => {
+    const { container } = renderMap();
+    const svg = screen.getByRole('img');
+    const width = () => Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+    const start = width();
+    const frame = container.firstElementChild!;
+    fireEvent.wheel(frame, { deltaY: 50 });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 250)));
+    expect(width()).toBe(start);
+    fireEvent.wheel(frame, { deltaY: -50, ctrlKey: true });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 250)));
+    expect(width()).toBeLessThan(start);
   });
 
   it('names the area under the mouse', () => {

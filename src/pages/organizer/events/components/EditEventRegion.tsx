@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Hand, LocateFixed, MapPin, MapPinned, Ruler, X } from 'lucide-react';
@@ -29,6 +29,8 @@ import { cn } from '../../../../lib/utils';
 export const DEFAULT_RADIUS_KM = 20;
 const MAX_RADIUS_KM = 150;
 const CHIPS_SHOWN = 10;
+/** Quiet time on the slider before its areas are stored */
+const RADIUS_SETTLE_MS = 250;
 
 function asCountry(value: string | undefined): Country {
   return COUNTRIES.find((code) => code === value) ?? 'DE';
@@ -103,17 +105,59 @@ export function EditEventRegion() {
   const store = (next: string[]) =>
     setValue('features.allowedPostalCodes', next, { shouldDirty: true, shouldValidate: true });
 
-  /** Moves the circle: what the old one chose goes, what the new one covers comes. */
+  /** The areas after moving the circle: what the old one chose goes, what the new one covers comes. */
+  const circleAreas = useCallback(
+    (
+      base: ReadonlySet<string>,
+      from: { center?: Point; km: number },
+      to: { center?: Point; km: number }
+    ) => {
+      if (!data) return undefined;
+      const before = new Set(from.center ? areasWithin(data, from.center, from.km) : []);
+      const after = to.center ? areasWithin(data, to.center, to.km) : [];
+      const areas = new Set([...base].filter((area) => !before.has(area)));
+      for (const area of after) areas.add(area);
+      return areas;
+    },
+    [data]
+  );
   const applyCircle = (
     from: { center?: Point; km: number },
     to: { center?: Point; km: number }
   ) => {
-    if (!data || !selection) return;
-    const before = new Set(from.center ? areasWithin(data, from.center, from.km) : []);
-    const after = to.center ? areasWithin(data, to.center, to.km) : [];
-    const areas = new Set([...selection.areas].filter((area) => !before.has(area)));
-    for (const area of after) areas.add(area);
-    store(prefixesFromSelection(data, areas, selection.finer));
+    if (!selection) return;
+    const areas = circleAreas(draftAreas ?? selection.areas, from, to);
+    if (data && areas) store(prefixesFromSelection(data, areas, selection.finer));
+  };
+
+  // While the slider moves, its circle and areas show on the map only; they are stored,
+  // and the whole event checked, once it rests
+  const [draftKm, setDraftKm] = useState<number>();
+  const draftAreas = useMemo(
+    () =>
+      draftKm === undefined || !selection
+        ? undefined
+        : circleAreas(selection.areas, { center, km: radiusKm }, { center, km: draftKm }),
+    [circleAreas, selection, center, radiusKm, draftKm]
+  );
+  const shownKm = draftKm ?? radiusKm;
+  const draftTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const commitDraft = useRef(() => {});
+  commitDraft.current = () => {
+    clearTimeout(draftTimer.current);
+    if (draftKm === undefined) return;
+    if (data && selection && draftAreas) {
+      store(prefixesFromSelection(data, draftAreas, selection.finer));
+    }
+    setRadiusKm(draftKm);
+    setDraftKm(undefined);
+  };
+  useEffect(() => () => clearTimeout(draftTimer.current), []);
+  const changeRadius = (km: number) => {
+    setDraftKm(km);
+    setFocusOverride(undefined);
+    clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => commitDraft.current(), RADIUS_SETTLE_MS);
   };
 
   // Switched on for the first time: a circle around the bazaar shows at once what happens
@@ -126,18 +170,30 @@ export function EditEventRegion() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the map is there
   }, [enabled, data, venue]);
 
-  const focus: MapFocus =
-    focusOverride ?? (center ? { center, km: radiusKm || DEFAULT_RADIUS_KM } : 'country');
+  const focus = useMemo(
+    (): MapFocus =>
+      focusOverride ?? (center ? { center, km: shownKm || DEFAULT_RADIUS_KM } : 'country'),
+    [focusOverride, center, shownKm]
+  );
+  const circle = useMemo(
+    () => (center && shownKm > 0 ? { center, km: shownKm } : undefined),
+    [center, shownKm]
+  );
 
   const toggle = (prefix: string) => {
     if (!data || !selection) return;
-    const areas = new Set(selection.areas);
+    commitDraft.current();
+    const areas = new Set(draftAreas ?? selection.areas);
     if (areas.has(prefix)) areas.delete(prefix);
     else areas.add(prefix);
     // A finer prefix inside the area is covered by it, or goes with it
     const finer = selection.finer.filter((code) => !code.startsWith(prefix));
     store(prefixesFromSelection(data, areas, finer));
   };
+
+  const toggleRef = useRef(toggle);
+  toggleRef.current = toggle;
+  const onToggle = useCallback((prefix: string) => toggleRef.current(prefix), []);
 
   const locate = () => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -152,7 +208,8 @@ export function EditEventRegion() {
         const point = project(position.coords.longitude, position.coords.latitude);
         setHere(point);
         setFocusOverride(undefined);
-        if (radiusKm > 0) applyCircle({ center, km: radiusKm }, { center: point, km: radiusKm });
+        commitDraft.current();
+        if (shownKm > 0) applyCircle({ center, km: shownKm }, { center: point, km: shownKm });
         setCenterMode('here');
       },
       () => {
@@ -169,7 +226,8 @@ export function EditEventRegion() {
       return;
     }
     const next = mode === 'here' ? here : venue;
-    if (radiusKm > 0) applyCircle({ center, km: radiusKm }, { center: next, km: radiusKm });
+    commitDraft.current();
+    if (shownKm > 0) applyCircle({ center, km: shownKm }, { center: next, km: shownKm });
     setFocusOverride(undefined);
     setCenterMode(mode);
   };
@@ -194,6 +252,8 @@ export function EditEventRegion() {
 
   const changeCountry = (next: Country) => {
     setValue('features.postalCodeCountry', next, { shouldDirty: true });
+    clearTimeout(draftTimer.current);
+    setDraftKm(undefined);
     store([]);
     setRadiusKm(0);
     setCenterMode('venue');
@@ -202,7 +262,8 @@ export function EditEventRegion() {
 
   const error = (errors.features as { allowedPostalCodes?: { message?: string } } | undefined)
     ?.allowedPostalCodes?.message;
-  const areaCount = selection ? selection.areas.size + selection.partial.size : 0;
+  const shownAreas = draftAreas ?? selection?.areas;
+  const areaCount = selection && shownAreas ? shownAreas.size + selection.partial.size : 0;
   const shownChips = showAllChips ? prefixes : prefixes.slice(0, CHIPS_SHOWN);
 
   return (
@@ -295,13 +356,13 @@ export function EditEventRegion() {
           {data && selection ? (
             <PostalRegionMap
               data={data}
-              selected={selection.areas}
+              selected={shownAreas ?? selection.areas}
               partial={selection.partial}
-              onToggle={toggle}
+              onToggle={onToggle}
               venue={venue}
               venueLabel={venueName.trim() || t('region.yourBazaar')}
               here={here}
-              circle={center && radiusKm > 0 ? { center, km: radiusKm } : undefined}
+              circle={circle}
               focus={focus}
               className="h-[340px] sm:h-[420px]"
             />
@@ -318,7 +379,7 @@ export function EditEventRegion() {
                 {t('region.radius')}
               </Label>
               <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-semibold tabular-nums text-primary">
-                {radiusKm > 0 ? t('region.km', { km: radiusKm }) : t('region.radiusOff')}
+                {shownKm > 0 ? t('region.km', { km: shownKm }) : t('region.radiusOff')}
               </span>
             </div>
             <input
@@ -327,14 +388,12 @@ export function EditEventRegion() {
               min={0}
               max={MAX_RADIUS_KM}
               step={5}
-              value={radiusKm}
+              value={shownKm}
               disabled={!center || !data}
-              onChange={(event) => {
-                const km = Number(event.target.value);
-                applyCircle({ center, km: radiusKm }, { center, km });
-                setRadiusKm(km);
-                setFocusOverride(undefined);
-              }}
+              onChange={(event) => changeRadius(Number(event.target.value))}
+              onPointerUp={() => commitDraft.current()}
+              onKeyUp={() => commitDraft.current()}
+              onBlur={() => commitDraft.current()}
               className="mt-3 h-2 w-full cursor-pointer accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
             />
             <div className="mt-1 flex justify-between text-[11px] text-muted-foreground tabular-nums">
@@ -361,6 +420,8 @@ export function EditEventRegion() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
+                    clearTimeout(draftTimer.current);
+                    setDraftKm(undefined);
                     store([]);
                     setRadiusKm(0);
                   }}

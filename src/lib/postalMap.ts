@@ -110,41 +110,111 @@ function inRing([x, y]: Point, ring: Point[]): boolean {
   return inside;
 }
 
-const ringCache = new WeakMap<PostalArea, Point[][]>();
-function ringsOf(area: PostalArea): Point[][] {
-  let rings = ringCache.get(area);
-  if (!rings) {
-    rings = pathRings(area.d);
-    ringCache.set(area, rings);
+/** An area's border as flat x, y pairs and its bounding box, read once per area. */
+interface AreaShape {
+  rings: Point[][];
+  /** x0, y0, x1, y1, … of every ring */
+  points: Float64Array;
+  /** minX, minY, maxX, maxY */
+  box: [number, number, number, number];
+}
+
+const shapeCache = new WeakMap<PostalArea, AreaShape>();
+function shapeOf(area: PostalArea): AreaShape {
+  let shape = shapeCache.get(area);
+  if (!shape) {
+    const rings = pathRings(area.d);
+    const count = rings.reduce((sum, ring) => sum + ring.length, 0);
+    const points = new Float64Array(count * 2);
+    const box: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
+    let i = 0;
+    for (const ring of rings) {
+      for (const [x, y] of ring) {
+        points[i++] = x;
+        points[i++] = y;
+        if (x < box[0]) box[0] = x;
+        if (y < box[1]) box[1] = y;
+        if (x > box[2]) box[2] = x;
+        if (y > box[3]) box[3] = y;
+      }
+    }
+    shape = { rings, points, box };
+    shapeCache.set(area, shape);
   }
-  return rings;
+  return shape;
 }
 
 /** Whether the point lies in the area. */
 export function areaContains(area: PostalArea, point: Point): boolean {
+  const { rings, box } = shapeOf(area);
+  if (point[0] < box[0] || point[0] > box[2] || point[1] < box[1] || point[1] > box[3]) {
+    return false;
+  }
   // Holes count as rings too: an odd number of rings around the point is inside
-  return ringsOf(area).filter((ring) => inRing(point, ring)).length % 2 === 1;
+  return rings.filter((ring) => inRing(point, ring)).length % 2 === 1;
 }
 
 /** Share of an area's border needed inside the circle for the area to count */
 const BORDER_SHARE = 0.3;
 
+/** The last circles asked for per map: the slider asks for the same ones again and again */
+const withinCache = new WeakMap<PostalMapData, Map<string, string[]>>();
+const WITHIN_CACHED = 8;
+
 /**
  * The prefixes of the areas the circle covers: the one around its centre, those whose
  * centre lies in it, and those with a good part of their border in it. A large area
- * whose centre is far away, e.g. a town next door, counts as well.
+ * whose centre is far away, e.g. a town next door, counts as well. The circle is the one
+ * drawn on the map: a radius in map units at its centre, which keeps this fast enough
+ * for every step of the slider.
  */
 export function areasWithin(data: PostalMapData, center: Point, km: number): string[] {
   if (km <= 0) return [];
-  return data.areas
-    .filter((area) => {
-      if (distanceKm(area.c, center) <= km || areaContains(area, center)) return true;
-      const points = ringsOf(area).flat();
-      const inside = points.filter((point) => distanceKm(point, center) <= km).length;
-      // Areas too small to draw have no border
-      return points.length > 0 && inside >= points.length * BORDER_SHARE;
-    })
-    .map((area) => area.p);
+  let cached = withinCache.get(data);
+  if (!cached) {
+    cached = new Map();
+    withinCache.set(data, cached);
+  }
+  const key = `${center[0]},${center[1]},${km}`;
+  const hit = cached.get(key);
+  if (hit) return hit;
+
+  const [cx, cy] = center;
+  const radius = km * unitsPerKm(center);
+  const r2 = radius * radius;
+  const result: string[] = [];
+  for (const area of data.areas) {
+    const dx = area.c[0] - cx;
+    const dy = area.c[1] - cy;
+    if (dx * dx + dy * dy <= r2) {
+      result.push(area.p);
+      continue;
+    }
+    const { points, box } = shapeOf(area);
+    // Nearest point of the box: an area wholly outside the circle needs no closer look
+    const nx = Math.max(box[0] - cx, 0, cx - box[2]);
+    const ny = Math.max(box[1] - cy, 0, cy - box[3]);
+    if (nx * nx + ny * ny > r2) continue;
+    if (areaContains(area, center)) {
+      result.push(area.p);
+      continue;
+    }
+    // Areas too small to draw have no border
+    const count = points.length / 2;
+    if (!count) continue;
+    const needed = count * BORDER_SHARE;
+    let inside = 0;
+    for (let i = 0; i < points.length && inside < needed; i += 2) {
+      const px = points[i] - cx;
+      const py = points[i + 1] - cy;
+      if (px * px + py * py <= r2) inside++;
+    }
+    if (inside >= needed) result.push(area.p);
+  }
+
+  if (cached.size >= WITHIN_CACHED) cached.delete(cached.keys().next().value!);
+  cached.set(key, result);
+  return result;
 }
 
 /**
