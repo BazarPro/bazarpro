@@ -12,7 +12,7 @@ import { fillProfileForm } from '../helpers/profile';
 
 /**
  * A bazaar for its region (#304): the organizer limits the registration to postal codes,
- * sellers from elsewhere learn why they cannot join.
+ * sellers from elsewhere see a map of the region and learn why they cannot join.
  */
 
 test.beforeAll(() => {
@@ -45,13 +45,18 @@ test('only sellers from the chosen postal codes register on their own', async ({
 
   const seller = await loginAs(page, OTHER_BUYER);
   await seller.goto(`/public-events/${showcase.eventId}`);
-  await expect(seller.getByText('Nur aus PLZ 7322…').first()).toBeVisible();
+  // Saving drew a map of the region: it stands in for the codes, which go under it
+  const region = seller.getByRole('button', { name: 'Nur aus der Region' }).first();
+  await region.hover();
+  const tip = seller.getByRole('tooltip');
+  await expect(tip.getByRole('img', { name: 'Karte der Region des Basars' })).toBeVisible();
+  await expect(tip).toContainText('Nur aus PLZ 7322…');
+  await seller.mouse.move(0, 0);
   await seller.getByRole('button', { name: 'Als Verkäufer anmelden' }).click();
   await fillProfileForm(seller).catch(() => {});
   await expect(
-    seller.getByText(
-      'Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahl 7322… (Deutschland).'
-    )
+    seller.getByText('Dieser Basar ist nur für Verkäufer aus seiner Region, siehe Karte.')
   ).toBeVisible();
+  await expect(seller.getByRole('img', { name: 'Karte der Region des Basars' })).toBeVisible();
   await expect(seller.getByRole('button', { name: 'Anmelden bestätigen' })).toHaveCount(0);
 });
