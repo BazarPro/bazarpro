@@ -24,7 +24,7 @@ import { getUserFacingErrorMessage } from '../../lib/errors';
 import { ValidateProfileInformation } from './ValidateProfileInformation';
 import { SellerConditions } from './SellerConditions';
 import { FeeGroupChoice } from './FeeGroups';
-import { RegionMapImage } from './RegionMapTip';
+import { RegionMapImage } from './RegionMap';
 import type { SellerConditionsEvent } from '../../lib/sellerFees';
 import { useTranslation } from 'react-i18next';
 

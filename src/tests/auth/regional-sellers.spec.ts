@@ -45,18 +45,22 @@ test('only sellers from the chosen postal codes register on their own', async ({
 
   const seller = await loginAs(page, OTHER_BUYER);
   await seller.goto(`/public-events/${showcase.eventId}`);
-  // Saving drew a map of the region: it stands in for the codes, which go under it
-  const region = seller.getByRole('button', { name: 'Nur aus der Region' }).first();
-  await region.hover();
-  const tip = seller.getByRole('tooltip');
-  await expect(tip.getByRole('img', { name: 'Karte der Region des Basars' })).toBeVisible();
-  await expect(tip).toContainText('Nur aus PLZ 7322…');
-  await seller.mouse.move(0, 0);
+  // Saving drew a map of the region: "Nur aus der Region · Karte ansehen" opens it with the codes
+  await expect(seller.getByText('Nur aus der Region').first()).toBeVisible();
+  await seller.getByRole('button', { name: 'Karte ansehen' }).first().click();
+  const map = seller.getByRole('dialog', { name: 'Region des Basars' });
+  await expect(map.getByRole('img', { name: 'Karte der Region des Basars' })).toBeVisible();
+  await expect(map).toContainText('Nur aus PLZ 7322…');
+  await seller.keyboard.press('Escape');
+  await expect(map).toBeHidden();
   await seller.getByRole('button', { name: 'Als Verkäufer anmelden' }).click();
   await fillProfileForm(seller).catch(() => {});
+  const join = seller.getByRole('dialog');
   await expect(
-    seller.getByText('Dieser Basar ist nur für Verkäufer aus seiner Region, siehe Karte.')
+    join.getByText('Dieser Basar ist nur für Verkäufer aus seiner Region, siehe Karte.')
   ).toBeVisible();
-  await expect(seller.getByRole('img', { name: 'Karte der Region des Basars' })).toBeVisible();
+  await expect(
+    join.getByRole('img', { name: 'Karte der Region des Basars' }).first()
+  ).toBeVisible();
   await expect(seller.getByRole('button', { name: 'Anmelden bestätigen' })).toHaveCount(0);
 });

@@ -36,7 +36,7 @@ import { formatEventPlace } from '../../../shared/eventJsonLd';
 import { describeRegistration } from '../../../components/participation/registrationText';
 import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
 import { isEventOver } from '../../../shared/eventPhase';
-import { RegionMapTip } from '../../../components/events/RegionMapTip';
+import { RegionMapLink } from '../../../components/events/RegionMap';
 
 function EventCard({
   event,
@@ -185,11 +185,15 @@ function EventCard({
           {registration?.region && (
             <div className="flex items-start gap-2 text-sm">
               <MapPinned className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              {/* Above the link of the card, so the pointer reaches it */}
+              {/* Above the link of the card, so the pointer reaches the map */}
               <span className="relative z-10 text-muted-foreground">
-                <RegionMapTip image={event.regionMapImage} codes={registration.regionCodes}>
+                <RegionMapLink
+                  image={event.regionMapImage}
+                  codes={registration.regionCodes}
+                  className="text-primary"
+                >
                   {registration.region}
-                </RegionMapTip>
+                </RegionMapLink>
               </span>
             </div>
           )}
