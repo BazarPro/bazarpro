@@ -1,4 +1,4 @@
-import { Expand, Map as MapIcon } from 'lucide-react';
+import { Map as MapIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -47,40 +47,6 @@ export function RegionMapLink({
       >
         <MapIcon className="h-3.5 w-3.5 shrink-0" />
         {t('registration.showRegionMap')}
-      </button>
-      <RegionMapDialog open={open} onOpenChange={setOpen} image={image} codes={codes} />
-    </>
-  );
-}
-
-/**
- * The map as a small picture that is there at once, e.g. in the conditions; a tap shows it
- * large with the codes.
- */
-export function RegionMapPreview({
-  image,
-  codes,
-  className,
-}: RegionMapProps & { className?: string }) {
-  const { t } = useTranslation('events');
-  const [open, setOpen] = useState(false);
-  if (!image) return null;
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={t('registration.enlargeRegionMap')}
-        className={cn(
-          'group relative mt-2 block w-full max-w-xs overflow-hidden rounded-md border bg-muted text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          className
-        )}
-      >
-        <RegionMapImage image={image} className="block aspect-[8/5] h-auto w-full" />
-        <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded bg-background/90 px-1.5 py-0.5 text-[11px] font-medium text-foreground shadow-sm transition-colors group-hover:bg-background">
-          <Expand className="h-3 w-3" />
-          {t('registration.enlarge')}
-        </span>
       </button>
       <RegionMapDialog open={open} onOpenChange={setOpen} image={image} codes={codes} />
     </>

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Id } from '../../lib/api/types';
-import { RegionMapLink, RegionMapPreview } from './RegionMap';
+import { RegionMapLink } from './RegionMap';
 
 vi.mock('../ui/StorageImage', () => ({
   StorageImage: ({ storageId, alt }: { storageId: string; alt: string }) => (
@@ -31,22 +31,6 @@ describe('RegionMapLink (#304)', () => {
     expect(screen.getByRole('img', { name: 'Karte der Region des Basars' })).toHaveAttribute(
       'src',
       '/files/f1'
-    );
-  });
-});
-
-describe('RegionMapPreview (#304)', () => {
-  it('shows nothing without a picture', () => {
-    const { container } = render(<RegionMapPreview codes="Nur aus PLZ 89…" />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it('shows the map at once and enlarges it on a tap', () => {
-    render(<RegionMapPreview image={image} codes="Nur aus PLZ 89…" />);
-    expect(screen.getByRole('img', { name: 'Karte der Region des Basars' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Karte der Region vergrößern' }));
-    expect(screen.getByRole('dialog', { name: 'Region des Basars' })).toHaveTextContent(
-      'Nur aus PLZ 89…'
     );
   });
 });

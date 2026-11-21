@@ -257,8 +257,6 @@
     "regionMap": "Map of the bazaar's region",
     "regionMapTitle": "The bazaar's region",
     "showRegionMap": "View map",
-    "enlargeRegionMap": "Enlarge the map of the region",
-    "enlarge": "Enlarge",
     "regionMapCaption": "The marked postal code areas belong to the region; striped ones only in part."
   },
   "rejections": {

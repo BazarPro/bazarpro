@@ -257,8 +257,6 @@
     "regionMap": "Karte der Region des Basars",
     "regionMapTitle": "Region des Basars",
     "showRegionMap": "Karte ansehen",
-    "enlargeRegionMap": "Karte der Region vergrößern",
-    "enlarge": "Vergrößern",
     "regionMapCaption": "Die markierten Postleitzahlgebiete gehören zur Region; gestreift nur zum Teil."
   },
   "rejections": {
