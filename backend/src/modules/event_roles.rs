@@ -1,6 +1,8 @@
 //! Roles in an event: organizer, co-organizer (helper), seller.
 //! Platform administrators count as organizer of every event.
 
+use std::collections::{HashMap, HashSet};
+
 use chrono::Utc;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -502,22 +504,30 @@ pub async fn load_vendors_with_calculations(
     .await?;
 
     let mut exclusions = exclusions_of_event(ctx.conn(), event_id).await?;
-    let without_items = super::event_seller::sellers_without_items(ctx.conn(), event_id).await?;
     let all_purchases = docs::purchases_where(ctx.conn(), "event_id = $1", event_id).await?;
-    let mut vendors = Vec::new();
-    let users = docs::users(ctx.conn(), &vendor_ids).await?;
+    let mut purchases_by_seller: HashMap<Uuid, Vec<&docs::Purchase>> = HashMap::new();
+    for purchase in &all_purchases {
+        purchases_by_seller
+            .entry(purchase.seller_id)
+            .or_default()
+            .push(purchase);
+    }
+    let helpers: HashMap<Uuid, Option<Vec<String>>> = helpers.into_iter().collect();
+    let mut vendors = Vec::with_capacity(vendor_ids.len());
+    let mut users: HashMap<Uuid, docs::User> = docs::users(ctx.conn(), &vendor_ids)
+        .await?
+        .into_iter()
+        .map(|user| (user.id, user))
+        .collect();
     let over = event.end_date < Utc::now();
     let keeps_record = keeps_seller_record(&event);
     let universal = label_mark(&event) == "universal";
     for vendor in vendor_ids {
-        let Some(mut user) = users.iter().find(|user| user.id == vendor).cloned() else {
+        let Some(mut user) = users.remove(&vendor) else {
             continue;
         };
         ctx.read(Topic::User(vendor));
-        let purchases: Vec<_> = all_purchases
-            .iter()
-            .filter(|purchase| purchase.seller_id == vendor)
-            .collect();
+        let purchases = purchases_by_seller.remove(&vendor).unwrap_or_default();
         let total_revenue: Decimal = purchases.iter().map(|p| p.total_amount).sum();
         let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
         let sales_payout: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
@@ -530,9 +540,8 @@ pub async fn load_vendors_with_calculations(
             user = with_snapshot(user, snapshot);
         }
         let helper_permissions = helpers
-            .iter()
-            .find(|(user, _)| *user == vendor)
-            .map(|(_, stored)| permissions_of(stored.clone()));
+            .get(&vendor)
+            .map(|stored| permissions_of(stored.clone()));
         let member = if groups {
             Membership {
                 stored: seller.as_ref().and_then(|s| s.fee_group_id.clone()),
@@ -609,7 +618,8 @@ pub async fn load_vendors_with_calculations(
             excluded: exclusions.remove(&vendor),
             fee_group,
             commission_percent,
-            without_items: without_items.contains(&vendor).then_some(true),
+            // Only the seller list needs it: `get_vendors_for_event`
+            without_items: None,
         });
     }
     Ok(vendors)
@@ -626,7 +636,16 @@ async fn get_vendors_for_event(
     args: EventArgs,
 ) -> AppResult<Vec<VendorWithCalculations>> {
     require_team(ctx, args.event_id.0).await?;
-    load_vendors_with_calculations(ctx, args.event_id.0).await
+    let mut vendors = load_vendors_with_calculations(ctx, args.event_id.0).await?;
+    let without_items: HashSet<Uuid> =
+        super::event_seller::sellers_without_items(ctx.conn(), args.event_id.0)
+            .await?
+            .into_iter()
+            .collect();
+    for vendor in &mut vendors {
+        vendor.without_items = without_items.contains(&vendor.user.id).then_some(true);
+    }
+    Ok(vendors)
 }
 
 #[derive(Deserialize)]

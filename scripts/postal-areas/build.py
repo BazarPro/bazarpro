@@ -25,6 +25,8 @@ import shapely
 from shapely.geometry import MultiPoint, Point, shape
 from shapely.ops import polylabel, unary_union
 
+from boxes import with_box
+
 R = 63710  # Mercator units per radian: 100 m at the equator
 COUNTRIES = {"DE": "DEU", "AT": "AUT", "CH": "CHE", "LI": "LIE", "LU": "LUX"}
 # Simplification in Mercator units; small countries keep more detail
@@ -203,7 +205,9 @@ def build(dl, out, cc):
         "bounds": [round(minx), round(miny), round(maxx), round(maxy)],
         "outline": path(outline, min_area),
         "areas": [
-            {"p": prefix, "d": path(geom, min_area), "c": label_point(geom), "s": size(geom)}
+            with_box(
+                {"p": prefix, "d": path(geom, min_area), "c": label_point(geom), "s": size(geom)}
+            )
             for prefix, geom in by_prefix.items()
             if not geom.is_empty
         ],

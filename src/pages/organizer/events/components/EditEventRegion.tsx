@@ -15,6 +15,7 @@ import {
   combineMaps,
   keysWithin,
   loadAllPostalMaps,
+  loadPostalMap,
   positionOf,
   project,
   regionFromSelection,
@@ -42,20 +43,34 @@ function asCountry(value: string | undefined): Country {
   return COUNTRIES.find((code) => code === value) ?? 'DE';
 }
 
-/** The maps of all countries as one, loaded while the region is on. */
-function usePostalMaps(enabled: boolean) {
-  const [state, setState] = useState<{ data?: CombinedMap; failed?: boolean }>({});
+/**
+ * The maps of all countries as one, loaded while the region is on. With `first`, its map
+ * shows on its own at once and the neighbours follow (Germany alone is half of the data);
+ * `complete` tells when all are there.
+ */
+function usePostalMaps(enabled: boolean, first: Country | undefined) {
+  const [state, setState] = useState<{ data?: CombinedMap; complete?: boolean; failed?: boolean }>(
+    {}
+  );
   useEffect(() => {
     if (!enabled) return;
     let current = true;
+    const failed = () => current && setState({ failed: true });
+    if (first) {
+      loadPostalMap(first).then(
+        (map) =>
+          current && setState((state) => (state.complete ? state : { data: combineMaps([map]) })),
+        failed
+      );
+    }
     loadAllPostalMaps().then(
-      (maps) => current && setState({ data: combineMaps(maps) }),
-      () => current && setState({ failed: true })
+      (maps) => current && setState({ data: combineMaps(maps), complete: true }),
+      failed
     );
     return () => {
       current = false;
     };
-  }, [enabled]);
+  }, [enabled, first]);
   return state;
 }
 
@@ -82,7 +97,9 @@ export function EditEventRegion() {
   const venueCode = (useWatch({ control, name: 'address.postalCode' }) as string) ?? '';
   const home = asCountry((useWatch({ control, name: 'address.country' }) as string) || 'DE');
   const venueName = (useWatch({ control, name: 'location' }) as string) ?? '';
-  const { data, failed } = usePostalMaps(enabled);
+  // With the bazaar's place known the map shows its surroundings, so its own country
+  // suffices at first; without, it shows all countries at once
+  const { data, complete, failed } = usePostalMaps(enabled, venueCode.trim() ? home : undefined);
 
   const [radiusKm, setRadiusKm] = useState(0);
   const [centerMode, setCenterMode] = useState<'venue' | 'here'>('venue');
@@ -106,6 +123,16 @@ export function EditEventRegion() {
 
   const store = (next: PostalCodesByCountry) =>
     setValue('features.allowedPostalCodes', next, { shouldDirty: true, shouldValidate: true });
+  /** Stores the chosen areas; countries whose map is not there yet keep their codes */
+  const storeAreas = (map: CombinedMap, areas: ReadonlySet<string>, finer?: string[]) => {
+    const next = regionFromSelection(map, areas, finer);
+    for (const country of COUNTRIES) {
+      if (region[country] && !map.maps.some((loaded) => loaded.country === country)) {
+        next[country] = region[country];
+      }
+    }
+    store(compactRegion(next));
+  };
 
   /** The areas after moving the circle: what the old one chose goes, what the new one covers comes. */
   const circleAreas = useCallback(
@@ -129,7 +156,7 @@ export function EditEventRegion() {
   ) => {
     if (!selection) return;
     const areas = circleAreas(draftAreas ?? selection.areas, from, to);
-    if (data && areas) store(regionFromSelection(data, areas, selection.finer));
+    if (data && areas) storeAreas(data, areas, selection.finer);
   };
 
   // While the slider moves, its circle and areas show on the map only; they are stored,
@@ -149,7 +176,7 @@ export function EditEventRegion() {
     clearTimeout(draftTimer.current);
     if (draftKm === undefined) return;
     if (data && selection && draftAreas) {
-      store(regionFromSelection(data, draftAreas, selection.finer));
+      storeAreas(data, draftAreas, selection.finer);
     }
     setRadiusKm(draftKm);
     setDraftKm(undefined);
@@ -165,12 +192,13 @@ export function EditEventRegion() {
   // Switched on for the first time: a circle around the bazaar shows at once what happens
   const started = useRef(count > 0);
   useEffect(() => {
-    if (!enabled || started.current || !data || !venue) return;
+    // The circle may reach across the border: it waits for the neighbours' maps
+    if (!enabled || started.current || !data || !complete || !venue) return;
     started.current = true;
     setRadiusKm(DEFAULT_RADIUS_KM);
     store(regionFromSelection(data, new Set(keysWithin(data, venue, DEFAULT_RADIUS_KM))));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the map is there
-  }, [enabled, data, venue]);
+  }, [enabled, data, complete, venue]);
 
   const focus = useMemo(
     (): MapFocus =>
@@ -190,7 +218,7 @@ export function EditEventRegion() {
     else areas.add(key);
     // A finer prefix inside the area is covered by it, or goes with it
     const finer = selection.finer.filter((code) => !code.startsWith(key));
-    store(regionFromSelection(data, areas, finer));
+    storeAreas(data, areas, finer);
   };
 
   const toggleRef = useRef(toggle);
@@ -369,7 +397,7 @@ export function EditEventRegion() {
               max={MAX_RADIUS_KM}
               step={5}
               value={shownKm}
-              disabled={!center || !data}
+              disabled={!center || !complete}
               title={center ? undefined : t('region.venueUnknownHint')}
               onChange={(event) => changeRadius(Number(event.target.value))}
               onPointerUp={() => commitDraft.current()}

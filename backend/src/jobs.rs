@@ -74,6 +74,34 @@ pub async fn enqueue(
         .await
 }
 
+/// Schedules several jobs of one kind in a single insert, each at its own time.
+pub async fn enqueue_many<P: Serialize>(
+    conn: &mut PgConnection,
+    kind: &str,
+    jobs: &[(P, DateTime<Utc>)],
+) -> sqlx::Result<()> {
+    if jobs.is_empty() {
+        return Ok(());
+    }
+    let mut payloads = Vec::with_capacity(jobs.len());
+    let mut run_ats = Vec::with_capacity(jobs.len());
+    for (payload, run_at) in jobs {
+        payloads
+            .push(serde_json::to_value(payload).map_err(|err| sqlx::Error::Encode(err.into()))?);
+        run_ats.push(*run_at);
+    }
+    sqlx::query(
+        "INSERT INTO jobs (kind, payload, run_at)
+         SELECT $1, payload, run_at FROM UNNEST($2::jsonb[], $3::timestamptz[]) AS t(payload, run_at)",
+    )
+    .bind(kind)
+    .bind(payloads)
+    .bind(run_ats)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
 /// Removes a job that has not started yet, like `ctx.scheduler.cancel`.
 pub async fn cancel(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<bool> {
     let result = sqlx::query("DELETE FROM jobs WHERE id = $1 AND locked_until IS NULL")

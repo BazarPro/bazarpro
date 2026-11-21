@@ -116,47 +116,55 @@ async fn remove_sellers_without_items(
     let sellers = sellers_without_items(ctx.conn(), event.id).await?;
     let (title, path) = (event.title.clone(), format!("/public-events/{}", event.id));
     let reopens = super::features::registration_unavailable(&event, chrono::Utc::now()).is_none();
-    for (index, seller) in sellers.iter().enumerate() {
-        // Rejected items stay, as when sellers leave on their own (`events::leave_event`)
-        sqlx::query("DELETE FROM event_sellers WHERE event_id = $1 AND user_id = $2")
-            .bind(event.id)
-            .bind(seller)
-            .execute(ctx.conn())
-            .await?;
-        event_roles::remove_role(ctx, event.id, *seller, Role::Seller).await?;
-        notifications::notify_user(
-            ctx,
-            *seller,
-            |t: T| {
-                let values = [("event", title.as_str())];
-                let mut paragraphs = vec![t.t("participation.unregistered.text", &values)];
-                if let Some(message) = &message {
-                    paragraphs.push(t.t(
-                        "participation.unregistered.message",
-                        &[("message", message)],
-                    ));
-                }
-                paragraphs.push(t.t(
-                    if reopens {
-                        "participation.unregistered.join"
-                    } else {
-                        "participation.unregistered.joinClosed"
-                    },
-                    &[],
-                ));
-                Content {
-                    subject: t.t("participation.unregistered.subject", &values),
-                    heading: t.t("participation.unregistered.heading", &[]),
-                    paragraphs,
-                    link: t.link("participation.openEvent", path.clone()),
-                    ..Content::default()
-                }
-            },
-            None,
-            Duration::milliseconds(index as i64 * UNREGISTER_MAIL_GAP_MS),
-        )
+    // Rejected items stay, as when sellers leave on their own (`events::leave_event`)
+    sqlx::query("DELETE FROM event_sellers WHERE event_id = $1 AND user_id = ANY($2)")
+        .bind(event.id)
+        .bind(&sellers)
+        .execute(ctx.conn())
         .await?;
+    sqlx::query(
+        "DELETE FROM event_roles WHERE event_id = $1 AND user_id = ANY($2) AND role = $3::event_role_kind",
+    )
+    .bind(event.id)
+    .bind(&sellers)
+    .bind(Role::Seller.as_str())
+    .execute(ctx.conn())
+    .await?;
+    for seller in &sellers {
+        ctx.touch(Topic::User(*seller));
     }
+    event_roles::touch_seller_places(ctx, event.id).await?;
+    notifications::notify_users(
+        ctx,
+        &sellers,
+        |t: T| {
+            let values = [("event", title.as_str())];
+            let mut paragraphs = vec![t.t("participation.unregistered.text", &values)];
+            if let Some(message) = &message {
+                paragraphs.push(t.t(
+                    "participation.unregistered.message",
+                    &[("message", message)],
+                ));
+            }
+            paragraphs.push(t.t(
+                if reopens {
+                    "participation.unregistered.join"
+                } else {
+                    "participation.unregistered.joinClosed"
+                },
+                &[],
+            ));
+            Content {
+                subject: t.t("participation.unregistered.subject", &values),
+                heading: t.t("participation.unregistered.heading", &[]),
+                paragraphs,
+                link: t.link("participation.openEvent", path.clone()),
+                ..Content::default()
+            }
+        },
+        Duration::milliseconds(UNREGISTER_MAIL_GAP_MS),
+    )
+    .await?;
     ctx.touch(Topic::Event(event.id));
     Ok(sellers.len())
 }
@@ -279,12 +287,17 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
         .access_code
         .as_deref()
         .is_some_and(|code| !code.is_empty());
-    if invited_as_helper.is_none()
-        && !team
-        && !has_code
-        && let Some(region) = &features.postal_codes
-    {
-        let profile = docs::user(ctx.conn(), user).await?;
+    let region = features
+        .postal_codes
+        .as_ref()
+        .filter(|_| invited_as_helper.is_none() && !team && !has_code);
+    // Loaded once for both checks below
+    let profile = if region.is_some() || features.fixed_seller_data {
+        docs::user(ctx.conn(), user).await?
+    } else {
+        None
+    };
+    if let Some(region) = region {
         let (zip, country) = profile.as_ref().map_or((None, None), |u| {
             (u.zip_code.as_deref(), u.country.as_deref())
         });
@@ -302,9 +315,9 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     }
     // A record of who offers what needs complete details; the dialog asks for them first
     if features.fixed_seller_data {
-        let complete = docs::user(ctx.conn(), user)
-            .await?
-            .is_some_and(|user| missing_profile_fields(&user).is_empty());
+        let complete = profile
+            .as_ref()
+            .is_some_and(|user| missing_profile_fields(user).is_empty());
         if !complete {
             return Err(AppError::bad_request("join.profileIncomplete"));
         }

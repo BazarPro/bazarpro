@@ -111,12 +111,16 @@ export const PostalRegionMap = memo(function PostalRegionMap({
   const [hovered, setHovered] = useState<string | null>(null);
   const hoverAt = useRef({ x: 0, y: 0 });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
+  /** Where the frame is on screen, measured once until it may have moved */
+  const frameBox = useRef<DOMRect | null>(null);
+  const boxOfFrame = () => (frameBox.current ??= frame.current?.getBoundingClientRect() ?? null);
   const gesture = useRef<Gesture | null>(null);
 
   useLayoutEffect(() => {
     const element = frame.current;
     if (!element) return;
     const measure = () => {
+      frameBox.current = null;
       sizeRef.current = { width: element.clientWidth, height: element.clientHeight };
       setSize(sizeRef.current);
     };
@@ -125,6 +129,19 @@ export const PostalRegionMap = memo(function PostalRegionMap({
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
+  }, []);
+
+  // Scrolling the page, or a box around the map, moves the frame on screen
+  useEffect(() => {
+    const forget = () => {
+      frameBox.current = null;
+    };
+    window.addEventListener('scroll', forget, { capture: true, passive: true });
+    window.addEventListener('resize', forget, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', forget, { capture: true });
+      window.removeEventListener('resize', forget);
+    };
   }, []);
 
   const countryView = useMemo((): View | null => {
@@ -143,19 +160,32 @@ export const PostalRegionMap = memo(function PostalRegionMap({
 
   const focusKey =
     focus === 'country' ? 'country' : `${focus.center[0]},${focus.center[1]},${focus.km}`;
+  const previousTarget = useRef<View | null>(null);
   const target = useMemo((): View | null => {
     if (!countryView) return null;
-    if (focus === 'country') return countryView;
-    const radius = Math.max(focus.km, 8) * unitsPerKm(focus.center) * 1.3;
-    const upp = (2 * radius) / Math.min(size.width, size.height);
-    return {
-      x: focus.center[0],
-      y: focus.center[1],
-      upp: Math.min(Math.max(upp, minUpp), countryView.upp),
-    };
+    let next = countryView;
+    if (focus !== 'country') {
+      const radius = Math.max(focus.km, 8) * unitsPerKm(focus.center) * 1.3;
+      const upp = (2 * radius) / Math.min(size.width, size.height);
+      next = {
+        x: focus.center[0],
+        y: focus.center[1],
+        upp: Math.min(Math.max(upp, minUpp), countryView.upp),
+      };
+    }
+    // The same view as before, e.g. once the neighbours' maps came, must not move the map
+    // the user dragged away
+    const previous = previousTarget.current;
+    if (previous && previous.x === next.x && previous.y === next.y && previous.upp === next.upp) {
+      return previous;
+    }
+    return next;
     // The focus as values: a new object with the same place must not move the map
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countryView, focusKey]);
+  useEffect(() => {
+    previousTarget.current = target;
+  }, [target]);
 
   const drawnView = view ?? target;
 
@@ -293,7 +323,7 @@ export const PostalRegionMap = memo(function PostalRegionMap({
   }, [map]);
 
   const fromCentre = (clientX: number, clientY: number) => {
-    const box = frame.current?.getBoundingClientRect();
+    const box = boxOfFrame();
     return box
       ? { x: clientX - box.left - box.width / 2, y: clientY - box.top - box.height / 2 }
       : { x: 0, y: 0 };
@@ -370,7 +400,7 @@ export const PostalRegionMap = memo(function PostalRegionMap({
     }
     if (event.pointerType !== 'mouse') return;
     // The tooltip follows the mouse without React; a render only for another area
-    const box = frame.current?.getBoundingClientRect();
+    const box = boxOfFrame();
     if (box) {
       hoverAt.current = { x: event.clientX - box.left, y: event.clientY - box.top };
       placeTooltip(tooltip.current);
@@ -440,6 +470,17 @@ export const PostalRegionMap = memo(function PostalRegionMap({
       ]
     : [0, 0, 1, 1];
   const circleRadius = circle ? circle.km * unitsPerKm(circle.center) : 0;
+  // Not drawn again when only the hovered area changes
+  const labelLayer = useMemo(
+    () => (
+      <g className="pointer-events-none">
+        {labels.map((label) => (
+          <MapLabel key={label.key} label={label} px={(pixels) => pixels * upp} />
+        ))}
+      </g>
+    ),
+    [labels, upp]
+  );
 
   return (
     <div
@@ -471,6 +512,9 @@ export const PostalRegionMap = memo(function PostalRegionMap({
             onPointerMove={onPointerMove}
             onPointerUp={(event) => endPointer(event, true)}
             onPointerCancel={(event) => endPointer(event, false)}
+            onPointerEnter={() => {
+              frameBox.current = null;
+            }}
             onPointerLeave={() => setHovered(null)}
           >
             <defs>
@@ -518,11 +562,7 @@ export const PostalRegionMap = memo(function PostalRegionMap({
                 </g>
               </g>
             )}
-            <g className="pointer-events-none">
-              {labels.map((label) => (
-                <MapLabel key={label.key} label={label} px={px} />
-              ))}
-            </g>
+            {labelLayer}
             {here && (
               <g transform={`translate(${here[0]} ${here[1]})`} className="pointer-events-none">
                 {/* A few pulses only: a running animation paints the whole SVG anew each frame */}
@@ -680,29 +720,14 @@ const MapShapes = memo(function MapShapes({
         strokeLinejoin="round"
       />
       <g>
-        {data.areas.map((area) => {
-          const isSelected = selected.has(area.p);
-          const isPartial = !isSelected && partial.has(area.p);
-          return (
-            <path
-              key={area.p}
-              d={area.d}
-              data-prefix={area.p}
-              fill={isPartial ? 'url(#postal-partial)' : undefined}
-              className={cn(
-                'cursor-pointer stroke-foreground/12',
-                isSelected
-                  ? 'fill-primary/45 hover:fill-primary/60'
-                  : isPartial
-                    ? 'hover:opacity-80'
-                    : 'fill-card hover:fill-primary/15'
-              )}
-              strokeWidth={0.6}
-              vectorEffect="non-scaling-stroke"
-              strokeLinejoin="round"
-            />
-          );
-        })}
+        {data.areas.map((area) => (
+          <AreaPath
+            key={area.p}
+            prefix={area.p}
+            d={area.d}
+            state={selected.has(area.p) ? 'selected' : partial.has(area.p) ? 'partial' : 'none'}
+          />
+        ))}
       </g>
       <path
         d={regionBorders}
@@ -719,6 +744,35 @@ const MapShapes = memo(function MapShapes({
         strokeLinejoin="round"
       />
     </>
+  );
+});
+
+const AREA_CLASS = {
+  selected: 'cursor-pointer stroke-foreground/12 fill-primary/45 hover:fill-primary/60',
+  partial: 'cursor-pointer stroke-foreground/12 hover:opacity-80',
+  none: 'cursor-pointer stroke-foreground/12 fill-card hover:fill-primary/15',
+};
+
+/** One area; drawn again only when its own state changes, e.g. while the radius grows. */
+const AreaPath = memo(function AreaPath({
+  prefix,
+  d,
+  state,
+}: {
+  prefix: string;
+  d: string;
+  state: keyof typeof AREA_CLASS;
+}) {
+  return (
+    <path
+      d={d}
+      data-prefix={prefix}
+      fill={state === 'partial' ? 'url(#postal-partial)' : undefined}
+      className={AREA_CLASS[state]}
+      strokeWidth={0.6}
+      vectorEffect="non-scaling-stroke"
+      strokeLinejoin="round"
+    />
   );
 });
 

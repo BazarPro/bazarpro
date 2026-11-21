@@ -29,6 +29,8 @@ export interface PostalMapData {
 export interface PostalArea {
   p: string;
   d: string;
+  /** Bounding box of `d` (minX, minY, maxX, maxY); missing on areas too small to draw */
+  b?: [number, number, number, number];
   c: Point;
   s: number;
   /** On a map of several countries: the prefix shown, while `p` is the key "AT:690" */
@@ -151,12 +153,18 @@ function shapeOf(area: PostalArea): AreaShape {
   return shape;
 }
 
+/** The area's bounding box, from the map file without reading the path where it has one. */
+function boxOf(area: PostalArea): [number, number, number, number] {
+  return area.b ?? shapeOf(area).box;
+}
+
 /** Whether the point lies in the area. */
 export function areaContains(area: PostalArea, point: Point): boolean {
-  const { rings, box } = shapeOf(area);
+  const box = boxOf(area);
   if (point[0] < box[0] || point[0] > box[2] || point[1] < box[1] || point[1] > box[3]) {
     return false;
   }
+  const { rings } = shapeOf(area);
   // Holes count as rings too: an odd number of rings around the point is inside
   return rings.filter((ring) => inRing(point, ring)).length % 2 === 1;
 }
@@ -197,16 +205,19 @@ export function areasWithin(data: PostalMapData, center: Point, km: number): str
       result.push(area.p);
       continue;
     }
-    const { points, box } = shapeOf(area);
-    // Nearest point of the box: an area wholly outside the circle needs no closer look
+    // Areas too small to draw have no border
+    if (!area.d) continue;
+    // Nearest point of the box: an area wholly outside the circle needs no closer look,
+    // and its path is never read
+    const box = boxOf(area);
     const nx = Math.max(box[0] - cx, 0, cx - box[2]);
     const ny = Math.max(box[1] - cy, 0, cy - box[3]);
     if (nx * nx + ny * ny > r2) continue;
+    const { points } = shapeOf(area);
     if (areaContains(area, center)) {
       result.push(area.p);
       continue;
     }
-    // Areas too small to draw have no border
     const count = points.length / 2;
     if (!count) continue;
     const needed = count * BORDER_SHARE;
@@ -245,19 +256,56 @@ export interface MapSelection {
   finer: string[];
 }
 
+/**
+ * The area prefixes of a map by their first one and two digits, in map order, built once:
+ * every tap on the map turns the selection into prefixes and back.
+ */
+interface PrefixIndex {
+  /** "8" → ["89"…], "89" → ["890"…], in the order of first appearance */
+  groups: Map<string, string[]>;
+  /** Area prefixes starting with a prefix of one or two digits */
+  areas: Map<string, string[]>;
+}
+
+const prefixIndexCache = new WeakMap<PostalMapData, PrefixIndex>();
+function prefixIndex(data: PostalMapData): PrefixIndex {
+  let index = prefixIndexCache.get(data);
+  if (!index) {
+    const groups = new Map<string, string[]>([['', []]]);
+    const areas = new Map<string, string[]>();
+    for (const { p } of data.areas) {
+      for (const length of [1, 2]) {
+        const prefix = p.slice(0, length);
+        const parent = p.slice(0, length - 1);
+        if (!areas.has(prefix)) {
+          areas.set(prefix, []);
+          groups.set(prefix, []);
+          groups.get(parent)?.push(prefix);
+        }
+        areas.get(prefix)!.push(p);
+      }
+    }
+    index = { groups, areas };
+    prefixIndexCache.set(data, index);
+  }
+  return index;
+}
+
 export function selectionFromPrefixes(data: PostalMapData, prefixes: string[]): MapSelection {
   const areas = new Set<string>();
   const partial = new Set<string>();
   const finer: string[] = [];
+  const index = prefixIndex(data);
   for (const prefix of prefixes) {
     if (prefix.length > 3) {
       finer.push(prefix);
       partial.add(prefix.slice(0, 3));
       continue;
     }
-    for (const area of data.areas) {
-      if (area.p.startsWith(prefix)) areas.add(area.p);
-    }
+    const candidates = prefix
+      ? (index.areas.get(prefix.slice(0, 2)) ?? [])
+      : data.areas.map((area) => area.p);
+    for (const area of candidates) if (area.startsWith(prefix)) areas.add(area);
   }
   for (const area of areas) partial.delete(area);
   return { areas, partial, finer };
@@ -272,22 +320,20 @@ export function prefixesFromSelection(
   areas: ReadonlySet<string>,
   finer: string[] = []
 ): string[] {
-  const all = data.areas.map((area) => area.p);
+  const index = prefixIndex(data);
   const prefixes: string[] = [];
-  const whole = (prefix: string) =>
-    all.some((p) => p.startsWith(prefix)) &&
-    all.filter((p) => p.startsWith(prefix)).every((p) => areas.has(p));
-  for (const first of new Set(all.map((p) => p[0]))) {
+  const whole = (prefix: string) => index.areas.get(prefix)!.every((p) => areas.has(p));
+  for (const first of index.groups.get('')!) {
     if (whole(first)) {
       prefixes.push(first);
       continue;
     }
-    for (const second of new Set(all.filter((p) => p[0] === first).map((p) => p.slice(0, 2)))) {
+    for (const second of index.groups.get(first)!) {
       if (whole(second)) {
         prefixes.push(second);
         continue;
       }
-      prefixes.push(...all.filter((p) => p.startsWith(second) && areas.has(p)));
+      prefixes.push(...index.areas.get(second)!.filter((p) => areas.has(p)));
     }
   }
   return compactPrefixes([...prefixes, ...finer]);

@@ -154,6 +154,13 @@ pub fn format_euro(amount: Decimal) -> String {
 }
 
 #[derive(sqlx::FromRow)]
+struct RecipientRow {
+    id: Uuid,
+    #[sqlx(flatten)]
+    recipient: Recipient,
+}
+
+#[derive(sqlx::FromRow)]
 struct Recipient {
     status: Option<String>,
     email: Option<String>,
@@ -227,27 +234,83 @@ pub async fn notify_user_at_event(
     {
         add_notice(ctx, user, area, event).await?;
     }
-    let Some(to) = address(&recipient) else {
+    match prepare(user, &recipient, &content) {
+        Some(mail) => {
+            crate::jobs::enqueue(ctx.conn(), NOTIFICATION_JOB, &mail, Utc::now() + delay).await?;
+            Ok(())
+        }
+        None => Ok(()),
+    }
+}
+
+/// `notify_user` for many users at once, without menu marker: one query loads all
+/// recipients and one insert queues all mails, `gap` apart in the order of `users`.
+pub async fn notify_users(
+    ctx: &mut Ctx,
+    users: &[Uuid],
+    content: impl Fn(T) -> Content,
+    gap: Duration,
+) -> AppResult<()> {
+    if users.is_empty() {
         return Ok(());
-    };
+    }
+    let recipients: std::collections::HashMap<Uuid, Recipient> = sqlx::query_as::<_, RecipientRow>(
+        "SELECT id, status::text AS status, email, contact_email, managed_by_event_id, locale,
+                notification_prefs, unsubscribe_token
+         FROM users WHERE id = ANY($1)",
+    )
+    .bind(users)
+    .fetch_all(ctx.conn())
+    .await?
+    .into_iter()
+    .map(|row| (row.id, row.recipient))
+    .collect();
+    let now = Utc::now();
+    let jobs: Vec<(NotificationMail, chrono::DateTime<Utc>)> = users
+        .iter()
+        .enumerate()
+        .filter_map(|(index, user)| {
+            let mail = prepare(*user, recipients.get(user)?, &content)?;
+            Some((mail, now + gap * index as i32))
+        })
+        .collect();
+    crate::jobs::enqueue_many(ctx.conn(), NOTIFICATION_JOB, &jobs).await?;
+    Ok(())
+}
+
+/// The mail to a recipient, or none without address or with the category switched off.
+fn prepare(
+    user: Uuid,
+    recipient: &Recipient,
+    content: &impl Fn(T) -> Content,
+) -> Option<NotificationMail> {
+    let to = address(recipient)?;
     let locale = recipient.locale.unwrap_or_default();
     let t = T(locale);
     let mail = content(t);
     if !wants_email(&recipient.notification_prefs, mail.category) {
-        return Ok(());
+        return None;
     }
-    let unsubscribe = match mail.category {
-        Some(category) => {
-            let query = format!("?t={}&k={}", recipient.unsubscribe_token, category.as_str());
-            Some(Unsubscribe {
-                path: format!("/benachrichtigungen/abbestellen{query}"),
-                one_click_path: format!("/api/unsubscribe{query}"),
-                category: t.t(&format!("categories.{}", category.as_str()), &[]),
-            })
+    let unsubscribe = mail.category.map(|category| {
+        let query = format!("?t={}&k={}", recipient.unsubscribe_token, category.as_str());
+        Unsubscribe {
+            path: format!("/benachrichtigungen/abbestellen{query}"),
+            one_click_path: format!("/api/unsubscribe{query}"),
+            category: t.t(&format!("categories.{}", category.as_str()), &[]),
         }
-        None => None,
-    };
-    queue(ctx, Some(user), to, locale, mail, unsubscribe, delay).await
+    });
+    Some(NotificationMail {
+        user_id: Some(user),
+        to,
+        subject: mail.subject,
+        heading: mail.heading,
+        paragraphs: mail.paragraphs,
+        details: mail.details,
+        link: mail.link,
+        footnote: mail.footnote,
+        locale,
+        unsubscribe,
+    })
 }
 
 /// A red marker in the menu; `event` lets the bazaar's page clear only its own.
