@@ -128,7 +128,8 @@
       "all": "alle",
       "accepted": "mit abgegebenen Artikeln",
       "pickup": "mit abzuholenden Artikeln",
-      "unsettled": "noch nicht abgerechnet"
+      "unsettled": "noch nicht abgerechnet",
+      "withoutItems": "ohne angemeldete Artikel"
     },
     "recipients": " · an {{count}} Verkäufer ({{audience}})",
     "important": "Wichtig",

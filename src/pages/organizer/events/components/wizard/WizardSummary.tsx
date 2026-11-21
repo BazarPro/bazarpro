@@ -18,6 +18,11 @@ import type { EventVisibility } from '../../../../../shared/constants';
 import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { localTime } from '../../../../../lib/eventDates';
 import type { FeeGroup } from '../../../../../shared/feeGroups';
+import {
+  formatRegion,
+  postalRegion,
+  type PostalCodesByCountry,
+} from '../../../../../shared/postalCodes';
 import { formGroupAdvantages } from '../../../../../lib/sellerFees';
 
 /** The steps a fact of the summary leads back to. */
@@ -54,6 +59,8 @@ interface SummaryValues {
     intakeFee?: number;
     feeGroups?: FeeGroup[];
     registrationOpen?: boolean;
+    regionOnly?: boolean;
+    allowedPostalCodes?: PostalCodesByCountry;
   };
   sellerLogistics?: {
     dropoffStart?: string;
@@ -117,6 +124,7 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
   const { t, i18n } = useTranslation('organizer');
   const values = useFormContext().watch() as SummaryValues;
   const features = values.features ?? {};
+  const region = features.regionOnly ? postalRegion(features) : undefined;
   const logistics = values.sellerLogistics ?? {};
   // Sellers stand at their items: hand-in and pickup are setup and teardown (#299)
   const direct = !!features.directSale;
@@ -183,6 +191,7 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
     features.registrationOpen === false
       ? t('wizard.summary.registrationClosed')
       : t('wizard.summary.registrationOpen'),
+    region ? t('region.short', { codes: formatRegion(region, 4) }) : undefined,
   ].filter(Boolean);
 
   const time = (value?: string) => {

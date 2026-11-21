@@ -54,7 +54,13 @@
     "excludedHandedIn": "Bereits abgegebene Artikel bekommst du wie gewohnt bei der Rückgabe zurück.",
     "closedHint": "Neue Verkäufer kommen nur mit einer Einladung des Veranstalters hinein.",
     "notPossible": "Eine Anmeldung ist gerade nicht möglich.",
-    "fullHint": "Alle Plätze für Verkäufer sind vergeben. Frag beim Veranstalter nach, falls doch noch einer frei wird."
+    "fullHint": "Alle Plätze für Verkäufer sind vergeben. Frag beim Veranstalter nach, falls doch noch einer frei wird.",
+    "regionOnly": "Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahl {{codes}}.",
+    "regionOnlyMap": "Dieser Basar ist nur für Verkäufer aus seiner Region, siehe Karte.",
+    "regionYours": "Laut deinem Profil kommst du aus {{code}} ({{country}}).",
+    "regionHint": "Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung oder dem Zugangscode.",
+    "regionWarningTitle": "Deine Postleitzahl {{code}} gilt",
+    "regionWarning": "Nach der Anmeldung kannst du sie bis zum Ende des Basars nicht mehr ändern. Bei der Abgabe wird dein Ausweis kontrolliert, gib also nur deine echte Postleitzahl an."
   },
   "profile": {
     "firstNameRequired": "Vorname ist erforderlich",
@@ -167,7 +173,9 @@
     "exampleGroup": "Für {{label}}: {{amount}}.",
     "noPublicCatalogDetails": "Käufer sehen sie erst vor Ort, das QR-Etikett zeigt dort den Preis.",
     "fixedDataDetails": "Ab deinem ersten angenommenen Artikel sind sie fest, ebenso die Angaben zu angenommenen Artikeln. Der Veranstalter führt darüber einen Nachweis.",
-    "directSaleDetails": "Ihr einigt euch auf den Preis, danach bucht die Kasse den Verkauf zum vereinbarten Preis. Dort zahlst du nur die Provision."
+    "directSaleDetails": "Ihr einigt euch auf den Preis, danach bucht die Kasse den Verkauf zum vereinbarten Preis. Dort zahlst du nur die Provision.",
+    "region": "Nur für Verkäufer aus PLZ {{codes}}",
+    "regionShort": "Nur für Verkäufer aus der Region"
   },
   "sidebar": {
     "details": "Basar-Details",
@@ -243,7 +251,13 @@
     "until": "Anmeldung bis {{time}}",
     "full": "Alle Plätze belegt",
     "spotsLeft_one": "Nur noch ein Platz von {{limit}} frei",
-    "spotsLeft_other": "Noch {{count}} von {{limit}} Plätzen frei"
+    "spotsLeft_other": "Noch {{count}} von {{limit}} Plätzen frei",
+    "region": "Nur aus PLZ {{codes}}",
+    "regionShort": "Nur aus der Region",
+    "regionMap": "Karte der Region des Basars",
+    "regionMapTitle": "Region des Basars",
+    "showRegionMap": "Karte ansehen",
+    "regionMapCaption": "Die markierten Postleitzahlgebiete gehören zur Region; gestreift nur zum Teil."
   },
   "rejections": {
     "title_one": "Ein Artikel nicht abgegeben",

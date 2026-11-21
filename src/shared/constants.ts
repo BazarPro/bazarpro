@@ -199,10 +199,10 @@ export const NOTIFICATION_CATEGORY_LABELS: Record<
 };
 
 /**
- * Who gets a message from the organizer: everyone, sellers with accepted items, or
- * sellers with unsold items still to pick up.
+ * Who gets a message from the organizer: everyone, sellers with accepted items, sellers
+ * with unsold items still to pick up, or sellers who have not announced an item (#304).
  */
-export const BROADCAST_AUDIENCES = ['all', 'accepted', 'pickup'] as const;
+export const BROADCAST_AUDIENCES = ['all', 'accepted', 'pickup', 'withoutItems'] as const;
 export type BroadcastAudience = (typeof BROADCAST_AUDIENCES)[number];
 
 /** Languages of the app. German is the source language; more can be added here. */

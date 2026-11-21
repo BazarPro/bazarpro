@@ -140,6 +140,8 @@ pub struct Event {
     pub description: String,
     pub cover_image: Option<Uuid>,
     pub event_map_image: Option<Uuid>,
+    /// Picture of the region of a bazaar for its region (#304)
+    pub region_map_image: Option<Uuid>,
     pub location: String,
     /// Address of the venue; `location` is its name or, in older events, all of it
     pub street: Option<String>,
@@ -188,6 +190,7 @@ struct EventRow {
     description: String,
     cover_image_id: Option<Uuid>,
     map_image_id: Option<Uuid>,
+    region_map_image_id: Option<Uuid>,
     location: String,
     street: Option<String>,
     postal_code: Option<String>,
@@ -254,6 +257,7 @@ impl From<EventRow> for Event {
             description: row.description,
             cover_image: row.cover_image_id,
             event_map_image: row.map_image_id,
+            region_map_image: row.region_map_image_id,
             location: row.location,
             street: row.street,
             postal_code: row.postal_code,
@@ -317,7 +321,7 @@ pub const SELLER_PLACES_SQL: &str = concat!(
 /// SELECT list of the events table aliased `e`.
 pub const EVENT_COLUMNS: &str = concat!(
     "e.id, e.created_at, e.title, e.description, e.cover_image_id,
-    e.map_image_id, e.location, e.street, e.postal_code, e.city, e.country,
+    e.map_image_id, e.region_map_image_id, e.location, e.street, e.postal_code, e.city, e.country,
     e.start_date, e.end_date, e.contact_info,
     ARRAY(SELECT c.category_id FROM event_categories c WHERE c.event_id = e.id ORDER BY c.position)
       AS categories,

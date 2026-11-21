@@ -1,5 +1,6 @@
 //! Sellers of an event: joining, leaving, payout.
 
+use chrono::Duration;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
@@ -9,8 +10,9 @@ use super::docs;
 use super::event_exclusions::assert_not_excluded;
 use super::event_invitations;
 use super::event_roles::{self, Permission, Role};
-use super::features::registration_unavailable;
+use super::features::{postal_code_refused, registration_unavailable};
 use super::fee_groups;
+use super::notifications::{self, Content, T};
 use super::offers::close_offers_for_event_product;
 use super::sales::{self, intake_fee_for_seller};
 use super::seller_numbers::next_seller_number;
@@ -31,6 +33,140 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "eventSeller.markVendorPayoutReceived" => mark_vendor_payout_received);
     register!(registry, Mutation "eventSeller.settleVendor" => settle_vendor);
     register!(registry, Mutation "eventSeller.unmarkVendorPayoutReceived" => unmark_vendor_payout_received);
+    register!(registry, Mutation "eventSeller.removeSellersWithoutItems" => remove_sellers_without_items);
+}
+
+/// Sellers (`event_roles r`) who have not announced any item (#304): none announced, at the
+/// bazaar or sold; rejected ones take no place, like for the item limit. Not the team, who
+/// sell whenever they like, not the excluded, and not walk-in sellers, whom the team
+/// manages. Shared by the messages, the seller list and the unregistering of all of them.
+pub const WITHOUT_ITEMS: &str = "r.role = 'seller'
+    AND NOT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
+                    WHERE ep.event_id = r.event_id AND p.vendor_id = r.user_id
+                      AND ep.status <> 'rejected')
+    AND NOT EXISTS (SELECT 1 FROM event_exclusions x
+                    WHERE x.event_id = r.event_id AND x.user_id = r.user_id)
+    AND NOT EXISTS (SELECT 1 FROM event_roles t
+                    WHERE t.event_id = r.event_id AND t.user_id = r.user_id
+                      AND t.role IN ('organizer', 'coorganizer'))
+    AND NOT EXISTS (SELECT 1 FROM users u
+                    WHERE u.id = r.user_id AND u.managed_by_event_id IS NOT NULL)";
+
+/// The sellers of the event without items, oldest first.
+pub async fn sellers_without_items(
+    conn: &mut PgConnection,
+    event: Uuid,
+) -> sqlx::Result<Vec<Uuid>> {
+    sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+        "SELECT r.user_id FROM event_roles r WHERE r.event_id = $1 AND {WITHOUT_ITEMS}
+         ORDER BY r.created_at"
+    )))
+    .bind(event)
+    .fetch_all(conn)
+    .await
+}
+
+/// Longest message the organizer adds when unregistering sellers
+pub const MAX_UNREGISTER_MESSAGE: usize = 1000;
+/// Gap between two mails, like the messages to sellers
+const UNREGISTER_MAIL_GAP_MS: i64 = 1000;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RemoveWithoutItemsArgs {
+    event_id: Id,
+    /// Told to each of them, e.g. "Die Plätze sind knapp, gern beim nächsten Mal"
+    message: Option<String>,
+}
+
+/// The organizer unregisters every seller without items at once (#304), e.g. at a bazaar
+/// with a seller limit, so their places are free. Unlike an exclusion (#252), they may
+/// join again. Who announces an item meanwhile stays: the transaction is serializable, so
+/// one of the two is repeated and sees the other. Returns how many were unregistered.
+async fn remove_sellers_without_items(
+    ctx: &mut Ctx,
+    args: RemoveWithoutItemsArgs,
+) -> AppResult<usize> {
+    let viewer = ctx.require_user()?;
+    let event_id = args.event_id.0;
+    // Helpers take items in; whom the bazaar has as sellers is the organizer's decision
+    if !event_roles::has_role_or_admin(ctx.conn(), event_id, viewer, Role::Organizer).await? {
+        return Err(AppError::forbidden("auth.forbidden"));
+    }
+    let event = docs::event(ctx.conn(), event_id)
+        .await?
+        .ok_or_else(|| AppError::not_found("notFound.event"))?;
+    if event.end_date < chrono::Utc::now() {
+        return Err(AppError::bad_request("seller.unregisterPast"));
+    }
+    let message = args
+        .message
+        .map(|message| message.trim().to_owned())
+        .filter(|message| !message.is_empty());
+    if message
+        .as_ref()
+        .is_some_and(|message| message.chars().count() > MAX_UNREGISTER_MESSAGE)
+    {
+        return Err(AppError::coded(
+            axum::http::StatusCode::BAD_REQUEST,
+            "seller.unregisterMessageTooLong",
+            &[("max", &MAX_UNREGISTER_MESSAGE.to_string())],
+        ));
+    }
+    let sellers = sellers_without_items(ctx.conn(), event.id).await?;
+    let (title, path) = (event.title.clone(), format!("/public-events/{}", event.id));
+    let reopens = super::features::registration_unavailable(&event, chrono::Utc::now()).is_none();
+    // Rejected items stay, as when sellers leave on their own (`events::leave_event`)
+    sqlx::query("DELETE FROM event_sellers WHERE event_id = $1 AND user_id = ANY($2)")
+        .bind(event.id)
+        .bind(&sellers)
+        .execute(ctx.conn())
+        .await?;
+    sqlx::query(
+        "DELETE FROM event_roles WHERE event_id = $1 AND user_id = ANY($2) AND role = $3::event_role_kind",
+    )
+    .bind(event.id)
+    .bind(&sellers)
+    .bind(Role::Seller.as_str())
+    .execute(ctx.conn())
+    .await?;
+    for seller in &sellers {
+        ctx.touch(Topic::User(*seller));
+    }
+    event_roles::touch_seller_places(ctx, event.id).await?;
+    notifications::notify_users(
+        ctx,
+        &sellers,
+        |t: T| {
+            let values = [("event", title.as_str())];
+            let mut paragraphs = vec![t.t("participation.unregistered.text", &values)];
+            if let Some(message) = &message {
+                paragraphs.push(t.t(
+                    "participation.unregistered.message",
+                    &[("message", message)],
+                ));
+            }
+            paragraphs.push(t.t(
+                if reopens {
+                    "participation.unregistered.join"
+                } else {
+                    "participation.unregistered.joinClosed"
+                },
+                &[],
+            ));
+            Content {
+                subject: t.t("participation.unregistered.subject", &values),
+                heading: t.t("participation.unregistered.heading", &[]),
+                paragraphs,
+                link: t.link("participation.openEvent", path.clone()),
+                ..Content::default()
+            }
+        },
+        Duration::milliseconds(UNREGISTER_MAIL_GAP_MS),
+    )
+    .await?;
+    ctx.touch(Topic::Event(event.id));
+    Ok(sellers.len())
 }
 
 /// Places taken toward the seller limit: sellers, without the excluded and the team
@@ -145,11 +281,43 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     if features.private_sellers_only && args.private_seller != Some(true) {
         return Err(AppError::bad_request("join.privateRequired"));
     }
+    // A bazaar for its region (#304): an invitation, the access code or a place on the team
+    // let others in too, so the organizer can make exceptions
+    let has_code = event
+        .access_code
+        .as_deref()
+        .is_some_and(|code| !code.is_empty());
+    let region = features
+        .postal_codes
+        .as_ref()
+        .filter(|_| invited_as_helper.is_none() && !team && !has_code);
+    // Loaded once for both checks below
+    let profile = if region.is_some() || features.fixed_seller_data {
+        docs::user(ctx.conn(), user).await?
+    } else {
+        None
+    };
+    if let Some(region) = region {
+        let (zip, country) = profile.as_ref().map_or((None, None), |u| {
+            (u.zip_code.as_deref(), u.country.as_deref())
+        });
+        match postal_code_refused(&features, zip, country) {
+            Some("join.postalCode") => {
+                return Err(AppError::coded(
+                    axum::http::StatusCode::BAD_REQUEST,
+                    "join.postalCode",
+                    &[("codes", &region.describe())],
+                ));
+            }
+            Some(code) => return Err(AppError::bad_request(code)),
+            None => {}
+        }
+    }
     // A record of who offers what needs complete details; the dialog asks for them first
     if features.fixed_seller_data {
-        let complete = docs::user(ctx.conn(), user)
-            .await?
-            .is_some_and(|user| missing_profile_fields(&user).is_empty());
+        let complete = profile
+            .as_ref()
+            .is_some_and(|user| missing_profile_fields(user).is_empty());
         if !complete {
             return Err(AppError::bad_request("join.profileIncomplete"));
         }
@@ -166,8 +334,8 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     let number = next_seller_number(ctx, event.id).await?;
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO event_sellers (event_id, user_id, total_fee, commission_fee, payout_amount,
-           payout_received, number, private_seller_confirmed_at, fee_group_id)
-         VALUES ($1, $2, 0, 0, 0, false, $3, CASE WHEN $4 THEN now() END, $5)
+           payout_received, number, private_seller_confirmed_at, fee_group_id, admitted_by_region)
+         VALUES ($1, $2, 0, 0, 0, false, $3, CASE WHEN $4 THEN now() END, $5, $6)
          RETURNING id",
     )
     .bind(event.id)
@@ -175,6 +343,7 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     .bind(number)
     .bind(features.private_sellers_only)
     .bind(&args.fee_group_id)
+    .bind(region.is_some())
     .fetch_one(ctx.conn())
     .await?;
     event_roles::add_role(ctx, event.id, user, Role::Seller).await?;

@@ -227,6 +227,39 @@ pub async fn is_profile_fixed(conn: &mut PgConnection, user_id: Uuid) -> sqlx::R
     Ok(false)
 }
 
+/// Whether postal code and country of the user are fixed: a bazaar for its region (#304)
+/// let them in by their postal code and is not over. Moving it afterwards would let anyone
+/// in, so it stays until the bazaar ends or they leave it. Sellers let in by the access
+/// code, an invitation or the team, and excluded ones, are free. Also returns the bazaars
+/// the answer depends on, so a live query can follow them.
+pub async fn postal_code_fixed_by(
+    conn: &mut PgConnection,
+    user_id: Uuid,
+) -> sqlx::Result<(bool, Vec<Uuid>)> {
+    let rows: Vec<(Uuid, bool)> = sqlx::query_as(
+        r#"SELECT e.id, e.end_date >= now()
+             AND EXISTS (SELECT 1 FROM event_roles r
+                         WHERE r.event_id = e.id AND r.user_id = s.user_id AND r.role = 'seller')
+             AND NOT EXISTS (SELECT 1 FROM event_exclusions x
+                             WHERE x.event_id = e.id AND x.user_id = s.user_id)
+             -- strict: lax mode would look into the arrays; silent: no region, no error
+             AND jsonb_path_exists(e.features,
+               'strict $.allowedPostalCodes.* ? (@.type() == "array" && @.size() > 0)',
+               '{}', true)
+           FROM event_sellers s JOIN events e ON e.id = s.event_id
+           WHERE s.user_id = $1 AND s.admitted_by_region"#,
+    )
+    .bind(user_id)
+    .fetch_all(conn)
+    .await?;
+    let fixed = rows.iter().any(|(_, fixed)| *fixed);
+    Ok((fixed, rows.into_iter().map(|(event, _)| event).collect()))
+}
+
+pub async fn is_postal_code_fixed(conn: &mut PgConnection, user_id: Uuid) -> sqlx::Result<bool> {
+    Ok(postal_code_fixed_by(conn, user_id).await?.0)
+}
+
 /// Whether title, category, price and required fields of the item are fixed: a bazaar
 /// that keeps a record accepted it and is not over. Returns the required fields of those
 /// bazaars.

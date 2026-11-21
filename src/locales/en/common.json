@@ -128,7 +128,8 @@
       "all": "all",
       "accepted": "with handed-in items",
       "pickup": "with items to pick up",
-      "unsettled": "not yet settled"
+      "unsettled": "not yet settled",
+      "withoutItems": "without registered items"
     },
     "recipients": " · to {{count}} sellers ({{audience}})",
     "important": "Important",

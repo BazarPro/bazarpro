@@ -18,6 +18,7 @@ import {
   Clock,
   Users,
   Ban,
+  MapPinned,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Doc, Exclusion, Id } from '../../../lib/api/types';
@@ -35,6 +36,7 @@ import { formatEventPlace } from '../../../shared/eventJsonLd';
 import { describeRegistration } from '../../../components/participation/registrationText';
 import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
 import { isEventOver } from '../../../shared/eventPhase';
+import { RegionMapLink } from '../../../components/events/RegionMap';
 
 function EventCard({
   event,
@@ -178,6 +180,21 @@ function EventCard({
             <div className="flex items-start gap-2 text-sm">
               <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
               <span className="text-muted-foreground">{registration.spots}</span>
+            </div>
+          )}
+          {registration?.region && (
+            <div className="flex items-start gap-2 text-sm">
+              <MapPinned className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              {/* Above the link of the card, so the pointer reaches the map */}
+              <span className="relative z-10 text-muted-foreground">
+                <RegionMapLink
+                  image={event.regionMapImage}
+                  codes={registration.regionCodes}
+                  className="text-primary"
+                >
+                  {registration.region}
+                </RegionMapLink>
+              </span>
             </div>
           )}
           {unreadMessages > 0 && (

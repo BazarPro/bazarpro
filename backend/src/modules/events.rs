@@ -14,6 +14,7 @@ use rust_decimal::prelude::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use serde_with::skip_serializing_none;
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::access::{active_admins, is_platform_admin, require_admin};
@@ -24,7 +25,7 @@ use super::event_roles::{
     self, Permission, Role, TEAM, has_any_role_or_admin, has_role_or_admin, is_bystander,
     load_vendors_with_calculations, require_permission,
 };
-use super::features::{self, FeeGroupAssignment, MAX_DISCOUNT_PERCENT};
+use super::features::{self, COUNTRIES, FeeGroupAssignment, MAX_DISCOUNT_PERCENT};
 use super::moderation::{LogEntry, log_action};
 use super::notifications::{self, Area, Content, T};
 use super::{retention, sales, seller_numbers};
@@ -780,6 +781,75 @@ struct FeaturesArgs {
     /// The kind of bazaar (#303); null clears it, left out the stored one stays
     #[serde(default, with = "serde_with::rust::double_option")]
     event_type: Option<Option<String>>,
+    /// Prefixes of the postal codes whose sellers may join, per country (#304), e.g.
+    /// `{"DE": ["89"], "AT": ["6"]}`; null or empty: everyone, left out (older apps): the
+    /// stored ones stay
+    #[serde(default, with = "serde_with::rust::double_option")]
+    allowed_postal_codes: Option<Option<BTreeMap<String, Vec<String>>>>,
+}
+
+/// Most prefixes a bazaar's region may have; the map joins whole areas to shorter ones
+const MAX_POSTAL_PREFIXES: usize = 500;
+
+/// The region of the bazaar (#304) per country: known countries only, each with digits
+/// only, 1 to 5 of them, without prefixes another one already covers ("89" covers
+/// "890"). Countries without prefixes go; empty: no region.
+fn sanitize_postal_region(
+    countries: BTreeMap<String, Vec<String>>,
+) -> AppResult<BTreeMap<String, Vec<String>>> {
+    let mut region = BTreeMap::new();
+    let mut total = 0;
+    for (country, prefixes) in countries {
+        let country = country.trim().to_ascii_uppercase();
+        if !COUNTRIES.contains(&country.as_str()) {
+            return Err(invalid("allowedPostalCodes"));
+        }
+        let prefixes = sanitize_postal_codes(prefixes)?;
+        total += prefixes.len();
+        if !prefixes.is_empty() {
+            region.insert(country, prefixes);
+        }
+    }
+    if total > MAX_POSTAL_PREFIXES {
+        return Err(AppError::coded(
+            StatusCode::BAD_REQUEST,
+            "event.postalCodesTooMany",
+            &[("max", &MAX_POSTAL_PREFIXES.to_string())],
+        ));
+    }
+    Ok(region)
+}
+
+/// Prefixes of one country: digits only, 1 to 5 of them, without those another one
+/// already covers ("89" covers "890").
+fn sanitize_postal_codes(prefixes: Vec<String>) -> AppResult<Vec<String>> {
+    let mut clean: Vec<String> = Vec::new();
+    for prefix in prefixes {
+        let trimmed = prefix.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if !trimmed.chars().all(|c| c.is_ascii_digit()) || trimmed.len() > 5 {
+            return Err(AppError::coded(
+                StatusCode::BAD_REQUEST,
+                "event.postalCodeInvalid",
+                &[("code", trimmed)],
+            ));
+        }
+        clean.push(trimmed.to_owned());
+    }
+    clean.sort_by(|a, b| a.len().cmp(&b.len()).then_with(|| a.cmp(b)));
+    let mut kept: Vec<String> = Vec::new();
+    for prefix in clean {
+        if !kept
+            .iter()
+            .any(|shorter| prefix.starts_with(shorter.as_str()))
+        {
+            kept.push(prefix);
+        }
+    }
+    kept.sort();
+    Ok(kept)
 }
 
 /// One fee group as the form sends it (#302)
@@ -1151,6 +1221,16 @@ fn sanitize_features(
                 .unwrap_or(Value::Null),
         },
     );
+    let previous_postal = |key: &str| previous.and_then(|p| p.get(key)).cloned();
+    let postal_codes = match features.allowed_postal_codes {
+        Some(region) => sanitize_postal_region(region.unwrap_or_default())?,
+        None => previous_postal("allowedPostalCodes")
+            .and_then(|value| serde_json::from_value(value).ok())
+            .unwrap_or_default(),
+    };
+    if !postal_codes.is_empty() {
+        put("allowedPostalCodes", json!(postal_codes));
+    }
     put(
         "eventType",
         match features.event_type {
@@ -1200,9 +1280,6 @@ struct Address {
     city: Option<String>,
     country: Option<String>,
 }
-
-/// Countries the address form offers (ISO 3166-1 alpha-2).
-const COUNTRIES: [&str; 5] = ["DE", "AT", "CH", "LI", "LU"];
 
 fn sanitize_address(args: Option<AddressArgs>) -> AppResult<Address> {
     let part = |value: Option<String>, max: usize| -> AppResult<Option<String>> {
@@ -1398,6 +1475,8 @@ struct CreateArgs {
     description: String,
     cover_image: Option<Id>,
     event_map_image: Option<Id>,
+    /// Picture of the region (#304), drawn by the app
+    region_map_image: Option<Id>,
     location: String,
     address: Option<AddressArgs>,
     start_date: f64,
@@ -1426,7 +1505,15 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     }
     check_lists(&args.services, &args.visibility)?;
     check_access_code(&args.visibility, args.access_code.as_deref())?;
-    check_files(ctx, &[args.cover_image, args.event_map_image]).await?;
+    check_files(
+        ctx,
+        &[
+            args.cover_image,
+            args.event_map_image,
+            args.region_map_image,
+        ],
+    )
+    .await?;
     let public = args.visibility == "public" && !single;
     let known = requirable_keys(ctx).await?;
     let features = args
@@ -1440,10 +1527,10 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
         "INSERT INTO events (title, description, cover_image_id, map_image_id, location, start_date,
            end_date, contact_info, services, visibility, is_approved, approval_status, access_code,
            vendor_limit, commission, features, dropoff_start, dropoff_end, pickup_start, pickup_end,
-           logistics_note, organizer_id, street, postal_code, city, country)
+           logistics_note, organizer_id, street, postal_code, city, country, region_map_image_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::event_service[], $10::event_visibility, $11,
            $12::approval_status, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
-           $26)
+           $26, $27)
          RETURNING id",
     )
     .bind(&args.title)
@@ -1472,6 +1559,7 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     .bind(&address.postal_code)
     .bind(&address.city)
     .bind(&address.country)
+    .bind(args.region_map_image.map(|id| id.0))
     .fetch_one(ctx.conn())
     .await?;
     set_categories(ctx, id, &args.categories).await?;
@@ -1491,6 +1579,8 @@ struct EditArgs {
     description: String,
     cover_image: Option<Id>,
     event_map_image: Option<Id>,
+    /// Picture of the region (#304), drawn by the app
+    region_map_image: Option<Id>,
     location: String,
     /// Absent (older apps): the stored address stays
     address: Option<AddressArgs>,
@@ -1506,6 +1596,7 @@ struct EditArgs {
     clear_vendor_limit: Option<bool>,
     clear_cover_image: Option<bool>,
     clear_event_map_image: Option<bool>,
+    clear_region_map_image: Option<bool>,
     features: Option<FeaturesArgs>,
     seller_logistics: Option<LogisticsArgs>,
 }
@@ -1530,7 +1621,15 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     // Without a code in the arguments the stored one stays
     let event_code = args.access_code.as_deref().or(event.access_code.as_deref());
     check_access_code(&args.visibility, event_code)?;
-    check_files(ctx, &[args.cover_image, args.event_map_image]).await?;
+    check_files(
+        ctx,
+        &[
+            args.cover_image,
+            args.event_map_image,
+            args.region_map_image,
+        ],
+    )
+    .await?;
     let mut start = time_arg(args.start_date, "startDate")?;
     let mut end = time_arg(args.end_date, "endDate")?;
     let commission = money(args.commission, "commission")?;
@@ -1638,7 +1737,9 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
            street = CASE WHEN $27 THEN street ELSE $28 END,
            postal_code = CASE WHEN $27 THEN postal_code ELSE $29 END,
            city = CASE WHEN $27 THEN city ELSE $30 END,
-           country = CASE WHEN $27 THEN country ELSE $31 END
+           country = CASE WHEN $27 THEN country ELSE $31 END,
+           region_map_image_id =
+             CASE WHEN $32 THEN NULL ELSE COALESCE($33, region_map_image_id) END
          WHERE id = $1",
     )
     .bind(event.id)
@@ -1681,6 +1782,8 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     .bind(&address.postal_code)
     .bind(&address.city)
     .bind(&address.country)
+    .bind(args.clear_region_map_image == Some(true))
+    .bind(args.region_map_image.map(|id| id.0))
     .execute(ctx.conn())
     .await?;
     set_categories(ctx, event.id, &args.categories).await?;

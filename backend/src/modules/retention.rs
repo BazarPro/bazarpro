@@ -165,18 +165,21 @@ async fn purge_sold_items(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
     Ok(Done::of(events.len(), args.size()))
 }
 
+/// An event with its cover, map and picture of the region
+type EventFiles = (Uuid, Option<Uuid>, Option<Uuid>, Option<Uuid>);
+
 /// Public archive over: the bazaar keeps title, dates, place and fees for the settlement;
-/// cover, map, description, logistics note, messages, promo texts, storage locations and
+/// cover, map, picture of the region, description, logistics note, messages, promo texts, storage locations and
 /// internal notes go. From now on only the team sees it (`is_archived`).
 async fn purge_event_content(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
-    let events: Vec<(Uuid, Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
-        "UPDATE events SET cover_image_id = NULL, map_image_id = NULL, description = '',
-           logistics_note = NULL, content_purged_at = now()
-         FROM (SELECT id, cover_image_id, map_image_id FROM events
+    let events: Vec<EventFiles> = sqlx::query_as(
+        "UPDATE events SET cover_image_id = NULL, map_image_id = NULL, region_map_image_id = NULL,
+           description = '', logistics_note = NULL, content_purged_at = now()
+         FROM (SELECT id, cover_image_id, map_image_id, region_map_image_id FROM events
                WHERE content_purged_at IS NULL AND end_date < now() - make_interval(days => $1)
                ORDER BY end_date LIMIT $2 FOR UPDATE) old
          WHERE events.id = old.id
-         RETURNING old.id, old.cover_image_id, old.map_image_id",
+         RETURNING old.id, old.cover_image_id, old.map_image_id, old.region_map_image_id",
     )
     .bind(ctx.state.config.retention.event_public_days)
     .bind(args.size())
@@ -202,7 +205,7 @@ async fn purge_event_content(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> 
         .await?;
     let files = events
         .iter()
-        .flat_map(|(_, cover, map)| [*cover, *map])
+        .flat_map(|(_, cover, map, region)| [*cover, *map, *region])
         .flatten()
         .collect();
     delete_files(ctx, files).await?;
@@ -280,16 +283,15 @@ async fn clear_walk_in_contacts(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Don
 /// The retention period of the books is over (§ 147 AO): sales, sellers, roles and the
 /// bazaar go. Its walk-in sellers are anonymized; items the sellers got back stay theirs.
 async fn delete_expired_events(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
-    let events: Vec<(Uuid, Option<Uuid>, Option<Uuid>)> =
-        sqlx::query_as(sqlx::AssertSqlSafe(format!(
-            "SELECT e.id, e.cover_image_id, e.map_image_id FROM events e
+    let events: Vec<EventFiles> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+        "SELECT e.id, e.cover_image_id, e.map_image_id, e.region_map_image_id FROM events e
              WHERE {YEARS_AFTER_ITS_YEAR} ORDER BY e.end_date LIMIT $2"
-        )))
-        .bind(ctx.state.config.retention.records_years)
-        .bind(args.size())
-        .fetch_all(ctx.conn())
-        .await?;
-    for &(event, cover, map) in &events {
+    )))
+    .bind(ctx.state.config.retention.records_years)
+    .bind(args.size())
+    .fetch_all(ctx.conn())
+    .await?;
+    for &(event, cover, map, region) in &events {
         let walk_ins: Vec<Uuid> =
             sqlx::query_scalar("SELECT id FROM users WHERE managed_by_event_id = $1")
                 .bind(event)
@@ -307,7 +309,7 @@ async fn delete_expired_events(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done
         for user in walk_ins {
             account_deletion::anonymize(ctx, user).await?;
         }
-        delete_files(ctx, cover.into_iter().chain(map).collect()).await?;
+        delete_files(ctx, cover.into_iter().chain(map).chain(region).collect()).await?;
         ctx.touch(Topic::Event(event));
     }
     if !events.is_empty() {

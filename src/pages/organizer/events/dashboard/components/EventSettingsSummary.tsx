@@ -1,3 +1,5 @@
+import { formatRegion, postalRegion } from '../../../../../shared/postalCodes';
+import { countryName } from '../../../../../i18n/countries';
 import type { ReactNode } from 'react';
 import { Check, Minus } from 'lucide-react';
 import type { Doc } from '../../../../../lib/api/types';
@@ -70,6 +72,7 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
     minute: '2-digit',
   });
   const features = resolveEventFeatures(event);
+  const region = postalRegion(event.features);
   const logistics = event.sellerLogistics;
   const discountDetail = [
     features.discountStartsAt
@@ -152,6 +155,13 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
           />
           <Feature on={features.photosOptional} title={t('summary.photosOptional')} />
           <Feature on={features.publicCatalog} title={t('summary.publicCatalog')} />
+          {region && (
+            <Feature
+              on={true}
+              title={t('region.short', { codes: formatRegion(region, 8) })}
+              detail={region.parts.map((part) => countryName(part.country)).join(', ')}
+            />
+          )}
           <Feature on={features.privateSellersOnly} title={t('summary.privateSellers')} />
           <Feature on={features.fixedSellerData} title={t('summary.fixedData')} />
           {(features.requiredFields?.length ?? 0) > 0 && (

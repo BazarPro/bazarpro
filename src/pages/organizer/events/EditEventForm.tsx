@@ -17,7 +17,7 @@ import { EditEventContact } from './components/EditEventContact';
 import { EditEventAccess } from './components/EditEventAccess';
 import { EditEventMapSection } from './components/EditEventMapSection';
 import { EditEventFeatures } from './components/EditEventFeatures';
-import { FormSection } from '../../../components/ui/form-section';
+import { FormSection, FORM_ROWS } from '../../../components/ui/form-section';
 import { followEventDates, type EventTimes } from '../../../lib/eventDates';
 import { EditEventSellerInfo } from './components/EditEventSellerInfo';
 import { logisticsFromForm } from '../../../lib/sellerLogistics';
@@ -69,6 +69,7 @@ import { WizardPictures } from './components/wizard/WizardPictures';
 import { zodMessage } from '../../../i18n/zodMessage';
 import i18n from '../../../i18n';
 import { EventTypePicker } from './components/EventTypePicker';
+import { EditEventRegion } from './components/EditEventRegion';
 import { placeFromLocation, type EventPlace } from '../../../shared/eventJsonLd';
 import {
   EVENT_TYPES,
@@ -91,6 +92,8 @@ import { EditEventFeeGroups } from './components/EditEventFeeGroups';
 import { MAX_FEE_GROUPS, extraHelperGroups, type FeeGroup } from '../../../shared/feeGroups';
 import { PageSkeleton } from '../../../components/ui/loading';
 import { isEventRunning } from '../../../shared/eventPhase';
+import { compactRegion, regionSize } from '../../../shared/postalCodes';
+import { postalCodesOf, regionImageChange } from '../../../lib/regionImage';
 
 /**
  * @param getOriginalStartDate start date of the event being edited (datetime-local string);
@@ -199,6 +202,10 @@ const buildEventSchema = (
         registrationEndsAt: z.string(),
         /** The kind of bazaar (#303); empty: none */
         eventType: z.string(),
+        /** Only sellers from the region (#304); the prefixes stay while it is off */
+        regionOnly: z.boolean(),
+        /** Prefixes per country, e.g. { DE: ['89'], AT: ['6'] } */
+        allowedPostalCodes: z.record(z.string(), z.array(z.string())),
         intakeFee: z
           .number()
           .min(0, zodMessage('form.feeNegative', 'organizer'))
@@ -310,6 +317,14 @@ const buildEventSchema = (
       {
         ...zodMessage('features.registrationWindow', 'organizer'),
         path: ['features', 'registrationEndsAt'],
+      }
+    )
+    .refine(
+      ({ features: { regionOnly, allowedPostalCodes } }) =>
+        !regionOnly || regionSize(allowedPostalCodes) > 0,
+      {
+        ...zodMessage('region.required', 'organizer'),
+        path: ['features', 'allowedPostalCodes'],
       }
     )
     .superRefine((data, ctx) => {
@@ -464,6 +479,8 @@ function featuresToForm(stored: StoredEventFeatures | undefined): FeatureFormDat
       ? formatForDateTimeLocal(features.registrationEndsAt)
       : '',
     eventType: findEventType(features.eventType)?.id ?? '',
+    regionOnly: regionSize(features.allowedPostalCodes) > 0,
+    allowedPostalCodes: features.allowedPostalCodes ?? {},
   };
 }
 
@@ -533,6 +550,8 @@ function featuresFromForm(features: FeatureFormData): FeaturesArgs {
     registrationStartsAt: timeFromForm(features.registrationOpen, features.registrationStartsAt),
     registrationEndsAt: timeFromForm(features.registrationOpen, features.registrationEndsAt),
     eventType: features.eventType || null,
+    // Always sent: none lets everyone in again
+    allowedPostalCodes: features.regionOnly ? compactRegion(features.allowedPostalCodes) : {},
   };
 }
 
@@ -620,7 +639,13 @@ const WIZARD_STEPS = [
   },
   {
     id: 'registration',
-    fields: ['visibility', 'accessCode', 'vendorLimit', 'features.registrationEndsAt'],
+    fields: [
+      'visibility',
+      'accessCode',
+      'vendorLimit',
+      'features.registrationEndsAt',
+      'features.allowedPostalCodes',
+    ],
   },
   { id: 'logistics', fields: ['sellerLogistics'] },
   // The words for the bazaar page last, with the page growing next to them
@@ -826,7 +851,10 @@ function EventSection({
       return (
         <>
           <EditEventAccess lockVisibility={editing?.isRunning} />
-          <EditEventFeatures parts={['registration']} showHeader={false} />
+          <FormSection contentClassName={FORM_ROWS}>
+            <EditEventFeatures parts={['registration']} showHeader={false} bare />
+            <EditEventRegion />
+          </FormSection>
         </>
       );
     case 'logistics':
@@ -1335,6 +1363,22 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
         eventMapImage = await client.upload(await generateUploadUrl(), data.eventMapImageFile);
       }
 
+      const stored = isEditing ? event : undefined;
+      const regionImage = await regionImageChange(
+        {
+          region: data.features.regionOnly ? data.features.allowedPostalCodes : {},
+          venueCode: data.address.postalCode,
+          venueCountry: data.address.country,
+        },
+        stored && {
+          region: postalCodesOf(stored.features),
+          venueCode: stored.postalCode,
+          venueCountry: stored.country,
+          image: stored.regionMapImage,
+        },
+        (file) => generateUploadUrl().then((url) => client.upload(url, file))
+      );
+
       if (isEditing && eventId) {
         const editPayload: {
           id: Id<'events'>;
@@ -1356,6 +1400,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           eventMapImage?: Id<'_storage'>;
           clearCoverImage?: boolean;
           clearEventMapImage?: boolean;
+          regionMapImage?: Id<'_storage'>;
+          clearRegionMapImage?: boolean;
           features: FeaturesArgs;
           sellerLogistics: StoredLogistics;
         } = {
@@ -1379,6 +1425,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
               : undefined,
           features: featuresFromForm(data.features),
           sellerLogistics: logisticsFromForm(data.sellerLogistics),
+          ...regionImage,
         };
 
         // Left out the limit would stay
@@ -1422,6 +1469,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
               : undefined,
           coverImage,
           eventMapImage,
+          regionMapImage: regionImage.regionMapImage,
           features: featuresFromForm(data.features),
           sellerLogistics: logisticsFromForm(data.sellerLogistics),
         });

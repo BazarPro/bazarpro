@@ -1,5 +1,7 @@
 import i18n from '../../i18n';
+import type { Id } from '../../lib/api/types';
 import { formatDateTimeDE } from '../../lib/utils';
+import { formatRegion, postalRegion } from '../../shared/postalCodes';
 import {
   getRegistrationState,
   type RegistrationState,
@@ -12,6 +14,8 @@ export type RegistrationEvent = {
   vendorLimit?: number;
   /** Places taken; the backend sends it with a `vendorLimit` */
   sellerCount?: number;
+  /** Map of the region (#304), shown with its postal codes */
+  regionMapImage?: Id<'_storage'>;
 };
 
 /** Places left for sellers; undefined without a limit. */
@@ -38,6 +42,28 @@ export interface RegistrationInfo {
   until?: string;
   /** While open with a seller limit: "Noch 12 von 50 Plätzen frei" */
   spots?: string;
+  /**
+   * Only for sellers from the region (#304): "Nur aus PLZ 89…, 7322…", or "Nur aus der
+   * Region" where a map of it shows the codes (`regionCodes`)
+   */
+  region?: string;
+  /** The codes of the region in short, for the caption of its map */
+  regionCodes?: string;
+}
+
+/**
+ * "Nur aus PLZ 89…, 7322…" for a bazaar of its region; undefined for everyone else. With a
+ * map of the region the codes go into its caption, as the map tells more than a list.
+ */
+export function regionText(
+  event: RegistrationEvent
+): Pick<RegistrationInfo, 'region' | 'regionCodes'> {
+  const region = postalRegion(event.features);
+  if (!region) return {};
+  const codes = i18n.t('registration.region', { ns: 'events', codes: formatRegion(region, 4) });
+  return event.regionMapImage
+    ? { region: i18n.t('registration.regionShort', { ns: 'events' }), regionCodes: codes }
+    : { region: codes };
 }
 
 /**
@@ -72,5 +98,7 @@ export function describeRegistration(
       left === undefined
         ? undefined
         : i18n.t('registration.spotsLeft', { ns: 'events', count: left, limit: event.vendorLimit }),
+    // An invitation passes the region
+    ...(admission === 'invitation' ? {} : regionText(event)),
   };
 }

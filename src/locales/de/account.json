@@ -21,7 +21,8 @@
     "save": "Profil aktualisieren",
     "saved": "Profil erfolgreich aktualisiert!",
     "saveFailed": "Fehler beim Aktualisieren des Profils.",
-    "fixed": "Ein Basar, der einen Nachweis führt, hat deine Artikel angenommen. Name und Anschrift bleiben deshalb bis zum Ende des Basars so, wie sie bei der Annahme waren."
+    "fixed": "Ein Basar, der einen Nachweis führt, hat deine Artikel angenommen. Name und Anschrift bleiben deshalb bis zum Ende des Basars so, wie sie bei der Annahme waren.",
+    "postalCodeFixed": "Du bist bei einem Basar nur für Verkäufer aus seiner Region angemeldet. Postleitzahl und Land bleiben deshalb bis zum Ende des Basars so, wie sie bei der Anmeldung waren."
   },
   "security": {
     "title": "Sicherheit",

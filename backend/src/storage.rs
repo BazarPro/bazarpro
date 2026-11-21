@@ -276,7 +276,8 @@ pub async fn delete_later(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<()>
 }
 
 const UNREFERENCED: &str = "NOT EXISTS (SELECT 1 FROM product_images WHERE file_id = f.id)
-   AND NOT EXISTS (SELECT 1 FROM events WHERE cover_image_id = f.id OR map_image_id = f.id)
+   AND NOT EXISTS (SELECT 1 FROM events
+                   WHERE cover_image_id = f.id OR map_image_id = f.id OR region_map_image_id = f.id)
    AND NOT EXISTS (SELECT 1 FROM site_settings WHERE logo_id = f.id)";
 
 pub fn delete_if_unreferenced(

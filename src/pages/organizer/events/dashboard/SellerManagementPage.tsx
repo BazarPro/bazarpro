@@ -62,10 +62,12 @@ import { OpenInvitations } from '../../../../components/invitations/OpenInvitati
 import { ExcludedBadge } from '../../../../components/participation/ExcludedBadge';
 import { RegistrationPanel } from '../../../../components/participation/RegistrationPanel';
 import { useTranslation } from 'react-i18next';
+import { SellersWithoutItems } from '../../../../components/sellers/SellersWithoutItems';
+import type { BroadcastAudience } from '../../../../shared/constants';
 
 const NO_LABELS: Id<'products'>[] = [];
 
-type SellerFilter = 'all' | 'open' | 'paid' | 'helpers';
+type SellerFilter = 'all' | 'open' | 'paid' | 'helpers' | 'withoutItems';
 
 /** All sellers, those without a group, or the id of one fee group */
 type GroupFilter = 'all' | 'none' | (string & {});
@@ -79,6 +81,7 @@ export function SellerManagementPage() {
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastAudience, setBroadcastAudience] = useState<BroadcastAudience>('all');
   const [helperPickerOpen, setHelperPickerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [allLabelsOpen, setAllLabelsOpen] = useState(false);
@@ -132,6 +135,7 @@ export function SellerManagementPage() {
     if (activeFilter === 'open') result = result.filter((v) => !v.paid);
     if (activeFilter === 'paid') result = result.filter((v) => v.paid);
     if (activeFilter === 'helpers') result = result.filter((v) => v.isHelper);
+    if (activeFilter === 'withoutItems') result = result.filter((v) => v.withoutItems);
     if (shownGroupFilter === 'none') result = result.filter((v) => !v.feeGroup);
     // Unchecked self-declarations first: they hold up the intake
     else if (shownGroupFilter !== 'all') {
@@ -155,6 +159,12 @@ export function SellerManagementPage() {
     return result;
   }, [vendors, searchTerm, activeFilter, shownGroupFilter]);
 
+  const withoutItems = (vendors ?? []).filter((v) => v.withoutItems).length;
+  const openBroadcast = (audience: BroadcastAudience) => {
+    setBroadcastAudience(audience);
+    setBroadcastOpen(true);
+  };
+
   const handleSelectVendor = (vendorId: Id<'users'>) => {
     navigate(`/events/view/${eventId}/products?vendor=${vendorId}`);
   };
@@ -176,7 +186,7 @@ export function SellerManagementPage() {
         actions={
           <div className="flex flex-wrap gap-2 *:flex-1 sm:*:flex-none">
             {canBroadcast && (
-              <Button variant="outline" className="gap-2" onClick={() => setBroadcastOpen(true)}>
+              <Button variant="outline" className="gap-2" onClick={() => openBroadcast('all')}>
                 <Megaphone className="h-4 w-4" /> {t('sellers.broadcast')}
               </Button>
             )}
@@ -258,11 +268,19 @@ export function SellerManagementPage() {
           onValueChange={(v) => setActiveFilter(v as SellerFilter)}
           className="w-full sm:w-auto"
         >
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid h-auto w-full grid-cols-3 sm:grid-cols-5">
             <TabsTrigger value="all">{t('sellers.all')}</TabsTrigger>
             <TabsTrigger value="open">{t('sellers.open')}</TabsTrigger>
             <TabsTrigger value="paid">{t('sellers.paid')}</TabsTrigger>
             <TabsTrigger value="helpers">{t('sellers.helpers')}</TabsTrigger>
+            <TabsTrigger value="withoutItems" className="gap-1.5">
+              {t('sellers.withoutItems')}
+              {withoutItems > 0 && (
+                <span className="rounded-full bg-amber-500/20 px-1.5 text-[11px] font-semibold tabular-nums text-amber-800 dark:text-amber-200">
+                  {withoutItems}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -296,6 +314,16 @@ export function SellerManagementPage() {
           />
         </div>
       </div>
+
+      {activeFilter === 'withoutItems' && vendors && (
+        <SellersWithoutItems
+          eventId={eventId as Id<'events'>}
+          count={withoutItems}
+          canAct={canBroadcast}
+          over={!!event && event.endDate < Date.now()}
+          onRemind={() => openBroadcast('withoutItems')}
+        />
+      )}
 
       {pendingGroups > 0 && (
         <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
@@ -474,6 +502,7 @@ export function SellerManagementPage() {
 
       <BroadcastDialog
         eventId={eventId as Id<'events'>}
+        initialAudience={broadcastAudience}
         open={broadcastOpen}
         onOpenChange={setBroadcastOpen}
       />

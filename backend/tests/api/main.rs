@@ -29,6 +29,7 @@ mod products;
 mod promos;
 mod purchases;
 mod query_cache;
+mod regional_sellers;
 mod reminders;
 mod retention;
 mod sale_snapshots;
