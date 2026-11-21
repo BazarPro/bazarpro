@@ -326,7 +326,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
                   {registration.region && (
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5" />
-                      <RegionMapTip image={event.regionMapImage}>
+                      <RegionMapTip image={event.regionMapImage} codes={registration.regionCodes}>
                         {registration.region}
                       </RegionMapTip>
                     </span>

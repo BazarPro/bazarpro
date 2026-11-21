@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeRegistration, spotsLeft } from './registrationText';
+import type { Id } from '../../lib/api/types';
 
 const HOUR = 3_600_000;
 const now = Date.UTC(2026, 2, 14, 10);
@@ -61,6 +62,15 @@ describe('describeRegistration of a bazaar for its region (#304)', () => {
     expect(describeRegistration({ features: {} }, now).region).toBeUndefined();
     const border = { features: { allowedPostalCodes: { DE: ['88'], AT: ['69'] } } };
     expect(describeRegistration(border, now).region).toBe('Nur aus PLZ 88… (DE), 69… (AT)');
+  });
+
+  it('keeps it short where a map shows the region, with the codes for its caption', () => {
+    const mapped = { ...regional, regionMapImage: 'f1' as Id<'_storage'> };
+    expect(describeRegistration(mapped, now)).toMatchObject({
+      region: 'Nur aus der Region',
+      regionCodes: 'Nur aus PLZ 89…, 7322…',
+    });
+    expect(describeRegistration(regional, now).regionCodes).toBeUndefined();
   });
 });
 

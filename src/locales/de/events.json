@@ -56,6 +56,7 @@
     "notPossible": "Eine Anmeldung ist gerade nicht möglich.",
     "fullHint": "Alle Plätze für Verkäufer sind vergeben. Frag beim Veranstalter nach, falls doch noch einer frei wird.",
     "regionOnly": "Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahl {{codes}}.",
+    "regionOnlyMap": "Dieser Basar ist nur für Verkäufer aus seiner Region, siehe Karte.",
     "regionYours": "Laut deinem Profil kommst du aus {{code}} ({{country}}).",
     "regionHint": "Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung oder dem Zugangscode."
   },
@@ -250,6 +251,7 @@
     "spotsLeft_one": "Nur noch ein Platz von {{limit}} frei",
     "spotsLeft_other": "Noch {{count}} von {{limit}} Plätzen frei",
     "region": "Nur aus PLZ {{codes}}",
+    "regionShort": "Nur aus der Region",
     "regionMap": "Karte der Region des Basars",
     "regionMapCaption": "Die markierten Postleitzahlgebiete gehören zur Region; gestreift nur zum Teil."
   },

@@ -32,8 +32,12 @@ describe('RegionMapTip (#304)', () => {
   });
 
   it('opens on a tap', () => {
-    render(<RegionMapTip image={image}>Nur aus PLZ 89…</RegionMapTip>);
-    fireEvent.click(screen.getByRole('button'));
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/gehören zur Region/);
+    render(
+      <RegionMapTip image={image} codes="Nur aus PLZ 89…">
+        Nur aus der Region
+      </RegionMapTip>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Nur aus der Region' }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/Nur aus PLZ 89….*gehören zur Region/);
   });
 });

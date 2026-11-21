@@ -118,9 +118,10 @@ export function EventRegistrationDialog({
           registration.invitationHelps ? t('join.closedHint') : t('join.fullHint'),
         ]
       : outsideRegion && [
-          t('join.regionOnly', {
-            codes: formatRegion(region, 12, countryName),
-          }),
+          // The map below shows the region better than its codes
+          conditions.regionMapImage
+            ? t('join.regionOnlyMap')
+            : t('join.regionOnly', { codes: formatRegion(region, 12, countryName) }),
           user.zipCode &&
             t('join.regionYours', {
               code: user.zipCode,
@@ -234,7 +235,10 @@ export function EventRegistrationDialog({
                   {registration.region && (
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin className="h-4 w-4" />
-                      <RegionMapTip image={conditions.regionMapImage}>
+                      <RegionMapTip
+                        image={conditions.regionMapImage}
+                        codes={registration.regionCodes}
+                      >
                         {registration.region}
                       </RegionMapTip>
                     </span>

@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, anyhow};
+use bytes::Bytes;
 use chrono::{DateTime, Duration, DurationRound, NaiveTime, TimeZone, Utc};
 use chrono_tz::Europe::Berlin;
 use serde_json::{Value, json};
@@ -21,6 +22,7 @@ use super::{Seeder, UserSpec};
 use crate::config::InstanceMode;
 use crate::i18n::Locale;
 use crate::rpc::Ctx;
+use crate::storage;
 
 pub const KIDS_TITLE: Text = t(
     "Kinderbasar Kita Sonnenschein",
@@ -102,6 +104,11 @@ struct People {
     emails: HashMap<Uuid, String>,
 }
 
+/// Pictures of the demo regions, drawn by the app (see `Demo::region`)
+const REGION_KIDS: &[u8] = include_bytes!("regions/kids.webp");
+const REGION_SKI: &[u8] = include_bytes!("regions/ski.webp");
+const REGION_BOOKS: &[u8] = include_bytes!("regions/books.webp");
+
 struct Demo<'a> {
     seeder: &'a Seeder,
     ctx: &'a mut Ctx,
@@ -139,6 +146,38 @@ struct EventPlan {
 impl Demo<'_> {
     fn text(&self, text: Text) -> &'static str {
         self.seeder.text(text)
+    }
+
+    /// Only sellers from the region join on their own (#304), switched on once the demo
+    /// sellers joined: in English they live in Oxford. The picture is the one the app draws
+    /// when the organizer saves the region (src/lib/regionImage.ts), made with the address
+    /// of the German demo.
+    async fn region(
+        &mut self,
+        event: Uuid,
+        postal_codes: Value,
+        picture: &'static [u8],
+    ) -> anyhow::Result<()> {
+        let state = self.ctx.state.clone();
+        let image = storage::store(
+            &state,
+            self.ctx.conn(),
+            Bytes::from_static(picture),
+            "image/webp",
+            None,
+        )
+        .await?;
+        sqlx::query(
+            "UPDATE events SET region_map_image_id = $3,
+               features = features || jsonb_build_object('allowedPostalCodes', $2::jsonb)
+             WHERE id = $1",
+        )
+        .bind(event)
+        .bind(postal_codes)
+        .bind(image)
+        .execute(self.ctx.conn())
+        .await?;
+        Ok(())
     }
 
     async fn call(&mut self, user: Uuid, name: &str, args: Value) -> anyhow::Result<Value> {
@@ -1076,6 +1115,9 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
     )
     .await?;
 
+    // Only for families from around Ulm
+    demo.region(event, json!({ "DE": ["890", "891", "892"] }), REGION_KIDS)
+        .await?;
     // On full hours, it looks better in screenshots
     let start = now.duration_trunc(Duration::hours(1))? - Duration::hours(2);
     demo.finish(event, start, start + Duration::hours(10), None)
@@ -1226,6 +1268,13 @@ async fn ski_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()> 
     )
     .await?;
 
+    // The Blautal and its neighbours; club members from elsewhere use the access code
+    demo.region(
+        event,
+        json!({ "DE": ["733", "890", "891", "896"] }),
+        REGION_SKI,
+    )
+    .await?;
     let start = berlin(now, 9, 9, 0);
     let end = berlin(now, 9, 14, 0);
     demo.finish(
@@ -1525,6 +1574,20 @@ async fn book_market(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
         )
         .await?;
     }
+    // Around the lake, across three borders
+    demo.region(
+        event,
+        json!({
+            "AT": [
+                "672", "684", "685", "686", "687", "688", "689", "690", "691", "692", "693",
+                "694", "695", "696", "697"
+            ],
+            "CH": ["903", "904", "940", "941", "942", "943", "944", "945"],
+            "DE": ["880", "881"],
+        }),
+        REGION_BOOKS,
+    )
+    .await?;
     demo.finish(
         event,
         berlin(now, -240, 10, 0),

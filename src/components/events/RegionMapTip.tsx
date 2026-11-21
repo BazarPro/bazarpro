@@ -6,17 +6,21 @@ import type { Id } from '../../lib/api/types';
 import { REGION_IMAGE_HEIGHT, REGION_IMAGE_WIDTH } from '../../lib/regionImage';
 
 /**
- * The postal codes of a bazaar for its region (#304) as text that shows a map of them on
- * hover, focus or tap: "PLZ 890…, 893…" says little to someone who does not know the codes.
- * The picture was drawn when the organizer saved the region; without one, only the text.
+ * "Nur aus der Region" for a bazaar for its region (#304), as text that shows a map of it on
+ * hover, focus or tap: a map says more than "PLZ 890…, 893…" to someone who does not know
+ * the codes, which go into the caption. The picture was drawn when the organizer saved
+ * the region; without one, only the text (then with the codes).
  */
 export function RegionMapTip({
   children,
   image,
+  codes,
   className,
 }: {
   children: ReactNode;
   image?: Id<'_storage'>;
+  /** "Nur aus PLZ 89…, 7322…", under the map */
+  codes?: string;
   className?: string;
 }) {
   const { t } = useTranslation('events');
@@ -35,7 +39,8 @@ export function RegionMapTip({
         height={REGION_IMAGE_HEIGHT}
         className="block aspect-[8/5] h-auto w-full rounded-md bg-muted"
       />
-      <span className="mt-1 block px-1 text-[11px] text-muted-foreground">
+      {codes && <span className="mt-1.5 block px-1 font-medium">{codes}</span>}
+      <span className="mt-0.5 block px-1 text-[11px] text-muted-foreground">
         {t('registration.regionMapCaption')}
       </span>
     </InfoTip>

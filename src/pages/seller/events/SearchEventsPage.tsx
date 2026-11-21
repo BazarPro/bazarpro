@@ -185,8 +185,11 @@ function EventCard({
           {registration?.region && (
             <div className="flex items-start gap-2 text-sm">
               <MapPinned className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <span className="text-muted-foreground">
-                <RegionMapTip image={event.regionMapImage}>{registration.region}</RegionMapTip>
+              {/* Above the link of the card, so the pointer reaches it */}
+              <span className="relative z-10 text-muted-foreground">
+                <RegionMapTip image={event.regionMapImage} codes={registration.regionCodes}>
+                  {registration.region}
+                </RegionMapTip>
               </span>
             </div>
           )}
