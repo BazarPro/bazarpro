@@ -52,6 +52,9 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const updateProfile = useMutation(api.users.update);
   // A bazaar keeps a record of the seller: name and address stay as registered
   const fixed = useQuery(api.users.isMyProfileFixed) === true;
+  // A bazaar for its region let the seller in by postal code and country (#304)
+  const regionFixed = useQuery(api.users.isMyPostalCodeFixed) === true;
+  const postalCodeFixed = fixed || regionFixed;
 
   const {
     register,
@@ -98,6 +101,12 @@ export function ProfileCard({ user }: ProfileCardProps) {
           <Alert>
             <Lock className="h-4 w-4" />
             <AlertDescription>{t('profile.fixed')}</AlertDescription>
+          </Alert>
+        )}
+        {regionFixed && !fixed && (
+          <Alert>
+            <Lock className="h-4 w-4" />
+            <AlertDescription>{t('profile.postalCodeFixed')}</AlertDescription>
           </Alert>
         )}
         <div className="space-y-4">
@@ -165,7 +174,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
               <Input
                 id="zipCode"
                 placeholder={t('profile.zipCodePlaceholder')}
-                readOnly={fixed}
+                readOnly={postalCodeFixed}
                 {...register('zipCode')}
               />
               {errors.zipCode && (
@@ -193,7 +202,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
               id="country"
               saved={user.country}
               emptyLabel={t('profile.countryNone')}
-              disabled={fixed}
+              disabled={postalCodeFixed}
               {...register('country')}
             />
             {errors.country && (

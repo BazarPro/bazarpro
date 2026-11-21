@@ -152,7 +152,7 @@ pub fn postal_code_digits(code: &str) -> String {
 
 /// The country of a profile as a code; profiles without one are from Germany, like the
 /// address of a bazaar. Older profiles may hold the name ("Deutschland").
-fn profile_country(country: Option<&str>) -> String {
+pub fn profile_country(country: Option<&str>) -> String {
     let Some(country) = country.map(str::trim).filter(|country| !country.is_empty()) else {
         return "DE".to_owned();
     };

@@ -58,7 +58,9 @@
     "regionOnly": "This bazaar is only for sellers from its region: postal code {{codes}}.",
     "regionOnlyMap": "This bazaar is only for sellers from its region, see the map.",
     "regionYours": "According to your profile you are from {{code}} ({{country}}).",
-    "regionHint": "If you would like to take part anyway, ask the organizer for an invitation or the access code."
+    "regionHint": "If you would like to take part anyway, ask the organizer for an invitation or the access code.",
+    "regionWarningTitle": "Your postal code {{code}} counts",
+    "regionWarning": "Once registered, you cannot change it until the bazaar is over. Your ID is checked at the drop-off, so only give your real postal code."
   },
   "profile": {
     "firstNameRequired": "First name is required",
@@ -172,8 +174,8 @@
     "noPublicCatalogDetails": "Buyers see them on site only, where the QR label shows the price.",
     "fixedDataDetails": "Once your first item is accepted, they are fixed, and so are the details of accepted items. The organizer keeps a record of them.",
     "directSaleDetails": "You agree on the price, then the cash desk books the sale at that price. There you only pay the commission.",
-    "region": "Only for sellers from the region: postal code {{codes}}",
-    "regionDetails": "What counts is the postal code in your profile. With an invitation or the organizer’s access code you can take part from elsewhere too."
+    "region": "Only for sellers from postal codes {{codes}}",
+    "regionShort": "Only for sellers from the region"
   },
   "sidebar": {
     "details": "Bazaar details",

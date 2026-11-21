@@ -12,6 +12,7 @@ import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 import type { Id } from '../../lib/api/types';
 import { FeeGroupList, MyFeeGroup } from './FeeGroups';
+import { RegionMapTip } from './RegionMapTip';
 
 /**
  * What sellers agree to at a bazaar, only what applies (#303): fees with a worked example
@@ -103,7 +104,19 @@ export function SellerConditions({
               <ConditionsSection key={key} title={t(`conditions.${key}` as 'conditions.duties')}>
                 <ul className="space-y-2">
                   {rules.map((rule) => (
-                    <ConditionLine key={rule.text} allowed={rule.allowed} text={rule.text}>
+                    <ConditionLine
+                      key={rule.text}
+                      allowed={rule.allowed}
+                      text={
+                        rule.regionCodes ? (
+                          <RegionMapTip image={event.regionMapImage} codes={rule.regionCodes}>
+                            {rule.text}
+                          </RegionMapTip>
+                        ) : (
+                          rule.text
+                        )
+                      }
+                    >
                       {rule.details && (
                         <details className="group">
                           <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline">
@@ -140,7 +153,7 @@ function ConditionLine({
   icon,
   children,
 }: {
-  text: string;
+  text: ReactNode;
   allowed?: boolean;
   icon?: LucideIcon;
   /** More about it below the text */

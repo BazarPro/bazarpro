@@ -207,7 +207,8 @@
     "nameRequired": "Please enter your first and last name.",
     "nameTooLong": "The name may have at most {{max}} characters.",
     "titleLength": "The title needs 3 to {{max}} characters.",
-    "fixed": "Name and address are fixed: a bazaar that keeps a record accepted your items and is not over yet."
+    "fixed": "Name and address are fixed: a bazaar that keeps a record accepted your items and is not over yet.",
+    "postalCodeFixed": "Postal code and country are fixed: you are registered at a bazaar for its region that is not over yet."
   },
   "question": {
     "answerEmpty": "Please enter an answer.",

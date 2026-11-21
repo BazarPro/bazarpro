@@ -2973,6 +2973,8 @@ export interface Api {
       null
     >;
     isMyProfileFixed: FunctionReference<'query', EmptyObject, boolean>;
+    /** A bazaar for its region (#304) let the user in by postal code and country */
+    isMyPostalCodeFixed: FunctionReference<'query', EmptyObject, boolean>;
     getMissinfProfileData: FunctionReference<'query', { userId: Id<'users'> }, string[]>;
     setDeleted: FunctionReference<
       'mutation',

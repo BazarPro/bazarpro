@@ -471,3 +471,55 @@ async fn an_item_announced_meanwhile_keeps_its_seller(db: PgPool) {
         }
     }
 }
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn sellers_of_a_region_keep_their_postal_code(db: PgPool) {
+    let b = Bazaar::new(db, json!({ "allowedPostalCodes": { "DE": ["89"] } })).await;
+    let update = |session: String, args: Value| {
+        let app = &b.app;
+        async move { app.mutation("users.update", args, Some(&session)).await }
+    };
+    let fixed = |session: String| {
+        let app = &b.app;
+        async move {
+            app.query("users.isMyPostalCodeFixed", json!({}), Some(&session))
+                .await
+                .body["value"]
+                .clone()
+        }
+    };
+    let (_, outsider) = b.person("Noch nicht dabei", Some("10115"), "DE").await;
+    assert_eq!(fixed(outsider.clone()).await, json!(false));
+    let ok = update(outsider, json!({ "zipCode": "89073" })).await;
+    assert_eq!(ok.status, StatusCode::OK, "{}", ok.body);
+
+    let (seller, session) = b.seller("Dabei").await;
+    assert_eq!(fixed(session.clone()).await, json!(true));
+    for change in [json!({ "zipCode": "10115" }), json!({ "country": "AT" })] {
+        let refused = update(session.clone(), change).await;
+        assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{}", refused.body);
+        assert!(refused.body.to_string().contains("profile.postalCodeFixed"));
+    }
+    // The same code and country, as the profile form sends them, and other fields pass
+    let same = update(
+        session.clone(),
+        json!({ "zipCode": " 89073", "country": "DE", "phone": "0731 1" }),
+    )
+    .await;
+    assert_eq!(same.status, StatusCode::OK, "{}", same.body);
+
+    // Free again once the bazaar is over
+    sqlx::query("UPDATE events SET start_date = now() - interval '2 days', end_date = now() - interval '1 day' WHERE id = $1")
+        .bind(b.event)
+        .execute(&b.db)
+        .await
+        .unwrap();
+    let moved = update(session, json!({ "zipCode": "10115" })).await;
+    assert_eq!(moved.status, StatusCode::OK, "{}", moved.body);
+    let zip: Option<String> = sqlx::query_scalar("SELECT zip_code FROM users WHERE id = $1")
+        .bind(seller)
+        .fetch_one(&b.db)
+        .await
+        .unwrap();
+    assert_eq!(zip.as_deref(), Some("10115"));
+}

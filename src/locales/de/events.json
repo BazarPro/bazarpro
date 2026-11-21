@@ -58,7 +58,9 @@
     "regionOnly": "Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahl {{codes}}.",
     "regionOnlyMap": "Dieser Basar ist nur für Verkäufer aus seiner Region, siehe Karte.",
     "regionYours": "Laut deinem Profil kommst du aus {{code}} ({{country}}).",
-    "regionHint": "Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung oder dem Zugangscode."
+    "regionHint": "Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung oder dem Zugangscode.",
+    "regionWarningTitle": "Deine Postleitzahl {{code}} gilt",
+    "regionWarning": "Nach der Anmeldung kannst du sie bis zum Ende des Basars nicht mehr ändern. Bei der Abgabe wird dein Ausweis kontrolliert, gib also nur deine echte Postleitzahl an."
   },
   "profile": {
     "firstNameRequired": "Vorname ist erforderlich",
@@ -172,8 +174,8 @@
     "noPublicCatalogDetails": "Käufer sehen sie erst vor Ort, das QR-Etikett zeigt dort den Preis.",
     "fixedDataDetails": "Ab deinem ersten angenommenen Artikel sind sie fest, ebenso die Angaben zu angenommenen Artikeln. Der Veranstalter führt darüber einen Nachweis.",
     "directSaleDetails": "Ihr einigt euch auf den Preis, danach bucht die Kasse den Verkauf zum vereinbarten Preis. Dort zahlst du nur die Provision.",
-    "region": "Nur für Verkäufer aus der Region: Postleitzahl {{codes}}",
-    "regionDetails": "Maßgeblich ist die Postleitzahl in deinem Profil. Mit einer Einladung oder dem Zugangscode des Veranstalters kannst du auch von woanders mitmachen."
+    "region": "Nur für Verkäufer aus PLZ {{codes}}",
+    "regionShort": "Nur für Verkäufer aus der Region"
   },
   "sidebar": {
     "details": "Basar-Details",

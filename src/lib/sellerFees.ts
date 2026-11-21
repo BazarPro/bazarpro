@@ -10,6 +10,7 @@ import { requirableFields, type CategoryField } from '../shared/categoryFields';
 import { categoryFieldText } from '../i18n/categoryFields';
 import { countryName } from '../i18n/countries';
 import { formatRegion, postalRegion } from '../shared/postalCodes';
+import type { Id } from './api/types';
 
 function text(key: string, values?: Record<string, unknown>): string {
   return i18n.t(`conditions.${key}` as never, { ns: 'events', ...values }) as string;
@@ -30,6 +31,8 @@ export interface SellerConditionsEvent {
   features?: StoredEventFeatures;
   /** Places for items left on the whole market, as the backend counts them */
   itemPlacesLeft?: number;
+  /** Map of the region (#304): the rule then names the region instead of its codes */
+  regionMapImage?: Id<'_storage'>;
   sellerLogistics?: {
     dropoffStart?: number;
     dropoffEnd?: number;
@@ -247,6 +250,8 @@ export interface SellerRule {
   details?: string;
   /** false when it keeps the seller out, e.g. a full market */
   allowed: boolean;
+  /** The region's codes in short, for the caption of its map (#304) */
+  regionCodes?: string;
 }
 
 /**
@@ -267,7 +272,9 @@ export function describeSellerRules(
   const duties: SellerRule[] = [];
   const region = postalRegion(event.features);
   if (region) {
-    duties.push(rule('region', { codes: formatRegion(region, 12, countryName) }, 'regionDetails'));
+    // Short: the map shows where, its caption the codes; the join dialog warns about the rest
+    const codes = rule('region', { codes: formatRegion(region, 4, countryName) });
+    duties.push(event.regionMapImage ? { ...rule('regionShort'), regionCodes: codes.text } : codes);
   }
   if (features.maxItemsPerSeller) {
     duties.push(rule('maxItems', { max: features.maxItemsPerSeller }));

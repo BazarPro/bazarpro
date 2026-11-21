@@ -207,7 +207,8 @@
     "nameRequired": "Bitte Vor- und Nachnamen angeben.",
     "nameTooLong": "Der Name darf höchstens {{max}} Zeichen haben.",
     "titleLength": "Der Titel muss 3 bis {{max}} Zeichen haben.",
-    "fixed": "Name und Anschrift sind fest: Ein Basar mit Nachweis hat deine Artikel angenommen und ist noch nicht vorbei."
+    "fixed": "Name und Anschrift sind fest: Ein Basar mit Nachweis hat deine Artikel angenommen und ist noch nicht vorbei.",
+    "postalCodeFixed": "Postleitzahl und Land sind fest: Du bist bei einem Basar für seine Region angemeldet, der noch nicht vorbei ist."
   },
   "question": {
     "answerEmpty": "Bitte gib eine Antwort ein.",

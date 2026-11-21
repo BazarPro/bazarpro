@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Label } from '../ui/label';
-import { CalendarClock, MapPin, Users } from 'lucide-react';
+import { CalendarClock, TriangleAlert, Users } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import { Alert, AlertDescription } from '../ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Checkbox } from '../ui/checkbox';
 import { resolveEventFeatures } from '../../shared/eventFeatures';
 import { admitsPostalCode, formatRegion, postalRegion } from '../../shared/postalCodes';
@@ -24,7 +24,7 @@ import { getUserFacingErrorMessage } from '../../lib/errors';
 import { ValidateProfileInformation } from './ValidateProfileInformation';
 import { SellerConditions } from './SellerConditions';
 import { FeeGroupChoice } from './FeeGroups';
-import { RegionMapImage, RegionMapTip } from './RegionMapTip';
+import { RegionMapImage } from './RegionMapTip';
 import type { SellerConditionsEvent } from '../../lib/sellerFees';
 import { useTranslation } from 'react-i18next';
 
@@ -96,6 +96,8 @@ export function EventRegistrationDialog({
         : 'invitation'
       : undefined;
   const registration: RegistrationInfo = describeRegistration(conditions, Date.now(), admission);
+  // Joins as a seller, so a region holds their postal code (#304); the team and helpers not
+  const seller = admission !== 'team' && admission !== 'helperInvitation';
   // The team needs no access code
   const needsCode = hasAccessCode && !team;
   // A bazaar for its region (#304): an invitation, the team and the access code pass it
@@ -218,7 +220,8 @@ export function EventRegistrationDialog({
                 </Alert>
               )}
 
-              {(registration.until || registration.spots || registration.region) && (
+              {/* The region shows once, among the conditions below */}
+              {(registration.until || registration.spots) && (
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   {registration.until && (
                     <span className="inline-flex items-center gap-1.5">
@@ -230,17 +233,6 @@ export function EventRegistrationDialog({
                     <span className="inline-flex items-center gap-1.5">
                       <Users className="h-4 w-4" />
                       {registration.spots}
-                    </span>
-                  )}
-                  {registration.region && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4" />
-                      <RegionMapTip
-                        image={conditions.regionMapImage}
-                        codes={registration.regionCodes}
-                      >
-                        {registration.region}
-                      </RegionMapTip>
                     </span>
                   )}
                 </div>
@@ -298,6 +290,16 @@ export function EventRegistrationDialog({
                   onChange={setFeeGroup}
                   disabled={isJoining}
                 />
+              )}
+              {/* The region let them in by the code in their profile: it stays, and is checked */}
+              {(!needsCode || accessCodeValid) && !hasMissingProfileData && region && seller && (
+                <Alert>
+                  <TriangleAlert className="h-4 w-4" />
+                  <AlertTitle>
+                    {t('join.regionWarningTitle', { code: user?.zipCode ?? '' })}
+                  </AlertTitle>
+                  <AlertDescription>{t('join.regionWarning')}</AlertDescription>
+                </Alert>
               )}
               {(!needsCode || accessCodeValid) && !hasMissingProfileData && askPrivateSeller && (
                 <div className="flex items-start gap-3 rounded-lg border p-4">

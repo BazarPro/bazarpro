@@ -95,7 +95,10 @@ describe('EventRegistrationDialog', () => {
   it('lets sellers from the region and invited people in (#304)', () => {
     answers.current['users.viewer'] = { _id: 'u1', zipCode: '89073', country: 'DE' };
     renderDialog({ allowedPostalCodes: { DE: ['89'] } });
-    expect(screen.getByText('Nur aus PLZ 89…')).toBeVisible();
+    // Once, among the conditions, and a warning that the code stays and is checked
+    expect(screen.getAllByText(/PLZ 89…/)).toHaveLength(1);
+    expect(screen.getByText('Deine Postleitzahl 89073 gilt')).toBeVisible();
+    expect(screen.getByText(/bis zum Ende des Basars nicht mehr ändern/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Anmelden bestätigen' })).toBeEnabled();
   });
 

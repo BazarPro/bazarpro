@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Id } from './api/types';
 import {
   describeFeeGroups,
   formGroupAdvantages,
@@ -134,10 +135,20 @@ describe('describeSellerRules', () => {
       commission: 0,
       features: { allowedPostalCodes: { AT: ['4'], DE: ['88'] }, photosOptional: true },
     });
-    expect(duties[0].text).toBe(
-      'Nur für Verkäufer aus der Region: Postleitzahl 88… (Deutschland), 4… (Österreich)'
-    );
-    expect(duties[0].details).toMatch(/^Maßgeblich ist die Postleitzahl in deinem Profil/);
+    expect(duties[0].text).toBe('Nur für Verkäufer aus PLZ 88… (Deutschland), 4… (Österreich)');
+    expect(duties[0].details).toBeUndefined();
+  });
+
+  it('names only the region where its map shows the codes (#304)', () => {
+    const { duties } = describeSellerRules({
+      commission: 0,
+      features: { allowedPostalCodes: { DE: ['88', '89'] }, photosOptional: true },
+      regionMapImage: 'map' as Id<'_storage'>,
+    });
+    expect(duties[0]).toMatchObject({
+      text: 'Nur für Verkäufer aus der Region',
+      regionCodes: 'Nur für Verkäufer aus PLZ 88…, 89… (Deutschland)',
+    });
   });
 
   it('splits what sellers must do from what they can do', () => {

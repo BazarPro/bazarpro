@@ -227,6 +227,24 @@ pub async fn is_profile_fixed(conn: &mut PgConnection, user_id: Uuid) -> sqlx::R
     Ok(false)
 }
 
+/// Whether postal code and country of the user are fixed: they sell at a bazaar for its
+/// region (#304) that is not over. The region let them in by their postal code; moving it
+/// afterwards would let anyone in, so it stays until the bazaar ends or they leave it.
+pub async fn is_postal_code_fixed(conn: &mut PgConnection, user_id: Uuid) -> sqlx::Result<bool> {
+    sqlx::query_scalar(
+        r#"SELECT EXISTS (
+             SELECT 1 FROM event_roles r JOIN events e ON e.id = r.event_id
+             WHERE r.user_id = $1 AND r.role = 'seller' AND e.end_date >= now()
+               -- strict: lax mode would look into the arrays; silent: no region, no error
+               AND jsonb_path_exists(e.features,
+                 'strict $.allowedPostalCodes.* ? (@.type() == "array" && @.size() > 0)',
+                 '{}', true))"#,
+    )
+    .bind(user_id)
+    .fetch_one(conn)
+    .await
+}
+
 /// Whether title, category, price and required fields of the item are fixed: a bazaar
 /// that keeps a record accepted it and is not over. Returns the required fields of those
 /// bazaars.
