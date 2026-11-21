@@ -334,8 +334,8 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     let number = next_seller_number(ctx, event.id).await?;
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO event_sellers (event_id, user_id, total_fee, commission_fee, payout_amount,
-           payout_received, number, private_seller_confirmed_at, fee_group_id)
-         VALUES ($1, $2, 0, 0, 0, false, $3, CASE WHEN $4 THEN now() END, $5)
+           payout_received, number, private_seller_confirmed_at, fee_group_id, admitted_by_region)
+         VALUES ($1, $2, 0, 0, 0, false, $3, CASE WHEN $4 THEN now() END, $5, $6)
          RETURNING id",
     )
     .bind(event.id)
@@ -343,6 +343,7 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     .bind(number)
     .bind(features.private_sellers_only)
     .bind(&args.fee_group_id)
+    .bind(region.is_some())
     .fetch_one(ctx.conn())
     .await?;
     event_roles::add_role(ctx, event.id, user, Role::Seller).await?;

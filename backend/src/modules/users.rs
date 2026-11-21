@@ -21,7 +21,7 @@ use super::features::{postal_code_digits, profile_country};
 use super::offline;
 use super::seller_records::{
     FIXED_PROFILE_FIELDS, is_postal_code_fixed, is_profile_fixed, missing_profile_fields,
-    profile_field,
+    postal_code_fixed_by, profile_field,
 };
 use crate::auth::{session, users::promote_configured_admin};
 use crate::error::{AppError, AppResult};
@@ -230,7 +230,12 @@ async fn update(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
 async fn is_my_postal_code_fixed(ctx: &mut Ctx, _: NoArgs) -> AppResult<bool> {
     let Some(id) = ctx.user else { return Ok(false) };
     ctx.read(Topic::User(id));
-    Ok(is_postal_code_fixed(ctx.conn(), id).await?)
+    let (fixed, events) = postal_code_fixed_by(ctx.conn(), id).await?;
+    // The organizer may take the region away or move the end
+    for event in events {
+        ctx.read(Topic::Event(event));
+    }
+    Ok(fixed)
 }
 
 async fn is_my_profile_fixed(ctx: &mut Ctx, _: NoArgs) -> AppResult<bool> {

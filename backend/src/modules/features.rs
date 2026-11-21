@@ -180,18 +180,33 @@ impl PostalCodes {
             .any(|prefix| digits.starts_with(prefix.as_str()))
     }
 
-    /// "89…, 7322… (DE), 6… (AT)" for messages.
+    /// "89…, 7322… (DE), 6… (AT)" for messages; after `DESCRIBED_PREFIXES` codes the rest
+    /// as "+N", as the app shows it.
     pub fn describe(&self) -> String {
-        self.countries
-            .iter()
-            .map(|(country, prefixes)| {
-                let prefixes: Vec<String> = prefixes.iter().map(|p| format!("{p}…")).collect();
-                format!("{} ({country})", prefixes.join(", "))
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
+        let mut left = DESCRIBED_PREFIXES;
+        let mut hidden = 0;
+        let mut parts = Vec::new();
+        for (country, prefixes) in &self.countries {
+            let shown = prefixes.len().min(left);
+            left -= shown;
+            hidden += prefixes.len() - shown;
+            if shown == 0 {
+                continue;
+            }
+            let codes: Vec<String> = prefixes[..shown].iter().map(|p| format!("{p}…")).collect();
+            parts.push(format!("{} ({country})", codes.join(", ")));
+        }
+        let text = parts.join(", ");
+        if hidden > 0 {
+            format!("{text} +{hidden}")
+        } else {
+            text
+        }
     }
 }
+
+/// How many postal codes a message names; the app's list stops there too
+const DESCRIBED_PREFIXES: usize = 12;
 
 /// Events created before features existed keep their old behaviour: discounts on (up to
 /// 50 %), everything else off.
@@ -605,6 +620,17 @@ mod tests {
         // No region: everyone
         assert_eq!(postal_code_refused(&resolve(None), None, None), None);
         assert_eq!(features.postal_codes.unwrap().describe(), "89…, 7322… (DE)");
+        // A long list stops after a dozen codes, as in the app
+        let many = PostalCodes {
+            countries: vec![
+                ("DE".into(), (10..20).map(|n| n.to_string()).collect()),
+                ("AT".into(), (60..65).map(|n| n.to_string()).collect()),
+            ],
+        };
+        assert_eq!(
+            many.describe(),
+            "10…, 11…, 12…, 13…, 14…, 15…, 16…, 17…, 18…, 19… (DE), 60…, 61… (AT) +3"
+        );
     }
 
     #[test]

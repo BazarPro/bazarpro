@@ -37,6 +37,8 @@ export function InfoTip({
   const [pinned, setPinned] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number; above: boolean }>();
   const open = hovered || pinned;
+  // A boolean: the node is new on every render of the parent
+  const hasTrigger = !!trigger;
 
   const place = useCallback(() => {
     const rect = button.current?.getBoundingClientRect();
@@ -47,10 +49,10 @@ export function InfoTip({
       window.innerWidth - width - MARGIN
     );
     // Above when there is little room below, e.g. next to the sticky buttons
-    const room = trigger ? 280 : 180;
+    const room = hasTrigger ? 280 : 180;
     const above = window.innerHeight - rect.bottom < room && rect.top > room;
     setPosition({ top: above ? rect.top - 6 : rect.bottom + 6, left, above });
-  }, [maxWidth, trigger]);
+  }, [maxWidth, hasTrigger]);
 
   useEffect(() => {
     if (!open) return;

@@ -225,6 +225,20 @@ async fn invitations_codes_and_the_team_pass_the_region(db: PgPool) {
     let (_, berlin) = b.person("Berlin", Some("10117"), "DE").await;
     let joined = b.join(&berlin, json!({ "accessCode": "RAD" })).await;
     assert_eq!(joined.status, StatusCode::OK, "{}", joined.body);
+
+    // The region did not let them in, so their postal code is not fixed either
+    for session in [&guest_session, &helper_session, &berlin] {
+        let fixed = b
+            .app
+            .query("users.isMyPostalCodeFixed", json!({}), Some(session))
+            .await;
+        assert_eq!(fixed.body["value"], json!(false), "{}", fixed.body);
+        let moved = b
+            .app
+            .mutation("users.update", json!({ "zipCode": "20095" }), Some(session))
+            .await;
+        assert_eq!(moved.status, StatusCode::OK, "{}", moved.body);
+    }
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]

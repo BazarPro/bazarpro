@@ -189,16 +189,19 @@ export function EditEventRegion() {
     draftTimer.current = setTimeout(() => commitDraft.current(), RADIUS_SETTLE_MS);
   };
 
-  // Switched on for the first time: a circle around the bazaar shows at once what happens
-  const started = useRef(count > 0);
+  // Switched on for the first time: a circle around the bazaar shows at once what happens.
+  // A stored region may come only after the first render (the form's reset() once the
+  // event is loaded), so the check is made when the circle would be drawn.
+  const started = useRef(false);
   useEffect(() => {
+    if (count > 0) started.current = true;
     // The circle may reach across the border: it waits for the neighbours' maps
     if (!enabled || started.current || !data || !complete || !venue) return;
     started.current = true;
     setRadiusKm(DEFAULT_RADIUS_KM);
     store(regionFromSelection(data, new Set(keysWithin(data, venue, DEFAULT_RADIUS_KM))));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the map is there
-  }, [enabled, data, complete, venue]);
+  }, [enabled, data, complete, venue, count]);
 
   const focus = useMemo(
     (): MapFocus =>
