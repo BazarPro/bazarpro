@@ -22,8 +22,8 @@ export interface PostalMapData {
   areas: PostalArea[];
   /** Regions of the first two digits, for their borders and labels */
   regions: PostalArea[];
-  /** Larger towns for orientation, rank 1 (largest) to 3 */
-  towns: { n: string; c: Point; r: 1 | 2 | 3 }[];
+  /** Towns for orientation, largest first: rank 1 (largest) to 4 (shown only close up) */
+  towns: { n: string; c: Point; r: 1 | 2 | 3 | 4 }[];
 }
 
 export interface PostalArea {
@@ -35,6 +35,8 @@ export interface PostalArea {
   s: number;
   /** On a map of several countries: the prefix shown, while `p` is the key "AT:690" */
   l?: string;
+  /** Its largest places, largest first, e.g. ["Günzburg", "Burgau"]; areas only */
+  n?: string[];
 }
 
 export type Point = [number, number];
@@ -87,6 +89,18 @@ export function distanceKm(a: Point, b: Point): number {
 /** Map units of one km at this point; they grow towards the poles. */
 export function unitsPerKm(point: Point): number {
   return 10 / Math.cos((unproject(point).latitude * Math.PI) / 180);
+}
+
+/**
+ * Towns of rank n + 2 show below TOWN_RANKS[n] km per pixel: rank 2 on a map of Germany
+ * zoomed in once, rank 4 (from about 15,000 people) in a circle of 20 km.
+ */
+const TOWN_RANKS = [0.9, 0.45, 0.2];
+
+/** The smallest towns worth a label at this scale, rank 1 (largest) to 4. */
+export function townRankAt(kmPerPixel: number): number {
+  const rank = TOWN_RANKS.findIndex((km) => kmPerPixel >= km);
+  return rank < 0 ? TOWN_RANKS.length + 1 : rank + 1;
 }
 
 /** The rings of an SVG path as the build script writes them: "M x y l dx dy … z". */
@@ -154,8 +168,28 @@ function shapeOf(area: PostalArea): AreaShape {
 }
 
 /** The area's bounding box, from the map file without reading the path where it has one. */
-function boxOf(area: PostalArea): [number, number, number, number] {
+export function boxOf(area: PostalArea): [number, number, number, number] {
   return area.b ?? shapeOf(area).box;
+}
+
+/** The areas whose box reaches into the box (minX, minY, maxX, maxY): those worth drawing. */
+export function areasIn(
+  areas: readonly PostalArea[],
+  [minX, minY, maxX, maxY]: readonly number[]
+): PostalArea[] {
+  return areas.filter((area) => {
+    if (!area.d) return false;
+    const box = boxOf(area);
+    return box[2] >= minX && box[0] <= maxX && box[3] >= minY && box[1] <= maxY;
+  });
+}
+
+/**
+ * The area at a point of the map, found without the DOM: the map draws all areas of one
+ * kind as a single path, so a pointer over it says nothing about which one it is.
+ */
+export function areaAt(areas: readonly PostalArea[], point: Point): PostalArea | undefined {
+  return areas.find((area) => !!area.d && areaContains(area, point));
 }
 
 /** Whether the point lies in the area. */

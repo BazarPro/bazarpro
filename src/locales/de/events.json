@@ -249,7 +249,9 @@
     "full": "Alle Plätze belegt",
     "spotsLeft_one": "Nur noch ein Platz von {{limit}} frei",
     "spotsLeft_other": "Noch {{count}} von {{limit}} Plätzen frei",
-    "region": "Nur aus PLZ {{codes}}"
+    "region": "Nur aus PLZ {{codes}}",
+    "regionMap": "Karte der Region des Basars",
+    "regionMapCaption": "Die markierten Postleitzahlgebiete gehören zur Region; gestreift nur zum Teil."
   },
   "rejections": {
     "title_one": "Ein Artikel nicht abgegeben",

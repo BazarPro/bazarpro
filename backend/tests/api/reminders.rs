@@ -250,6 +250,7 @@ fn pickup_text_with_a_fee_to_pay_and_a_long_item_list() {
         description: String::new(),
         cover_image: None,
         event_map_image: None,
+        region_map_image: None,
         location: "Halle".into(),
         street: None,
         postal_code: None,

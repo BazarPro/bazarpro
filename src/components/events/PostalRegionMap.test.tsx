@@ -46,10 +46,24 @@ function renderMap(props: Partial<PostalRegionMapProps> = {}) {
       {...props}
     />
   );
-  const area = (prefix: string) =>
-    view.container.querySelector(`path[data-prefix="${prefix}"]`) as SVGPathElement;
-  return { ...view, onToggle, area };
+  const kind = (name: 'none' | 'selected' | 'partial') =>
+    view.container.querySelector(`path[data-areas="${name}"]`) as SVGPathElement | null;
+  return { ...view, onToggle, kind };
 }
+
+/** Where on screen an area's label point is, in the drawing as it rests */
+function at(key: string) {
+  const [left, top, width] = screen
+    .getByRole('img')
+    .getAttribute('viewBox')!
+    .split(' ')
+    .map(Number);
+  const upp = width / (sizes.width * 1.8);
+  const [x, y] = data.areas.find((area) => area.p === key)!.c;
+  // The drawing reaches 40 % of the frame beyond each edge
+  return { x: (x - left) / upp - sizes.width * 0.4, y: (y - top) / upp - sizes.height * 0.4 };
+}
+const areaD = (key: string) => data.areas.find((area) => area.p === key)!.d;
 
 const pointer = (x: number, y: number) => ({
   pointerId: 1,
@@ -61,11 +75,15 @@ const pointer = (x: number, y: number) => ({
 
 describe('PostalRegionMap (#304)', () => {
   it('draws the areas, the circle, the bazaar and the labels', () => {
-    const { area, container } = renderMap();
+    const { kind } = renderMap();
     expect(screen.getByRole('img', { name: 'Karte der Postleitzahlgebiete' })).toBeInTheDocument();
-    expect(container.querySelectorAll('path[data-prefix]')).toHaveLength(data.areas.length);
-    expect(area('DE:890').getAttribute('class')).toContain('fill-primary/45');
-    expect(area('DE:732').getAttribute('fill')).toBe('url(#postal-partial)');
+    // One path per kind of area, with the areas in view only
+    expect(kind('selected')!.getAttribute('class')).toContain('fill-primary/45');
+    expect(kind('selected')!.getAttribute('d')).toContain(areaD('DE:890'));
+    expect(kind('none')!.getAttribute('d')).toContain(areaD('DE:893'));
+    expect(kind('none')!.getAttribute('d')).not.toContain(areaD('DE:101'));
+    expect(kind('partial')!.getAttribute('fill')).toBe('url(#postal-partial)');
+    expect(kind('partial')!.getAttribute('d')).toContain(areaD('DE:732'));
     expect(screen.getByText('20 km')).toBeInTheDocument();
     expect(screen.getByText('Stadthalle')).toBeInTheDocument();
     // Zoomed in: towns and postal areas around Ulm
@@ -74,15 +92,16 @@ describe('PostalRegionMap (#304)', () => {
   });
 
   it('toggles an area by click, not after dragging the map', () => {
-    const { area, onToggle } = renderMap();
+    const { onToggle } = renderMap();
     const svg = screen.getByRole('img');
-    fireEvent.pointerDown(area('DE:893'), pointer(100, 100));
-    fireEvent.pointerUp(area('DE:893'), pointer(101, 100));
+    const { x, y } = at('DE:893');
+    fireEvent.pointerDown(svg, pointer(x, y));
+    fireEvent.pointerUp(svg, pointer(x + 1, y));
     expect(onToggle).toHaveBeenCalledWith('DE:893');
 
     onToggle.mockClear();
     const before = svg.getAttribute('viewBox');
-    fireEvent.pointerDown(area('DE:893'), pointer(100, 100));
+    fireEvent.pointerDown(svg, pointer(x, y));
     fireEvent.pointerMove(svg, pointer(160, 130));
     fireEvent.pointerUp(svg, pointer(160, 130));
     expect(onToggle).not.toHaveBeenCalled();
@@ -139,12 +158,20 @@ describe('PostalRegionMap (#304)', () => {
   });
 
   it('names the area under the mouse', () => {
-    const { area } = renderMap();
-    fireEvent.pointerMove(area('DE:893'), pointer(200, 200));
+    const { container } = renderMap();
+    const svg = screen.getByRole('img');
+    const g893 = at('DE:893');
+    fireEvent.pointerMove(svg, pointer(g893.x, g893.y));
     expect(
       screen.getByText(/PLZ 893… \(Deutschland\) · antippen zum Hinzufügen/)
     ).toBeInTheDocument();
-    fireEvent.pointerMove(area('DE:890'), pointer(210, 200));
+    // With the names of its largest places, and drawn on top
+    expect(screen.getByText('Günzburg, Burgau, Ichenhausen')).toBeInTheDocument();
+    expect(container.querySelector('path.stroke-primary\\/70')!.getAttribute('d')).toBe(
+      areaD('DE:893')
+    );
+    const g890 = at('DE:890');
+    fireEvent.pointerMove(svg, pointer(g890.x, g890.y));
     expect(
       screen.getByText(/PLZ 890… \(Deutschland\) · antippen zum Entfernen/)
     ).toBeInTheDocument();

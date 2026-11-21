@@ -9,7 +9,8 @@ Sources (download them into one directory, see README.md next to this file):
 - Austria, Switzerland, Liechtenstein, Luxembourg: postal codes with coordinates of
   GeoNames (CC BY 4.0); the areas are the Voronoi cells of their places
 - Outlines: Natural Earth admin 0 countries 10m (public domain)
-- Towns: GeoNames cities15000 (CC BY 4.0)
+- Towns and the names of the areas: GeoNames cities1000 and postal codes (CC BY 4.0),
+  see places.py
 
 Run: python build.py <download dir> <output dir>  (needs shapely >= 2.1)
 """
@@ -26,13 +27,12 @@ from shapely.geometry import MultiPoint, Point, shape
 from shapely.ops import polylabel, unary_union
 
 from boxes import with_box
+from places import area_names, towns, with_names
 
 R = 63710  # Mercator units per radian: 100 m at the equator
 COUNTRIES = {"DE": "DEU", "AT": "AUT", "CH": "CHE", "LI": "LIE", "LU": "LUX"}
 # Simplification in Mercator units; small countries keep more detail
 TOLERANCE = {"DE": 10, "AT": 7, "CH": 6, "LI": 1.5, "LU": 2}
-# Towns shown on the map, by population
-MIN_POPULATION = {"DE": 60_000, "AT": 15_000, "CH": 15_000, "LI": 0, "LU": 0}
 
 
 def project(lon, lat):
@@ -165,24 +165,6 @@ def size(geom):
     return round(math.sqrt(max(p.area for p in polygons(geom))))
 
 
-def towns(dl, cc):
-    result = []
-    with open(dl / "cities15000.txt", encoding="utf-8") as file:
-        for row in csv.reader(file, delimiter="\t", quoting=csv.QUOTE_NONE):
-            if row[8] != cc or row[6] != "P" or int(row[14]) < MIN_POPULATION[cc]:
-                continue
-            x, y = project(float(row[5]), float(row[4]))
-            population = int(row[14])
-            rank = 1 if population >= 400_000 else 2 if population >= 120_000 else 3
-            if cc != "DE":
-                rank = 1 if population >= 150_000 else 2 if population >= 40_000 else 3
-            result.append({"n": row[1], "c": [round(x), round(y)], "r": rank, "pop": population})
-    result.sort(key=lambda town: -town["pop"])
-    for town in result:
-        del town["pop"]
-    return result
-
-
 def build(dl, out, cc):
     land = country_shape(dl, COUNTRIES[cc])
     cells = german_cells(dl) if cc == "DE" else voronoi_cells(dl, cc, land)
@@ -196,6 +178,7 @@ def build(dl, out, cc):
     simplified = [only_polygons(geom) for geom in simplified]
     by_prefix = dict(zip(prefixes, simplified))
     min_area = TOLERANCE[cc] ** 2 * 2
+    names = area_names(dl, cc)
     regions = group(by_prefix, 2)
     outline = unary_union(simplified)
     minx, miny, maxx, maxy = outline.bounds
@@ -205,8 +188,16 @@ def build(dl, out, cc):
         "bounds": [round(minx), round(miny), round(maxx), round(maxy)],
         "outline": path(outline, min_area),
         "areas": [
-            with_box(
-                {"p": prefix, "d": path(geom, min_area), "c": label_point(geom), "s": size(geom)}
+            with_names(
+                with_box(
+                    {
+                        "p": prefix,
+                        "d": path(geom, min_area),
+                        "c": label_point(geom),
+                        "s": size(geom),
+                    }
+                ),
+                names,
             )
             for prefix, geom in by_prefix.items()
             if not geom.is_empty

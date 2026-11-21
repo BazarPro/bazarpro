@@ -249,7 +249,9 @@
     "full": "All places taken",
     "spotsLeft_one": "Only one of {{limit}} places left",
     "spotsLeft_other": "{{count}} of {{limit}} places left",
-    "region": "Only postal codes {{codes}}"
+    "region": "Only postal codes {{codes}}",
+    "regionMap": "Map of the bazaar's region",
+    "regionMapCaption": "The marked postal code areas belong to the region; striped ones only in part."
   },
   "rejections": {
     "title_one": "One item not handed in",

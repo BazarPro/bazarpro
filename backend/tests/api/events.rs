@@ -623,6 +623,57 @@ async fn editing_keeps_and_clears_images_and_features(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn stores_and_drops_the_picture_of_the_region(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let session = app.user_session("orga@example.org", false).await;
+    let upload = |name: &str| {
+        let png = [b"\x89PNG\r\n\x1a\n".as_slice(), name.as_bytes()].concat();
+        app.upload(png, "image/png", Some(&session))
+    };
+    let first = upload("region-1").await.body["storageId"].clone();
+    let mut args = event_args("Basar", "logged-in");
+    args["regionMapImage"] = first.clone();
+    args["features"] = json!({ "allowedPostalCodes": { "DE": ["89"] } });
+    let id = create(&app, &session, args).await;
+    let picture = || async {
+        app.query("events.getEvent", json!({ "id": id }), Some(&session))
+            .await
+            .body["value"]
+            .get("regionMapImage")
+            .cloned()
+    };
+    assert_eq!(picture().await, Some(first.clone()));
+
+    // Kept unless a new one comes; the old file then belongs to nothing
+    let args = edit_args(&app, &session, id).await;
+    app.mutation("events.editEvent", args.clone(), Some(&session))
+        .await;
+    assert_eq!(picture().await, Some(first.clone()));
+    let second = upload("region-2").await.body["storageId"].clone();
+    let mut change = args.clone();
+    change["regionMapImage"] = second.clone();
+    let reply = app
+        .mutation("events.editEvent", change, Some(&session))
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(picture().await, Some(second));
+    let referenced: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM events WHERE region_map_image_id = $1::uuid)",
+    )
+    .bind(first.as_str().unwrap())
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert!(!referenced);
+
+    let mut clear = args.clone();
+    clear["clearRegionMapImage"] = json!(true);
+    app.mutation("events.editEvent", clear, Some(&session))
+        .await;
+    assert_eq!(picture().await, None);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn running_events_keep_dates_fees_and_visibility(db: PgPool) {
     let app = TestApp::new(db.clone());
     let organizer = fixtures::user(&db, "Orga").await;

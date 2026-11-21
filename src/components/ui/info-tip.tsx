@@ -10,16 +10,25 @@ const MARGIN = 8;
 /**
  * A small (i) next to a label: the explanation shows on hover and focus, a tap opens it on
  * phones. The bubble is placed on the page itself, so cards with hidden overflow cannot cut it.
+ * With `trigger`, a text opens it instead of the (i), e.g. postal codes that show their map.
  */
 export function InfoTip({
   children,
   label,
   className,
+  trigger,
+  width: maxWidth = WIDTH,
+  bubbleClassName,
 }: {
   children: ReactNode;
-  /** Spoken name of the button; defaults to "Mehr erfahren" */
+  /** Spoken name of the button; defaults to "Mehr erfahren", none for a `trigger` */
   label?: string;
   className?: string;
+  /** Shown instead of the (i) */
+  trigger?: ReactNode;
+  /** Of the bubble in pixels */
+  width?: number;
+  bubbleClassName?: string;
 }) {
   const { t } = useTranslation('common');
   const id = useId();
@@ -32,15 +41,16 @@ export function InfoTip({
   const place = useCallback(() => {
     const rect = button.current?.getBoundingClientRect();
     if (!rect) return;
-    const width = Math.min(WIDTH, window.innerWidth - 2 * MARGIN);
+    const width = Math.min(maxWidth, window.innerWidth - 2 * MARGIN);
     const left = Math.min(
       Math.max(rect.left + rect.width / 2 - width / 2, MARGIN),
       window.innerWidth - width - MARGIN
     );
     // Above when there is little room below, e.g. next to the sticky buttons
-    const above = window.innerHeight - rect.bottom < 180 && rect.top > 180;
+    const room = trigger ? 280 : 180;
+    const above = window.innerHeight - rect.bottom < room && rect.top > room;
     setPosition({ top: above ? rect.top - 6 : rect.bottom + 6, left, above });
-  }, []);
+  }, [maxWidth, trigger]);
 
   useEffect(() => {
     if (!open) return;
@@ -68,7 +78,7 @@ export function InfoTip({
       <button
         ref={button}
         type="button"
-        aria-label={label ?? t('moreInfo')}
+        aria-label={trigger ? label : (label ?? t('moreInfo'))}
         aria-describedby={open ? id : undefined}
         aria-expanded={open}
         // Inside a label a click would toggle its checkbox
@@ -85,12 +95,14 @@ export function InfoTip({
           setPinned(false);
         }}
         className={cn(
-          'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full align-middle text-muted-foreground/80 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          open && 'bg-primary/10 text-primary',
+          trigger
+            ? 'inline cursor-help rounded-sm text-left underline decoration-dotted decoration-from-font underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            : 'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full align-middle text-muted-foreground/80 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          open && !trigger && 'bg-primary/10 text-primary',
           className
         )}
       >
-        <Info className="h-3.5 w-3.5" />
+        {trigger ?? <Info className="h-3.5 w-3.5" />}
       </button>
       {open &&
         position &&
@@ -101,11 +113,12 @@ export function InfoTip({
             style={{
               top: position.top,
               left: position.left,
-              width: Math.min(WIDTH, window.innerWidth - 2 * MARGIN),
+              width: Math.min(maxWidth, window.innerWidth - 2 * MARGIN),
             }}
             className={cn(
               'pointer-events-none fixed z-[100] rounded-lg border bg-popover px-3 py-2 text-xs font-normal leading-relaxed text-popover-foreground shadow-lg animate-in fade-in zoom-in-95 duration-150',
-              position.above && '-translate-y-full'
+              position.above && '-translate-y-full',
+              bubbleClassName
             )}
           >
             {children}

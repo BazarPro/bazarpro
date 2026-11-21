@@ -93,6 +93,7 @@ import { MAX_FEE_GROUPS, extraHelperGroups, type FeeGroup } from '../../../share
 import { PageSkeleton } from '../../../components/ui/loading';
 import { isEventRunning } from '../../../shared/eventPhase';
 import { compactRegion, regionSize } from '../../../shared/postalCodes';
+import { postalCodesOf, regionImageChange } from '../../../lib/regionImage';
 
 /**
  * @param getOriginalStartDate start date of the event being edited (datetime-local string);
@@ -1362,6 +1363,22 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
         eventMapImage = await client.upload(await generateUploadUrl(), data.eventMapImageFile);
       }
 
+      const stored = isEditing ? event : undefined;
+      const regionImage = await regionImageChange(
+        {
+          region: data.features.regionOnly ? data.features.allowedPostalCodes : {},
+          venueCode: data.address.postalCode,
+          venueCountry: data.address.country,
+        },
+        stored && {
+          region: postalCodesOf(stored.features),
+          venueCode: stored.postalCode,
+          venueCountry: stored.country,
+          image: stored.regionMapImage,
+        },
+        (file) => generateUploadUrl().then((url) => client.upload(url, file))
+      );
+
       if (isEditing && eventId) {
         const editPayload: {
           id: Id<'events'>;
@@ -1383,6 +1400,8 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           eventMapImage?: Id<'_storage'>;
           clearCoverImage?: boolean;
           clearEventMapImage?: boolean;
+          regionMapImage?: Id<'_storage'>;
+          clearRegionMapImage?: boolean;
           features: FeaturesArgs;
           sellerLogistics: StoredLogistics;
         } = {
@@ -1406,6 +1425,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
               : undefined,
           features: featuresFromForm(data.features),
           sellerLogistics: logisticsFromForm(data.sellerLogistics),
+          ...regionImage,
         };
 
         // Left out the limit would stay
@@ -1449,6 +1469,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
               : undefined,
           coverImage,
           eventMapImage,
+          regionMapImage: regionImage.regionMapImage,
           features: featuresFromForm(data.features),
           sellerLogistics: logisticsFromForm(data.sellerLogistics),
         });

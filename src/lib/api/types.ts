@@ -86,6 +86,8 @@ export interface Docs {
     moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
     coverImage?: Id<'_storage'> | undefined;
     eventMapImage?: Id<'_storage'> | undefined;
+    /** Picture of the region of a bazaar for its region (#304), made by the app */
+    regionMapImage?: Id<'_storage'> | undefined;
     isApproved?: boolean | undefined;
     approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
     approvedAt?: number | undefined;
@@ -1205,6 +1207,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1280,6 +1284,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1357,6 +1363,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1436,6 +1444,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         approvedAt?: number | undefined;
         approvedBy?: Id<'users'> | undefined;
         rejectedAt?: number | undefined;
@@ -1521,6 +1531,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1601,6 +1613,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1676,6 +1690,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1747,6 +1763,8 @@ export interface Api {
       {
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
         /** Places taken by sellers, only with a vendorLimit */
@@ -1807,6 +1825,8 @@ export interface Api {
       {
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
         /** Places taken by sellers, only with a vendorLimit */
@@ -1849,6 +1869,7 @@ export interface Api {
         clearVendorLimit?: boolean | undefined;
         clearCoverImage?: boolean | undefined;
         clearEventMapImage?: boolean | undefined;
+        clearRegionMapImage?: boolean | undefined;
         categories: Id<'categories'>[];
         id: Id<'events'>;
         title: string;
@@ -1882,6 +1903,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;

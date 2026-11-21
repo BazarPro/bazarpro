@@ -5,7 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { countryName } from '../../i18n/countries';
 import {
+  areaAt,
+  areasIn,
   splitKey,
+  townRankAt,
   unitsPerKm,
   type CombinedMap,
   type Point,
@@ -41,7 +44,7 @@ interface Label {
   y: number;
   text: string;
   kind: 'town' | 'region' | 'area';
-  /** Rank 1 to 3 of a town */
+  /** Rank 1 to 4 of a town */
   rank?: number;
 }
 
@@ -85,7 +88,10 @@ export interface PostalRegionMapProps {
  *
  * The SVG is large (hundreds of KB of paths), so it is drawn anew only once the map
  * rests: while it is dragged, zoomed or glides, a CSS transform moves the last drawing,
- * which is a bit larger than the frame for that.
+ * which is a bit larger than the frame for that. It holds only the areas in view, and all
+ * areas of one kind (chosen, partly chosen, not chosen) as one path: a few elements for
+ * the browser to style and paint instead of thousands. Which area the pointer is over is
+ * worked out from the map data (`areaAt`).
  */
 export const PostalRegionMap = memo(function PostalRegionMap({
   data,
@@ -324,9 +330,19 @@ export const PostalRegionMap = memo(function PostalRegionMap({
 
   const fromCentre = (clientX: number, clientY: number) => {
     const box = boxOfFrame();
+    const { width, height } = sizeRef.current;
     return box
-      ? { x: clientX - box.left - box.width / 2, y: clientY - box.top - box.height / 2 }
+      ? { x: clientX - box.left - width / 2, y: clientY - box.top - height / 2 }
       : { x: 0, y: 0 };
+  };
+  /** The key of the area under a point of the screen */
+  const areaUnder = (clientX: number, clientY: number): string | null => {
+    const view = map.live.current;
+    if (!view) return null;
+    const offset = fromCentre(clientX, clientY);
+    return (
+      areaAt(data.areas, [view.x + offset.x * view.upp, view.y + offset.y * view.upp])?.p ?? null
+    );
   };
   const startPinch = () => {
     const [a, b] = [...pointers.current.values()];
@@ -405,7 +421,7 @@ export const PostalRegionMap = memo(function PostalRegionMap({
       hoverAt.current = { x: event.clientX - box.left, y: event.clientY - box.top };
       placeTooltip(tooltip.current);
     }
-    setHovered((event.target as Element).getAttribute?.('data-prefix') ?? null);
+    setHovered(areaUnder(event.clientX, event.clientY));
   };
 
   const endPointer = (event: ReactPointerEvent<SVGSVGElement>, tap: boolean) => {
@@ -429,8 +445,8 @@ export const PostalRegionMap = memo(function PostalRegionMap({
       if (map.live.current) map.settle(map.live.current);
       return;
     }
-    const prefix = (event.target as Element).getAttribute?.('data-prefix');
-    if (tap && prefix) onToggle(prefix);
+    const key = tap ? areaUnder(current.x, current.y) : null;
+    if (key) onToggle(key);
   };
 
   const placeTooltip = useCallback((element: HTMLDivElement | null) => {
@@ -457,6 +473,9 @@ export const PostalRegionMap = memo(function PostalRegionMap({
     [order, areaOrder, data, drawnView, size, venue, circle]
   );
 
+  const byKey = useMemo(() => new Map(data.areas.map((area) => [area.p, area])), [data]);
+  const hoveredArea = hovered ? byKey.get(hovered) : undefined;
+
   const upp = drawnView?.upp ?? 1;
   const px = (pixels: number) => pixels * upp;
   const fullWidth = size.width * (1 + 2 * OVERSCAN);
@@ -469,6 +488,9 @@ export const PostalRegionMap = memo(function PostalRegionMap({
         fullHeight * upp,
       ]
     : [0, 0, 1, 1];
+  // What the drawing shows, as minX, minY, maxX, maxY: only areas in it are drawn
+  const [left, top, spanX, spanY] = viewBox;
+  const shown = useMemo(() => [left, top, left + spanX, top + spanY], [left, top, spanX, spanY]);
   const circleRadius = circle ? circle.km * unitsPerKm(circle.center) : 0;
   // Not drawn again when only the hovered area changes
   const labelLayer = useMemo(
@@ -507,7 +529,10 @@ export const PostalRegionMap = memo(function PostalRegionMap({
             viewBox={viewBox.join(' ')}
             width={fullWidth}
             height={fullHeight}
-            className="block touch-none cursor-grab active:cursor-grabbing"
+            className={cn(
+              'block touch-none active:cursor-grabbing',
+              hovered ? 'cursor-pointer' : 'cursor-grab'
+            )}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={(event) => endPointer(event, true)}
@@ -529,7 +554,20 @@ export const PostalRegionMap = memo(function PostalRegionMap({
                 <rect width={px(3)} height={px(7)} className="fill-primary/45" />
               </pattern>
             </defs>
-            <MapShapes data={data} selected={selected} partial={partial} />
+            <MapShapes data={data} selected={selected} partial={partial} shown={shown} />
+            {hoveredArea && (
+              <path
+                d={hoveredArea.d}
+                fillRule="evenodd"
+                className={cn(
+                  'pointer-events-none stroke-primary/70',
+                  selected.has(hoveredArea.p) ? 'fill-primary/20' : 'fill-primary/15'
+                )}
+                strokeWidth={1.2}
+                vectorEffect="non-scaling-stroke"
+                strokeLinejoin="round"
+              />
+            )}
             {circle && circle.km > 0 && (
               <g className="pointer-events-none">
                 <circle
@@ -610,6 +648,9 @@ export const PostalRegionMap = memo(function PostalRegionMap({
           {areaName(hovered, t('region.areaTooltip', { prefix: splitKey(hovered).prefix }))}
           {' · '}
           {selected.has(hovered) ? t('region.areaRemove') : t('region.areaAdd')}
+          {hoveredArea?.n?.length ? (
+            <span className="block font-normal opacity-80">{hoveredArea.n.join(', ')}</span>
+          ) : null}
         </div>
       )}
 
@@ -697,37 +738,71 @@ function MapButton({
 }
 
 /**
- * The country, its areas and borders; drawn again only when the choice changes, not
- * while the map moves. Clicks reach the map through `data-prefix`.
+ * The country, its areas and borders; drawn again only when the choice or the drawn view
+ * changes, not while the map moves. Areas outside `shown` are left out, and the others go
+ * into one path per kind: a few long paths paint much faster than thousands of short ones.
+ * The areas cover the land without overlapping, so "evenodd" keeps holes and enclaves.
  */
 const MapShapes = memo(function MapShapes({
   data,
   selected,
   partial,
+  shown,
 }: {
   data: MapData;
   selected: ReadonlySet<string>;
   partial: ReadonlySet<string>;
+  /** minX, minY, maxX, maxY of the drawing */
+  shown: readonly number[];
 }) {
-  const regionBorders = useMemo(() => data.regions.map((region) => region.d).join(''), [data]);
+  const areas = useMemo(() => areasIn(data.areas, shown), [data, shown]);
+  const regionBorders = useMemo(
+    () =>
+      areasIn(data.regions, shown)
+        .map((region) => region.d)
+        .join(''),
+    [data, shown]
+  );
+  const paths = useMemo(() => {
+    const kinds = { none: [] as string[], selected: [] as string[], partial: [] as string[] };
+    for (const area of areas) {
+      const kind = selected.has(area.p) ? 'selected' : partial.has(area.p) ? 'partial' : 'none';
+      kinds[kind].push(area.d);
+    }
+    return {
+      none: kinds.none.join(''),
+      selected: kinds.selected.join(''),
+      partial: kinds.partial.join(''),
+    };
+  }, [areas, selected, partial]);
   return (
     <>
       <path
         d={data.outline}
-        className="fill-card stroke-foreground/10"
+        className="pointer-events-none fill-card stroke-foreground/10"
         strokeWidth={8}
         vectorEffect="non-scaling-stroke"
         strokeLinejoin="round"
       />
-      <g>
-        {data.areas.map((area) => (
-          <AreaPath
-            key={area.p}
-            prefix={area.p}
-            d={area.d}
-            state={selected.has(area.p) ? 'selected' : partial.has(area.p) ? 'partial' : 'none'}
-          />
-        ))}
+      <g
+        className="pointer-events-none stroke-foreground/12"
+        strokeWidth={0.6}
+        strokeLinejoin="round"
+        fillRule="evenodd"
+      >
+        {(['none', 'selected', 'partial'] as const).map(
+          (kind) =>
+            paths[kind] && (
+              <path
+                key={kind}
+                d={paths[kind]}
+                data-areas={kind}
+                fill={kind === 'partial' ? 'url(#postal-partial)' : undefined}
+                className={AREA_FILL[kind]}
+                vectorEffect="non-scaling-stroke"
+              />
+            )
+        )}
       </g>
       <path
         d={regionBorders}
@@ -747,47 +822,30 @@ const MapShapes = memo(function MapShapes({
   );
 });
 
-const AREA_CLASS = {
-  selected: 'cursor-pointer stroke-foreground/12 fill-primary/45 hover:fill-primary/60',
-  partial: 'cursor-pointer stroke-foreground/12 hover:opacity-80',
-  none: 'cursor-pointer stroke-foreground/12 fill-card hover:fill-primary/15',
+const AREA_FILL = {
+  selected: 'fill-primary/45',
+  partial: '',
+  none: 'fill-card',
 };
 
-/** One area; drawn again only when its own state changes, e.g. while the radius grows. */
-const AreaPath = memo(function AreaPath({
-  prefix,
-  d,
-  state,
-}: {
-  prefix: string;
-  d: string;
-  state: keyof typeof AREA_CLASS;
-}) {
-  return (
-    <path
-      d={d}
-      data-prefix={prefix}
-      fill={state === 'partial' ? 'url(#postal-partial)' : undefined}
-      className={AREA_CLASS[state]}
-      strokeWidth={0.6}
-      vectorEffect="non-scaling-stroke"
-      strokeLinejoin="round"
-    />
-  );
-});
+/** Font size of a town's name by its rank */
+const TOWN_FONT_PX: Record<number, number> = { 1: 12.5, 2: 11.5, 3: 10.5, 4: 10 };
 
 function MapLabel({ label, px }: { label: Label; px: (pixels: number) => number }) {
   if (label.kind === 'town') {
-    const size = label.rank === 1 ? 12.5 : label.rank === 2 ? 11.5 : 10.5;
+    const size = TOWN_FONT_PX[label.rank ?? 3];
     return (
       <g transform={`translate(${label.x} ${label.y})`}>
-        <circle r={px(2.6)} className="fill-foreground/70" />
+        <circle r={px(label.rank === 4 ? 2 : 2.6)} className="fill-foreground/70" />
         <text
           x={px(5)}
           y={px(4)}
           fontSize={px(size)}
-          fontWeight={label.rank === 1 ? 600 : 500}
-          className="fill-foreground/85 stroke-card [paint-order:stroke]"
+          fontWeight={label.rank === 1 ? 600 : label.rank === 4 ? 400 : 500}
+          className={cn(
+            'stroke-card [paint-order:stroke]',
+            label.rank === 4 ? 'fill-foreground/70' : 'fill-foreground/85'
+          )}
           strokeWidth={px(3.5)}
           strokeLinejoin="round"
         >
@@ -933,11 +991,12 @@ function placeLabels(
 
   const { median } = order;
   const detailed = median / upp > 46;
-  const townRank = upp < (median / 46) * 1.8 ? 3 : upp < (median / 46) * 4 ? 2 : 1;
+  // The smaller the towns, the closer the view; by km, as the countries' areas differ in size
+  const townRank = townRankAt(upp / unitsPerKm([view.x, view.y]));
 
   for (const town of data.towns) {
     if (town.r > townRank) continue;
-    const fontPx = town.r === 1 ? 12.5 : 11.5;
+    const fontPx = TOWN_FONT_PX[town.r];
     place(
       {
         key: `t${town.n}${town.c[0]}`,

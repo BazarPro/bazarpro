@@ -51,6 +51,7 @@ import { useNowPassing } from '../../../hooks/useNowPassing';
 import { registrationTimes } from '../../../shared/eventFeatures';
 import { describeRegistration } from '../../../components/participation/registrationText';
 import { eventPhase } from '../../../shared/eventPhase';
+import { RegionMapTip } from '../../../components/events/RegionMapTip';
 
 /**
  *  Main Landingpage for a Public Event
@@ -325,7 +326,9 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
                   {registration.region && (
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5" />
-                      {registration.region}
+                      <RegionMapTip image={event.regionMapImage}>
+                        {registration.region}
+                      </RegionMapTip>
                     </span>
                   )}
                 </p>

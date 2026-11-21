@@ -1475,6 +1475,8 @@ struct CreateArgs {
     description: String,
     cover_image: Option<Id>,
     event_map_image: Option<Id>,
+    /// Picture of the region (#304), drawn by the app
+    region_map_image: Option<Id>,
     location: String,
     address: Option<AddressArgs>,
     start_date: f64,
@@ -1503,7 +1505,15 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     }
     check_lists(&args.services, &args.visibility)?;
     check_access_code(&args.visibility, args.access_code.as_deref())?;
-    check_files(ctx, &[args.cover_image, args.event_map_image]).await?;
+    check_files(
+        ctx,
+        &[
+            args.cover_image,
+            args.event_map_image,
+            args.region_map_image,
+        ],
+    )
+    .await?;
     let public = args.visibility == "public" && !single;
     let known = requirable_keys(ctx).await?;
     let features = args
@@ -1517,10 +1527,10 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
         "INSERT INTO events (title, description, cover_image_id, map_image_id, location, start_date,
            end_date, contact_info, services, visibility, is_approved, approval_status, access_code,
            vendor_limit, commission, features, dropoff_start, dropoff_end, pickup_start, pickup_end,
-           logistics_note, organizer_id, street, postal_code, city, country)
+           logistics_note, organizer_id, street, postal_code, city, country, region_map_image_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::event_service[], $10::event_visibility, $11,
            $12::approval_status, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
-           $26)
+           $26, $27)
          RETURNING id",
     )
     .bind(&args.title)
@@ -1549,6 +1559,7 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     .bind(&address.postal_code)
     .bind(&address.city)
     .bind(&address.country)
+    .bind(args.region_map_image.map(|id| id.0))
     .fetch_one(ctx.conn())
     .await?;
     set_categories(ctx, id, &args.categories).await?;
@@ -1568,6 +1579,8 @@ struct EditArgs {
     description: String,
     cover_image: Option<Id>,
     event_map_image: Option<Id>,
+    /// Picture of the region (#304), drawn by the app
+    region_map_image: Option<Id>,
     location: String,
     /// Absent (older apps): the stored address stays
     address: Option<AddressArgs>,
@@ -1583,6 +1596,7 @@ struct EditArgs {
     clear_vendor_limit: Option<bool>,
     clear_cover_image: Option<bool>,
     clear_event_map_image: Option<bool>,
+    clear_region_map_image: Option<bool>,
     features: Option<FeaturesArgs>,
     seller_logistics: Option<LogisticsArgs>,
 }
@@ -1607,7 +1621,15 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     // Without a code in the arguments the stored one stays
     let event_code = args.access_code.as_deref().or(event.access_code.as_deref());
     check_access_code(&args.visibility, event_code)?;
-    check_files(ctx, &[args.cover_image, args.event_map_image]).await?;
+    check_files(
+        ctx,
+        &[
+            args.cover_image,
+            args.event_map_image,
+            args.region_map_image,
+        ],
+    )
+    .await?;
     let mut start = time_arg(args.start_date, "startDate")?;
     let mut end = time_arg(args.end_date, "endDate")?;
     let commission = money(args.commission, "commission")?;
@@ -1715,7 +1737,9 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
            street = CASE WHEN $27 THEN street ELSE $28 END,
            postal_code = CASE WHEN $27 THEN postal_code ELSE $29 END,
            city = CASE WHEN $27 THEN city ELSE $30 END,
-           country = CASE WHEN $27 THEN country ELSE $31 END
+           country = CASE WHEN $27 THEN country ELSE $31 END,
+           region_map_image_id =
+             CASE WHEN $32 THEN NULL ELSE COALESCE($33, region_map_image_id) END
          WHERE id = $1",
     )
     .bind(event.id)
@@ -1758,6 +1782,8 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     .bind(&address.postal_code)
     .bind(&address.city)
     .bind(&address.country)
+    .bind(args.clear_region_map_image == Some(true))
+    .bind(args.region_map_image.map(|id| id.0))
     .execute(ctx.conn())
     .await?;
     set_categories(ctx, event.id, &args.categories).await?;

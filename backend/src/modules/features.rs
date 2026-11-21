@@ -425,6 +425,7 @@ pub fn tests_event(features: Value) -> Event {
         description: String::new(),
         cover_image: None,
         event_map_image: None,
+        region_map_image: None,
         location: String::new(),
         street: None,
         postal_code: None,

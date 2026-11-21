@@ -24,6 +24,7 @@ import { getUserFacingErrorMessage } from '../../lib/errors';
 import { ValidateProfileInformation } from './ValidateProfileInformation';
 import { SellerConditions } from './SellerConditions';
 import { FeeGroupChoice } from './FeeGroups';
+import { RegionMapImage, RegionMapTip } from './RegionMapTip';
 import type { SellerConditionsEvent } from '../../lib/sellerFees';
 import { useTranslation } from 'react-i18next';
 
@@ -195,6 +196,13 @@ export function EventRegistrationDialog({
                   {blocked.filter(Boolean).map((line) => (
                     <p key={line as string}>{line}</p>
                   ))}
+                  {/* Where the region is, for whoever wonders whether they belong to it */}
+                  {outsideRegion && !exclusion && !registration.blocked && (
+                    <RegionMapImage
+                      image={conditions.regionMapImage}
+                      className="mt-2 block aspect-[8/5] h-auto w-full rounded-md border bg-muted"
+                    />
+                  )}
                 </AlertDescription>
               </Alert>
               <Button variant="outline" className="w-full" onClick={() => handleOpenChange(false)}>
@@ -226,7 +234,9 @@ export function EventRegistrationDialog({
                   {registration.region && (
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin className="h-4 w-4" />
-                      {registration.region}
+                      <RegionMapTip image={conditions.regionMapImage}>
+                        {registration.region}
+                      </RegionMapTip>
                     </span>
                   )}
                 </div>

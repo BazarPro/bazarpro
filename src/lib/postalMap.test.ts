@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import germany from '../assets/postal-areas/DE.json';
 import {
+  areaAt,
   areaContains,
+  areasIn,
   areasWithin,
   combineMaps,
   keysWithin,
@@ -15,6 +17,7 @@ import {
   prefixesFromSelection,
   project,
   selectionFromPrefixes,
+  townRankAt,
   unproject,
   type PostalMapData,
 } from './postalMap';
@@ -57,6 +60,26 @@ describe('postal map (#304)', () => {
     expect(around).not.toContain('602');
     expect(around.length).toBeLessThan(10);
     expect(areasWithin(data, ulm, 0)).toEqual([]);
+  });
+
+  it('finds the area under a point and the areas in view', () => {
+    const area890 = data.areas.find((area) => area.p === '890')!;
+    expect(areaAt(data.areas, area890.c)?.p).toBe('890');
+    // Far out in the North Sea
+    expect(areaAt(data.areas, project(4, 55))).toBeUndefined();
+    const [x, y] = area890.c;
+    const near = areasIn(data.areas, [x - 100, y - 100, x + 100, y + 100]).map((a) => a.p);
+    expect(near).toContain('890');
+    expect(near).not.toContain('101');
+    expect(near.length).toBeLessThan(40);
+  });
+
+  it('names the areas by their largest places and shows smaller towns close up', () => {
+    const area = (prefix: string) => data.areas.find((candidate) => candidate.p === prefix)!;
+    expect(area('893').n).toEqual(['Günzburg', 'Burgau', 'Ichenhausen']);
+    expect(area('804').n).toEqual(['München']);
+    expect(data.towns.some((town) => town.n === 'Senden' && town.r === 4)).toBe(true);
+    expect([2, 0.6, 0.3, 0.1].map(townRankAt)).toEqual([1, 2, 3, 4]);
   });
 
   it('stores whole regions short and keeps finer prefixes', () => {

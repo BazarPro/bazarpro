@@ -1,4 +1,5 @@
 import i18n from '../../i18n';
+import type { Id } from '../../lib/api/types';
 import { formatDateTimeDE } from '../../lib/utils';
 import { formatRegion, postalRegion } from '../../shared/postalCodes';
 import {
@@ -13,6 +14,8 @@ export type RegistrationEvent = {
   vendorLimit?: number;
   /** Places taken; the backend sends it with a `vendorLimit` */
   sellerCount?: number;
+  /** Map of the region (#304), shown with its postal codes */
+  regionMapImage?: Id<'_storage'>;
 };
 
 /** Places left for sellers; undefined without a limit. */
