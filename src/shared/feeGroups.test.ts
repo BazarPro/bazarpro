@@ -52,6 +52,12 @@ describe('fee groups', () => {
     expect(appliedGroup(event, 'members', true)).toBe(helpers);
   });
 
+  it('never cost more than the bazaar', () => {
+    const lowered = { ...event, commission: 0, features: { ...event.features, intakeFee: 0.25 } };
+    expect(appliedGroup(lowered, undefined, true)).toBeUndefined();
+    expect(appliedGroup(lowered, 'members', false)).toBeUndefined();
+  });
+
   it('compare by commission, then intake fee, then cap', () => {
     expect(compareFees({ commission: 5 }, { commission: 6, intakeFee: 0 })).toBeLessThan(0);
     expect(compareFees({ commission: 5, intakeFee: 1 }, { commission: 5 })).toBeGreaterThan(0);

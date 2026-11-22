@@ -1,6 +1,6 @@
 import { formatPriceDE } from './utils';
 import { feeCapCredit } from '../shared/feeCap';
-import { eventFees, groupFees, type FeeGroup } from '../shared/feeGroups';
+import { compareFees, eventFees, groupFees, type FeeGroup } from '../shared/feeGroups';
 import { resolveEventFeatures, type StoredEventFeatures } from '../shared/eventFeatures';
 import { formatBerlinRange, formatBerlinTime } from '../shared/berlinTime';
 import { feeExampleFor, type FeeExampleCase } from './eventTypes';
@@ -130,7 +130,9 @@ export function describeSellerFees(event: SellerConditionsEvent): {
   });
   const groups = (event.features?.feeGroups ?? []).flatMap((group) => {
     const own = exampleFees(groupFees(event, group), kind).total;
-    return own === total || !group.label.trim()
+    // A group dearer than the bazaar pays the bazaar's fees (appliedGroup)
+    const dearer = compareFees(eventFees(event), groupFees(event, group)) < 0;
+    return own === total || dearer || !group.label.trim()
       ? []
       : [text('exampleGroup', { label: group.label.trim(), amount: euro(own) })];
   });

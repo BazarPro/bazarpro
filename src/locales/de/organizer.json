@@ -1161,6 +1161,7 @@
       "sold": "An einer anderen Kasse schon verkauft",
       "sellerPaid": "Verkäufer war schon ausgezahlt",
       "gone": "Artikel nicht mehr beim Basar",
+      "directSale": "Als Direktverkauf kassiert, der Basar hat keinen Direktverkauf",
       "other": "Nicht buchbar"
     },
     "action": "Offline-Aktion",
@@ -1461,7 +1462,7 @@
   },
   "region": {
     "title": "Nur Verkäufer aus der Region",
-    "intro": "Nur wer mit seiner Postleitzahl aus den gewählten Gebieten kommt, meldet sich selbst an, zum Beispiel Familien aus deiner Stadt. Alle anderen nur mit Einladung oder Zugangscode. Wähle den Mittelpunkt, zieh den Umkreis und tippe einzelne Gebiete auf der Karte an oder ab.",
+    "intro": "Nur wer mit seiner Postleitzahl aus den gewählten Gebieten kommt, meldet sich selbst an, zum Beispiel Familien aus deiner Stadt. Alle anderen nur mit Einladung, auch wenn der Basar einen Zugangscode hat. Wähle den Mittelpunkt, zieh den Umkreis und tippe einzelne Gebiete auf der Karte an oder ab.",
     "center": "Mittelpunkt",
     "centerVenue": "Basar",
     "centerHere": "Mein Standort",

@@ -281,16 +281,13 @@ async fn join_event(ctx: &mut Ctx, args: JoinArgs) -> AppResult<Uuid> {
     if features.private_sellers_only && args.private_seller != Some(true) {
         return Err(AppError::bad_request("join.privateRequired"));
     }
-    // A bazaar for its region (#304): an invitation, the access code or a place on the team
-    // let others in too, so the organizer can make exceptions
-    let has_code = event
-        .access_code
-        .as_deref()
-        .is_some_and(|code| !code.is_empty());
+    // A bazaar for its region (#304): an invitation or a place on the team let others in
+    // too, so the organizer can make exceptions. Not the access code: once set, everyone
+    // needs it, so it would lift the region for all
     let region = features
         .postal_codes
         .as_ref()
-        .filter(|_| invited_as_helper.is_none() && !team && !has_code);
+        .filter(|_| invited_as_helper.is_none() && !team);
     // Loaded once for both checks below
     let profile = if region.is_some() || features.fixed_seller_data {
         docs::user(ctx.conn(), user).await?

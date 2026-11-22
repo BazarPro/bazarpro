@@ -713,6 +713,24 @@ async fn offline_sales_after_the_payout_and_of_vanished_items_are_conflicts(db: 
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn no_desk_books_a_direct_sale_at_a_bazaar_without_them(db: PgPool) {
+    let desk = Desk::new(db.clone(), json!({})).await;
+    let (product, relation) = desk.item("Ski", 50.0).await;
+    let mut sale = offline_sale(Uuid::new_v4(), &[(relation, product, 50.0)]);
+    sale["directSale"] = json!(true);
+    let reply = desk.sync(json!([sale])).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(reply.body["value"][0]["conflicts"], json!([product]));
+    let reason: String = sqlx::query_scalar("SELECT reason FROM sale_conflicts")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(reason, "checkout.directSaleMismatch");
+    // The seller is not booked with nothing to get
+    assert!(desk.purchase(product).await.is_none());
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn a_cart_sent_twice_is_sold_once(db: PgPool) {
     let desk = Desk::new(db.clone(), json!({})).await;
     let (product, relation) = desk.item("Ski", 20.0).await;

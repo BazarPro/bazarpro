@@ -1161,6 +1161,7 @@
       "sold": "Already sold at another desk",
       "sellerPaid": "The seller was already paid out",
       "gone": "Item no longer at the bazaar",
+      "directSale": "Taken as a direct sale, but the bazaar has no direct sales",
       "other": "Could not be booked"
     },
     "action": "Offline action",
@@ -1461,7 +1462,7 @@
   },
   "region": {
     "title": "Only sellers from the region",
-    "intro": "Only people whose postal code is in the chosen areas can register on their own, for example families from your town. Everyone else only with an invitation or the access code. Choose the centre, drag the radius and tap single areas on the map to add or remove them.",
+    "intro": "Only people whose postal code is in the chosen areas can register on their own, for example families from your town. Everyone else only with an invitation, even if the bazaar has an access code. Choose the centre, drag the radius and tap single areas on the map to add or remove them.",
     "center": "Centre",
     "centerVenue": "Bazaar",
     "centerHere": "My location",

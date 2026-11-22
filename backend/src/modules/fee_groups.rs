@@ -95,10 +95,13 @@ fn compare(a: &SellerFees, b: &SellerFees) -> Ordering {
 }
 
 /// The fees of a seller in the stored group `stored` (if it still exists) and, as helper,
-/// in every helper group: the cheapest of them; the bazaar's without any.
+/// in every helper group: the cheapest of them; the bazaar's without any. A group never
+/// costs more than the bazaar: once the bazaar's fees are lowered below a group's, its
+/// members pay the bazaar's, keeping the group's item limit if that is higher.
 pub fn fees_for(event: &Event, stored: Option<&str>, helper: bool) -> SellerFees {
     let groups = event.resolved_features().fee_groups;
-    groups
+    let bazaar = SellerFees::of_event(event);
+    let Some(cheapest) = groups
         .iter()
         .filter(|group| {
             Some(group.id.as_str()) == stored
@@ -106,7 +109,21 @@ pub fn fees_for(event: &Event, stored: Option<&str>, helper: bool) -> SellerFees
         })
         .map(|group| SellerFees::of_group(event, group))
         .min_by(compare)
-        .unwrap_or_else(|| SellerFees::of_event(event))
+    else {
+        return bazaar;
+    };
+    if compare(&bazaar, &cheapest) != Ordering::Less {
+        return cheapest;
+    }
+    // None: no limit
+    let max_items_per_seller = match (bazaar.max_items_per_seller, cheapest.max_items_per_seller) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        _ => None,
+    };
+    SellerFees {
+        max_items_per_seller,
+        ..bazaar
+    }
 }
 
 /// What the event needs to know of a seller for their group.
@@ -623,6 +640,34 @@ mod tests {
         let event = event(groups());
         let fees = fees_for(&event, Some("members"), true);
         assert_eq!(fees.group.map(|g| g.id), Some("helpers".to_owned()));
+    }
+
+    #[test]
+    fn a_group_never_costs_more_than_the_bazaar() {
+        // The bazaar was lowered below the helper group: helpers pay the bazaar's fees
+        let mut event = event(groups());
+        event.commission = Decimal::ZERO;
+        let mut features = event.features.clone().unwrap();
+        features["intakeFee"] = json!(0.25);
+        event.features = Some(features);
+        let helpers = fees_for(&event, None, true);
+        assert_eq!(helpers.group, None);
+        assert_eq!(helpers.commission, Decimal::ZERO);
+        assert_eq!(helpers.intake_fee, Some(Decimal::new(25, 2)));
+        // ... and keep the group's higher item limit
+        assert_eq!(helpers.max_items_per_seller, Some(40));
+        // Members too
+        assert_eq!(
+            fees_for(&event, Some("members"), false).commission,
+            Decimal::ZERO
+        );
+        // A self-declaration costing more than the bazaar is nothing to check
+        let member = Membership {
+            stored: Some("members".to_owned()),
+            decided_at: None,
+            helper: false,
+        };
+        assert!(member.pending(&event).is_none());
     }
 
     #[test]
