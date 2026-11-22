@@ -125,7 +125,6 @@ export interface Docs {
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
           directSale?: boolean | undefined;
-          autoReturn?: boolean | undefined;
           registrationOpen?: boolean | undefined;
           registrationStartsAt?: number | undefined;
           registrationEndsAt?: number | undefined;
@@ -1262,7 +1261,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1340,7 +1338,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1420,7 +1417,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1500,7 +1496,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1590,7 +1585,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1673,7 +1667,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1751,7 +1744,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1816,7 +1808,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1879,7 +1870,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1967,7 +1957,6 @@ export interface Api {
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
               directSale?: boolean | undefined;
-              autoReturn?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -2750,7 +2739,6 @@ export interface Api {
           buyerEmail?: string | undefined;
           /** How the desk sold: it took only the commission. Booked that way */
           directSale?: boolean | undefined;
-          autoReturn?: boolean | undefined;
           items: {
             eventProductId: Id<'eventProducts'>;
             productId: Id<'products'>;

@@ -13,8 +13,7 @@
 //! - Then sales, sellers, roles and the bazaar itself are deleted.
 //!
 //! Before all that, the night after the bazaar and its pickup, the items left over go back
-//! to their sellers and sellers without money either way are settled (#305), unless the
-//! organizer turned it off (`autoReturn`).
+//! to their sellers and sellers without money either way are settled (#305).
 //!
 //! Besides: deleted accounts are anonymized (#168), walk-in sellers lose their contact,
 //! contact messages, reports, the moderation log, the team's offline actions and the
@@ -115,15 +114,13 @@ async fn delete_files(ctx: &mut Ctx, files: Vec<Uuid>) -> AppResult<()> {
 /// The night after the bazaar and its pickup, the items still available go back to their
 /// sellers, marked as returned by the cron: the team clears up with whom they are (#305).
 /// Sellers without money either way are settled; everyone else stays open in the cash
-/// summary. Once per bazaar, within the settlement; bazaars with `autoReturn` off wait
-/// until it is turned on.
+/// summary. Once per bazaar, within the settlement.
 async fn return_leftovers(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
     let events: Vec<Uuid> = sqlx::query_scalar(
         "SELECT id FROM events
          WHERE leftovers_returned_at IS NULL
            AND GREATEST(end_date, pickup_end) < now()
            AND end_date > now() - make_interval(days => $1)
-           AND COALESCE((features->>'autoReturn')::boolean, true)
          ORDER BY end_date LIMIT $2",
     )
     .bind(SETTLEMENT_DAYS as i32)

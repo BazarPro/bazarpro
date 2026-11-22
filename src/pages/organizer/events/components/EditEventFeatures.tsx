@@ -23,7 +23,6 @@ import {
   Handshake,
   ImageOff,
   MessageCircleQuestion,
-  MoonStar,
   Percent,
   Printer,
   ShieldCheck,
@@ -46,7 +45,6 @@ type FeatureKey =
   | 'privateSellersOnly'
   | 'fixedSellerData'
   | 'directSale'
-  | 'autoReturn'
   | 'registrationOpen';
 
 const FEATURE_ICONS: Record<FeatureKey, LucideIcon> = {
@@ -60,7 +58,6 @@ const FEATURE_ICONS: Record<FeatureKey, LucideIcon> = {
   privateSellersOnly: UserCheck,
   fixedSellerData: ShieldCheck,
   directSale: HandCoins,
-  autoReturn: MoonStar,
   registrationOpen: UserPlus,
 };
 
@@ -360,8 +357,8 @@ function EuroField({
 }
 
 /** Groups of switches; the creation wizard shows one group per step. */
-export type FeaturePart = 'sale' | 'items' | 'registration' | 'fees' | 'pickup';
-const ALL_PARTS: FeaturePart[] = ['sale', 'items', 'registration', 'fees', 'pickup'];
+export type FeaturePart = 'sale' | 'items' | 'registration' | 'fees';
+const ALL_PARTS: FeaturePart[] = ['sale', 'items', 'registration', 'fees'];
 
 /** Organizer chooses which buyer and seller features this event offers. */
 export function EditEventFeatures({
@@ -390,7 +387,6 @@ export function EditEventFeatures({
   const labelMark = watch('features.labelMark') as string;
   const publicCatalog = watch('features.publicCatalog') as boolean;
   const registrationOpen = watch('features.registrationOpen') as boolean;
-  const directSale = watch('features.directSale') as boolean;
   const needsCatalog = publicCatalog === false ? t('features.needsCatalog') : undefined;
   const featureErrors = errors.features as
     | Partial<
@@ -593,15 +589,6 @@ export function EditEventFeatures({
             description={t('features.fixedDataText')}
           />
         </>
-      )}
-
-      {/* With the pickup times: what happens to what nobody picked up (#305) */}
-      {show('pickup') && (
-        <FeatureToggle
-          name="autoReturn"
-          title={t(directSale ? 'features.autoReturnDirect' : 'features.autoReturn')}
-          description={t('features.autoReturnText')}
-        />
       )}
 
       {show('fees') && (

@@ -8,7 +8,7 @@ use bazarpro_backend::jobs;
 use common::Reply;
 use common::desk::Desk;
 use common::fixtures;
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -70,15 +70,6 @@ async fn seller(desk: &Desk, name: &str) -> Uuid {
     let seller = fixtures::user(&desk.db, name).await;
     fixtures::role(&desk.db, desk.event, seller, "seller").await;
     seller
-}
-
-async fn set_features(desk: &Desk, features: Value) {
-    sqlx::query("UPDATE events SET features = $2 WHERE id = $1")
-        .bind(desk.event)
-        .bind(features)
-        .execute(&desk.db)
-        .await
-        .unwrap();
 }
 
 // The team, at once ---------------------------------------------------------------------
@@ -224,16 +215,10 @@ async fn an_intake_fee_keeps_the_seller_open(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
-async fn the_cron_waits_for_the_pickup_and_for_bazaars_that_turned_it_off(db: PgPool) {
-    let desk = Desk::new(db.clone(), json!({ "autoReturn": false })).await;
+async fn the_cron_waits_for_the_pickup(db: PgPool) {
+    let desk = Desk::new(db.clone(), json!({})).await;
     let (_, rel) = desk.item("Jacke", 20.0).await;
     end(&desk, "2 hours").await;
-    run_cron(&desk).await;
-    assert_eq!(status(&desk, rel).await, ("available".into(), false));
-    assert_eq!(settled(&desk, desk.seller).await, None);
-
-    // Turned on again, but the pickup is still on
-    set_features(&desk, json!({ "autoReturn": true })).await;
     sqlx::query("UPDATE events SET pickup_end = now() + interval '1 hour' WHERE id = $1")
         .bind(desk.event)
         .execute(&db)
@@ -241,6 +226,7 @@ async fn the_cron_waits_for_the_pickup_and_for_bazaars_that_turned_it_off(db: Pg
         .unwrap();
     run_cron(&desk).await;
     assert_eq!(status(&desk, rel).await, ("available".into(), false));
+    assert_eq!(settled(&desk, desk.seller).await, None);
 
     sqlx::query("UPDATE events SET pickup_end = now() - interval '1 minute' WHERE id = $1")
         .bind(desk.event)

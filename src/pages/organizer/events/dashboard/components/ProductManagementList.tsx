@@ -13,11 +13,14 @@ import {
   Trash2,
   PackageX,
   MoonStar,
+  Filter,
+  List,
   type LucideProps,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Badge } from '../../../../../components/ui/badge';
 import { Button } from '../../../../../components/ui/button';
+import { ActionNotice } from '../../../../../components/ui/action-notice';
 import { StorageImage } from '../../../../../components/ui/StorageImage';
 import type { Id } from '../../../../../lib/api/types';
 import { discountedPrice } from '../../../../../shared/eventFeatures';
@@ -183,32 +186,26 @@ export function ProductManagementList({
 
         return (
           <TabsContent key={tab.value} value={tab.value} className="mt-0 space-y-4">
-            {/* What the cron returned after the bazaar: the team clears up with whom it is */}
+            {/* What the cron returned after the bazaar: which items, to clear up (#305) */}
             {tab.value === 'returned' && autoReturnedCount > 0 && (
-              <div
-                className="flex flex-wrap gap-2"
-                role="group"
-                aria-label={t('list.returnedFilter')}
+              <ActionNotice
+                icon={MoonStar}
+                title={t('list.autoReturnedTitle', { count: autoReturnedCount })}
+                data-testid="auto-returned-notice"
+                action={
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    aria-pressed={onlyAuto}
+                    onClick={() => onAutoReturnedOnlyChange(!onlyAuto)}
+                  >
+                    {onlyAuto ? <List className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+                    {onlyAuto ? t('list.showAllReturned') : t('list.showAutoReturned')}
+                  </Button>
+                }
               >
-                <Button
-                  size="sm"
-                  variant={onlyAuto ? 'outline' : 'soft'}
-                  aria-pressed={!onlyAuto}
-                  onClick={() => onAutoReturnedOnlyChange(false)}
-                >
-                  {t('list.allReturned')}
-                  <span className="text-xs tabular-nums opacity-70">{countFor('returned')}</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant={onlyAuto ? 'soft' : 'outline'}
-                  aria-pressed={onlyAuto}
-                  onClick={() => onAutoReturnedOnlyChange(true)}
-                >
-                  <MoonStar /> {t('list.autoReturned')}
-                  <span className="text-xs tabular-nums opacity-70">{autoReturnedCount}</span>
-                </Button>
-              </div>
+                {t('list.autoReturnedText')}
+              </ActionNotice>
             )}
             {filtered.length === 0 ? (
               <EmptyState title={t('list.empty')} />

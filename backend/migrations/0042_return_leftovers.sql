@@ -1,5 +1,5 @@
 -- Items left over at the end of a bazaar go back to their sellers (#305): by the team at
--- once or by the nightly cron after the bazaar (feature autoReturn, on by default).
+-- once or by the nightly cron after the bazaar.
 
 -- Returned by the cron, not by a person: the team clears up with whom they really are
 ALTER TABLE event_products ADD COLUMN auto_returned_at timestamptz;

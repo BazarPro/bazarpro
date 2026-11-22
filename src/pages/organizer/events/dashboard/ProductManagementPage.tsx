@@ -1,5 +1,6 @@
 import { SearchInput } from '../../../../components/ui/search-input';
 import { ConfirmDialog } from '../../../../components/ui/confirm-dialog';
+import { ActionNotice } from '../../../../components/ui/action-notice';
 import { useDeferredValue, useEffect, useMemo, useState, useRef } from 'react';
 import { countryName } from '../../../../i18n/countries';
 import { useApiClient, useMutation, useQuery } from '../../../../lib/api/react';
@@ -22,7 +23,8 @@ import { TeamScanner } from '../../../../components/scanner/TeamScanner';
 import { WalkInProductDialog } from '../../../../components/walkIn/WalkInProductDialog';
 import { UnifiedReturnDialog } from '../../../../components/products/UnifiedReturnDialog';
 import { InventoryConfirmDialog } from './components/InventoryConfirmDialog';
-import { LeftoverNotices } from './components/LeftoverNotices';
+import { ReturnLeftoversDialog } from './components/ReturnLeftoversDialog';
+import { leftoversOf } from './components/leftovers';
 import { toast } from 'sonner';
 import {
   X,
@@ -43,6 +45,7 @@ import {
   UserCheck,
   ShieldCheck,
   SlidersHorizontal,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
@@ -217,6 +220,14 @@ export function ProductManagementPage() {
   const canRejectAll = !selectedVendor && canReject && notHandedIn.length > 0;
   // After the drop-off a notice asks for it; before, the button waits in the header menu
   const showRejectNotice = canRejectAll && dropoffOver;
+  // After the bazaar: what is left goes back to the sellers, at night by the cron or here
+  // at once from the "…" menu (#305)
+  const leftovers = useMemo(
+    () => leftoversOf(products, (id) => paidVendorIds.has(id), event?.endDate, now),
+    [products, paidVendorIds, event?.endDate, now]
+  );
+  const canReturnLeftovers = !selectedVendor && can('return') && leftovers.length > 0;
+  const [returnLeftoversOpen, setReturnLeftoversOpen] = useState(false);
   // Organizer only, like helpers; sellers without an account belong to the bazaar anyway
   const canExclude =
     canLead &&
@@ -625,7 +636,7 @@ export function ProductManagementPage() {
             <QrCode className="h-5 w-5" />
           </Button>
           {/* Rarely needed before the drop-off ends: kept out of the way like the seller menu */}
-          {canRejectAll && !showRejectNotice && (
+          {((canRejectAll && !showRejectNotice) || canReturnLeftovers) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -638,12 +649,22 @@ export function ProductManagementPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="max-w-xs">
-                <DropdownMenuItem onSelect={() => setRejectScope('event')}>
-                  <PackageX /> {t('products.rejectNotHandedIn')}
-                  <span className="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">
-                    {notHandedIn.length}
-                  </span>
-                </DropdownMenuItem>
+                {canRejectAll && !showRejectNotice && (
+                  <DropdownMenuItem onSelect={() => setRejectScope('event')}>
+                    <PackageX /> {t('products.rejectNotHandedIn')}
+                    <span className="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">
+                      {notHandedIn.length}
+                    </span>
+                  </DropdownMenuItem>
+                )}
+                {canReturnLeftovers && (
+                  <DropdownMenuItem onSelect={() => setReturnLeftoversOpen(true)}>
+                    <RotateCcw /> {t('products.returnLeftovers')}
+                    <span className="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">
+                      {leftovers.length}
+                    </span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -1008,46 +1029,23 @@ export function ProductManagementPage() {
 
       {/* After the drop-off: turn down the rest at once */}
       {showRejectNotice && (
-        <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3 text-sm">
-            <PackageX className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-            <p>
-              {dropoffOver && dropoffEnd !== undefined && (
-                <span className="font-medium">
-                  {t('products.dropoffEnded', { time: formatDateTimeDE(dropoffEnd) })}{' '}
-                </span>
-              )}
-              <span className="text-muted-foreground">
-                {dropoffOver
-                  ? t('products.notHandedIn', { count: notHandedIn.length })
-                  : t('products.notHandedInYet', { count: notHandedIn.length })}
-              </span>
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            className="shrink-0 gap-2"
-            onClick={() => setRejectScope('event')}
-          >
-            <PackageX className="h-4 w-4" /> {t('products.rejectNotHandedIn')}
-          </Button>
-        </div>
-      )}
-
-      {/* After the bazaar: what is left goes back to the sellers (#305) */}
-      {event && products && !selectedVendor && (
-        <LeftoverNotices
-          eventId={eventId}
-          event={event}
-          products={products}
-          isVendorPaid={(id) => paidVendorIds.has(id)}
-          canReturn={can('return')}
-          canMessage={canLead}
-          undoEnabled={isUndoInventoryActionsEnabled}
-          now={now}
-          onShowLeftovers={() => updateParams({ tab: 'available', returned: null })}
-          onShowAutoReturned={() => updateParams({ tab: 'returned', returned: 'auto' })}
-        />
+        <ActionNotice
+          icon={PackageX}
+          title={
+            dropoffOver && dropoffEnd !== undefined
+              ? t('products.dropoffEnded', { time: formatDateTimeDE(dropoffEnd) })
+              : undefined
+          }
+          action={
+            <Button variant="outline" className="gap-2" onClick={() => setRejectScope('event')}>
+              <PackageX className="h-4 w-4" /> {t('products.rejectNotHandedIn')}
+            </Button>
+          }
+        >
+          {dropoffOver
+            ? t('products.notHandedIn', { count: notHandedIn.length })
+            : t('products.notHandedInYet', { count: notHandedIn.length })}
+        </ActionNotice>
       )}
 
       <ProductManagementList
@@ -1128,6 +1126,14 @@ export function ProductManagementPage() {
           {t('products.rejectMail', { count: rejectSellerCount })} {t('products.rejectUndoHint')}
         </p>
       </ConfirmDialog>
+
+      <ReturnLeftoversDialog
+        eventId={eventId}
+        leftovers={leftovers}
+        undoEnabled={isUndoInventoryActionsEnabled}
+        open={returnLeftoversOpen}
+        onOpenChange={setReturnLeftoversOpen}
+      />
 
       <HelperRoleDialog eventId={eventId} action={helperAction} onActionChange={setHelperAction} />
 
