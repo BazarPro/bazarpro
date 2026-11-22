@@ -212,16 +212,18 @@ pub async fn notify_user(
     area: Option<Area>,
     delay: Duration,
 ) -> AppResult<()> {
-    notify_user_at_event(ctx, user, content, area, None, delay).await
+    notify_user_at_event(ctx, user, content, area, None, None, delay).await
 }
 
 /// Like `notify_user`, with the marker belonging to one bazaar, so its page clears it.
+/// `reason` tags the marker, so the step that undoes it removes only its own.
 pub async fn notify_user_at_event(
     ctx: &mut Ctx,
     user: Uuid,
     content: impl Fn(T) -> Content,
     area: Option<Area>,
     event: Option<Uuid>,
+    reason: Option<&str>,
     delay: Duration,
 ) -> AppResult<()> {
     let Some(recipient) = recipient(ctx, user).await? else {
@@ -232,7 +234,7 @@ pub async fn notify_user_at_event(
         && !is_blocked(recipient.status.as_deref())
         && recipient.managed_by_event_id.is_none()
     {
-        add_notice(ctx, user, area, event).await?;
+        add_tagged_notice(ctx, user, area, event, reason).await?;
     }
     match prepare(user, &recipient, &content) {
         Some(mail) => {
@@ -320,12 +322,25 @@ pub async fn add_notice(
     area: Area,
     event: Option<Uuid>,
 ) -> sqlx::Result<()> {
+    add_tagged_notice(ctx, user, area, event, None).await
+}
+
+/// `add_notice` with a `reason`, for a marker that a later step takes back on its own.
+pub async fn add_tagged_notice(
+    ctx: &mut Ctx,
+    user: Uuid,
+    area: Area,
+    event: Option<Uuid>,
+    reason: Option<&str>,
+) -> sqlx::Result<()> {
     sqlx::query(
-        "INSERT INTO unread_notices (user_id, area, event_id) VALUES ($1, $2::notice_area, $3)",
+        "INSERT INTO unread_notices (user_id, area, event_id, reason)
+         VALUES ($1, $2::notice_area, $3, $4)",
     )
     .bind(user)
     .bind(area.as_str())
     .bind(event)
+    .bind(reason)
     .execute(ctx.conn())
     .await?;
     ctx.touch(Topic::User(user));

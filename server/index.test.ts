@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { BackendUnavailableError, type BackendQueryClient } from './backend.ts';
-import { createServer } from './index.ts';
+import { accepts, createServer } from './index.ts';
 
 const SHELL = `<!doctype html><html><head><meta name="description" content="Default" /><title>BazarPro</title></head><body><div id="root"></div></body></html>`;
 /** The shell as served: with the (empty) runtime config script */
@@ -143,6 +143,22 @@ describe('static files', () => {
     const plain = await load('identity');
     expect(plain.headers.get('content-encoding')).toBeNull();
     expect(await plain.text()).toBe('console.log("app");');
+    // q=0 refuses an encoding the header names
+    const noBrotli = await load('gzip, br;q=0');
+    expect(noBrotli.headers.get('content-encoding')).toBe('gzip');
+    expect((await load('br;q=0, gzip;q=0')).headers.get('content-encoding')).toBeNull();
+  });
+
+  it('reads q-values and the wildcard of Accept-Encoding', () => {
+    expect(accepts('gzip, deflate, br', 'br')).toBe(true);
+    expect(accepts('gzip, br;q=0', 'br')).toBe(false);
+    expect(accepts('gzip;q=0.5', 'gzip')).toBe(true);
+    expect(accepts('GZIP; Q=0', 'gzip')).toBe(false);
+    expect(accepts('*', 'br')).toBe(true);
+    expect(accepts('*;q=0, gzip', 'br')).toBe(false);
+    expect(accepts('br;q=0, *', 'br')).toBe(false);
+    expect(accepts('brotli', 'br')).toBe(false);
+    expect(accepts(undefined, 'gzip')).toBe(false);
   });
 
   it('serves hashed assets as immutable and 404s missing ones', async () => {

@@ -1285,6 +1285,9 @@ async fn reject_not_handed_in(ctx: &mut Ctx, args: RejectArgs) -> AppResult<Reje
     })
 }
 
+/// Tags the marker of a rejection mail; broadcasts share its area and bazaar.
+const REJECTION_NOTICE: &str = "rejection";
+
 /// One mail per seller and turn, naming the items; the marker belongs to the bazaar's
 /// page, which lists them too.
 async fn notify_rejected(
@@ -1324,6 +1327,7 @@ async fn notify_rejected(
         },
         Some(Area::Messages),
         Some(event.id),
+        Some(REJECTION_NOTICE),
         chrono::Duration::zero(),
     )
     .await?;
@@ -1391,10 +1395,11 @@ async fn notify_rejection_undone(ctx: &mut Ctx, event: &Event, product: &Product
     if !still_rejected {
         sqlx::query(
             "DELETE FROM unread_notices
-             WHERE user_id = $1 AND area = 'messages' AND event_id = $2",
+             WHERE user_id = $1 AND area = 'messages' AND event_id = $2 AND reason = $3",
         )
         .bind(vendor)
         .bind(event.id)
+        .bind(REJECTION_NOTICE)
         .execute(ctx.conn())
         .await?;
         ctx.touch(Topic::User(vendor));

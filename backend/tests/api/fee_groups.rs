@@ -611,6 +611,20 @@ async fn after_the_first_seller_groups_only_get_cheaper(db: PgPool) {
     let new = json!({ "id": "kids", "label": "Schüler", "commission": 0,
                       "assignment": "selfDeclared" });
     assert_eq!(save(json!([cheaper, new])).await["value"], Value::Null);
+    // A new helper group applies to the registered helpers at once: not dearer than the
+    // bazaar's 10 %
+    let helpers = |commission: f64| {
+        json!({ "id": "helpers", "label": "Helfer", "commission": commission,
+                "assignment": "helpers" })
+    };
+    assert_eq!(
+        save(json!([members(3.0), helpers(20.0)])).await["code"],
+        "event.helperGroupDearer"
+    );
+    assert_eq!(
+        save(json!([members(3.0), helpers(0.0)])).await["value"],
+        Value::Null
+    );
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]

@@ -41,6 +41,7 @@
     "inUse": "This category is still in use and cannot be deleted.",
     "parentNotMain": "A sub-category can only be placed under a main category.",
     "hasSubcategories": "This category has sub-categories of its own and therefore cannot become a sub-category.",
+    "parentHasItems": "This category holds items and therefore cannot become a main category.",
     "unknownField": "This extra field does not exist.",
     "oneSize": "Please choose at most one kind of size.",
     "lastOne": "The last category cannot be deleted."
@@ -98,6 +99,7 @@
     "feeGroupCommission": "The commission of a fee group is between 0 and 100 %.",
     "feeGroupProofHint": "The proof hint may be at most 200 characters long.",
     "feeGroupsOnlyLower": "Since sellers have registered, fee groups can only get cheaper. They can no longer be removed or assigned differently.",
+    "helperGroupDearer": "Since sellers have registered, a new group for helpers may not cost more than the bazaar’s fees: it applies to all helpers at once.",
     "postalCodeInvalid": "“{{code}}” is neither a postal code nor the start of one. Please use digits only, at most five.",
     "postalCodesTooMany": "Please choose at most {{max}} postal code areas."
   },

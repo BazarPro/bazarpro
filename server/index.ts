@@ -78,8 +78,24 @@ function contentTypeFor(filePath: string): string {
   return CONTENT_TYPES[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream';
 }
 
+/**
+ * Whether the request's Accept-Encoding takes `encoding`: named with a q-value above 0,
+ * or covered by `*`. "br;q=0" refuses it explicitly.
+ */
+export function accepts(header: string | string[] | undefined, encoding: string): boolean {
+  let wildcard = false;
+  for (const part of String(header ?? '').split(',')) {
+    const [name = '', ...params] = part.split(';').map((piece) => piece.trim().toLowerCase());
+    const q = params.find((param) => param.startsWith('q='));
+    const allowed = q === undefined || Number(q.slice(2)) > 0;
+    if (name === encoding) return allowed;
+    if (name === '*') wildcard = allowed;
+  }
+  return wildcard;
+}
+
 function acceptsGzip(req: IncomingMessage): boolean {
-  return /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''));
+  return accepts(req.headers['accept-encoding'], 'gzip');
 }
 
 function send(
@@ -111,9 +127,8 @@ type Encoding = 'br' | 'gzip';
 
 /** Brotli where the browser takes it: the main script is an eighth smaller than with gzip. */
 function assetEncoding(req: IncomingMessage): Encoding | null {
-  const accepted = String(req.headers['accept-encoding'] ?? '');
-  if (/\bbr\b/.test(accepted)) return 'br';
-  return /\bgzip\b/.test(accepted) ? 'gzip' : null;
+  if (accepts(req.headers['accept-encoding'], 'br')) return 'br';
+  return acceptsGzip(req) ? 'gzip' : null;
 }
 
 /**
