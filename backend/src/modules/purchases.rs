@@ -1011,8 +1011,11 @@ struct OfflineSale {
     sold_at: DateTime<Utc>,
     items: Vec<OfflineItem>,
     buyer_email: Option<String>,
-    /// How the desk sold: it took only the commission. The money changed hands that way,
-    /// so it counts whatever the event says by now. Absent (older apps): as the event says
+    /// How the desk sold: true, it took only the commission. False counts whatever the
+    /// event says by now: the money changed hands that way and is in the till. True only
+    /// where the event has direct sales, else it is a conflict for the team: no desk may
+    /// book a sale whose seller then gets nothing at a bazaar without direct sales.
+    /// Absent (older apps): as the event says
     direct_sale: Option<bool>,
 }
 
@@ -1120,6 +1123,12 @@ async fn sync_offline_sales(ctx: &mut Ctx, args: SyncArgs) -> AppResult<Vec<Sync
         let mut conflicts = Vec::new();
         for request in &sale.items {
             let checked = match sellable(ctx, event_id, request.event_product_id.0).await {
+                Ok(item)
+                    if sale.direct_sale == Some(true)
+                        && !item.event.resolved_features().direct_sale =>
+                {
+                    Err("checkout.directSaleMismatch")
+                }
                 Ok(item) => match offline_price(ctx, &item, request).await? {
                     Some(price) => Ok((item, price)),
                     None => Err("checkout.invalidPrice"),

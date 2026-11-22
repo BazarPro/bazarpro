@@ -100,12 +100,12 @@ export function EventRegistrationDialog({
   const seller = admission !== 'team' && admission !== 'helperInvitation';
   // The team needs no access code
   const needsCode = hasAccessCode && !team;
-  // A bazaar for its region (#304): an invitation, the team and the access code pass it
+  // A bazaar for its region (#304): an invitation and the team pass it, not the access code
+  // (everyone needs that one once it is set)
   const region = postalRegion(conditions.features);
   const outsideRegion =
     !!region &&
     !admission &&
-    !hasAccessCode &&
     !!user &&
     !hasMissingProfileData &&
     !admitsPostalCode(region, user.zipCode, user.country);

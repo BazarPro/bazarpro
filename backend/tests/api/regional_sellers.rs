@@ -184,7 +184,7 @@ async fn only_sellers_from_the_region_join(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
-async fn invitations_codes_and_the_team_pass_the_region(db: PgPool) {
+async fn invitations_and_the_team_pass_the_region(db: PgPool) {
     let b = Bazaar::new(db, region()).await;
     // An invitation by mail is the organizer's exception
     let (guest, guest_session) = b.person("Gast", Some("10115"), "DE").await;
@@ -216,18 +216,21 @@ async fn invitations_codes_and_the_team_pass_the_region(db: PgPool) {
         StatusCode::OK
     );
 
-    // Who has the access code got it from the organizer
+    // Not the access code: everyone needs it once it is set, so it is no exception
     sqlx::query("UPDATE events SET access_code = 'RAD' WHERE id = $1")
         .bind(b.event)
         .execute(&b.db)
         .await
         .unwrap();
     let (_, berlin) = b.person("Berlin", Some("10117"), "DE").await;
-    let joined = b.join(&berlin, json!({ "accessCode": "RAD" })).await;
+    let refused = b.join(&berlin, json!({ "accessCode": "RAD" })).await;
+    assert_eq!(refused.body["code"], "join.postalCode", "{}", refused.body);
+    let (_, ulm) = b.person("Ulm", Some("89073"), "DE").await;
+    let joined = b.join(&ulm, json!({ "accessCode": "RAD" })).await;
     assert_eq!(joined.status, StatusCode::OK, "{}", joined.body);
 
     // The region did not let them in, so their postal code is not fixed either
-    for session in [&guest_session, &helper_session, &berlin] {
+    for session in [&guest_session, &helper_session] {
         let fixed = b
             .app
             .query("users.isMyPostalCodeFixed", json!({}), Some(session))

@@ -81,15 +81,20 @@ export function compareFees(a: GroupFees, b: GroupFees): number {
   );
 }
 
-/** The group whose fees apply: the chosen one and, for helpers, the helper groups; the cheapest. */
+/**
+ * The group whose fees apply: the chosen one and, for helpers, the helper groups; the
+ * cheapest. None when the bazaar's own fees are cheaper still: a group never costs more.
+ */
 export function appliedGroup(
   event: FeesEvent,
   chosen: string | undefined,
   helper: boolean
 ): FeeGroup | undefined {
-  return (event.features?.feeGroups ?? [])
+  const cheapest = (event.features?.feeGroups ?? [])
     .filter((group) => group.id === chosen || (helper && group.assignment === 'helpers'))
     .sort((a, b) => compareFees(groupFees(event, a), groupFees(event, b)))[0];
+  if (!cheapest) return undefined;
+  return compareFees(eventFees(event), groupFees(event, cheapest)) < 0 ? undefined : cheapest;
 }
 
 /** Helpers are in their group by role: every helper group after the first is one too many. */

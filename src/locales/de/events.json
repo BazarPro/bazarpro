@@ -58,7 +58,7 @@
     "regionOnly": "Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahl {{codes}}.",
     "regionOnlyMap": "Dieser Basar ist nur für Verkäufer aus seiner Region, siehe Karte.",
     "regionYours": "Laut deinem Profil kommst du aus {{code}} ({{country}}).",
-    "regionHint": "Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung oder dem Zugangscode.",
+    "regionHint": "Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung.",
     "regionWarningTitle": "Deine Postleitzahl {{code}} gilt",
     "regionWarning": "Nach der Anmeldung kannst du sie bis zum Ende des Basars nicht mehr ändern. Bei der Abgabe wird dein Ausweis kontrolliert, gib also nur deine echte Postleitzahl an."
   },
