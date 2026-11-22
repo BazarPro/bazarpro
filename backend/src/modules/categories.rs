@@ -163,7 +163,8 @@ struct UpdateArgs {
 }
 
 /// Categories have one level of sub-categories, so lists stay short and grouped: the parent
-/// must be a main category, and a category with sub-categories cannot become one itself.
+/// must be a main category without items of its own, and a category with sub-categories
+/// cannot become one itself.
 async fn check_parent(ctx: &mut Ctx, category: Option<Uuid>, parent: Uuid) -> AppResult<()> {
     let parent_of_parent: Option<Option<Uuid>> =
         sqlx::query_scalar("SELECT parent_id FROM categories WHERE id = $1")
@@ -175,6 +176,15 @@ async fn check_parent(ctx: &mut Ctx, category: Option<Uuid>, parent: Uuid) -> Ap
     };
     if Some(parent) == category || parent_of_parent.is_some() {
         return Err(AppError::bad_request("category.parentNotMain"));
+    }
+    // Items only go into categories without sub-categories: one with items stays as it is
+    let parent_has_items: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM products WHERE category_id = $1)")
+            .bind(parent)
+            .fetch_one(ctx.conn())
+            .await?;
+    if parent_has_items {
+        return Err(AppError::bad_request("category.parentHasItems"));
     }
     if let Some(category) = category {
         let has_children: bool =

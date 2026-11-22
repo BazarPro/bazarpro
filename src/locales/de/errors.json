@@ -41,6 +41,7 @@
     "inUse": "Diese Kategorie wird noch verwendet und kann nicht gelöscht werden.",
     "parentNotMain": "Eine Unterkategorie kann nur unter einer Hauptkategorie stehen.",
     "hasSubcategories": "Diese Kategorie hat selbst Unterkategorien und kann deshalb keine Unterkategorie werden.",
+    "parentHasItems": "Diese Kategorie enthält Artikel und kann deshalb keine Hauptkategorie werden.",
     "unknownField": "Dieses Zusatzfeld gibt es nicht.",
     "oneSize": "Bitte wähle höchstens eine Art von Größe.",
     "lastOne": "Die letzte Kategorie kann nicht gelöscht werden."
@@ -98,6 +99,7 @@
     "feeGroupCommission": "Die Provision einer Gebührengruppe liegt zwischen 0 und 100 %.",
     "feeGroupProofHint": "Der Hinweis zum Nachweis darf höchstens 200 Zeichen lang sein.",
     "feeGroupsOnlyLower": "Seit sich Verkäufer angemeldet haben, können Gebührengruppen nur noch günstiger werden. Entfernen oder anders zuordnen geht nicht mehr.",
+    "helperGroupDearer": "Seit sich Verkäufer angemeldet haben, darf eine neue Gruppe für Helfer nicht mehr kosten als die Gebühren des Basars: Sie gilt sofort für alle Helfer.",
     "postalCodeInvalid": "„{{code}}“ ist keine Postleitzahl und kein Anfang davon. Bitte nur Ziffern, höchstens fünf.",
     "postalCodesTooMany": "Bitte wähle höchstens {{max}} Postleitzahlbereiche."
   },

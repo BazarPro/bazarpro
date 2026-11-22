@@ -5,7 +5,7 @@ use crate::common;
 use axum::http::StatusCode;
 use bazarpro_backend::import::uuid_for;
 use bazarpro_backend::rpc;
-use common::{TestApp, disable_starter_products};
+use common::{TestApp, disable_starter_products, fixtures};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -482,6 +482,21 @@ async fn admins_move_categories_one_level_deep(db: PgPool) {
     assert_eq!(
         update(&bikes, "Fahrräder", Some(&trailers)).await.body["code"],
         "category.hasSubcategories"
+    );
+    // A category holding items stays without sub-categories
+    let seller = fixtures::user(&db, "Seller").await;
+    let item = fixtures::product(&db, seller, "Anhänger", 80.0).await;
+    sqlx::query("UPDATE products SET category_id = $2 WHERE id = $1")
+        .bind(item)
+        .bind(uuid::Uuid::parse_str(&trailers).unwrap())
+        .execute(&db)
+        .await
+        .unwrap();
+    assert_eq!(
+        create(json!({ "label": "Lastenanhänger", "parentCategory": trailers }))
+            .await
+            .body["code"],
+        "category.parentHasItems"
     );
     let gone = uuid::Uuid::new_v4().to_string();
     assert_eq!(

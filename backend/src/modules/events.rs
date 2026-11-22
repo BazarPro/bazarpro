@@ -1359,13 +1359,37 @@ fn time_arg(ms: f64, field: &str) -> AppResult<DateTime<Utc>> {
 }
 
 /// Fee groups once sellers registered: none may go and none may get dearer, like the fees
-/// of the bazaar; while it runs they stay as they are. Name and hint may change.
+/// of the bazaar; while it runs they stay as they are. Name and hint may change. A new
+/// helper group applies to the registered helpers at once, so it may not ask more of them
+/// than the bazaar (`commission` is the bazaar's new one).
 fn check_fee_groups_lock(
     old: &features::EventFeatures,
     new: &features::EventFeatures,
+    commission: Decimal,
     running: bool,
 ) -> AppResult<()> {
     let infinite = |value: Option<Decimal>| value.unwrap_or(Decimal::MAX);
+    let added_helper_groups = new.fee_groups.iter().filter(|group| {
+        group.assignment == features::FeeGroupAssignment::Helpers
+            && !old.fee_groups.iter().any(|old| old.id == group.id)
+    });
+    for group in added_helper_groups {
+        if group.commission > commission
+            || group.intake_fee.unwrap_or_default() > new.intake_fee.unwrap_or_default()
+            || infinite(group.max_fees_per_seller.or(new.max_fees_per_seller))
+                > infinite(new.max_fees_per_seller)
+        {
+            return Err(AppError::bad_request("event.helperGroupDearer"));
+        }
+        if group
+            .max_items_per_seller
+            .or(new.max_items_per_seller)
+            .unwrap_or(u32::MAX)
+            < new.max_items_per_seller.unwrap_or(u32::MAX)
+        {
+            return Err(AppError::bad_request("event.limitOnlyHigher"));
+        }
+    }
     for group in &old.fee_groups {
         let Some(next) = new.fee_groups.iter().find(|next| next.id == group.id) else {
             return Err(AppError::bad_request(if running {
@@ -1705,6 +1729,7 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         check_fee_groups_lock(
             &event.resolved_features(),
             &features::resolve(Some(&features)),
+            commission,
             running,
         )?;
     }

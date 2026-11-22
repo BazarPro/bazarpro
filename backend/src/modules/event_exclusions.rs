@@ -230,6 +230,7 @@ async fn exclude(ctx: &mut Ctx, args: ExcludeArgs) -> AppResult<Success> {
         },
         Some(Area::Participation),
         Some(event.id),
+        None,
         Duration::zero(),
     )
     .await?;

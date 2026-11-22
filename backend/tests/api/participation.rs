@@ -1405,8 +1405,15 @@ async fn a_rejection_taken_back_is_told_and_not_after_the_payout(db: PgPool) {
     .execute(&b.db)
     .await
     .unwrap();
+    // An organizer message at the same bazaar, not read yet
+    sqlx::query("INSERT INTO unread_notices (user_id, area, event_id) VALUES ($1, 'messages', $2)")
+        .bind(b.seller)
+        .bind(b.event)
+        .execute(&b.db)
+        .await
+        .unwrap();
     let reply = undo(other).await;
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
-    // Nothing rejected any more: the marker goes
-    assert_eq!(notices().await, 0);
+    // Nothing rejected any more: the marker of the rejection goes, the message's stays
+    assert_eq!(notices().await, 1);
 }
