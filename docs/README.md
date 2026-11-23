@@ -1,7 +1,7 @@
 # Documentation for developers and operators
 
 Guides for organizers, sellers and people who self-host BazarPro are on
-[docs.bazarpro.de](https://docs.bazarpro.de) (German, [source](https://github.com/BazarPro/docs)).
+[docs.bazarpro.de](https://docs.bazarpro.de/en/) (English and German, [source](https://github.com/BazarPro/docs)).
 This folder is about the code and its operation:
 
 | File                                         | Contents                                                                  |

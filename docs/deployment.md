@@ -2,7 +2,7 @@
 
 Self-hosting a single instance with `docker-compose.selfhost.yml` is described in the
 [README](../README.md#self-hosting) and, step by step, on
-[docs.bazarpro.de/selbst-hosten](https://docs.bazarpro.de/selbst-hosten/). This page is about
+[docs.bazarpro.de/en/selbst-hosten](https://docs.bazarpro.de/en/selbst-hosten/). This page is about
 bazarpro.de itself: production, review apps and the demo instance, all deployed by the
 [pipeline](./pipeline.md) with Ansible.
 

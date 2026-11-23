@@ -12,7 +12,7 @@ Sellers list their items at home and print QR labels. At the bazaar every phone 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Docs](https://img.shields.io/badge/Docs-docs.bazarpro.de-1d3fe0.svg)](https://docs.bazarpro.de)
 
-[**Try the demo**](https://demo.bazarpro.de) · [Website](https://bazarpro.de) · [Guides (German)](https://docs.bazarpro.de) · [Self-hosting](#self-hosting)
+[**Try the demo**](https://demo.bazarpro.de) · [Website](https://bazarpro.de) · [Guides](https://docs.bazarpro.de/en/) · [Self-hosting](#self-hosting)
 
 <img src="docs/screenshots/landing.jpg" alt="BazarPro landing page" width="860" />
 
@@ -63,7 +63,7 @@ curl -o .env https://raw.githubusercontent.com/BazarPro/bazarpro/main/.env.selfh
 docker compose -f docker-compose.selfhost.yml up -d
 ```
 
-The stack contains Traefik (HTTPS via Let's Encrypt), PostgreSQL, the backend and the web app, all under one domain. The account in `ADMIN_EMAIL` becomes administrator once it has signed up. Step-by-step guide (German): [docs.bazarpro.de/selbst-hosten](https://docs.bazarpro.de/selbst-hosten/).
+The stack contains Traefik (HTTPS via Let's Encrypt), PostgreSQL, the backend and the web app, all under one domain. The account in `ADMIN_EMAIL` becomes administrator once it has signed up. Step-by-step guide: [English](https://docs.bazarpro.de/en/selbst-hosten/) · [Deutsch](https://docs.bazarpro.de/selbst-hosten/).
 
 The iOS and Android apps can switch to a self-hosted server, see [docs/mobile-app.md](./docs/mobile-app.md).
 
@@ -83,7 +83,7 @@ More in [docs/](./docs/README.md): [development and tests](./docs/development.md
 
 ## Contributing
 
-Issues and pull requests are welcome, see [CONTRIBUTING.md](./CONTRIBUTING.md). Code, commits and issues are in English; the app and the user guides are German and English. Please report security issues privately as described in [SECURITY.md](./SECURITY.md).
+Issues and pull requests are welcome, see [CONTRIBUTING.md](./CONTRIBUTING.md). Code, commits and issues are in English; the app and the user guides are in German and English. Please report security issues privately as described in [SECURITY.md](./SECURITY.md).
 
 ## License
 

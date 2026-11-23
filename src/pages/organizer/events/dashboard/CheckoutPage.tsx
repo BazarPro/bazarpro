@@ -30,6 +30,7 @@ import { QRCodeScanner } from '../../../../components/ui/QRCodeScanner';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
 import { cn, formatPriceDE } from '../../../../lib/utils';
 import { Trans, useTranslation } from 'react-i18next';
+import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useEventAccess } from '../../../../hooks/useEventAccess';
 import { PageSkeleton } from '../../../../components/ui/loading';
 import {
@@ -695,7 +696,9 @@ function CartLine({
       feeCapLeft: item.feeCapLeft,
       commissionPercent: item.commissionPercent,
       invoice: {
-        description: item.attributes.map((a) => `${a.label}: ${a.value}`).join(', '),
+        description: item.attributes
+          .map((a) => `${categoryFieldText(a, 'label') ?? a.label}: ${a.value}`)
+          .join(', '),
         image: item.image ?? undefined,
         price: item.price,
         discountPercent: item.discountPercent ?? undefined,
@@ -776,7 +779,7 @@ function CartLine({
               <ul className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                 {item.attributes.map((attribute) => (
                   <li key={attribute.label} className="[overflow-wrap:anywhere]">
-                    {attribute.label}: {attribute.value}
+                    {categoryFieldText(attribute, 'label') ?? attribute.label}: {attribute.value}
                   </li>
                 ))}
               </ul>

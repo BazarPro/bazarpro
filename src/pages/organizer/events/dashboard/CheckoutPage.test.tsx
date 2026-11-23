@@ -9,6 +9,7 @@ import { ApiError } from '../../../../lib/api/client';
 import { productIdFromCode } from '../../../../lib/checkout';
 import { OFFLINE_FLAG_KEY, resetOfflineCheckout } from '../../../../lib/offlineCheckout';
 import { CheckoutPage } from './CheckoutPage';
+import i18n from '../../../../i18n';
 
 vi.mock('../../../../lib/api/react', () => ({
   useQuery: vi.fn(),
@@ -51,7 +52,7 @@ const ITEMS: Record<string, object> = {
     listPrice: 9,
     sellerPaidOut: false,
     attributes: [
-      { label: 'Größe', value: '104' },
+      { label: 'Größe', labelEn: 'Size', value: '104' },
       { label: 'Farbe', value: 'Blau' },
     ],
     internalNote: 'Haken 12',
@@ -185,6 +186,20 @@ describe('CheckoutPage', () => {
     expect(within(line).getByText('Größe: 104')).toBeInTheDocument();
     expect(within(line).getByText('Farbe: Blau')).toBeInTheDocument();
     expect(within(line).getByText('Haken 12')).toBeInTheDocument();
+  });
+
+  it('names the details of an item in the language of the app', async () => {
+    await i18n.changeLanguage('en');
+    try {
+      renderPage();
+      scan('jack');
+      const line = screen.getByTestId('checkout-line');
+      expect(within(line).getByText('Size: 104')).toBeInTheDocument();
+      // Without an English label the German one stays
+      expect(within(line).getByText('Farbe: Blau')).toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage('de');
+    }
   });
 
   it('adds scanned items once, sums the current prices and sells them together', async () => {
