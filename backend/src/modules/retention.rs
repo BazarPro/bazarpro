@@ -12,9 +12,12 @@
 //!   export stay.
 //! - Then sales, sellers, roles and the bazaar itself are deleted.
 //!
+//! Before all that, the night after the bazaar and its pickup, the items left over go back
+//! to their sellers and sellers without money either way are settled (#305).
+//!
 //! Besides: deleted accounts are anonymized (#168), walk-in sellers lose their contact,
-//! contact messages, reports, the moderation log, the team's offline actions (after the
-//! settlement) and expired sign-ins are cleaned up.
+//! contact messages, reports, the moderation log, the team's offline actions and the
+//! exclusions of sellers (after the settlement) and expired sign-ins are cleaned up.
 //!
 //! Every step works in batches, each in its own transaction, and is idempotent. When a
 //! step had a full batch, the job schedules itself again right away.
@@ -27,7 +30,9 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 use super::account_deletion::{self, ANONYMIZE_STEP};
-use super::docs::Event;
+use super::docs::{self, Event};
+use super::event_products::return_leftover_items;
+use super::event_seller::settle_sellers_without_money;
 use super::sales::SETTLEMENT_DAYS;
 use crate::AppState;
 use crate::config::Retention;
@@ -40,8 +45,9 @@ pub const RUN_JOB: &str = "retention.run";
 const DEFAULT_BATCH_SIZE: i64 = 20;
 
 /// The steps of the cron, in this order.
-const STEPS: [&str; 7] = [
+const STEPS: [&str; 8] = [
     ANONYMIZE_STEP,
+    "retention.returnLeftovers",
     "retention.purgeSoldItems",
     "retention.purgeEventContent",
     "retention.reduceSellerRecords",
@@ -51,6 +57,7 @@ const STEPS: [&str; 7] = [
 ];
 
 pub fn register(registry: &mut Registry) {
+    register!(registry, InternalMutation "retention.returnLeftovers" => return_leftovers);
     register!(registry, InternalMutation "retention.purgeSoldItems" => purge_sold_items);
     register!(registry, InternalMutation "retention.purgeEventContent" => purge_event_content);
     register!(registry, InternalMutation "retention.reduceSellerRecords" => reduce_seller_records);
@@ -102,6 +109,36 @@ async fn delete_files(ctx: &mut Ctx, files: Vec<Uuid>) -> AppResult<()> {
         crate::storage::delete_later(ctx.conn(), file).await?;
     }
     Ok(())
+}
+
+/// The night after the bazaar and its pickup, the items still available go back to their
+/// sellers, marked as returned by the cron: the team clears up with whom they are (#305).
+/// Sellers without money either way are settled; everyone else stays open in the cash
+/// summary. Once per bazaar, within the settlement.
+async fn return_leftovers(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
+    let events: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT id FROM events
+         WHERE leftovers_returned_at IS NULL
+           AND GREATEST(end_date, pickup_end) < now()
+           AND end_date > now() - make_interval(days => $1)
+         ORDER BY end_date LIMIT $2",
+    )
+    .bind(SETTLEMENT_DAYS as i32)
+    .bind(args.size())
+    .fetch_all(ctx.conn())
+    .await?;
+    for &id in &events {
+        return_leftover_items(ctx, id, None, true).await?;
+        if let Some(event) = docs::event(ctx.conn(), id).await? {
+            settle_sellers_without_money(ctx, &event).await?;
+        }
+        sqlx::query("UPDATE events SET leftovers_returned_at = now() WHERE id = $1")
+            .bind(id)
+            .execute(ctx.conn())
+            .await?;
+        ctx.touch(Topic::Event(id));
+    }
+    Ok(Done::of(events.len(), args.size()))
 }
 
 /// Settlement over: sold items go with their images, questions and offers; the sales keep
@@ -165,18 +202,21 @@ async fn purge_sold_items(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
     Ok(Done::of(events.len(), args.size()))
 }
 
+/// An event with its cover, map and picture of the region
+type EventFiles = (Uuid, Option<Uuid>, Option<Uuid>, Option<Uuid>);
+
 /// Public archive over: the bazaar keeps title, dates, place and fees for the settlement;
-/// cover, map, description, logistics note, messages, promo texts, storage locations and
+/// cover, map, picture of the region, description, logistics note, messages, promo texts, storage locations and
 /// internal notes go. From now on only the team sees it (`is_archived`).
 async fn purge_event_content(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
-    let events: Vec<(Uuid, Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
-        "UPDATE events SET cover_image_id = NULL, map_image_id = NULL, description = '',
-           logistics_note = NULL, content_purged_at = now()
-         FROM (SELECT id, cover_image_id, map_image_id FROM events
+    let events: Vec<EventFiles> = sqlx::query_as(
+        "UPDATE events SET cover_image_id = NULL, map_image_id = NULL, region_map_image_id = NULL,
+           description = '', logistics_note = NULL, content_purged_at = now()
+         FROM (SELECT id, cover_image_id, map_image_id, region_map_image_id FROM events
                WHERE content_purged_at IS NULL AND end_date < now() - make_interval(days => $1)
                ORDER BY end_date LIMIT $2 FOR UPDATE) old
          WHERE events.id = old.id
-         RETURNING old.id, old.cover_image_id, old.map_image_id",
+         RETURNING old.id, old.cover_image_id, old.map_image_id, old.region_map_image_id",
     )
     .bind(ctx.state.config.retention.event_public_days)
     .bind(args.size())
@@ -202,7 +242,7 @@ async fn purge_event_content(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> 
         .await?;
     let files = events
         .iter()
-        .flat_map(|(_, cover, map)| [*cover, *map])
+        .flat_map(|(_, cover, map, region)| [*cover, *map, *region])
         .flatten()
         .collect();
     delete_files(ctx, files).await?;
@@ -280,16 +320,15 @@ async fn clear_walk_in_contacts(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Don
 /// The retention period of the books is over (§ 147 AO): sales, sellers, roles and the
 /// bazaar go. Its walk-in sellers are anonymized; items the sellers got back stay theirs.
 async fn delete_expired_events(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done> {
-    let events: Vec<(Uuid, Option<Uuid>, Option<Uuid>)> =
-        sqlx::query_as(sqlx::AssertSqlSafe(format!(
-            "SELECT e.id, e.cover_image_id, e.map_image_id FROM events e
+    let events: Vec<EventFiles> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+        "SELECT e.id, e.cover_image_id, e.map_image_id, e.region_map_image_id FROM events e
              WHERE {YEARS_AFTER_ITS_YEAR} ORDER BY e.end_date LIMIT $2"
-        )))
-        .bind(ctx.state.config.retention.records_years)
-        .bind(args.size())
-        .fetch_all(ctx.conn())
-        .await?;
-    for &(event, cover, map) in &events {
+    )))
+    .bind(ctx.state.config.retention.records_years)
+    .bind(args.size())
+    .fetch_all(ctx.conn())
+    .await?;
+    for &(event, cover, map, region) in &events {
         let walk_ins: Vec<Uuid> =
             sqlx::query_scalar("SELECT id FROM users WHERE managed_by_event_id = $1")
                 .bind(event)
@@ -307,7 +346,7 @@ async fn delete_expired_events(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done
         for user in walk_ins {
             account_deletion::anonymize(ctx, user).await?;
         }
-        delete_files(ctx, cover.into_iter().chain(map).collect()).await?;
+        delete_files(ctx, cover.into_iter().chain(map).chain(region).collect()).await?;
         ctx.touch(Topic::Event(event));
     }
     if !events.is_empty() {
@@ -320,7 +359,7 @@ async fn delete_expired_events(ctx: &mut Ctx, args: BatchArgs) -> AppResult<Done
 /// log, banned addresses, expired sessions and codes, jobs that gave up.
 async fn clean_up_old_data(ctx: &mut Ctx, _: BatchArgs) -> AppResult<Done> {
     let retention = ctx.state.config.retention.clone();
-    let statements: [(&str, Option<i32>); 12] = [
+    let statements: [(&str, Option<i32>); 13] = [
         (
             super::event_invitations::CLEAN_UP_SQL,
             Some(super::event_invitations::CLOSED_DAYS),
@@ -344,6 +383,12 @@ async fn clean_up_old_data(ctx: &mut Ctx, _: BatchArgs) -> AppResult<Done> {
         (
             "DELETE FROM banned_identities WHERE expires_at < now()",
             None,
+        ),
+        // Exclusions (with the reason told to the seller) matter until the settlement
+        (
+            "DELETE FROM event_exclusions x USING events e
+             WHERE e.id = x.event_id AND e.end_date < now() - make_interval(days => $1)",
+            Some(SETTLEMENT_DAYS as i32),
         ),
         // Offline actions of the team (item titles, notes) are settled with the bazaar
         (

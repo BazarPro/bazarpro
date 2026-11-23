@@ -33,6 +33,10 @@
     "returned": {
       "title": "Zurückgegeben",
       "description": "Der Artikel wurde nicht verkauft und dem Verkäufer ausgehändigt."
+    },
+    "rejected": {
+      "title": "Abgelehnt",
+      "description": "Der Artikel wurde nicht rechtzeitig abgegeben und deshalb abgelehnt. Er wird bei diesem Basar nicht angeboten."
     }
   },
   "visibility": {
@@ -60,45 +64,13 @@
     }
   },
   "categoryFields": {
-    "frameNumber": {
-      "label": "Rahmennummer",
-      "placeholder": "z. B. WBK123456",
-      "hint": "Bei Rädern ab ca. 500 € dringend empfohlen."
-    },
-    "frameSize": {
-      "label": "Rahmengröße",
-      "placeholder": "z. B. 52 cm oder M"
-    },
-    "wheelSize": {
-      "label": "Laufradgröße",
-      "placeholder": "z. B. 28 Zoll"
-    },
-    "bikeBrand": {
-      "label": "Marke",
-      "placeholder": "z. B. Cube"
-    },
-    "clothingSize": {
-      "label": "Größe",
-      "placeholder": "z. B. M oder 128"
-    },
-    "shoeSize": {
-      "label": "Größe (EU)",
-      "placeholder": "z. B. 38"
-    },
-    "sportSize": {
-      "label": "Größe / Länge",
-      "placeholder": "z. B. 160 cm"
-    },
-    "brand": {
-      "label": "Marke"
-    },
-    "model": {
-      "label": "Modell"
-    }
+    "notFound": "Nicht gefunden",
+    "notFoundValue": "nicht gefunden"
   },
   "service": {
     "Parkplatz": "Parkplatz",
     "Skiservice": "Skiservice",
+    "Fahrradcodierung": "Fahrradcodierung",
     "Gastronomie": "Gastronomie",
     "Imbiss": "Imbiss",
     "Getränke": "Getränke"

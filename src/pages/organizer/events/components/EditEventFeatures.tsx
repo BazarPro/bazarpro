@@ -1,5 +1,6 @@
 import { FormSection, FORM_ROWS } from '../../../../components/ui/form-section';
 import { NativeSelect } from '../../../../components/ui/native-select';
+import { EVENT_TYPES } from '../../../../lib/eventTypes';
 import { FieldError } from '../../../../components/ui/field-error';
 import type { ReactNode } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
@@ -9,10 +10,29 @@ import { Label } from '../../../../components/ui/label';
 import { useQuery } from '../../../../lib/api/react';
 import { api } from '../../../../lib/api/functions';
 import { MAX_DISCOUNT_PERCENT } from '../../../../shared/eventFeatures';
-import { getCategoryFields, REQUIRABLE_FIELDS } from '../../../../shared/categoryFields';
+import { getCategoryFields } from '../../../../shared/categoryFields';
+import { expandCategories } from '../../../../shared/categoryTree';
+import { useRequirableFields } from '../../../../hooks/useCategoryFields';
 import { feeLockHint, type FeeLock } from '../../../../lib/sellerFees';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useTranslation } from 'react-i18next';
+import {
+  BadgeEuro,
+  Globe,
+  HandCoins,
+  Handshake,
+  ImageOff,
+  MessageCircleQuestion,
+  Percent,
+  Printer,
+  ShieldCheck,
+  UserCheck,
+  UserPlus,
+  type LucideIcon,
+} from 'lucide-react';
+import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
+import { Switch } from '../../../../components/ui/switch';
+import { cn } from '../../../../lib/utils';
 
 type FeatureKey =
   | 'discounts'
@@ -23,8 +43,28 @@ type FeatureKey =
   | 'publicCatalog'
   | 'priceOnLabel'
   | 'privateSellersOnly'
-  | 'fixedSellerData';
+  | 'fixedSellerData'
+  | 'directSale'
+  | 'registrationOpen';
 
+const FEATURE_ICONS: Record<FeatureKey, LucideIcon> = {
+  discounts: Percent,
+  priceOffers: BadgeEuro,
+  minimumPrice: Handshake,
+  questions: MessageCircleQuestion,
+  photosOptional: ImageOff,
+  publicCatalog: Globe,
+  priceOnLabel: Printer,
+  privateSellersOnly: UserCheck,
+  fixedSellerData: ShieldCheck,
+  directSale: HandCoins,
+  registrationOpen: UserPlus,
+};
+
+/**
+ * One switch: icon, title and the switch in a row, the explanation behind an (i). What the
+ * switch opens up (e.g. the highest discount) appears below while it is on.
+ */
 function FeatureToggle({
   name,
   title,
@@ -34,7 +74,7 @@ function FeatureToggle({
 }: {
   name: FeatureKey;
   title: string;
-  description: string;
+  description: ReactNode;
   /** Set while another switch rules this one out; shows unchecked with this reason */
   disabledHint?: string;
   children?: ReactNode;
@@ -43,34 +83,45 @@ function FeatureToggle({
   const disabled = !!disabledHint;
   const enabled = !disabled && (watch(`features.${name}`) as boolean);
   const id = `feature-${name}`;
+  const Icon = FEATURE_ICONS[name];
 
   return (
     <div className={disabled ? 'opacity-60' : undefined}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+            enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <Label htmlFor={id} className={disabled ? 'font-medium' : 'cursor-pointer font-medium'}>
+            {title}
+          </Label>
+          <InfoTip>{description}</InfoTip>
+        </div>
         <Controller
           name={`features.${name}`}
           control={control}
           render={({ field }) => (
-            <Checkbox
+            <Switch
               id={id}
               checked={!disabled && !!field.value}
               disabled={disabled}
               onCheckedChange={(checked: boolean | string) => field.onChange(!!checked)}
-              className="mt-0.5"
             />
           )}
         />
-        <div className="flex-1 space-y-1">
-          <Label htmlFor={id} className={disabled ? 'font-medium' : 'cursor-pointer font-medium'}>
-            {title}
-          </Label>
-          <p className="text-sm text-muted-foreground">{description}</p>
-          {disabledHint && (
-            <p className="text-xs font-medium text-muted-foreground">{disabledHint}</p>
-          )}
-        </div>
       </div>
-      {enabled && children && <div className="mt-4 pl-7 space-y-4">{children}</div>}
+      {disabledHint && <p className="mt-1 pl-11 text-xs text-muted-foreground">{disabledHint}</p>}
+      {enabled && children && (
+        <div className="mt-3 space-y-4 pl-11 animate-in fade-in slide-in-from-top-1 duration-200">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -88,7 +139,7 @@ function CheckboxField({
   const { control } = useFormContext();
   const id = `field-${name.replace(/\W/g, '-')}`;
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-center gap-2">
       <Controller
         name={name}
         control={control}
@@ -97,16 +148,13 @@ function CheckboxField({
             id={id}
             checked={!!field.value}
             onCheckedChange={(checked: boolean | string) => field.onChange(!!checked)}
-            className="mt-0.5"
           />
         )}
       />
-      <div className="space-y-0.5">
-        <Label htmlFor={id} className="cursor-pointer">
-          {title}
-        </Label>
-        {description && <p className="text-xs text-muted-foreground">{description}</p>}
-      </div>
+      <Label htmlFor={id} className="cursor-pointer font-normal">
+        {title}
+      </Label>
+      {description && <InfoTip>{description}</InfoTip>}
     </div>
   );
 }
@@ -119,23 +167,28 @@ function RequiredFieldsPicker() {
   const { t } = useTranslation('organizer');
   const { control, watch } = useFormContext();
   const categoryList = useQuery(api.categories.getAllCategories);
-  const chosenCategories = (watch('categories') as string[] | undefined) ?? [];
+  const requirable = useRequirableFields();
+  // A chosen main category stands for its sub-categories, which may have other fields
+  const chosenCategories = expandCategories(
+    (watch('categories') as string[] | undefined) ?? [],
+    categoryList
+  );
   const required = (watch('features.requiredFields') as string[] | undefined) ?? [];
   const available = new Set(
     chosenCategories.flatMap((id) => getCategoryFields(id, categoryList).map((f) => f.key))
   );
-  const fields = REQUIRABLE_FIELDS.filter(
+  const fields = requirable.filter(
     (field) => available.has(field.key) || required.includes(field.key)
   );
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1">
-        <p className="font-medium">{t('features.requiredFields')}</p>
-        <p className="text-sm text-muted-foreground">{t('features.requiredFieldsText')}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-sm font-medium">{t('features.requiredFields')}</p>
+        <InfoTip>{t('features.requiredFieldsText')}</InfoTip>
       </div>
       {fields.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('features.requiredFieldsNone')}</p>
+        <p className="text-xs text-muted-foreground">{t('features.requiredFieldsNone')}</p>
       ) : (
         <Controller
           name="features.requiredFields"
@@ -143,7 +196,7 @@ function RequiredFieldsPicker() {
           render={({ field }) => {
             const value = (field.value as string[] | undefined) ?? [];
             return (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
                 {fields.map((categoryField) => {
                   const id = `required-${categoryField.key}`;
                   return (
@@ -178,7 +231,7 @@ function RequiredFieldsPicker() {
  * From when sellers may give discounts. It has to lie within the event, so it can only be
  * picked once the event's dates are set; the wizard therefore asks for it after them.
  */
-export function DiscountStartField() {
+function DiscountStartField() {
   const { t } = useTranslation('organizer');
   const {
     register,
@@ -192,7 +245,9 @@ export function DiscountStartField() {
     ?.discountStartsAt;
   return (
     <div className="space-y-2">
-      <Label htmlFor="discountStartsAt">{t('features.discountFrom')}</Label>
+      <LabelWithInfo htmlFor="discountStartsAt" info={t('features.discountFromHint')}>
+        {t('features.discountFrom')}
+      </LabelWithInfo>
       <Input
         id="discountStartsAt"
         type="datetime-local"
@@ -201,10 +256,102 @@ export function DiscountStartField() {
         max={end || undefined}
         {...register('features.discountStartsAt')}
       />
-      <p className="text-xs text-muted-foreground">
-        {datesSet ? t('features.discountFromHint') : t('features.discountFromNeedsDates')}
-      </p>
+      {!datesSet && (
+        <p className="text-xs text-muted-foreground">{t('features.discountFromNeedsDates')}</p>
+      )}
       {error && <FieldError>{error.message}</FieldError>}
+    </div>
+  );
+}
+
+/**
+ * When sellers may join on their own: from and until, both optional. Unlike the discount
+ * start it does not depend on the event's dates, so the wizard asks for it right here.
+ */
+function RegistrationWindowFields() {
+  const { t } = useTranslation('organizer');
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext();
+  const error = (errors.features as { registrationEndsAt?: { message?: string } } | undefined)
+    ?.registrationEndsAt;
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <LabelWithInfo htmlFor="registrationStartsAt" info={t('features.registrationWindowHint')}>
+            {t('features.registrationFrom')}
+          </LabelWithInfo>
+          <Input
+            id="registrationStartsAt"
+            type="datetime-local"
+            {...register('features.registrationStartsAt')}
+          />
+        </div>
+        <div className="space-y-2">
+          <LabelWithInfo htmlFor="registrationEndsAt">
+            {t('features.registrationUntil')}
+          </LabelWithInfo>
+          <Input
+            id="registrationEndsAt"
+            type="datetime-local"
+            aria-invalid={!!error}
+            {...register('features.registrationEndsAt')}
+          />
+        </div>
+      </div>
+      {error && <FieldError>{error.message}</FieldError>}
+    </div>
+  );
+}
+
+/** A fee in €, read-only while the bazaar runs. */
+function EuroField({
+  name,
+  label,
+  info,
+  placeholder,
+  max,
+  step = 0.5,
+  feeLock,
+  error,
+}: {
+  name: 'intakeFee' | 'maxFeesPerSeller';
+  label: string;
+  info: string;
+  placeholder: string;
+  max: number;
+  step?: number;
+  feeLock: FeeLock;
+  error?: string;
+}) {
+  const { register } = useFormContext();
+  const running = feeLock === 'running';
+  return (
+    <div className="space-y-2">
+      <LabelWithInfo htmlFor={name} info={info}>
+        {label}
+      </LabelWithInfo>
+      <div className="relative max-w-40">
+        <Input
+          id={name}
+          type="number"
+          min={0}
+          max={max}
+          step={step}
+          className={running ? 'pr-8 opacity-60 cursor-not-allowed' : 'pr-8'}
+          placeholder={placeholder}
+          readOnly={running}
+          aria-readonly={running}
+          {...register(`features.${name}`, { valueAsNumber: true })}
+        />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+          €
+        </span>
+      </div>
+      {feeLock && <p className="text-xs text-muted-foreground">{feeLockHint(feeLock)}</p>}
+      {error && <FieldError>{error}</FieldError>}
     </div>
   );
 }
@@ -218,13 +365,16 @@ export function EditEventFeatures({
   feeLock = null,
   parts = ALL_PARTS,
   showHeader = true,
-  withDiscountStart = true,
+  bare = false,
+  feeExampleKind = false,
 }: {
   feeLock?: FeeLock;
+  /** The kind of bazaar for the worked example of the conditions (#303); the wizard asks first */
+  feeExampleKind?: boolean;
   parts?: FeaturePart[];
   showHeader?: boolean;
-  /** Off in the wizard: the dates come later, the field moves behind them */
-  withDiscountStart?: boolean;
+  /** Without its own card, e.g. the intake fee next to the commission */
+  bare?: boolean;
 }) {
   const { t } = useTranslation('organizer');
   const {
@@ -236,23 +386,33 @@ export function EditEventFeatures({
   const priceOnLabel = watch('features.priceOnLabel') as boolean;
   const labelMark = watch('features.labelMark') as string;
   const publicCatalog = watch('features.publicCatalog') as boolean;
+  const registrationOpen = watch('features.registrationOpen') as boolean;
   const needsCatalog = publicCatalog === false ? t('features.needsCatalog') : undefined;
   const featureErrors = errors.features as
     | Partial<
-        Record<'maxDiscountPercent' | 'intakeFee' | 'maxItemsPerSeller', { message?: string }>
+        Record<
+          | 'maxDiscountPercent'
+          | 'intakeFee'
+          | 'maxItemsPerSeller'
+          | 'maxItemsTotal'
+          | 'maxFeesPerSeller',
+          { message?: string }
+        >
       >
     | undefined;
 
   const show = (part: FeaturePart) => parts.includes(part);
 
-  return (
-    <FormSection
-      title={showHeader ? t('features.title') : undefined}
-      description={showHeader ? t('features.intro') : undefined}
-      contentClassName={FORM_ROWS}
-    >
+  const content = (
+    <>
       {show('sale') && (
         <>
+          <FeatureToggle
+            name="directSale"
+            title={t('features.directSale')}
+            description={t('features.directSaleText')}
+          />
+
           <FeatureToggle
             name="publicCatalog"
             title={t('features.publicCatalog')}
@@ -265,9 +425,11 @@ export function EditEventFeatures({
             description={t('features.discountsText')}
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {withDiscountStart && <DiscountStartField />}
+              <DiscountStartField />
               <div className="space-y-2">
-                <Label htmlFor="maxDiscountPercent">{t('features.maxDiscount')}</Label>
+                <LabelWithInfo htmlFor="maxDiscountPercent">
+                  {t('features.maxDiscount')}
+                </LabelWithInfo>
                 <Input
                   id="maxDiscountPercent"
                   type="number"
@@ -280,9 +442,6 @@ export function EditEventFeatures({
                 )}
               </div>
             </div>
-            {!withDiscountStart && (
-              <p className="text-xs text-muted-foreground">{t('features.discountStartLater')}</p>
-            )}
           </FeatureToggle>
           {/* The field is hidden once the discounts are off, its error must not be */}
           {!discounts && featureErrors?.maxDiscountPercent && (
@@ -291,7 +450,7 @@ export function EditEventFeatures({
           <FeatureToggle
             name="priceOffers"
             title={t('features.offers')}
-            description={t('features.offersText')}
+            description={`${t('features.offersText')} ${t('features.payOnSite')}`}
             disabledHint={needsCatalog}
           />
 
@@ -325,54 +484,69 @@ export function EditEventFeatures({
           />
 
           <RequiredFieldsPicker />
-          <div className="space-y-2">
-            <Label htmlFor="maxItemsPerSeller">{t('features.maxItems')}</Label>
-            <Input
-              id="maxItemsPerSeller"
-              type="number"
-              min={1}
-              className="max-w-40"
-              placeholder={t('features.unlimited')}
-              {...register('features.maxItemsPerSeller', { valueAsNumber: true })}
-            />
-            <p className="text-xs text-muted-foreground">
-              {t('features.maxItemsHint')}{' '}
-              {feeLock ? t('features.maxItemsLocked') : t('features.maxItemsLater')}
-            </p>
-            {featureErrors?.maxItemsPerSeller && (
-              <FieldError>{featureErrors.maxItemsPerSeller.message}</FieldError>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="labelFormat">{t('features.labels')}</Label>
-            <NativeSelect
-              id="labelFormat"
-              className="max-w-sm"
-              {...register('features.labelFormat')}
-            >
-              <option value="standard">{t('features.labelsLarge')}</option>
-              <option value="small">{t('features.labelsSmall')}</option>
-            </NativeSelect>
-            <p className="text-xs text-muted-foreground">{t('features.labelsHint')}</p>
-          </div>
-
-          <div className="space-y-2 rounded-lg border p-4">
-            <Label htmlFor="labelMark">{t('features.labelMark')}</Label>
-            <select
-              id="labelMark"
-              className="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-              {...register('features.labelMark')}
-            >
-              <option value="universal">{t('features.labelMarkUniversal')}</option>
-              <option value="none">{t('features.labelMarkNone')}</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {t(
-                labelMark === 'none'
-                  ? 'features.labelMarkNoneHint'
-                  : 'features.labelMarkUniversalHint'
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo
+                htmlFor="maxItemsPerSeller"
+                info={`${t('features.maxItemsHint')} ${feeLock ? t('features.maxItemsLocked') : t('features.maxItemsLater')}`}
+              >
+                {t('features.maxItems')}
+              </LabelWithInfo>
+              <Input
+                id="maxItemsPerSeller"
+                type="number"
+                min={1}
+                className="max-w-40"
+                placeholder={t('features.unlimited')}
+                {...register('features.maxItemsPerSeller', { valueAsNumber: true })}
+              />
+              {featureErrors?.maxItemsPerSeller && (
+                <FieldError>{featureErrors.maxItemsPerSeller.message}</FieldError>
               )}
-            </p>
+            </div>
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo htmlFor="maxItemsTotal" info={t('features.maxItemsTotalHint')}>
+                {t('features.maxItemsTotal')}
+              </LabelWithInfo>
+              <Input
+                id="maxItemsTotal"
+                type="number"
+                min={1}
+                className="max-w-40"
+                placeholder={t('features.unlimited')}
+                {...register('features.maxItemsTotal', { valueAsNumber: true })}
+              />
+              {featureErrors?.maxItemsTotal && (
+                <FieldError>{featureErrors.maxItemsTotal.message}</FieldError>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo htmlFor="labelFormat" info={t('features.labelsHint')}>
+                {t('features.labels')}
+              </LabelWithInfo>
+              <NativeSelect id="labelFormat" {...register('features.labelFormat')}>
+                <option value="standard">{t('features.labelsLarge')}</option>
+                <option value="small">{t('features.labelsSmall')}</option>
+              </NativeSelect>
+            </div>
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo
+                htmlFor="labelMark"
+                info={t(
+                  labelMark === 'none'
+                    ? 'features.labelMarkNoneHint'
+                    : 'features.labelMarkUniversalHint'
+                )}
+              >
+                {t('features.labelMark')}
+              </LabelWithInfo>
+              <NativeSelect id="labelMark" {...register('features.labelMark')}>
+                <option value="universal">{t('features.labelMarkUniversal')}</option>
+                <option value="none">{t('features.labelMarkNone')}</option>
+              </NativeSelect>
+            </div>
           </div>
 
           <FeatureToggle
@@ -391,6 +565,19 @@ export function EditEventFeatures({
       {show('registration') && (
         <>
           <FeatureToggle
+            name="registrationOpen"
+            title={t('features.registrationOpen')}
+            description={t('features.registrationOpenText')}
+          >
+            <RegistrationWindowFields />
+          </FeatureToggle>
+          {!registrationOpen && (
+            <p className="-mt-2 pl-11 text-xs text-muted-foreground">
+              {t('features.registrationClosedHint')}
+            </p>
+          )}
+
+          <FeatureToggle
             name="privateSellersOnly"
             title={t('features.privateSellers')}
             description={t('features.privateSellersText')}
@@ -405,30 +592,54 @@ export function EditEventFeatures({
       )}
 
       {show('fees') && (
-        <div className="space-y-2">
-          <Label htmlFor="intakeFee">{t('features.intakeFee')}</Label>
-          <Input
-            id="intakeFee"
-            type="number"
-            min={0}
-            max={100}
-            step={0.5}
-            className={
-              feeLock === 'running' ? 'max-w-40 opacity-60 cursor-not-allowed' : 'max-w-40'
-            }
+        <>
+          <EuroField
+            name="intakeFee"
+            label={t('features.intakeFee')}
+            info={feeLock ? feeLockHint(feeLock) : t('features.intakeFeeHint')}
             placeholder={t('features.none')}
-            readOnly={feeLock === 'running'}
-            aria-readonly={feeLock === 'running'}
-            {...register('features.intakeFee', { valueAsNumber: true })}
+            max={100}
+            feeLock={feeLock}
+            error={featureErrors?.intakeFee?.message}
           />
-          <p className="text-xs text-muted-foreground">
-            {feeLock ? feeLockHint(feeLock) : t('features.intakeFeeHint')}
-          </p>
-          {featureErrors?.intakeFee && <FieldError>{featureErrors.intakeFee.message}</FieldError>}
-        </div>
+          <EuroField
+            name="maxFeesPerSeller"
+            label={t('features.maxFees')}
+            info={`${t('features.maxFeesHint')} ${feeLock ? feeLockHint(feeLock) : t('features.maxFeesLater')}`}
+            placeholder={t('features.noCap')}
+            max={10_000}
+            // Amounts in cents are allowed, like the backend takes them
+            step={0.01}
+            feeLock={feeLock}
+            error={featureErrors?.maxFeesPerSeller?.message}
+          />
+          {feeExampleKind && (
+            <div className="min-w-0 space-y-2">
+              <LabelWithInfo htmlFor="eventType" info={t('features.feeExampleHint')}>
+                {t('features.feeExample')}
+              </LabelWithInfo>
+              <NativeSelect id="eventType" {...register('features.eventType')}>
+                <option value="">{t('features.feeExampleNeutral')}</option>
+                {EVENT_TYPES.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {t(`eventTypes.${type.id}.title`)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          )}
+        </>
       )}
-
-      {show('sale') && <p className="text-xs text-muted-foreground">{t('features.payOnSite')}</p>}
+    </>
+  );
+  if (bare) return content;
+  return (
+    <FormSection
+      title={showHeader ? t('features.title') : undefined}
+      description={showHeader ? t('features.intro') : undefined}
+      contentClassName={FORM_ROWS}
+    >
+      {content}
     </FormSection>
   );
 }

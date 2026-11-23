@@ -18,15 +18,39 @@ export interface EventDraft<Values> {
   step?: number;
   /** The guest finished the wizard: only then the sign-up creates the bazaar by itself */
   submitted?: boolean;
+  /** The draft on the server it continues (its updatedAt), so saving it again asks nothing */
+  continues?: number;
   savedAt: number;
+}
+
+/** Empty number fields hold NaN, which JSON would turn into null: leave them out */
+const leaveOutNaN = (_key: string, value: unknown) =>
+  typeof value === 'number' && Number.isNaN(value) ? undefined : value;
+
+/** The values as JSON keeps them, for the draft on the server: without empty numbers. */
+export function draftJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value, leaveOutNaN)) as T;
+}
+
+/**
+ * A stored draft as the form takes it: drafts saved before empty numbers were left out
+ * hold null there, which no field accepts (e.g. the fees of a fee group).
+ */
+export function withoutNulls<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withoutNulls) as T;
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entry]) => entry !== null)
+        .map(([key, entry]) => [key, withoutNulls(entry)])
+    ) as T;
+  }
+  return value;
 }
 
 export function saveEventDraft<Values>(draft: Omit<EventDraft<Values>, 'savedAt'>) {
   try {
-    // Empty number fields hold NaN, which JSON would turn into null: leave them out
-    const json = JSON.stringify({ ...draft, savedAt: Date.now() }, (_key, value: unknown) =>
-      typeof value === 'number' && Number.isNaN(value) ? undefined : value
-    );
+    const json = JSON.stringify({ ...draft, savedAt: Date.now() }, leaveOutNaN);
     localStorage.setItem(KEY, json);
   } catch {
     // Private mode or full storage: the draft is only lost on the way to the account

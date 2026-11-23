@@ -180,13 +180,24 @@ export function VendorSettlement({
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">
-                {t('settle.commission', { percent: commissionPercent })}
+                {vendor.feeGroup
+                  ? t('settle.commissionGroup', {
+                      percent: commissionPercent,
+                      group: vendor.feeGroup.label,
+                    })
+                  : t('settle.commission', { percent: commissionPercent })}
               </dt>
               <dd className="whitespace-nowrap">
                 {vendor.commission > 0 ? '−' : ''}
                 {formatPriceDE(vendor.commission)} €
               </dd>
             </div>
+            {vendor.receivedDirectly > 0.005 && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">{t('settle.receivedDirectly')}</dt>
+                <dd className="whitespace-nowrap">−{formatPriceDE(vendor.receivedDirectly)} €</dd>
+              </div>
+            )}
             {vendor.intakeFee.total > 0 && (
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">
@@ -196,6 +207,12 @@ export function VendorSettlement({
                   })}
                 </dt>
                 <dd className="whitespace-nowrap">−{formatPriceDE(vendor.intakeFee.total)} €</dd>
+              </div>
+            )}
+            {vendor.feeCapCredit > 0 && (
+              <div className="flex justify-between gap-3 text-emerald-700 dark:text-emerald-400">
+                <dt>{t('settle.feeCap')}</dt>
+                <dd className="whitespace-nowrap">+{formatPriceDE(vendor.feeCapCredit)} €</dd>
               </div>
             )}
             <div className="flex justify-between gap-3 border-t pt-2 text-base font-bold">

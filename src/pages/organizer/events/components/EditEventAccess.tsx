@@ -3,9 +3,18 @@ import { useFormContext, useWatch, Controller } from 'react-hook-form';
 import { Label } from '../../../../components/ui/label';
 import { Input } from '../../../../components/ui/input';
 import { RadioGroup, RadioGroupItem } from '../../../../components/ui/radio-group';
+import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
 import { VISIBILITY_OPTIONS } from '../../../../constants/records';
-import { EVENT_VISIBILITY } from '../../../../shared/constants';
+import { EVENT_VISIBILITY, type EventVisibility } from '../../../../shared/constants';
+import { cn } from '../../../../lib/utils';
+import { Globe, Link2, LogIn, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+
+const VISIBILITY_ICONS: Record<EventVisibility, LucideIcon> = {
+  public: Globe,
+  'logged-in': LogIn,
+  approved: Link2,
+};
 
 export function EditEventAccess({ lockVisibility = false }: { lockVisibility?: boolean }) {
   const { t } = useTranslation('organizer');
@@ -14,13 +23,17 @@ export function EditEventAccess({ lockVisibility = false }: { lockVisibility?: b
     control,
     formState: { errors },
   } = useFormContext();
-  const linkOnly = useWatch({ control, name: 'visibility' }) === 'approved';
+  const visibility = useWatch({ control, name: 'visibility' }) as EventVisibility | undefined;
+  const linkOnly = visibility === 'approved';
   const codeError = errors.accessCode?.message;
 
   return (
     <FormSection>
       <div className="space-y-3">
-        <Label>{t('access.visibility')}</Label>
+        <div className="flex items-center gap-1">
+          <Label>{t('access.visibility')}</Label>
+          <InfoTip>{t('access.visibilityHint')}</InfoTip>
+        </div>
         <Controller
           name="visibility"
           control={control}
@@ -29,53 +42,80 @@ export function EditEventAccess({ lockVisibility = false }: { lockVisibility?: b
               onValueChange={field.onChange}
               value={field.value}
               disabled={lockVisibility}
+              className="grid-cols-1 sm:grid-cols-3"
             >
-              {EVENT_VISIBILITY.map((v) => (
-                <div
-                  key={v}
-                  className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-muted/50"
-                >
-                  <RadioGroupItem value={v} id={v} />
-                  <Label htmlFor={v} className="cursor-pointer flex-1">
-                    {VISIBILITY_OPTIONS[v].title} - {VISIBILITY_OPTIONS[v].description}
+              {EVENT_VISIBILITY.map((v) => {
+                const Icon = VISIBILITY_ICONS[v];
+                const active = field.value === v;
+                return (
+                  <Label
+                    key={v}
+                    htmlFor={v}
+                    className={cn(
+                      'relative flex cursor-pointer flex-col items-start gap-2 rounded-lg border p-3 font-normal transition-colors hover:bg-muted/50',
+                      active && 'border-primary bg-primary/5 ring-1 ring-primary/40'
+                    )}
+                  >
+                    <span className="flex w-full items-center gap-2">
+                      <Icon
+                        className={cn('h-4 w-4', active ? 'text-primary' : 'text-muted-foreground')}
+                      />
+                      <span className="flex-1 font-medium">{VISIBILITY_OPTIONS[v].title}</span>
+                      <RadioGroupItem value={v} id={v} />
+                    </span>
+                    <span className="text-xs leading-snug text-muted-foreground">
+                      {VISIBILITY_OPTIONS[v].description}
+                    </span>
                   </Label>
-                </div>
-              ))}
+                );
+              })}
             </RadioGroup>
           )}
         />
         {linkOnly && (
-          <div className="rounded-lg border bg-muted/40 p-4 text-sm" data-testid="link-only-help">
-            <p className="font-medium">{t('access.linkOnlyTitle')}</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-              <li>{t('access.linkOnlyHidden')}</li>
-              <li>{t('access.linkOnlyLink')}</li>
-              <li>{t('access.linkOnlyJoin')}</li>
-              <li>{t('access.linkOnlyItems')}</li>
-            </ul>
+          <div
+            className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+            data-testid="link-only-help"
+          >
+            <span className="inline-flex items-center gap-1">
+              {t('access.linkOnlyTitle')}
+              <InfoTip>
+                <ul className="list-disc space-y-1 pl-4">
+                  <li>{t('access.linkOnlyHidden')}</li>
+                  <li>{t('access.linkOnlyLink')}</li>
+                  <li>{t('access.linkOnlyJoin')}</li>
+                  <li>{t('access.linkOnlyItems')}</li>
+                </ul>
+              </InfoTip>
+            </span>
           </div>
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="accessCode">{t(linkOnly ? 'access.codeRequired' : 'access.code')}</Label>
-        <Input
-          id="accessCode"
-          {...register('accessCode')}
-          placeholder={t('access.codePlaceholder')}
-        />
-        <p className="text-xs text-muted-foreground">{t('access.codeHint')}</p>
-        {typeof codeError === 'string' && <p className="text-sm text-destructive">{codeError}</p>}
-      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <LabelWithInfo htmlFor="accessCode" info={t('access.codeHint')}>
+            {t(linkOnly ? 'access.codeRequired' : 'access.code')}
+          </LabelWithInfo>
+          <Input
+            id="accessCode"
+            {...register('accessCode')}
+            placeholder={t('access.codePlaceholder')}
+          />
+          {typeof codeError === 'string' && <p className="text-sm text-destructive">{codeError}</p>}
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="vendorLimit">{t('access.limit')}</Label>
-        <Input
-          id="vendorLimit"
-          type="number"
-          {...register('vendorLimit', { valueAsNumber: true })}
-          placeholder={t('access.limitPlaceholder')}
-        />
+        <div className="space-y-2">
+          <LabelWithInfo htmlFor="vendorLimit" info={t('access.limitHint')}>
+            {t('access.limit')}
+          </LabelWithInfo>
+          <Input
+            id="vendorLimit"
+            type="number"
+            {...register('vendorLimit', { valueAsNumber: true })}
+            placeholder={t('access.limitPlaceholder')}
+          />
+        </div>
       </div>
     </FormSection>
   );

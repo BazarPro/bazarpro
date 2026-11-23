@@ -3,6 +3,10 @@
 //! addProductToEvent only accepts the status `announced` from the seller (the app never
 //! sends another), so a seller cannot register an item as handed in or sold, skipping
 //! intake and cash desk.
+//!
+//! Items the seller did not hand in on time the team turns down (`rejected`, #252): they
+//! are neither listed nor sold, and the relation stays, so the seller cannot announce them
+//! for the bazaar again.
 
 use std::collections::HashMap;
 
@@ -18,12 +22,15 @@ use uuid::Uuid;
 
 use super::category_fields::{self, CategoryField};
 use super::docs::{self, EVENT_PRODUCT_COLUMNS, Event, EventProduct, Product, User};
+use super::event_exclusions::{assert_not_excluded, exclusion};
 use super::event_roles::{
-    Permission, TEAM, assert_vendor_not_paid_out, has_any_role_or_admin, is_bystander,
-    require_permission, require_team,
+    Permission, Role, TEAM, assert_vendor_not_paid_out, has_any_role_or_admin, has_role,
+    is_bystander, require_permission, require_team,
 };
 use super::events::{admitted_by_visibility, is_event_approved, is_live};
 use super::features::discount_unavailable;
+use super::fee_groups;
+use super::notifications::{self, Area, Content, T};
 use super::offers::{close_offers_for_event_product, reopen_closed_offers};
 use super::sales::{self, SaleInfo};
 use super::seller_numbers::assert_item_limit;
@@ -61,7 +68,11 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "eventProducts.setEventProductLocationCategory" => set_event_product_location_category);
     register!(registry, Mutation "eventProducts.markAllVendorProductsAvailable" => mark_all_vendor_products_available);
     register!(registry, Mutation "eventProducts.markAllVendorProductsReturned" => mark_all_vendor_products_returned);
+    register!(registry, Mutation "eventProducts.returnLeftovers" => return_leftovers);
     register!(registry, Mutation "eventProducts.undoReturn" => undo_return);
+    register!(registry, Mutation "eventProducts.rejectNotHandedIn" => reject_not_handed_in);
+    register!(registry, Mutation "eventProducts.undoRejection" => undo_rejection);
+    register!(registry, Query "eventProducts.getMyRejections" => get_my_rejections);
 }
 
 /// Loads events at most once per function (many relations share one event).
@@ -213,7 +224,7 @@ pub fn missing_for_event(
         missing.push("photo".to_owned());
     }
     for key in &features.required_fields {
-        if !fields.iter().any(|field| field.key == key) {
+        if !fields.iter().any(|field| &field.key == key) {
             continue;
         }
         let value = product
@@ -244,9 +255,35 @@ pub fn missing_label(info: &str, fields: &[CategoryField]) -> String {
 pub async fn fields_of(
     conn: &mut PgConnection,
     category: Uuid,
-) -> sqlx::Result<&'static [CategoryField]> {
-    let categories = category_fields::load_categories(conn).await?;
-    Ok(category_fields::category_fields(category, &categories))
+) -> sqlx::Result<Vec<CategoryField>> {
+    Ok(category_fields::FieldIndex::load(conn)
+        .await?
+        .fields(category))
+}
+
+/// A bazaar takes items of the categories it allows; one that allows a main category
+/// takes its sub-categories too. Bazaars without a list take everything.
+pub async fn assert_category_allowed(
+    conn: &mut PgConnection,
+    category: Uuid,
+    event: &Event,
+) -> AppResult<()> {
+    if event.categories.is_empty() || event.categories.contains(&category) {
+        return Ok(());
+    }
+    let parent: Option<Uuid> = sqlx::query_scalar("SELECT parent_id FROM categories WHERE id = $1")
+        .bind(category)
+        .fetch_optional(conn)
+        .await?
+        .flatten();
+    if parent.is_some_and(|parent| event.categories.contains(&parent)) {
+        return Ok(());
+    }
+    Err(AppError::coded(
+        axum::http::StatusCode::BAD_REQUEST,
+        "product.categoryNotAllowed",
+        &[("event", &event.title)],
+    ))
 }
 
 /// Refuses a new announcement when the item lacks something the event requires.
@@ -255,7 +292,8 @@ async fn assert_ready_for_event(
     product: &Product,
     event: &Event,
 ) -> AppResult<()> {
-    let fields = fields_of(conn, product.product_category).await?;
+    assert_category_allowed(conn, product.product_category, event).await?;
+    let fields = &fields_of(conn, product.product_category).await?;
     let missing = missing_for_event(product, event, fields);
     if missing.is_empty() {
         return Ok(());
@@ -298,7 +336,13 @@ pub fn touch_listing(ctx: &mut Ctx, event: Uuid, product: Uuid, vendor: Uuid) {
     ctx.touch(Topic::User(vendor));
 }
 
+/// Only sellers of the bazaar announce items: joining is where the access code, the
+/// registration window and the seller limit are checked.
 async fn insert_announcement(ctx: &mut Ctx, event: &Event, product: &Product) -> AppResult<Uuid> {
+    assert_not_excluded(ctx.conn(), event.id, product.vendor_id).await?;
+    if !has_role(ctx.conn(), event.id, product.vendor_id, Role::Seller).await? {
+        return Err(AppError::bad_request("product.notRegistered"));
+    }
     assert_ready_for_event(ctx.conn(), product, event).await?;
     assert_item_limit(ctx, event, product.vendor_id, 1).await?;
     let id = sqlx::query_scalar(
@@ -339,9 +383,21 @@ async fn add_product_to_event(ctx: &mut Ctx, args: AddArgs) -> AppResult<Uuid> {
         return Err(AppError::bad_request("product.soldNoEvents"));
     }
     if let Some(existing) = relation(ctx.conn(), event.id, product.id).await? {
+        if existing.status == "rejected" {
+            return Err(rejected_here(&product, &event));
+        }
         return Ok(existing.id);
     }
     insert_announcement(ctx, &event, &product).await
+}
+
+/// The team turned the item down for this bazaar: it cannot be announced there again.
+fn rejected_here(product: &Product, event: &Event) -> AppError {
+    AppError::coded(
+        axum::http::StatusCode::BAD_REQUEST,
+        "product.rejectedHere",
+        &[("title", &product.title), ("event", &event.title)],
+    )
 }
 
 #[derive(Deserialize)]
@@ -363,6 +419,10 @@ async fn remove_product_from_event(ctx: &mut Ctx, args: EventProductArgs) -> App
         return Err(AppError::bad_request("product.soldNoRemove"));
     }
     if let Some(relation) = relation(ctx.conn(), event.id, product.id).await? {
+        // A rejected item stays with the bazaar, else it could simply be announced again
+        if relation.status == "rejected" {
+            return Err(AppError::bad_request("product.rejectedNoRemove"));
+        }
         if relation.status != "announced" {
             return Err(AppError::bad_request("product.acceptedNoRemove"));
         }
@@ -404,6 +464,10 @@ async fn set_product_events(ctx: &mut Ctx, args: SetEventsArgs) -> AppResult<Vec
     let mut ids = Vec::new();
     for event_id in wanted {
         if let Some(existing) = existing.iter().find(|r| r.event_id == event_id) {
+            if existing.status == "rejected" {
+                // The event only for the message
+                return Err(rejected_here(&product, &event_of(ctx, event_id).await?));
+            }
             ids.push(existing.id);
             continue;
         }
@@ -427,7 +491,8 @@ struct ProductArgs {
 async fn get_event_ids_for_product(ctx: &mut Ctx, args: ProductArgs) -> AppResult<Vec<Uuid>> {
     ctx.read(Topic::Product(args.product_id.0));
     let ids: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT event_id FROM event_products WHERE product_id = $1 ORDER BY created_at, id",
+        "SELECT event_id FROM event_products WHERE product_id = $1 AND status <> 'rejected'
+         ORDER BY created_at, id",
     )
     .bind(args.product_id.0)
     .fetch_all(ctx.conn())
@@ -525,6 +590,40 @@ async fn get_my_event_product_statuses(ctx: &mut Ctx, args: EventArgs) -> AppRes
     .await?)
 }
 
+#[skip_serializing_none]
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct MyRejection {
+    product_id: Uuid,
+    title: String,
+    image: Option<Uuid>,
+    #[serde(with = "crate::shape::ms")]
+    rejected_at: DateTime<Utc>,
+}
+
+/// The signed-in seller's items the team turned down at this bazaar, newest first; shown
+/// on the bazaar's page.
+async fn get_my_rejections(ctx: &mut Ctx, args: EventArgs) -> AppResult<Vec<MyRejection>> {
+    let Some(user) = ctx.user else {
+        return Ok(Vec::new());
+    };
+    ctx.read(Topic::Event(args.event_id.0));
+    ctx.read(Topic::User(user));
+    Ok(sqlx::query_as(
+        "SELECT p.id AS product_id, p.title,
+           (SELECT file_id FROM product_images i WHERE i.product_id = p.id
+            ORDER BY position LIMIT 1) AS image,
+           COALESCE(ep.rejected_at, ep.created_at) AS rejected_at
+         FROM event_products ep JOIN products p ON p.id = ep.product_id
+         WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status = 'rejected'
+         ORDER BY rejected_at DESC, p.id",
+    )
+    .bind(args.event_id.0)
+    .bind(user)
+    .fetch_all(ctx.conn())
+    .await?)
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct FixedItemData {
@@ -567,6 +666,9 @@ pub struct ListedProduct {
     pub location_label: Option<String>,
     pub internal_note: Option<String>,
     pub sale: Option<SaleInfo>,
+    /// Returned by the cron after the bazaar (#305)
+    #[serde(with = "crate::shape::ms_opt")]
+    pub auto_returned_at: Option<DateTime<Utc>>,
 }
 
 async fn listed_products(
@@ -657,9 +759,11 @@ async fn get_products_for_event(ctx: &mut Ctx, args: EventArgs) -> AppResult<Vec
     Ok(listed_products(ctx, event_id)
         .await?
         .into_iter()
-        .filter(|(_, product, _)| {
-            Some(product.vendor_id) == viewer
-                || (open && !over && product.ready_for_sale && product.moderation.is_none())
+        // Rejected items are not offered, not even in the seller's own view of the listing
+        .filter(|(relation, product, _)| {
+            relation.status != "rejected"
+                && (Some(product.vendor_id) == viewer
+                    || (open && !over && product.ready_for_sale && product.moderation.is_none()))
         })
         .map(|(relation, product, label)| ListedProduct {
             product: product.without_private_fields(),
@@ -670,6 +774,7 @@ async fn get_products_for_event(ctx: &mut Ctx, args: EventArgs) -> AppResult<Vec
             location_label: label,
             internal_note: None,
             sale: None,
+            auto_returned_at: None,
         })
         .collect())
 }
@@ -701,6 +806,7 @@ async fn get_products_for_event_management(
                 location_label: label,
                 internal_note: relation.internal_note,
                 sale,
+                auto_returned_at: relation.auto_returned_at,
             }
         })
         .collect())
@@ -919,11 +1025,19 @@ async fn update_product_status(ctx: &mut Ctx, args: StatusArgs) -> AppResult<Uui
         .map_or(relation.status.as_str(), |from| from.as_str());
     let permission = args.status.permission_from(from);
     require_permission(ctx, relation.event_id, permission).await?;
+    // Rejected is final for the intake; only undoRejection brings the item back
+    if relation.status == "rejected" {
+        return Err(AppError::bad_request("product.rejected"));
+    }
     let event = event_of(ctx, relation.event_id).await?;
     sales::assert_settlement_open(&event)?;
     let product = docs::product(ctx.conn(), relation.product_id).await?;
     if let Some(product) = &product {
         assert_vendor_not_paid_out(ctx.conn(), relation.event_id, product.vendor_id).await?;
+        // The intake checks a self-declared fee group first (#302)
+        if args.status == Status::Available && relation.status == "announced" {
+            fee_groups::assert_group_decided(ctx.conn(), &event, product.vendor_id).await?;
+        }
     }
     if let Some(location) = args.location_category_id {
         if args.status != Status::Available {
@@ -942,7 +1056,7 @@ async fn update_product_status(ctx: &mut Ctx, args: StatusArgs) -> AppResult<Uui
         reopen_closed_offers(ctx, relation.id, &title, "return").await?;
     }
     sqlx::query(
-        "UPDATE event_products SET status = $2::event_product_status,
+        "UPDATE event_products SET status = $2::event_product_status, auto_returned_at = NULL,
            location_category_id = CASE WHEN $3 THEN $4 ELSE location_category_id END
          WHERE id = $1",
     )
@@ -1014,6 +1128,10 @@ async fn mark_all_vendor_products_available(
     let (event, vendor) = (args.event_id.0, args.vendor_id.0);
     require_permission(ctx, event, Permission::Intake).await?;
     assert_vendor_not_paid_out(ctx.conn(), event, vendor).await?;
+    {
+        let event = event_of(ctx, event).await?;
+        fee_groups::assert_group_decided(ctx.conn(), &event, vendor).await?;
+    }
     let seen: Option<Vec<Uuid>> = args
         .seen_product_ids
         .map(|ids| ids.into_iter().map(|id| id.0).collect());
@@ -1065,6 +1183,72 @@ async fn mark_all_vendor_products_returned(ctx: &mut Ctx, args: VendorArgs) -> A
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LeftoverArgs {
+    event_id: Id,
+    /// The items the team saw as left over: only these go back, not ones taken in since
+    product_ids: Vec<Id>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LeftoversReturned {
+    returned_count: i64,
+    seller_count: i64,
+}
+
+/// After the bazaar the team returns all items still available at once (#305), instead
+/// of scanning each. Sold, announced and rejected items stay as they are; so do the items
+/// of sellers already paid out, whose settlement is done.
+async fn return_leftovers(ctx: &mut Ctx, args: LeftoverArgs) -> AppResult<LeftoversReturned> {
+    let event_id = args.event_id.0;
+    require_permission(ctx, event_id, Permission::Return).await?;
+    let event = event_of(ctx, event_id).await?;
+    if event.end_date > Utc::now() {
+        return Err(AppError::bad_request("leftovers.notOver"));
+    }
+    sales::assert_settlement_open(&event)?;
+    let products: Vec<Uuid> = args.product_ids.into_iter().map(|id| id.0).collect();
+    let returned = return_leftover_items(ctx, event_id, Some(&products), false).await?;
+    let sellers: std::collections::HashSet<Uuid> = returned.iter().map(|r| r.2).collect();
+    Ok(LeftoversReturned {
+        returned_count: returned.len() as i64,
+        seller_count: sellers.len() as i64,
+    })
+}
+
+/// Returns the items still available at the bazaar (only `products`, if given) of sellers
+/// not paid out; `auto`: by the cron, which marks them. Open offers for them are void.
+/// Gives relation, product, seller and title of each.
+pub async fn return_leftover_items(
+    ctx: &mut Ctx,
+    event: Uuid,
+    products: Option<&[Uuid]>,
+    auto: bool,
+) -> AppResult<Vec<(Uuid, Uuid, Uuid, String)>> {
+    let returned: Vec<(Uuid, Uuid, Uuid, String)> = sqlx::query_as(
+        "UPDATE event_products ep SET status = 'returned',
+           auto_returned_at = CASE WHEN $3 THEN now() END
+         FROM products p
+         WHERE ep.product_id = p.id AND ep.event_id = $1 AND ep.status = 'available'
+           AND ($2::uuid[] IS NULL OR p.id = ANY($2))
+           AND NOT EXISTS (SELECT 1 FROM event_sellers s
+             WHERE s.event_id = ep.event_id AND s.user_id = p.vendor_id AND s.payout_received)
+         RETURNING ep.id, p.id, p.vendor_id, p.title",
+    )
+    .bind(event)
+    .bind(products)
+    .bind(auto)
+    .fetch_all(ctx.conn())
+    .await?;
+    for (relation, product, vendor, title) in &returned {
+        close_offers_for_event_product(ctx, *relation, title, "return").await?;
+        touch_listing(ctx, event, *product, *vendor);
+    }
+    Ok(returned)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RelationArgs {
     event_product_id: Id,
 }
@@ -1090,10 +1274,12 @@ async fn undo_return(ctx: &mut Ctx, args: RelationArgs) -> AppResult<Success> {
     if let Some(product) = &product {
         assert_vendor_not_paid_out(ctx.conn(), relation.event_id, product.vendor_id).await?;
     }
-    sqlx::query("UPDATE event_products SET status = 'available' WHERE id = $1")
-        .bind(relation.id)
-        .execute(ctx.conn())
-        .await?;
+    sqlx::query(
+        "UPDATE event_products SET status = 'available', auto_returned_at = NULL WHERE id = $1",
+    )
+    .bind(relation.id)
+    .execute(ctx.conn())
+    .await?;
     let title = product
         .as_ref()
         .map_or_else(|| "Artikel".to_owned(), |p| p.title.clone());
@@ -1102,4 +1288,217 @@ async fn undo_return(ctx: &mut Ctx, args: RelationArgs) -> AppResult<Success> {
         touch_listing(ctx, relation.event_id, product.id, product.vendor_id);
     }
     Ok(Success { success: true })
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RejectArgs {
+    event_id: Id,
+    /// Only this seller's items, e.g. right after the intake of what they brought
+    vendor_id: Option<Id>,
+    /// The announced items the team saw: only these are turned down, not ones the seller
+    /// announced since
+    product_ids: Vec<Id>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Rejected {
+    rejected_count: i64,
+    seller_count: i64,
+}
+
+/// Titles named in the mail; more are only counted
+const MAX_TITLES_IN_MAIL: usize = 20;
+
+/// The team turns down announced items the sellers did not hand in on time, for the whole
+/// bazaar or one seller. Helpers with the intake right may do it too. Each seller gets one
+/// mail for all of their items. Sellers already paid out are left alone: their settlement
+/// is done and left these items out anyway.
+async fn reject_not_handed_in(ctx: &mut Ctx, args: RejectArgs) -> AppResult<Rejected> {
+    let event_id = args.event_id.0;
+    let reviewer = require_permission(ctx, event_id, Permission::Intake).await?;
+    let event = event_of(ctx, event_id).await?;
+    if event.end_date < Utc::now() {
+        return Err(AppError::bad_request("rejection.past"));
+    }
+    let vendor = args.vendor_id.map(|id| id.0);
+    if let Some(vendor) = vendor {
+        assert_vendor_not_paid_out(ctx.conn(), event_id, vendor).await?;
+    }
+    let products: Vec<Uuid> = args.product_ids.into_iter().map(|id| id.0).collect();
+    let mut rejected: Vec<(Uuid, Uuid, Uuid, String)> = sqlx::query_as(
+        "UPDATE event_products ep SET status = 'rejected', rejected_at = now(), rejected_by = $4,
+           discount_percent = NULL
+         FROM products p
+         WHERE ep.product_id = p.id AND ep.event_id = $1 AND ep.status = 'announced'
+           AND p.id = ANY($2) AND ($3::uuid IS NULL OR p.vendor_id = $3)
+           AND NOT EXISTS (SELECT 1 FROM event_sellers s
+             WHERE s.event_id = ep.event_id AND s.user_id = p.vendor_id AND s.payout_received)
+         RETURNING ep.id, p.id, p.vendor_id, p.title",
+    )
+    .bind(event_id)
+    .bind(&products)
+    .bind(vendor)
+    .bind(reviewer)
+    .fetch_all(ctx.conn())
+    .await?;
+    rejected.sort_by(|a, b| a.3.cmp(&b.3));
+    let mut by_seller: std::collections::BTreeMap<Uuid, Vec<String>> = Default::default();
+    for (relation, product, vendor, title) in &rejected {
+        close_offers_for_event_product(ctx, *relation, title, "removed").await?;
+        touch_listing(ctx, event_id, *product, *vendor);
+        by_seller.entry(*vendor).or_default().push(title.clone());
+    }
+    for (vendor, titles) in &by_seller {
+        notify_rejected(ctx, &event, *vendor, titles).await?;
+    }
+    Ok(Rejected {
+        rejected_count: rejected.len() as i64,
+        seller_count: by_seller.len() as i64,
+    })
+}
+
+/// Tags the marker of a rejection mail; broadcasts share its area and bazaar.
+const REJECTION_NOTICE: &str = "rejection";
+
+/// One mail per seller and turn, naming the items; the marker belongs to the bazaar's
+/// page, which lists them too.
+async fn notify_rejected(
+    ctx: &mut Ctx,
+    event: &Event,
+    vendor: Uuid,
+    titles: &[String],
+) -> AppResult<()> {
+    let count = titles.len() as i64;
+    let more = titles.len().saturating_sub(MAX_TITLES_IN_MAIL) as i64;
+    let (event_title, path) = (event.title.clone(), format!("/public-events/{}", event.id));
+    notifications::notify_user_at_event(
+        ctx,
+        vendor,
+        |t: T| {
+            let values = [("event", event_title.as_str())];
+            let named = titles
+                .iter()
+                .take(MAX_TITLES_IN_MAIL)
+                .map(|title| t.t("participation.rejected.item", &[("title", title)]))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let mut paragraphs = vec![t.count("participation.rejected.text", count, &values)];
+            paragraphs.push(if more > 0 {
+                t.count("participation.rejected.more", more, &[("items", &named)])
+            } else {
+                named
+            });
+            paragraphs.push(t.count("participation.rejected.final", count, &[]));
+            Content {
+                subject: t.count("participation.rejected.subject", count, &values),
+                heading: t.count("participation.rejected.heading", count, &[]),
+                paragraphs,
+                link: t.link("participation.openEvent", path.clone()),
+                ..Content::default()
+            }
+        },
+        Some(Area::Messages),
+        Some(event.id),
+        Some(REJECTION_NOTICE),
+        chrono::Duration::zero(),
+    )
+    .await?;
+    Ok(())
+}
+
+/// Takes a rejection back: the item is announced again, as before. Within the seller's
+/// item limit, still ready for the bazaar, not for a seller the organizer excluded
+/// meanwhile and not after the seller's payout. The seller learns of it by mail; once no
+/// rejected item is left, the marker of the rejection mail goes.
+async fn undo_rejection(ctx: &mut Ctx, args: RelationArgs) -> AppResult<Success> {
+    let relation = team_relation(ctx, args.event_product_id.0).await?;
+    require_permission(ctx, relation.event_id, Permission::Intake).await?;
+    if relation.status != "rejected" {
+        return Ok(Success { success: true });
+    }
+    let event = event_of(ctx, relation.event_id).await?;
+    if event.end_date < Utc::now() {
+        return Err(AppError::bad_request("rejection.past"));
+    }
+    let product = docs::product(ctx.conn(), relation.product_id)
+        .await?
+        .ok_or_else(|| AppError::not_found("notFound.product"))?;
+    if exclusion(ctx.conn(), event.id, product.vendor_id)
+        .await?
+        .is_some()
+    {
+        return Err(AppError::bad_request("rejection.sellerExcluded"));
+    }
+    // Left the bazaar meanwhile: the rejected row stayed, the seller did not
+    if !has_role(ctx.conn(), event.id, product.vendor_id, Role::Seller).await? {
+        return Err(AppError::bad_request("rejection.sellerLeft"));
+    }
+    // The settlement is done and left the item out; announced again it could be taken in
+    assert_vendor_not_paid_out(ctx.conn(), event.id, product.vendor_id).await?;
+    if product.sold {
+        return Err(AppError::bad_request("product.alreadySold"));
+    }
+    assert_ready_for_event(ctx.conn(), &product, &event).await?;
+    assert_item_limit(ctx, &event, product.vendor_id, 1).await?;
+    sqlx::query(
+        "UPDATE event_products SET status = 'announced', rejected_at = NULL, rejected_by = NULL
+         WHERE id = $1",
+    )
+    .bind(relation.id)
+    .execute(ctx.conn())
+    .await?;
+    touch_listing(ctx, event.id, product.id, product.vendor_id);
+    notify_rejection_undone(ctx, &event, &product).await?;
+    Ok(Success { success: true })
+}
+
+/// Tells the seller the item is announced again. The marker of the rejection mail stays
+/// while other items of theirs are still rejected at the bazaar.
+async fn notify_rejection_undone(ctx: &mut Ctx, event: &Event, product: &Product) -> AppResult<()> {
+    let vendor = product.vendor_id;
+    let still_rejected: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
+                        WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status = 'rejected')",
+    )
+    .bind(event.id)
+    .bind(vendor)
+    .fetch_one(ctx.conn())
+    .await?;
+    if !still_rejected {
+        sqlx::query(
+            "DELETE FROM unread_notices
+             WHERE user_id = $1 AND area = 'messages' AND event_id = $2 AND reason = $3",
+        )
+        .bind(vendor)
+        .bind(event.id)
+        .bind(REJECTION_NOTICE)
+        .execute(ctx.conn())
+        .await?;
+        ctx.touch(Topic::User(vendor));
+    }
+    let (event_title, title, path) = (
+        event.title.clone(),
+        product.title.clone(),
+        format!("/public-events/{}", event.id),
+    );
+    notifications::notify_user(
+        ctx,
+        vendor,
+        |t: T| {
+            let values = [("event", event_title.as_str()), ("title", title.as_str())];
+            Content {
+                subject: t.t("participation.rejectionUndone.subject", &values),
+                heading: t.t("participation.rejectionUndone.heading", &[]),
+                paragraphs: vec![t.t("participation.rejectionUndone.text", &values)],
+                link: t.link("participation.openEvent", path.clone()),
+                ..Content::default()
+            }
+        },
+        None,
+        chrono::Duration::zero(),
+    )
+    .await?;
+    Ok(())
 }

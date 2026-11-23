@@ -16,6 +16,7 @@ import { MyProductSelectEvents } from './components/MyProductSelectEvents';
 import { isPriceInRange, PRODUCT_CONDITIONS } from '../../../shared/constants';
 import { missingForEvent, resolveEventFeatures } from '../../../shared/eventFeatures';
 import { getCategoryFields } from '../../../shared/categoryFields';
+import { isCategoryAllowed } from '../../../shared/categoryTree';
 import { uploadImages } from '../../../lib/uploadImages';
 import {
   isMinimumPriceBelowPrice,
@@ -249,6 +250,15 @@ export function ProductForm() {
     }
     clearErrors('imageFiles');
 
+    // The picker only offers what the bazaars take; a category chosen before stays
+    const refusing = chosenEvents.find(
+      (event) => !isCategoryAllowed(data.categoryId, event.categories, categoryList)
+    );
+    if (refusing && !fixedData?.fixed) {
+      toast.error(t('form.categoryNotAllowedShort', { event: refusing.title }));
+      return;
+    }
+
     const categoryFields = getCategoryFields(data.categoryId, categoryList);
     const missingField = categoryFields.find(
       (field) => requiredFields.includes(field.key) && !data.attributes?.[field.key]?.trim()
@@ -436,6 +446,7 @@ export function ProductForm() {
                 </Alert>
               )}
               <MyProductBasicInfo
+                bazaars={chosenEvents}
                 requiredFields={requiredFields}
                 fixedFields={fixedData?.fixed ? fixedData.fieldKeys : undefined}
                 negotiation={negotiation}

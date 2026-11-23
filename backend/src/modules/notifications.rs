@@ -90,10 +90,18 @@ pub enum Area {
     Sales,
     Messages,
     Events,
+    /// The seller's place at a bazaar: excluded by the organizer
+    Participation,
 }
 
 impl Area {
-    const ALL: [Area; 4] = [Self::Products, Self::Sales, Self::Messages, Self::Events];
+    const ALL: [Area; 5] = [
+        Self::Products,
+        Self::Sales,
+        Self::Messages,
+        Self::Events,
+        Self::Participation,
+    ];
 
     pub fn as_str(self) -> &'static str {
         match self {
@@ -101,6 +109,7 @@ impl Area {
             Self::Sales => "sales",
             Self::Messages => "messages",
             Self::Events => "events",
+            Self::Participation => "participation",
         }
     }
 }
@@ -142,6 +151,13 @@ impl T {
 /// "12,50 €"
 pub fn format_euro(amount: Decimal) -> String {
     format!("{:.2} €", amount.cents()).replace('.', ",")
+}
+
+#[derive(sqlx::FromRow)]
+struct RecipientRow {
+    id: Uuid,
+    #[sqlx(flatten)]
+    recipient: Recipient,
 }
 
 #[derive(sqlx::FromRow)]
@@ -196,6 +212,20 @@ pub async fn notify_user(
     area: Option<Area>,
     delay: Duration,
 ) -> AppResult<()> {
+    notify_user_at_event(ctx, user, content, area, None, None, delay).await
+}
+
+/// Like `notify_user`, with the marker belonging to one bazaar, so its page clears it.
+/// `reason` tags the marker, so the step that undoes it removes only its own.
+pub async fn notify_user_at_event(
+    ctx: &mut Ctx,
+    user: Uuid,
+    content: impl Fn(T) -> Content,
+    area: Option<Area>,
+    event: Option<Uuid>,
+    reason: Option<&str>,
+    delay: Duration,
+) -> AppResult<()> {
     let Some(recipient) = recipient(ctx, user).await? else {
         return Ok(());
     };
@@ -204,29 +234,85 @@ pub async fn notify_user(
         && !is_blocked(recipient.status.as_deref())
         && recipient.managed_by_event_id.is_none()
     {
-        add_notice(ctx, user, area, None).await?;
+        add_tagged_notice(ctx, user, area, event, reason).await?;
     }
-    let Some(to) = address(&recipient) else {
+    match prepare(user, &recipient, &content) {
+        Some(mail) => {
+            crate::jobs::enqueue(ctx.conn(), NOTIFICATION_JOB, &mail, Utc::now() + delay).await?;
+            Ok(())
+        }
+        None => Ok(()),
+    }
+}
+
+/// `notify_user` for many users at once, without menu marker: one query loads all
+/// recipients and one insert queues all mails, `gap` apart in the order of `users`.
+pub async fn notify_users(
+    ctx: &mut Ctx,
+    users: &[Uuid],
+    content: impl Fn(T) -> Content,
+    gap: Duration,
+) -> AppResult<()> {
+    if users.is_empty() {
         return Ok(());
-    };
+    }
+    let recipients: std::collections::HashMap<Uuid, Recipient> = sqlx::query_as::<_, RecipientRow>(
+        "SELECT id, status::text AS status, email, contact_email, managed_by_event_id, locale,
+                notification_prefs, unsubscribe_token
+         FROM users WHERE id = ANY($1)",
+    )
+    .bind(users)
+    .fetch_all(ctx.conn())
+    .await?
+    .into_iter()
+    .map(|row| (row.id, row.recipient))
+    .collect();
+    let now = Utc::now();
+    let jobs: Vec<(NotificationMail, chrono::DateTime<Utc>)> = users
+        .iter()
+        .enumerate()
+        .filter_map(|(index, user)| {
+            let mail = prepare(*user, recipients.get(user)?, &content)?;
+            Some((mail, now + gap * index as i32))
+        })
+        .collect();
+    crate::jobs::enqueue_many(ctx.conn(), NOTIFICATION_JOB, &jobs).await?;
+    Ok(())
+}
+
+/// The mail to a recipient, or none without address or with the category switched off.
+fn prepare(
+    user: Uuid,
+    recipient: &Recipient,
+    content: &impl Fn(T) -> Content,
+) -> Option<NotificationMail> {
+    let to = address(recipient)?;
     let locale = recipient.locale.unwrap_or_default();
     let t = T(locale);
     let mail = content(t);
     if !wants_email(&recipient.notification_prefs, mail.category) {
-        return Ok(());
+        return None;
     }
-    let unsubscribe = match mail.category {
-        Some(category) => {
-            let query = format!("?t={}&k={}", recipient.unsubscribe_token, category.as_str());
-            Some(Unsubscribe {
-                path: format!("/benachrichtigungen/abbestellen{query}"),
-                one_click_path: format!("/api/unsubscribe{query}"),
-                category: t.t(&format!("categories.{}", category.as_str()), &[]),
-            })
+    let unsubscribe = mail.category.map(|category| {
+        let query = format!("?t={}&k={}", recipient.unsubscribe_token, category.as_str());
+        Unsubscribe {
+            path: format!("/benachrichtigungen/abbestellen{query}"),
+            one_click_path: format!("/api/unsubscribe{query}"),
+            category: t.t(&format!("categories.{}", category.as_str()), &[]),
         }
-        None => None,
-    };
-    queue(ctx, Some(user), to, locale, mail, unsubscribe, delay).await
+    });
+    Some(NotificationMail {
+        user_id: Some(user),
+        to,
+        subject: mail.subject,
+        heading: mail.heading,
+        paragraphs: mail.paragraphs,
+        details: mail.details,
+        link: mail.link,
+        footnote: mail.footnote,
+        locale,
+        unsubscribe,
+    })
 }
 
 /// A red marker in the menu; `event` lets the bazaar's page clear only its own.
@@ -236,12 +322,25 @@ pub async fn add_notice(
     area: Area,
     event: Option<Uuid>,
 ) -> sqlx::Result<()> {
+    add_tagged_notice(ctx, user, area, event, None).await
+}
+
+/// `add_notice` with a `reason`, for a marker that a later step takes back on its own.
+pub async fn add_tagged_notice(
+    ctx: &mut Ctx,
+    user: Uuid,
+    area: Area,
+    event: Option<Uuid>,
+    reason: Option<&str>,
+) -> sqlx::Result<()> {
     sqlx::query(
-        "INSERT INTO unread_notices (user_id, area, event_id) VALUES ($1, $2::notice_area, $3)",
+        "INSERT INTO unread_notices (user_id, area, event_id, reason)
+         VALUES ($1, $2::notice_area, $3, $4)",
     )
     .bind(user)
     .bind(area.as_str())
     .bind(event)
+    .bind(reason)
     .execute(ctx.conn())
     .await?;
     ctx.touch(Topic::User(user));

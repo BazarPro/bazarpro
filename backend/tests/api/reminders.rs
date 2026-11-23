@@ -250,6 +250,7 @@ fn pickup_text_with_a_fee_to_pay_and_a_long_item_list() {
         description: String::new(),
         cover_image: None,
         event_map_image: None,
+        region_map_image: None,
         location: "Halle".into(),
         street: None,
         postal_code: None,
@@ -270,6 +271,7 @@ fn pickup_text_with_a_fee_to_pay_and_a_long_item_list() {
         rejection_reason: None,
         access_code: None,
         vendor_limit: None,
+        seller_count: None,
         last_seller_number: None,
         commission: Default::default(),
         sale_fee_fixed: None,
@@ -283,6 +285,7 @@ fn pickup_text_with_a_fee_to_pay_and_a_long_item_list() {
         reminders_sent: None,
         moderation: None,
         organizer_id: Uuid::nil(),
+        leftovers_returned_at: None,
     };
     let unsold: Vec<String> = (1..=12).map(|i| format!("Teil {i}")).collect();
     let content = pickup_reminder(

@@ -36,6 +36,8 @@ import { TableRowsSkeleton } from '../../components/ui/loading';
 import { Pagination } from '../../components/ui/pagination';
 import { usePagedItems } from '../../hooks/usePagedItems';
 import { formatEventPlace } from '../../shared/eventJsonLd';
+import { eventPhase } from '../../shared/eventPhase';
+import { EventPhaseBadge } from '../../components/events/EventPhaseBadge';
 
 type AdminEvent = Doc<'events'> & {
   isApproved: boolean;
@@ -68,8 +70,8 @@ export function AdminEventsPage() {
       .filter((event) => {
         if (filter === 'pending')
           return event.visibility === 'public' && event.approvalStatus === 'pending';
-        if (filter === 'running') return event.startDate <= now && now <= event.endDate;
-        if (filter === 'upcoming') return event.startDate > now;
+        if (filter === 'running') return eventPhase(event, now) === 'running';
+        if (filter === 'upcoming') return eventPhase(event, now) === 'upcoming';
         if (filter === 'hidden') return !!event.moderation;
         return true;
       })
@@ -196,7 +198,12 @@ export function AdminEventsPage() {
                       {event.organizerEmail || '—'}
                     </div>
                   </TableCell>
-                  <TableCell>{renderStatus(event)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      <EventPhaseBadge event={event} />
+                      {renderStatus(event)}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right @4xl:min-w-[16.5rem]">
                     <div className="flex flex-wrap justify-end gap-1 @max-4xl:justify-start">
                       <Button

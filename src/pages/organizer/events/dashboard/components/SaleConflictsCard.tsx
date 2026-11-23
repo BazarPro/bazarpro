@@ -131,7 +131,7 @@ type Row = {
 };
 
 /** The error code of the backend (purchases.rs) as a text key. */
-function reasonKey(reason: string): 'sold' | 'sellerPaid' | 'gone' | 'other' {
+function reasonKey(reason: string): 'sold' | 'sellerPaid' | 'gone' | 'directSale' | 'other' {
   switch (reason) {
     case 'product.notForSale':
       return 'sold';
@@ -139,6 +139,8 @@ function reasonKey(reason: string): 'sold' | 'sellerPaid' | 'gone' | 'other' {
       return 'sellerPaid';
     case 'notFound.product':
       return 'gone';
+    case 'checkout.directSaleMismatch':
+      return 'directSale';
     default:
       return 'other';
   }

@@ -21,15 +21,18 @@ import { Textarea } from '../ui/text-area';
 import { getUserFacingErrorMessage } from '../../lib/errors';
 import { useTranslation } from 'react-i18next';
 
-const AUDIENCES: BroadcastAudience[] = ['all', 'accepted', 'pickup'];
+const AUDIENCES: BroadcastAudience[] = ['all', 'withoutItems', 'accepted', 'pickup'];
 
 /** Organizer writes to the sellers of the bazaar, e.g. "Abgabe erst ab 9 Uhr". */
 export function BroadcastDialog({
   eventId,
   open,
   onOpenChange,
+  initialAudience = 'all',
 }: {
   eventId: Id<'events'>;
+  /** Preselected, e.g. sellers without items from the seller list (#304) */
+  initialAudience?: BroadcastAudience;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -50,9 +53,9 @@ export function BroadcastDialog({
       setSubject('');
       setBody('');
       setImportant(false);
-      setAudience('all');
+      setAudience(initialAudience);
     }
-  }, [open]);
+  }, [open, initialAudience]);
 
   const limitReached = preview?.left === 0;
   const canSend =

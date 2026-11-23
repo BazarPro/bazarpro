@@ -34,7 +34,19 @@ describe('findProductsToComplete', () => {
 
   it('asks for required fields only where the category has them', () => {
     const categories = [
-      { _id: 'cat-bikes', label: 'Fahrräder' },
+      {
+        _id: 'cat-bikes',
+        label: 'Fahrräder',
+        fieldList: [
+          {
+            _id: 'frameNumber',
+            key: 'frameNumber',
+            label: 'Rahmennummer',
+            short: false,
+            notFoundButton: true,
+          },
+        ],
+      },
       { _id: 'cat-toys', label: 'Spielzeug' },
     ];
     const market = {

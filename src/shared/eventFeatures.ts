@@ -1,6 +1,8 @@
+import type { PostalCodesByCountry } from './postalCodes';
 import type { LabelFormat, LabelMark } from './constants';
 import type { ErrorCode } from './errorCodes';
 import type { CategoryField } from './categoryFields';
+import type { FeeGroup } from './feeGroups';
 /**
  * Per-event feature switches chosen by the organizer. Pure helpers only, so the
  * frontend can import this file as well.
@@ -38,6 +40,11 @@ export interface EventFeatures {
   requiredFields?: string[];
   /** Upper bound of items a seller may register for this event; unset means no limit. */
   maxItemsPerSeller?: number;
+  /**
+   * Upper bound of items of all sellers together, e.g. what the hall holds; unset means no
+   * limit. Items already registered stay when it is lowered.
+   */
+  maxItemsTotal?: number;
   /** Label sheet sellers print for this event. */
   labelFormat: LabelFormat;
   /** Print the price on labels; only takes effect while discounts are off. */
@@ -49,6 +56,16 @@ export interface EventFeatures {
   labelMark: LabelMark;
   /** Fixed fee in € per accepted item (sold or not), kept from the payout; unset means none. */
   intakeFee?: number;
+  /**
+   * Upper bound in € of all fees a seller pays at this event, commission and intake fee
+   * together (src/shared/feeCap.ts); unset means no cap.
+   */
+  maxFeesPerSeller?: number;
+  /**
+   * Sellers with own fees, e.g. club members or helpers (src/shared/feeGroups.ts, #302);
+   * unset means none.
+   */
+  feeGroups?: FeeGroup[];
   /** Sellers confirm when joining that they sell as private persons, not as traders. */
   privateSellersOnly: boolean;
   /**
@@ -57,6 +74,28 @@ export interface EventFeatures {
    * what, e.g. for the police at a bike market.
    */
   fixedSellerData: boolean;
+  /**
+   * Direct sale: buyers pay the seller at the item. The cash desk books the sale at the
+   * agreed price and takes only the commission from the seller; nothing is paid out later.
+   */
+  directSale: boolean;
+  /** Sellers may join on their own. Off: only people the organizer invites get in. */
+  registrationOpen: boolean;
+  /** Joining is possible from this time on; unset: right away. */
+  registrationStartsAt?: number;
+  /** Joining ends at this time; unset: with the bazaar. */
+  registrationEndsAt?: number;
+  /**
+   * The kind of bazaar chosen in the creation wizard (`EVENT_TYPES` in src/lib/eventTypes.ts),
+   * e.g. "bikeExchange"; the conditions pick their worked example by it (#303). Unset: none.
+   */
+  eventType?: string;
+  /**
+   * Only sellers whose postal code starts with one of the prefixes of their country join
+   * on their own (#304), e.g. `{ DE: ['89', '7322'], AT: ['6'] }`; unset or empty:
+   * everyone. Invitations and the access code pass it. See src/shared/postalCodes.ts.
+   */
+  allowedPostalCodes?: PostalCodesByCountry;
 }
 
 export type StoredEventFeatures = Partial<EventFeatures>;
@@ -79,6 +118,8 @@ export const DEFAULT_EVENT_FEATURES: EventFeatures = {
   labelMark: 'universal',
   privateSellersOnly: false,
   fixedSellerData: false,
+  directSale: false,
+  registrationOpen: true,
 };
 
 export function resolveEventFeatures(event: { features?: StoredEventFeatures }): EventFeatures {
@@ -197,4 +238,31 @@ export function areOffersOpen(
 export function showsPriceOnLabel(event: { features?: StoredEventFeatures }): boolean {
   const features = resolveEventFeatures(event);
   return features.priceOnLabel && !features.discounts;
+}
+
+/**
+ * Whether sellers can join on their own right now; an invitation lets them in anyway.
+ * Whether the bazaar is over is up to the caller: nobody joins a past bazaar.
+ */
+export type RegistrationState =
+  | { open: true; closesAt?: number }
+  | { open: false; reason: 'closed' }
+  | { open: false; reason: 'notYet'; opensAt: number };
+
+export function getRegistrationState(
+  event: { features?: StoredEventFeatures },
+  now: number
+): RegistrationState {
+  const features = resolveEventFeatures(event);
+  if (!features.registrationOpen) return { open: false, reason: 'closed' };
+  const { registrationStartsAt: opensAt, registrationEndsAt: closesAt } = features;
+  if (opensAt !== undefined && now < opensAt) return { open: false, reason: 'notYet', opensAt };
+  if (closesAt !== undefined && now >= closesAt) return { open: false, reason: 'closed' };
+  return closesAt === undefined ? { open: true } : { open: true, closesAt };
+}
+
+/** The times at which the registration opens or closes, e.g. for `useNowPassing`. */
+export function registrationTimes(event: { features?: StoredEventFeatures }): number[] {
+  const { registrationStartsAt, registrationEndsAt } = resolveEventFeatures(event);
+  return [registrationStartsAt, registrationEndsAt].filter((time) => time !== undefined);
 }

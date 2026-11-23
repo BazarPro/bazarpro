@@ -26,43 +26,85 @@ function formatDate(timestamp: number, withTime = false): string {
 const number = (value: number | undefined) => (value !== undefined ? String(value) : '–');
 const sum = <T>(rows: T[], get: (row: T) => number) => rows.reduce((a, row) => a + get(row), 0);
 
-export function sellerHeaders(): string[] {
-  return [
-    text('number'),
-    text('seller'),
-    text('address'),
-    text('revenue'),
-    text('commission'),
-    text('intakeFee'),
-    text('payout'),
-    text('paid'),
-  ];
+/**
+ * The column of the fee cap at every event with a cap (#301), so its layout does not
+ * change once the first seller gets fees back; a credit without a cap still shows.
+ */
+const capCredit = (seller: SettlementSeller) => seller.feeCapCredit ?? 0;
+export const hasCapColumn = ({ event, sellers }: Pick<SettlementExport, 'event' | 'sellers'>) =>
+  event.maxFeesPerSeller !== undefined || sellers.some((seller) => capCredit(seller) > 0);
+/** Index of the fee cap column, right after the intake fee */
+const CAP_COLUMN = 6;
+function withCap(row: string[], cap: boolean, value: string): string[] {
+  return cap ? [...row.slice(0, CAP_COLUMN), value, ...row.slice(CAP_COLUMN)] : row;
 }
 
-export function sellerRows(sellers: SettlementSeller[]): string[][] {
-  return sellers.map((seller) => [
-    number(seller.sellerNumber),
-    sellerName(seller),
-    sellerAddress(seller),
-    formatPriceDE(seller.revenue),
-    formatPriceDE(seller.commission),
-    formatPriceDE(seller.intakeFee),
-    formatPriceDE(seller.payout),
-    seller.paid ? text('yes') : text('no'),
-  ]);
+/** The bazaar has fee groups (#302): the CSV gets a column, the PDF names it with the seller */
+export const hasGroupColumn = ({ event, sellers }: Pick<SettlementExport, 'event' | 'sellers'>) =>
+  !!event.feeGroups || sellers.some((seller) => seller.feeGroup);
+
+export function sellerHeaders(cap = false, group = false): string[] {
+  const headers = withCap(
+    [
+      text('number'),
+      text('seller'),
+      text('address'),
+      text('revenue'),
+      text('commission'),
+      text('intakeFee'),
+      text('payout'),
+      text('paid'),
+    ],
+    cap,
+    text('feeCap')
+  );
+  return group ? [...headers, text('feeGroup')] : headers;
 }
 
-function sellerTotals(sellers: SettlementSeller[]): string[] {
-  return [
-    '',
-    text('total'),
-    '',
-    formatPriceDE(sum(sellers, (s) => s.revenue)),
-    formatPriceDE(sum(sellers, (s) => s.commission)),
-    formatPriceDE(sum(sellers, (s) => s.intakeFee)),
-    formatPriceDE(sum(sellers, (s) => s.payout)),
-    '',
-  ];
+/**
+ * `group`: "column" adds the fee group as last column, "name" after the seller's name
+ * (the PDF, whose columns are fixed).
+ */
+export function sellerRows(
+  sellers: SettlementSeller[],
+  cap = false,
+  group: 'column' | 'name' | false = false
+): string[][] {
+  return sellers.map((seller) => {
+    const name = sellerName(seller);
+    const row = withCap(
+      [
+        number(seller.sellerNumber),
+        group === 'name' && seller.feeGroup ? `${name} (${seller.feeGroup})` : name,
+        sellerAddress(seller),
+        formatPriceDE(seller.revenue),
+        formatPriceDE(seller.commission),
+        formatPriceDE(seller.intakeFee),
+        formatPriceDE(seller.payout),
+        seller.paid ? text('yes') : text('no'),
+      ],
+      cap,
+      formatPriceDE(capCredit(seller))
+    );
+    return group === 'column' ? [...row, seller.feeGroup ?? ''] : row;
+  });
+}
+
+function sellerTotals(sellers: SettlementSeller[], cap: boolean): string[] {
+  return withCap(
+    [
+      '',
+      text('total'),
+      '',
+      formatPriceDE(sum(sellers, (s) => s.revenue)),
+      formatPriceDE(sum(sellers, (s) => s.commission)),
+      formatPriceDE(sum(sellers, (s) => s.intakeFee)),
+      formatPriceDE(sum(sellers, (s) => s.payout)),
+      '',
+    ],
+    cap,
+    formatPriceDE(sum(sellers, capCredit))
+  );
 }
 
 export function saleHeaders(): string[] {
@@ -87,7 +129,10 @@ export function saleRows(sales: SettlementSale[]): string[][] {
     sale.category,
     formatPriceDE(sale.listPrice),
     formatPriceDE(sale.totalAmount),
-    text(`source.${sale.priceSource}`),
+    // A direct sale was paid to the seller; the payout of 0 € is no omission
+    sale.directSale
+      ? `${text(`source.${sale.priceSource}`)}, ${text('direct')}`
+      : text(`source.${sale.priceSource}`),
     formatPriceDE(sale.commission),
     formatPriceDE(sale.payout),
   ]);
@@ -109,6 +154,8 @@ function saleTotals(sales: SettlementSale[]): string[] {
 
 /** Column widths in mm on A4 landscape (297 mm minus margins). */
 const SELLER_COLUMNS = [12, 50, 90, 25, 25, 28, 25, 22];
+/** With the fee cap column the address makes room */
+const SELLER_COLUMNS_CAP = [12, 50, 65, 25, 25, 28, 25, 25, 22];
 const SALE_COLUMNS = [32, 12, 70, 45, 22, 24, 24, 22, 26];
 const MARGIN = 10;
 
@@ -143,10 +190,14 @@ export function buildSettlementPdf(settlement: SettlementExport): jsPDF {
   };
 
   let y = section(text('sellers', { count: sellers.length }), 26);
+  const cap = hasCapColumn(settlement);
   y = drawTable(doc, {
-    columns: SELLER_COLUMNS,
-    headers: sellerHeaders(),
-    rows: [...sellerRows(sellers), sellerTotals(sellers)],
+    columns: cap ? SELLER_COLUMNS_CAP : SELLER_COLUMNS,
+    headers: sellerHeaders(cap),
+    rows: [
+      ...sellerRows(sellers, cap, hasGroupColumn(settlement) && 'name'),
+      sellerTotals(sellers, cap),
+    ],
     y,
     margin: MARGIN,
   });
@@ -166,7 +217,12 @@ export function downloadSettlementPdf(settlement: SettlementExport) {
 }
 
 export function sellersCsv(settlement: SettlementExport): string {
-  return toCsv([sellerHeaders(), ...sellerRows(settlement.sellers)]);
+  const cap = hasCapColumn(settlement);
+  const group = hasGroupColumn(settlement);
+  return toCsv([
+    sellerHeaders(cap, group),
+    ...sellerRows(settlement.sellers, cap, group && 'column'),
+  ]);
 }
 
 export function salesCsv(settlement: SettlementExport): string {

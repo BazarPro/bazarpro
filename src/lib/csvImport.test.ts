@@ -14,8 +14,15 @@ const TITLES = {
   good: 'Gebraucht',
   ok: 'Gebraucht mit Mängeln',
 };
+const SHOE_SIZE = {
+  _id: 'shoeSize',
+  key: 'size',
+  label: 'Größe (EU)',
+  short: true,
+  notFoundButton: false,
+};
 const CATEGORIES = [
-  { _id: 'shoes', label: 'Skischuhe' },
+  { _id: 'shoes', label: 'Skischuhe', fieldList: [SHOE_SIZE] },
   { _id: 'helmets', label: 'Helme', translations: { en: 'Helmets' } },
 ];
 

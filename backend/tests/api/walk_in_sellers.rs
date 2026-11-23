@@ -351,7 +351,8 @@ async fn organizers_answer_for_walk_ins_and_sale_mail_goes_to_the_contact(db: Pg
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn importing_the_list_of_a_shop_all_or_nothing(db: PgPool) {
     let desk = Desk::new(db.clone()).await;
-    let shoes = fixtures::category(&db, "Skischuhe").await;
+    // Sport has a short size field, stored under "size" like all sizes
+    let shoes = fixtures::category(&db, "Sport").await;
     let seller = desk.walk_in().await;
     let import = |items: Value| {
         desk.app.mutation(
@@ -416,4 +417,43 @@ async fn importing_the_list_of_a_shop_all_or_nothing(db: PgPool) {
         )
         .await;
     assert_eq!(reply.status, StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn walk_in_items_count_towards_the_limit_of_the_whole_market(db: PgPool) {
+    let desk = Desk::new(db.clone()).await;
+    sqlx::query("UPDATE events SET features = '{\"maxItemsTotal\": 2}' WHERE id = $1")
+        .bind(desk.event)
+        .execute(&db)
+        .await
+        .unwrap();
+    let seller = desk.walk_in().await;
+    for _ in 0..2 {
+        let reply = desk.save(seller, json!({}), &desk.team).await;
+        assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    }
+    // The hall is full: the desk cannot take a third item either
+    let reply = desk.save(seller, json!({}), &desk.team).await;
+    assert_eq!(reply.body["code"], "event.full", "{}", reply.body);
+    let items: i64 = sqlx::query_scalar("SELECT count(*) FROM event_products WHERE event_id = $1")
+        .bind(desk.event)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(items, 2);
+
+    // Nor a list of a shop
+    let category = fixtures::category(&db, "Sport").await;
+    let reply = desk
+        .app
+        .mutation(
+            "walkInSellers.importWalkInProducts",
+            json!({ "eventId": desk.event, "sellerId": seller, "items": [{
+                "title": "Skischuhe", "description": "", "condition": "new",
+                "productCategory": category, "price": 20,
+            }] }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(reply.body["code"], "event.full", "{}", reply.body);
 }

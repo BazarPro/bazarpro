@@ -71,6 +71,18 @@ async fn send(ctx: &mut Ctx, args: SendArgs) -> AppResult<Success> {
     if !EMAIL_PATTERN.is_match(&email) {
         return Err(AppError::bad_request("invitation.invalidEmail"));
     }
+    // The link would never work (`join_event`): the exclusion has to be taken back first
+    let excluded: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM event_exclusions x JOIN users u ON u.id = x.user_id
+                        WHERE x.event_id = $1 AND lower(btrim(u.email)) = $2)",
+    )
+    .bind(event_id)
+    .bind(&email)
+    .fetch_one(ctx.conn())
+    .await?;
+    if excluded {
+        return Err(AppError::bad_request("invitation.excluded"));
+    }
     let sent: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM event_invitations
          WHERE event_id = $1 AND created_at > now() - interval '1 day'",
@@ -305,6 +317,8 @@ pub async fn redeem(
         .await?;
     if helper && !event_roles::has_role(ctx.conn(), event, user, Role::Organizer).await? {
         event_roles::add_role(ctx, event, user, Role::Coorganizer).await?;
+        // Helpers may pay the fees of a helper group (#302)
+        super::fee_groups::after_role_change(ctx, event, user).await?;
     }
     ctx.touch(Topic::Event(event));
     Ok(())

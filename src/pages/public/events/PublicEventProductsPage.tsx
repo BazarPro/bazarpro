@@ -29,6 +29,7 @@ import { Footer } from '../../../components/layout/Footer';
 import { useInstanceConfig } from '../../../hooks/useInstanceConfig';
 import { useTranslation } from 'react-i18next';
 import { categoryNames } from '../../../i18n/categories';
+import { withSubcategories } from '../../../shared/categoryTree';
 import {
   autoViewMode,
   loadViewMode,
@@ -37,6 +38,7 @@ import {
 } from '../../../lib/productDisplay';
 import { cn } from '../../../lib/utils';
 import { useNowPassing } from '../../../hooks/useNowPassing';
+import { isEventRunning } from '../../../shared/eventPhase';
 
 /**
  *  Public Event Product List showing all products for a public event
@@ -111,11 +113,13 @@ export function PublicEventProductsPage() {
       status: string;
     }
     const productList = (products as ProductWithDiscount[] | undefined) ?? [];
-    const isRunning = !!event && event.startDate <= now && now <= event.endDate;
+    const isRunning = !!event && isEventRunning(event, now);
 
+    const inCategory =
+      filterCategory === 'all' ? undefined : withSubcategories(filterCategory, categoryList);
     let result = productList.filter((p: ProductWithDiscount) => {
       const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = filterCategory === 'all' || p.productCategory === filterCategory;
+      const matchesCategory = !inCategory || inCategory.has(p.productCategory);
       const matchesStatus = matchesPublicStatusFilter(p, filterStatus, isRunning);
       const matchesMinPrice = minPrice === '' || p.price >= parseFloat(minPrice);
       const matchesMaxPrice = maxPrice === '' || p.price <= parseFloat(maxPrice);

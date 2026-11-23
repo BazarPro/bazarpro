@@ -140,6 +140,8 @@ pub struct Event {
     pub description: String,
     pub cover_image: Option<Uuid>,
     pub event_map_image: Option<Uuid>,
+    /// Picture of the region of a bazaar for its region (#304)
+    pub region_map_image: Option<Uuid>,
     pub location: String,
     /// Address of the venue; `location` is its name or, in older events, all of it
     pub street: Option<String>,
@@ -166,6 +168,8 @@ pub struct Event {
     pub rejection_reason: Option<String>,
     pub access_code: Option<String>,
     pub vendor_limit: Option<i32>,
+    /// Places taken by sellers, only with a `vendor_limit`: sellers see how many are left
+    pub seller_count: Option<i64>,
     pub last_seller_number: Option<i32>,
     pub commission: Decimal,
     pub sale_fee_fixed: Option<Decimal>,
@@ -176,6 +180,9 @@ pub struct Event {
     pub reminders_sent: Option<RemindersSent>,
     pub moderation: Option<Moderation>,
     pub organizer_id: Uuid,
+    /// The cron returned the items left over after the bazaar (#305)
+    #[serde(with = "ms_opt")]
+    pub leftovers_returned_at: Option<DateTime<Utc>>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -186,6 +193,7 @@ struct EventRow {
     description: String,
     cover_image_id: Option<Uuid>,
     map_image_id: Option<Uuid>,
+    region_map_image_id: Option<Uuid>,
     location: String,
     street: Option<String>,
     postal_code: Option<String>,
@@ -206,6 +214,7 @@ struct EventRow {
     rejection_reason: Option<String>,
     access_code: Option<String>,
     vendor_limit: Option<i32>,
+    seller_count: Option<i64>,
     last_seller_number: Option<i32>,
     commission: Decimal,
     sale_fee_fixed: Option<Decimal>,
@@ -222,6 +231,7 @@ struct EventRow {
     hidden_by: Option<Uuid>,
     hidden_reason: Option<String>,
     organizer_id: Uuid,
+    leftovers_returned_at: Option<DateTime<Utc>>,
 }
 
 impl From<EventRow> for Event {
@@ -251,6 +261,7 @@ impl From<EventRow> for Event {
             description: row.description,
             cover_image: row.cover_image_id,
             event_map_image: row.map_image_id,
+            region_map_image: row.region_map_image_id,
             location: row.location,
             street: row.street,
             postal_code: row.postal_code,
@@ -271,6 +282,7 @@ impl From<EventRow> for Event {
             rejection_reason: row.rejection_reason,
             access_code: row.access_code,
             vendor_limit: row.vendor_limit,
+            seller_count: row.seller_count,
             last_seller_number: row.last_seller_number,
             commission: row.commission,
             sale_fee_fixed: row.sale_fee_fixed,
@@ -284,22 +296,52 @@ impl From<EventRow> for Event {
             reminders_sent: reminders,
             moderation: moderation(row.hidden_at, row.hidden_by, row.hidden_reason),
             organizer_id: row.organizer_id,
+            leftovers_returned_at: row.leftovers_returned_at,
         }
     }
 }
 
+/// Which rows of `event_roles r` take a place toward the seller limit: sellers, except those
+/// the organizer excluded (they keep the role only for the return of items handed in) and
+/// the team, who sell at their own bazaar without taking a place from the public. One rule
+/// for the limit when joining (`SELLER_PLACES_SQL`) and the free places shown
+/// (`seller_count` in `EVENT_COLUMNS`).
+macro_rules! seller_place {
+    () => {
+        "r.role = 'seller'
+         AND NOT EXISTS (SELECT 1 FROM event_exclusions x
+                         WHERE x.event_id = r.event_id AND x.user_id = r.user_id)
+         AND NOT EXISTS (SELECT 1 FROM event_roles t
+                         WHERE t.event_id = r.event_id AND t.user_id = r.user_id
+                           AND t.role IN ('organizer', 'coorganizer'))"
+    };
+}
+
+/// Places taken toward the seller limit of event `$1`.
+pub const SELLER_PLACES_SQL: &str = concat!(
+    "SELECT count(*) FROM event_roles r WHERE r.event_id = $1 AND ",
+    seller_place!()
+);
+
 /// SELECT list of the events table aliased `e`.
-pub const EVENT_COLUMNS: &str = "e.id, e.created_at, e.title, e.description, e.cover_image_id,
-    e.map_image_id, e.location, e.street, e.postal_code, e.city, e.country,
+pub const EVENT_COLUMNS: &str = concat!(
+    "e.id, e.created_at, e.title, e.description, e.cover_image_id,
+    e.map_image_id, e.region_map_image_id, e.location, e.street, e.postal_code, e.city, e.country,
     e.start_date, e.end_date, e.contact_info,
     ARRAY(SELECT c.category_id FROM event_categories c WHERE c.event_id = e.id ORDER BY c.position)
       AS categories,
     e.services::text[] AS services, e.visibility::text AS visibility, e.is_approved,
     e.approval_status::text AS approval_status, e.approved_at, e.approved_by, e.rejected_at,
-    e.rejected_by, e.rejection_reason, e.access_code, e.vendor_limit, e.last_seller_number,
+    e.rejected_by, e.rejection_reason, e.access_code, e.vendor_limit,
+    CASE WHEN e.vendor_limit > 0 THEN (SELECT count(*) FROM event_roles r
+      WHERE r.event_id = e.id AND ",
+    seller_place!(),
+    ") END AS seller_count, e.last_seller_number,
     e.commission, e.sale_fee_fixed, e.sale_fee_percentage, e.features, e.dropoff_start,
     e.dropoff_end, e.pickup_start, e.pickup_end, e.logistics_note, e.reminder_day_before_sent_for,
-    e.reminder_pickup_sent_for, e.hidden_at, e.hidden_by, e.hidden_reason, e.organizer_id";
+    e.reminder_pickup_sent_for, e.hidden_at, e.hidden_by, e.hidden_reason, e.organizer_id,
+    e.leftovers_returned_at"
+);
 
 pub async fn event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<Option<Event>> {
     let row: Option<EventRow> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
@@ -309,6 +351,17 @@ pub async fn event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<Option<Eve
     .fetch_optional(conn)
     .await?;
     Ok(row.map(Event::from))
+}
+
+/// Holds the event row until the transaction ends, so checks against a limit of the whole
+/// event (the last place of the market) run one at a time.
+/// Does not block inserts that only reference the event.
+pub async fn lock_event(conn: &mut PgConnection, id: Uuid) -> sqlx::Result<()> {
+    sqlx::query("SELECT 1 FROM events WHERE id = $1 FOR NO KEY UPDATE")
+        .bind(id)
+        .execute(conn)
+        .await?;
+    Ok(())
 }
 
 /// Events matching `condition` (SQL on `e`, with `$1` bound to `param`), ordered by start.
@@ -466,10 +519,14 @@ pub struct EventProduct {
     pub discount_percent: Option<Decimal>,
     pub location_category_id: Option<Uuid>,
     pub internal_note: Option<String>,
+    /// Returned by the cron after the bazaar, not by a person (#305)
+    #[serde(with = "ms_opt")]
+    pub auto_returned_at: Option<DateTime<Utc>>,
 }
 
 pub const EVENT_PRODUCT_COLUMNS: &str = "ep.id, ep.created_at, ep.event_id, ep.product_id,
-    ep.status::text AS status, ep.discount_percent, ep.location_category_id, ep.internal_note";
+    ep.status::text AS status, ep.discount_percent, ep.location_category_id, ep.internal_note,
+    ep.auto_returned_at";
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, sqlx::FromRow)]
@@ -494,6 +551,17 @@ pub struct EventSeller {
     pub number: Option<i32>,
     pub intake_fee: Option<Decimal>,
     pub intake_fee_items: Option<i32>,
+    /// Fees above the cap given back at the payout (#301)
+    pub fee_cap_credit: Option<Decimal>,
+    /// Fee group the seller chose or the team put them in (#302)
+    pub fee_group_id: Option<String>,
+    /// When the team confirmed, assigned or took away the group
+    #[serde(with = "ms_opt")]
+    pub fee_group_decided_at: Option<DateTime<Utc>>,
+    /// The group applied at the payout
+    pub fee_group_label: Option<String>,
+    /// The commission percent applied at the payout
+    pub commission_percent: Option<Decimal>,
     #[serde(with = "ms_opt")]
     pub private_seller_confirmed_at: Option<DateTime<Utc>>,
     pub seller_snapshot: Option<Value>,
@@ -502,7 +570,8 @@ pub struct EventSeller {
 pub const EVENT_SELLER_COLUMNS: &str =
     "id, created_at, event_id, user_id, total_fee, commission_fee,
     sale_fee_fixed, sale_fee_percentage, payout_amount, payout_received, number, intake_fee,
-    intake_fee_items, private_seller_confirmed_at, seller_snapshot";
+    intake_fee_items, fee_cap_credit, fee_group_id, fee_group_decided_at, fee_group_label,
+    commission_percent, private_seller_confirmed_at, seller_snapshot";
 
 pub async fn event_seller(
     conn: &mut PgConnection,
@@ -550,12 +619,39 @@ pub struct Purchase {
     pub category_label: Option<String>,
     pub product_attributes: Option<Value>,
     pub seller_number: Option<i32>,
+    /// Paid to the seller at the item; the cash desk took only the commission
+    pub direct_sale: bool,
+}
+
+impl Purchase {
+    /// What came into the till for the sale. At a direct sale the desk took the commission
+    /// as it was then; when it changed since (fee cap #301, fee group #302) the payout of
+    /// the sale holds the difference: negative what the seller still owes, positive what
+    /// they get back. Either way commission and payout together are what the desk took.
+    pub fn taken(&self) -> Decimal {
+        if self.direct_sale {
+            self.commission_amount + self.payout_amount
+        } else {
+            desk_takes(false, self.total_amount, self.commission_amount)
+        }
+    }
+
+    /// What the seller got from the buyer at the item and keeps; 0 unless a direct sale
+    pub fn received_directly(&self) -> Decimal {
+        self.total_amount - self.taken()
+    }
+}
+
+/// What the cash desk takes for a sale: the price, at a direct sale only the commission.
+/// The app shows the same before the sale (deskTakes, src/lib/checkout.ts).
+pub fn desk_takes(direct: bool, total: Decimal, commission: Decimal) -> Decimal {
+    if direct { commission } else { total }
 }
 
 pub const PURCHASE_COLUMNS: &str = "id, created_at, product_id, event_id, seller_id, total_amount,
     commission_amount, payout_amount, payout_status, payout_date, discount_percent, list_price,
     price_source::text AS price_source, offer_id, product_title, category_id, category_label,
-    product_attributes, seller_number";
+    product_attributes, seller_number, direct_sale";
 
 pub async fn purchases_where<P>(
     conn: &mut PgConnection,

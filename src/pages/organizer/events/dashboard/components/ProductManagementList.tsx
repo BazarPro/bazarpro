@@ -11,17 +11,22 @@ import {
   StickyNote,
   Pencil,
   Trash2,
+  PackageX,
+  MoonStar,
+  Filter,
+  List,
   type LucideProps,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Badge } from '../../../../../components/ui/badge';
 import { Button } from '../../../../../components/ui/button';
+import { ActionNotice } from '../../../../../components/ui/action-notice';
 import { StorageImage } from '../../../../../components/ui/StorageImage';
 import type { Id } from '../../../../../lib/api/types';
 import { discountedPrice } from '../../../../../shared/eventFeatures';
 import type { InventoryActionType } from '../../../../../hooks/useInventoryActions';
 import type { ProductWithStatus } from './inventoryTypes';
-import { formatPriceDE } from '../../../../../lib/utils';
+import { cn, formatPriceDE } from '../../../../../lib/utils';
 import { getEventProductStatusTitle } from '../../../../../lib/eventProductStatus';
 import { priceSourceLabel } from '../../../../../lib/saleBreakdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../../components/ui/tabs';
@@ -30,7 +35,13 @@ import { WalkInBadge } from '../../../../../components/walkIn/WalkInBadge';
 import { useTranslation } from 'react-i18next';
 import type { HelperPermission } from '../../../../../shared/constants';
 
-export type ProductManagementTab = 'all' | 'announced' | 'available' | 'sold' | 'returned';
+export type ProductManagementTab =
+  | 'all'
+  | 'announced'
+  | 'available'
+  | 'sold'
+  | 'returned'
+  | 'rejected';
 
 interface ProductManagementListProps {
   products: ProductWithStatus[];
@@ -59,8 +70,13 @@ interface ProductManagementListProps {
   /** Items of walk-in sellers: the organizer edits and deletes them for the seller */
   onEditWalkInProduct: (product: ProductWithStatus) => void;
   onDeleteWalkInProduct: (product: ProductWithStatus) => void;
+  /** A rejected item is announced again */
+  onUndoRejection: (product: ProductWithStatus) => void;
   /** Changes with the search, so the list starts on page 1 again */
   filterKey: string;
+  /** The "Rückgabe" tab shows only what the cron returned after the bazaar (#305) */
+  autoReturnedOnly: boolean;
+  onAutoReturnedOnlyChange: (only: boolean) => void;
 }
 
 const ITEMS_PER_PAGE = 30;
@@ -74,6 +90,7 @@ const TABS: {
   { value: 'available', icon: ShoppingCart },
   { value: 'sold', icon: DollarSign },
   { value: 'returned', icon: RotateCcw },
+  { value: 'rejected', icon: PackageX },
 ];
 
 const STATUS_BADGE: Record<string, React.ComponentProps<typeof Badge>['variant']> = {
@@ -81,6 +98,7 @@ const STATUS_BADGE: Record<string, React.ComponentProps<typeof Badge>['variant']
   available: 'info',
   sold: 'success',
   returned: 'warning',
+  rejected: 'outline',
 };
 
 /** Compact rows: small fixed thumbnail, item and seller, status, price and the next action. */
@@ -101,7 +119,10 @@ export function ProductManagementList({
   onSelectVendor,
   onEditWalkInProduct,
   onDeleteWalkInProduct,
+  onUndoRejection,
   filterKey,
+  autoReturnedOnly,
+  onAutoReturnedOnlyChange,
 }: ProductManagementListProps) {
   const { t } = useTranslation('organizer');
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,10 +130,18 @@ export function ProductManagementList({
   // Reset pagination when the tab or the search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, filterKey]);
+  }, [activeTab, filterKey, autoReturnedOnly]);
 
   const countFor = (tab: ProductManagementTab) =>
     tab === 'all' ? products.length : products.filter((p) => p.status === tab).length;
+  // Rejections are rare: their tab only shows once there is one
+  const tabs = TABS.filter(
+    (tab) => tab.value !== 'rejected' || activeTab === 'rejected' || countFor('rejected') > 0
+  );
+  const autoReturnedCount = products.filter(
+    (p) => p.status === 'returned' && p.autoReturnedAt !== undefined
+  ).length;
+  const onlyAuto = autoReturnedOnly && autoReturnedCount > 0;
 
   return (
     <Tabs
@@ -121,14 +150,18 @@ export function ProductManagementList({
       className="w-full"
     >
       <TabsList
-        className="grid w-full grid-cols-3 md:w-auto md:grid-cols-5 h-auto mb-4"
+        className={cn(
+          // Phones: one row that scrolls sideways instead of two uneven rows
+          'mb-4 flex h-auto w-full justify-start overflow-x-auto [scrollbar-width:none] md:grid',
+          tabs.length > 5 ? 'md:grid-cols-6' : 'md:grid-cols-5'
+        )}
         id="product-list-top"
       >
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <TabsTrigger
             key={tab.value}
             value={tab.value}
-            className="py-1.5 px-1 text-xs sm:text-sm gap-1.5"
+            className="shrink-0 gap-1.5 px-2.5 py-1.5 text-xs sm:text-sm md:px-1"
           >
             <tab.icon className="h-4 w-4 hidden sm:block" />
             {t(`list.${tab.value}`)}
@@ -139,8 +172,12 @@ export function ProductManagementList({
         ))}
       </TabsList>
 
-      {TABS.map((tab) => {
-        const filtered = products.filter((p) => tab.value === 'all' || p.status === tab.value);
+      {tabs.map((tab) => {
+        const filtered = products.filter(
+          (p) =>
+            (tab.value === 'all' || p.status === tab.value) &&
+            !(tab.value === 'returned' && onlyAuto && p.autoReturnedAt === undefined)
+        );
         const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
         const paginated = filtered.slice(
           (currentPage - 1) * ITEMS_PER_PAGE,
@@ -149,6 +186,27 @@ export function ProductManagementList({
 
         return (
           <TabsContent key={tab.value} value={tab.value} className="mt-0 space-y-4">
+            {/* What the cron returned after the bazaar: which items, to clear up (#305) */}
+            {tab.value === 'returned' && autoReturnedCount > 0 && (
+              <ActionNotice
+                icon={MoonStar}
+                title={t('list.autoReturnedTitle', { count: autoReturnedCount })}
+                data-testid="auto-returned-notice"
+                action={
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    aria-pressed={onlyAuto}
+                    onClick={() => onAutoReturnedOnlyChange(!onlyAuto)}
+                  >
+                    {onlyAuto ? <List className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+                    {onlyAuto ? t('list.showAllReturned') : t('list.showAutoReturned')}
+                  </Button>
+                }
+              >
+                {t('list.autoReturnedText')}
+              </ActionNotice>
+            )}
             {filtered.length === 0 ? (
               <EmptyState title={t('list.empty')} />
             ) : (
@@ -170,6 +228,7 @@ export function ProductManagementList({
                     onSelectVendor={onSelectVendor}
                     onEditWalkInProduct={onEditWalkInProduct}
                     onDeleteWalkInProduct={onDeleteWalkInProduct}
+                    onUndoRejection={onUndoRejection}
                   />
                 ))}
               </ul>
@@ -203,6 +262,7 @@ function ProductRow({
   onSelectVendor,
   onEditWalkInProduct,
   onDeleteWalkInProduct,
+  onUndoRejection,
 }: {
   product: ProductWithStatus;
   vendorName: string;
@@ -218,6 +278,7 @@ function ProductRow({
   onSelectVendor: (vendorId: Id<'users'>) => void;
   onEditWalkInProduct: (product: ProductWithStatus) => void;
   onDeleteWalkInProduct: (product: ProductWithStatus) => void;
+  onUndoRejection: (product: ProductWithStatus) => void;
 }) {
   const { t } = useTranslation('organizer');
   // Sellers without account cannot fix their items themselves
@@ -264,9 +325,24 @@ function ProductRow({
             >
               {product.title}
             </button>
-            <Badge variant={STATUS_BADGE[product.status]} className="shrink-0">
+            <Badge
+              variant={STATUS_BADGE[product.status]}
+              className={cn(
+                'shrink-0',
+                product.status === 'rejected' && 'border-destructive/40 text-destructive'
+              )}
+            >
               {getEventProductStatusTitle(product.status)}
             </Badge>
+            {product.status === 'returned' && product.autoReturnedAt !== undefined && (
+              <Badge
+                variant="outline"
+                className="shrink-0 gap-1 text-muted-foreground"
+                title={t('list.autoReturnedHint')}
+              >
+                <MoonStar className="h-3 w-3" /> {t('list.autoReturnedBadge')}
+              </Badge>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <button
@@ -351,6 +427,17 @@ function ProductRow({
               disabled={isSubmitting}
             >
               <CheckCircle2 className="h-4 w-4" /> {t('list.accept')}
+            </Button>
+          )}
+
+          {product.status === 'rejected' && can('intake') && (
+            <Button
+              variant="ghost"
+              className="flex-1 gap-2"
+              onClick={() => onUndoRejection(product)}
+              disabled={isSubmitting}
+            >
+              <Undo2 className="h-4 w-4" /> {t('list.undoRejection')}
             </Button>
           )}
 

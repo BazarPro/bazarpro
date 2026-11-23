@@ -6,6 +6,7 @@ import { useAuthActions } from '../../../lib/api/react';
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
 import { Shield } from 'lucide-react';
+import { FormSection } from '../../../components/ui/form-section';
 import { PasswordInput } from '../../../components/auth/PasswordInput';
 import { MIN_PASSWORD_LENGTH } from '../../../shared/constants';
 import { toast } from 'sonner';
@@ -73,86 +74,76 @@ export function SecurityCard({ providers }: SecurityCardProps) {
   };
 
   return (
-    <div className="bg-card rounded-xl border shadow-xs overflow-hidden mb-8">
-      <div className="p-6 border-b bg-muted/10">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">{t('security.title')}</h3>
-        </div>
-      </div>
-      <div className="p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {isOAuth && (
-            <div className="mb-6 p-4 bg-muted rounded-lg border">
-              <p className="text-sm font-medium mb-2">{t('security.linkedAccounts')}</p>
-              <div className="flex flex-wrap gap-2">
-                {providers.map((p) => (
-                  <div
-                    key={p}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 capitalize"
-                  >
-                    {p}
-                  </div>
-                ))}
-              </div>
-              {isOAuth && !hasPasswordProvider && (
-                <p className="text-xs text-muted-foreground mt-3">
-                  {t('security.externalPassword')}
-                </p>
-              )}
-            </div>
-          )}
-
-          {hasPasswordProvider && (
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="oldPassword">{t('security.oldPassword')}</Label>
-                <PasswordInput
-                  id="oldPassword"
-                  autoComplete="current-password"
-                  placeholder={t('security.oldPasswordPlaceholder')}
-                  {...register('oldPassword')}
-                />
-                {errors.oldPassword && (
-                  <p className="text-xs text-destructive dark:text-red-400">
-                    {errors.oldPassword.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">{t('security.newPassword')}</Label>
-                <PasswordInput
-                  id="newPassword"
-                  autoComplete="new-password"
-                  aria-invalid={!!errors.newPassword}
-                  aria-describedby="new-password-hint"
-                  {...register('newPassword')}
-                />
-                <p
-                  id="new-password-hint"
-                  className={`text-xs ${errors.newPassword ? 'text-destructive dark:text-red-400' : 'text-muted-foreground'}`}
+    <FormSection icon={Shield} title={t('security.title')}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {isOAuth && (
+          <div className="rounded-lg border bg-muted/40 p-4">
+            <p className="text-sm font-medium mb-2">{t('security.linkedAccounts')}</p>
+            <div className="flex flex-wrap gap-2">
+              {providers.map((p) => (
+                <div
+                  key={p}
+                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 capitalize"
                 >
-                  {t('security.rules.length')}
-                </p>
-              </div>
-
-              {isDirty && (
-                <div className="pt-2">
-                  <Button
-                    loading={isSubmitting}
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full md:w-auto md:px-8"
-                  >
-                    {isSubmitting ? t('actions.saving', { ns: 'common' }) : t('security.save')}
-                  </Button>
+                  {p}
                 </div>
+              ))}
+            </div>
+            {isOAuth && !hasPasswordProvider && (
+              <p className="text-xs text-muted-foreground mt-3">{t('security.externalPassword')}</p>
+            )}
+          </div>
+        )}
+
+        {hasPasswordProvider && (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="oldPassword">{t('security.oldPassword')}</Label>
+              <PasswordInput
+                id="oldPassword"
+                autoComplete="current-password"
+                placeholder={t('security.oldPasswordPlaceholder')}
+                {...register('oldPassword')}
+              />
+              {errors.oldPassword && (
+                <p className="text-xs text-destructive dark:text-red-400">
+                  {errors.oldPassword.message}
+                </p>
               )}
             </div>
-          )}
-        </form>
-      </div>
-    </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">{t('security.newPassword')}</Label>
+              <PasswordInput
+                id="newPassword"
+                autoComplete="new-password"
+                aria-invalid={!!errors.newPassword}
+                aria-describedby="new-password-hint"
+                {...register('newPassword')}
+              />
+              <p
+                id="new-password-hint"
+                className={`text-xs ${errors.newPassword ? 'text-destructive dark:text-red-400' : 'text-muted-foreground'}`}
+              >
+                {t('security.rules.length')}
+              </p>
+            </div>
+
+            {isDirty && (
+              <div className="pt-2">
+                <Button
+                  loading={isSubmitting}
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full md:w-auto md:px-8"
+                >
+                  {isSubmitting ? t('actions.saving', { ns: 'common' }) : t('security.save')}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </form>
+    </FormSection>
   );
 }

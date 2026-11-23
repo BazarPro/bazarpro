@@ -56,4 +56,21 @@ describe('reminder texts', () => {
     expect(due.details?.find((d) => d.label === t('reminder.pickup.feeDue'))?.value).toBe('2,00 €');
     expect(due.paragraphs).toContain(t('reminder.pickup.where', { location: 'Turnhalle' }));
   });
+
+  test('a direct sale speaks of setup and teardown, not hand-in and pickup (#299)', () => {
+    const t = mailT('de');
+    const direct = { ...withLogistics, directSale: true };
+    const before = dayBeforeInfo(direct, { itemCount: 2 }, t);
+    const labels = before.details?.map((d) => d.label);
+    expect(labels).toContain('Aufbau');
+    expect(labels).not.toContain('Abgabe');
+    expect(before.paragraphs.join(' ')).toContain('Bau deinen Stand auf');
+    expect(before.paragraphs.join(' ')).not.toContain('Abgabe');
+
+    const after = pickupReminder(direct, { soldCount: 1, payout: -3, unsoldTitles: ['Rad'] }, t);
+    expect(after.subject).toBe('Abbau: Kinderbasar');
+    expect(after.paragraphs.join(' ')).toContain('Nimm wieder mit: Rad.');
+    expect(after.paragraphs.join(' ')).toMatch(/Abbau: /);
+    expect(after.paragraphs.join(' ')).not.toContain('Abholung');
+  });
 });

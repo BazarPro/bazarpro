@@ -119,6 +119,39 @@ describe('offline cash desk', () => {
     expect(lookupOffline(state.snapshot, 'a')?.status).toBe('sold');
   });
 
+  it('lowers the fee cap of the sellers of a queued direct sale, until it is booked', async () => {
+    const capped = (id: string, seller: string, feeCapLeft: number) =>
+      ({ ...item(id), sellerId: seller, feeCapLeft }) as CheckoutSnapshot['items'][number];
+    const copy = (): CheckoutSnapshot => ({
+      takenAt: 1_000,
+      items: [capped('a', 'u1', 20), capped('b', 'u1', 20), capped('c', 'u2', 20)],
+    });
+    const client = fakeClient({ query: copy, mutation: bookAll() });
+    await downloadSnapshot(client, 'evt');
+    await enqueueSale('evt', { ...sale('s1', 'a'), directSale: true }, { u1: 14 });
+
+    let state = await loadOfflineState('evt');
+    expect(lookupOffline(state.snapshot, 'b')?.feeCapLeft).toBe(6);
+    expect(lookupOffline(state.snapshot, 'c')?.feeCapLeft).toBe(20);
+    // The next cart takes the rest: nothing is left
+    await enqueueSale('evt', { ...sale('s2', 'b'), directSale: true }, { u1: 6 });
+    state = await loadOfflineState('evt');
+    expect(lookupOffline(state.snapshot, 'b')?.feeCapLeft).toBe(0);
+
+    // A fresh copy while the sales still wait: they still count
+    await downloadSnapshot(fakeClient({ query: copy }), 'evt');
+    state = await loadOfflineState('evt');
+    expect(lookupOffline(state.snapshot, 'b')?.feeCapLeft).toBe(0);
+
+    // Booked: the backend's copy has them, nothing is subtracted twice
+    await flushQueue(client, 'evt');
+    state = await loadOfflineState('evt');
+    expect(state.feeCapSpent).toEqual({});
+    await downloadSnapshot(client, 'evt');
+    state = await loadOfflineState('evt');
+    expect(lookupOffline(state.snapshot, 'b')?.feeCapLeft).toBe(20);
+  });
+
   it('books the queue in batches of 50 and counts the conflicts', async () => {
     for (let i = 0; i < 60; i++) await enqueueSale('evt', sale(`s${i}`, `p${i}`));
     const client = fakeClient({ mutation: bookAll({ s3: ['p3'] }) });

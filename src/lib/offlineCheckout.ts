@@ -23,10 +23,15 @@ export type CheckoutSnapshot = FunctionReturnType<typeof api.purchases.getChecko
 export type SnapshotItem = CheckoutSnapshot['items'][number];
 export type OfflineSale = FunctionArgs<typeof api.purchases.syncOfflineSales>['sales'][number];
 
+/** Per seller: the commission a direct sale took from their fee cap (#301) */
+export type FeeCapSpent = Record<string, number>;
+
 export type OfflineState = {
   snapshot: CheckoutSnapshot | null;
   /** Sales not booked yet, oldest first */
   queue: OfflineSale[];
+  /** Per queued sale (deskSaleId): what it took from the sellers' fee caps */
+  feeCapSpent?: Record<string, FeeCapSpent>;
 };
 
 /** Sales per sync call; the backend takes at most 50 (MAX_SYNC_SALES) */
@@ -51,10 +56,21 @@ const store = createDeviceQueue<OfflineState, OfflineSale, SyncResult>({
     return {
       snapshot: parsed.snapshot ?? null,
       queue: Array.isArray(parsed.queue) ? parsed.queue : [],
+      feeCapSpent: parsed.feeCapSpent ?? {},
     };
   },
   queueOf: (state) => state.queue,
-  withQueue: (state, queue) => ({ ...state, queue }),
+  // A booked sale is in the backend's rest of the cap; only queued ones still count here
+  withQueue: (state, queue) => ({
+    ...state,
+    queue,
+    feeCapSpent: Object.fromEntries(
+      queue.flatMap((sale) => {
+        const spent = state.feeCapSpent?.[sale.deskSaleId];
+        return spent ? [[sale.deskSaleId, spent]] : [];
+      })
+    ),
+  }),
   batch: SYNC_BATCH,
   emptyResult: () => ({ booked: 0, conflicts: 0 }),
   idOf: (sale) => sale.deskSaleId,
@@ -95,30 +111,67 @@ export async function downloadSnapshot(client: ApiClient, eventId: string): Prom
   });
   await update(eventId, (state) => ({
     ...state,
-    snapshot: markSold(snapshot, state.queue),
+    snapshot: markSold(
+      snapshot,
+      state.queue,
+      state.queue.map((sale) => state.feeCapSpent?.[sale.deskSaleId])
+    ),
   }));
 }
 
-function markSold(snapshot: CheckoutSnapshot, sales: OfflineSale[]): CheckoutSnapshot {
+/**
+ * The copy after sales of this desk that are not booked yet: their items are sold, and
+ * the fee cap of their sellers is lower by what they took, so the next offline cart does
+ * not charge the same rest again.
+ */
+function markSold(
+  snapshot: CheckoutSnapshot,
+  sales: OfflineSale[],
+  spent: (FeeCapSpent | undefined)[] = []
+): CheckoutSnapshot {
   const sold = new Set(sales.flatMap((sale) => sale.items.map((item) => item.eventProductId)));
-  if (sold.size === 0) return snapshot;
+  const used = new Map<string, number>();
+  for (const perSeller of spent) {
+    for (const [seller, amount] of Object.entries(perSeller ?? {})) {
+      used.set(seller, (used.get(seller) ?? 0) + amount);
+    }
+  }
+  if (sold.size === 0 && used.size === 0) return snapshot;
   return {
     ...snapshot,
-    items: snapshot.items.map((item) =>
-      sold.has(item.eventProductId) ? { ...item, status: 'sold' as const } : item
-    ),
+    items: snapshot.items.map((item) => {
+      const taken = used.get(item.sellerId);
+      const feeCapLeft =
+        item.feeCapLeft === undefined || taken === undefined
+          ? item.feeCapLeft
+          : Math.max(Math.round((item.feeCapLeft - taken) * 100), 0) / 100;
+      const status = sold.has(item.eventProductId) ? ('sold' as const) : item.status;
+      return status === item.status && feeCapLeft === item.feeCapLeft
+        ? item
+        : { ...item, status, feeCapLeft };
+    }),
   };
 }
 
 // --- the queue
 
-/** Keeps a sale on the device; its items count as sold for this desk right away. */
-export async function enqueueSale(eventId: string, sale: OfflineSale): Promise<void> {
+/**
+ * Keeps a sale on the device; its items count as sold for this desk right away, and a
+ * direct sale lowers the fee cap of its sellers by `feeCapSpent`.
+ */
+export async function enqueueSale(
+  eventId: string,
+  sale: OfflineSale,
+  feeCapSpent?: FeeCapSpent
+): Promise<void> {
   await update(eventId, (state) => {
     if (state.queue.some((queued) => queued.deskSaleId === sale.deskSaleId)) return state;
     return {
-      snapshot: state.snapshot && markSold(state.snapshot, [sale]),
+      snapshot: state.snapshot && markSold(state.snapshot, [sale], [feeCapSpent]),
       queue: [...state.queue, sale],
+      feeCapSpent: feeCapSpent
+        ? { ...state.feeCapSpent, [sale.deskSaleId]: feeCapSpent }
+        : state.feeCapSpent,
     };
   });
 }

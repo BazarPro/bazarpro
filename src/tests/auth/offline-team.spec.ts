@@ -39,7 +39,7 @@ test('the team accepts items and reads product pages offline, the intake is repl
   await expect(youthBike).toBeVisible();
 
   await page.context().setOffline(true);
-  await expect(page.getByText(/Offline – du siehst den zuletzt geladenen Stand/)).toBeVisible({
+  await expect(page.getByText(/Offline – zuletzt geladener Stand/)).toBeVisible({
     timeout: 15_000,
   });
 

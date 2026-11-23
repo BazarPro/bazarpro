@@ -2,7 +2,7 @@
  * CSV import of the items of a walk-in seller, e.g. the stock list of a shop (#241).
  * Pure functions: read the file, guess what each column means, turn the rows into items.
  */
-import { getCategoryFields, MAX_SIZE_LENGTH } from '../shared/categoryFields';
+import { fieldMaxLength, getCategoryFields, type CategoryField } from '../shared/categoryFields';
 import { isPriceInRange, PRODUCT_CONDITIONS, type ProductContitions } from '../shared/constants';
 
 /** What a column of the file holds; `description` may be chosen for several columns. */
@@ -152,6 +152,8 @@ export type ImportCategory = {
   label: string;
   parentCategory?: string;
   translations?: { en?: string } | undefined;
+  /** The fields of the category, as the server resolved them */
+  fieldList?: CategoryField[];
 };
 
 export type ImportDefaults = {
@@ -245,10 +247,11 @@ export function buildImportRows(
     let attributes: Record<string, string> | undefined;
     const size = cell(row, 'size');
     if (size) {
-      const hasSizeField = getCategoryFields(categoryId, categories).some((f) => f.key === 'size');
-      if (hasSizeField) {
-        if (size.length > MAX_SIZE_LENGTH) {
-          return fail({ code: 'sizeTooLong', value: size, max: MAX_SIZE_LENGTH });
+      const sizeField = getCategoryFields(categoryId, categories).find((f) => f.key === 'size');
+      if (sizeField) {
+        const max = fieldMaxLength(sizeField);
+        if (size.length > max) {
+          return fail({ code: 'sizeTooLong', value: size, max });
         }
         attributes = { size };
       } else {

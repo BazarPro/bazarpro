@@ -6,7 +6,6 @@ import { ProfileCard } from './components/ProfileCard';
 import { SecurityCard } from './components/SecurityCard';
 import { DangerZoneCard } from './components/DangerZoneCard';
 import { NotificationsCard } from './components/NotificationsCard';
-import { BackButton } from '../../components/navigation/BackButton';
 import { useTranslation } from 'react-i18next';
 import { ServerSwitch } from '../../native/ServerSwitch';
 import { PageSkeleton } from '../../components/ui/loading';
@@ -21,19 +20,14 @@ export function AccountPage() {
   }
 
   return (
-    <div>
-      <div className="container mx-auto max-w-2xl px-4">
-        <div className="flex items-center justify-between mb-6 max-w-5xl mx-auto">
-          <BackButton variant="ghost" />
-        </div>
-        <PageHeader title={t('title')} className="mb-8" />
-        <DigitalIdCard />
-        <ProfileCard user={user} />
-        <NotificationsCard />
-        <SecurityCard providers={providers} />
-        <DangerZoneCard />
-        <ServerSwitch />
-      </div>
+    <div className="container mx-auto max-w-2xl space-y-6 pb-12">
+      <PageHeader title={t('title')} />
+      <DigitalIdCard />
+      <ProfileCard user={user} />
+      <NotificationsCard />
+      <SecurityCard providers={providers} />
+      <DangerZoneCard />
+      <ServerSwitch />
     </div>
   );
 }

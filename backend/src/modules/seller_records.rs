@@ -158,7 +158,7 @@ pub async fn backfill_snapshots(conn: &mut PgConnection) -> sqlx::Result<()> {
                 p.price, ep.created_at
          FROM event_products ep JOIN products p ON p.id = ep.product_id
          LEFT JOIN categories c ON c.id = p.category_id
-         WHERE ep.status <> 'announced'
+         WHERE ep.status NOT IN ('announced', 'rejected')
          ON CONFLICT (event_id, product_id) DO NOTHING",
         "UPDATE purchases pu SET offer_record_id = r.id
          FROM offer_records r
@@ -227,6 +227,39 @@ pub async fn is_profile_fixed(conn: &mut PgConnection, user_id: Uuid) -> sqlx::R
     Ok(false)
 }
 
+/// Whether postal code and country of the user are fixed: a bazaar for its region (#304)
+/// let them in by their postal code and is not over. Moving it afterwards would let anyone
+/// in, so it stays until the bazaar ends or they leave it. Sellers let in by the access
+/// code, an invitation or the team, and excluded ones, are free. Also returns the bazaars
+/// the answer depends on, so a live query can follow them.
+pub async fn postal_code_fixed_by(
+    conn: &mut PgConnection,
+    user_id: Uuid,
+) -> sqlx::Result<(bool, Vec<Uuid>)> {
+    let rows: Vec<(Uuid, bool)> = sqlx::query_as(
+        r#"SELECT e.id, e.end_date >= now()
+             AND EXISTS (SELECT 1 FROM event_roles r
+                         WHERE r.event_id = e.id AND r.user_id = s.user_id AND r.role = 'seller')
+             AND NOT EXISTS (SELECT 1 FROM event_exclusions x
+                             WHERE x.event_id = e.id AND x.user_id = s.user_id)
+             -- strict: lax mode would look into the arrays; silent: no region, no error
+             AND jsonb_path_exists(e.features,
+               'strict $.allowedPostalCodes.* ? (@.type() == "array" && @.size() > 0)',
+               '{}', true)
+           FROM event_sellers s JOIN events e ON e.id = s.event_id
+           WHERE s.user_id = $1 AND s.admitted_by_region"#,
+    )
+    .bind(user_id)
+    .fetch_all(conn)
+    .await?;
+    let fixed = rows.iter().any(|(_, fixed)| *fixed);
+    Ok((fixed, rows.into_iter().map(|(event, _)| event).collect()))
+}
+
+pub async fn is_postal_code_fixed(conn: &mut PgConnection, user_id: Uuid) -> sqlx::Result<bool> {
+    Ok(postal_code_fixed_by(conn, user_id).await?.0)
+}
+
 /// Whether title, category, price and required fields of the item are fixed: a bazaar
 /// that keeps a record accepted it and is not over. Returns the required fields of those
 /// bazaars.
@@ -237,7 +270,8 @@ pub async fn fixed_item_data(
     let events = docs::events_where(
         conn,
         "e.end_date >= now() AND e.id IN (
-           SELECT event_id FROM event_products WHERE product_id = $1 AND status <> 'announced')",
+           SELECT event_id FROM event_products
+           WHERE product_id = $1 AND status NOT IN ('announced', 'rejected'))",
         product_id,
     )
     .await?;
@@ -414,15 +448,12 @@ struct RecordRow {
 }
 
 fn attributes(
-    categories: &[category_fields::CategoryRef],
+    index: &category_fields::FieldIndex,
     category: Option<Uuid>,
     attributes: Option<&Value>,
 ) -> Vec<Attribute> {
     match category {
-        Some(category) => category_fields::describe_attributes(
-            category_fields::category_fields(category, categories),
-            attributes,
-        ),
+        Some(category) => category_fields::describe_attributes(&index.fields(category), attributes),
         None => Vec::new(),
     }
 }
@@ -436,7 +467,7 @@ async fn get_proof_of_offers(ctx: &mut Ctx, args: EventArgs) -> AppResult<Proof>
     let event = docs::event(ctx.conn(), event_id)
         .await?
         .ok_or_else(|| AppError::not_found("notFound.event"))?;
-    let categories = category_fields::load_categories(ctx.conn()).await?;
+    let index = category_fields::FieldIndex::load(ctx.conn()).await?;
     let records: Vec<RecordRow> = sqlx::query_as(
         "SELECT r.product_id, r.seller_id, r.title, r.category_id, r.category_label, r.attributes,
                 r.price, ep.status::text AS status, pu.total_amount AS sold_for,
@@ -469,7 +500,7 @@ async fn get_proof_of_offers(ctx: &mut Ctx, args: EventArgs) -> AppResult<Proof>
         items.push(ProofItem {
             product_id: record.product_id,
             category: record.category_label.unwrap_or_default(),
-            attributes: attributes(&categories, record.category_id, record.attributes.as_ref()),
+            attributes: attributes(&index, record.category_id, record.attributes.as_ref()),
             title: record.title,
             price: record.price,
             status,
@@ -484,7 +515,7 @@ async fn get_proof_of_offers(ctx: &mut Ctx, args: EventArgs) -> AppResult<Proof>
             product_id: purchase.product_id,
             category: purchase.category_label.clone().unwrap_or_default(),
             attributes: attributes(
-                &categories,
+                &index,
                 purchase.category_id,
                 purchase.product_attributes.as_ref(),
             ),

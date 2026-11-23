@@ -3,7 +3,6 @@ import { cn, formatPriceDE } from '../../../../lib/utils';
 import { CONDITION_OPTIONS } from '../../../../constants/records';
 import { useTranslation } from 'react-i18next';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
-import type { CategoryFieldText } from '../../../../shared/categoryFields';
 
 function conditionTitle(condition: string) {
   return condition in CONDITION_OPTIONS
@@ -92,7 +91,7 @@ export function PublicProductDetails({
   attributeList = [],
 }: {
   description?: string;
-  attributeList?: { label: string; text?: CategoryFieldText; value: string }[];
+  attributeList?: { label: string; labelEn?: string; value: string }[];
 }) {
   const { t } = useTranslation('product');
   return (
@@ -104,7 +103,7 @@ export function PublicProductDetails({
             {attributeList.map((row) => (
               <div key={row.label} className="bg-card px-4 py-3">
                 <dt className="text-xs text-muted-foreground">
-                  {(row.text && categoryFieldText({ text: row.text }, 'label')) ?? row.label}
+                  {categoryFieldText(row, 'label') ?? row.label}
                 </dt>
                 <dd className="font-medium break-words">{row.value}</dd>
               </div>

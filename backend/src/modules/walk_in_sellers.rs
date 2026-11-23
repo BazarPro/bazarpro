@@ -15,7 +15,7 @@ use super::instance::EMAIL_PATTERN;
 use super::products::{
     attributes_json, check_category, check_condition, normalize_extras, price, set_images,
 };
-use super::seller_numbers::next_seller_number;
+use super::seller_numbers::{self, next_seller_number};
 use crate::error::{AppError, AppResult};
 use crate::realtime::Topic;
 use crate::register;
@@ -167,6 +167,20 @@ async fn save_walk_in_product(ctx: &mut Ctx, args: SaveArgs) -> AppResult<Uuid> 
             &[("max", &MAX_WALK_IN_IMAGES.to_string())],
         ));
     }
+    let changed = match args.product_id {
+        Some(id) => {
+            let current: Option<Uuid> =
+                sqlx::query_scalar("SELECT category_id FROM products WHERE id = $1")
+                    .bind(id.0)
+                    .fetch_optional(ctx.conn())
+                    .await?;
+            current != Some(args.product_category.0)
+        }
+        None => true,
+    };
+    if changed {
+        check_new_category(ctx, args.product_category.0, &event).await?;
+    }
     // Without an account nobody could answer online offers
     let _ = args.accepts_offers;
     let id = match args.product_id {
@@ -199,6 +213,8 @@ async fn save_walk_in_product(ctx: &mut Ctx, args: SaveArgs) -> AppResult<Uuid> 
             product.id
         }
         None => {
+            // The hall has no more room for walk-in items than for announced ones
+            seller_numbers::assert_market_space(ctx, &event, 1).await?;
             let id = insert_item(
                 ctx,
                 event.id,
@@ -253,6 +269,12 @@ async fn check_item(
         attributes,
         minimum_price,
     })
+}
+
+/// A category chosen anew must take items and be allowed at the event.
+async fn check_new_category(ctx: &mut Ctx, category: Uuid, event: &Event) -> AppResult<()> {
+    super::categories::assert_for_items(ctx.conn(), category).await?;
+    super::event_products::assert_category_allowed(ctx.conn(), category, event).await
 }
 
 /// A new item of the walk-in seller, announced at the event like any other.
@@ -326,6 +348,8 @@ async fn import_walk_in_products(ctx: &mut Ctx, args: ImportArgs) -> AppResult<u
             &[("max", &MAX_IMPORT_ITEMS.to_string())],
         ));
     }
+    // The hall has no more room for imported items than for announced ones
+    seller_numbers::assert_market_space(ctx, &event, args.items.len() as i64).await?;
     for item in &args.items {
         let checked = check_item(
             ctx,
@@ -337,6 +361,7 @@ async fn import_walk_in_products(ctx: &mut Ctx, args: ImportArgs) -> AppResult<u
             None,
         )
         .await?;
+        check_new_category(ctx, item.product_category.0, &event).await?;
         insert_item(
             ctx,
             event.id,

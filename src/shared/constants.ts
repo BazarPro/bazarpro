@@ -50,9 +50,16 @@ export function isPriceInRange(price: number): boolean {
 }
 
 /**
- * Status progression for products in events/fairs.
+ * Status progression for products in events/fairs. `rejected`: the team turned an announced
+ * item down; it is neither listed nor sold.
  */
-export const EVENT_PRODUCT_STATUSES = ['announced', 'available', 'sold', 'returned'] as const;
+export const EVENT_PRODUCT_STATUSES = [
+  'announced',
+  'available',
+  'sold',
+  'returned',
+  'rejected',
+] as const;
 export type EventProductStatus = (typeof EVENT_PRODUCT_STATUSES)[number];
 
 /**
@@ -80,6 +87,7 @@ export type EventVisibility = (typeof EVENT_VISIBILITY)[number];
 export const EVENT_SERVICES = [
   'Parkplatz',
   'Skiservice',
+  'Fahrradcodierung',
   'Gastronomie',
   'Imbiss',
   'Getränke',
@@ -105,7 +113,7 @@ export type OfferCloseReason = (typeof OFFER_CLOSE_REASONS)[number];
  * Menu entries that show a red marker for unread notifications: "Meine Artikel",
  * "Meine Verkäufe", "Events" (messages from organizers) and, for organizers, "Meine Events".
  */
-export const NOTICE_AREAS = ['products', 'sales', 'messages', 'events'] as const;
+export const NOTICE_AREAS = ['products', 'sales', 'messages', 'events', 'participation'] as const;
 export type NoticeArea = (typeof NOTICE_AREAS)[number];
 
 /**
@@ -191,10 +199,10 @@ export const NOTIFICATION_CATEGORY_LABELS: Record<
 };
 
 /**
- * Who gets a message from the organizer: everyone, sellers with accepted items, or
- * sellers with unsold items still to pick up.
+ * Who gets a message from the organizer: everyone, sellers with accepted items, sellers
+ * with unsold items still to pick up, or sellers who have not announced an item (#304).
  */
-export const BROADCAST_AUDIENCES = ['all', 'accepted', 'pickup'] as const;
+export const BROADCAST_AUDIENCES = ['all', 'accepted', 'pickup', 'withoutItems'] as const;
 export type BroadcastAudience = (typeof BROADCAST_AUDIENCES)[number];
 
 /** Languages of the app. German is the source language; more can be added here. */

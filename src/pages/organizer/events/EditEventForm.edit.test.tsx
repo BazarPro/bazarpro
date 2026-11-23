@@ -49,9 +49,10 @@ interface Setup {
   event?: ReturnType<typeof storedEvent> | null;
   feeLocked?: boolean;
   flags?: Record<string, boolean>;
+  admin?: boolean;
 }
 
-function mockBackend({ event, feeLocked = false, flags = {} }: Setup) {
+function mockBackend({ event, feeLocked = false, flags = {}, admin = false }: Setup) {
   vi.mocked(useQuery).mockImplementation(((ref: Parameters<typeof getFunctionName>[0]) => {
     const name = getFunctionName(ref);
     if (name === 'categories.getAllCategories')
@@ -65,6 +66,7 @@ function mockBackend({ event, feeLocked = false, flags = {} }: Setup) {
     if (name === 'events.getFeeLock') return { locked: feeLocked };
     if (name === 'eventLocationCategories.listForEvent') return [];
     if (name === 'featureFlags.get') return flags;
+    if (name === 'users.viewer') return { systemRole: admin ? 'admin' : 'user' };
     return undefined;
   }) as typeof useQuery);
   vi.mocked(useMutation).mockImplementation(((ref: Parameters<typeof getFunctionName>[0]) => {
@@ -90,6 +92,8 @@ function renderAt(path: string) {
 beforeEach(() => {
   editEvent.mockClear();
   createEvent.mockClear();
+  // The wizard keeps every change as draft in the browser; each test starts afresh
+  localStorage.clear();
 });
 
 describe('editing an event', () => {
@@ -162,6 +166,21 @@ describe('editing an event', () => {
     expect(await screen.findByText(/Der Basar läuft gerade/)).toBeInTheDocument();
   });
 
+  it('lets the platform admin change what is locked for organizers', async () => {
+    mockBackend({ event: storedEvent(Date.now() - HOUR), feeLocked: true, admin: true });
+    renderAt('/events/edit/event1');
+    expect(await screen.findByText(/Du bist Admin/)).toBeInTheDocument();
+    expect(screen.queryByText(/Der Basar läuft gerade/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Beginn')).not.toHaveAttribute('readonly');
+    const commission = screen.getByLabelText(/Provision/);
+    await waitFor(() => expect(commission).toHaveValue(15));
+    fireEvent.change(commission, { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(editEvent).toHaveBeenCalledTimes(1));
+    expect(editEvent.mock.calls[0][0]).toMatchObject({ commission: 25 });
+  });
+
   it('tells when the event does not exist', () => {
     mockBackend({ event: null });
     renderAt('/events/edit/missing');
@@ -171,60 +190,58 @@ describe('editing an event', () => {
 
 describe('creation wizard', () => {
   const next = () => fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+  /** Date and place, the second step; the times as "HH:mm" on 18 April 2099. */
   const fillBasics = (start: string, end: string) => {
     fireEvent.change(screen.getByLabelText('Titel des Basars *'), {
       target: { value: 'Kinderbasar' },
     });
-    fireEvent.change(document.getElementById('description')!, {
-      target: { value: 'Kleidung und Spielzeug für Kinder' },
-    });
     fireEvent.change(screen.getByLabelText('Veranstaltungsort *'), {
       target: { value: 'Turnhalle' },
     });
-    fireEvent.change(document.getElementById('startDate')!, { target: { value: start } });
-    fireEvent.change(document.getElementById('endDate')!, { target: { value: end } });
+    fireEvent.change(document.getElementById('startDay')!, { target: { value: '2099-04-18' } });
+    fireEvent.change(document.getElementById('startTime')!, { target: { value: start } });
+    fireEvent.change(document.getElementById('endTime')!, { target: { value: end } });
+  };
+  const fillDescription = () => {
+    fireEvent.change(document.getElementById('description')!, {
+      target: { value: 'Kleidung und Spielzeug für Kinder' },
+    });
     fireEvent.change(screen.getByLabelText('Kontaktdaten / Veranstalter-Info *'), {
       target: { value: 'Elternbeirat' },
     });
-  };
-  /** Picks the children's bazaar and goes through the settings to the details. */
-  const toDetails = async () => {
-    fireEvent.click(screen.getByRole('button', { name: /^Kinderbasar/ }));
-    for (const step of [3, 4, 5, 6]) {
-      await screen.findByText(`Schritt ${step - 1} von 8`);
-      next();
-    }
-    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
   };
 
   it('does not move on with an end before the start, and goes back', async () => {
     mockBackend({});
     renderAt('/events/new');
-    await toDetails();
+    fireEvent.click(screen.getByRole('button', { name: /^Kinderbasar/ }));
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
 
-    fillBasics('2099-04-18T13:00', '2099-04-18T09:00');
+    fillBasics('13:00', '09:00');
     next();
     expect(await screen.findByText('Enddatum muss nach dem Startdatum liegen')).toBeInTheDocument();
-    expect(screen.getByText('Schritt 6 von 8')).toBeInTheDocument();
+    expect(screen.getByText('Schritt 2 von 9')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
-    expect(await screen.findByText('Schritt 5 von 8')).toBeInTheDocument();
+    expect(await screen.findByText('Schritt 1 von 9')).toBeInTheDocument();
   }, 20_000);
 
   it('a children’s bazaar preselects its categories and small labels', async () => {
     mockBackend({});
     renderAt('/events/new');
     fireEvent.click(screen.getByRole('button', { name: /^Kinderbasar/ }));
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    fillBasics('09:00', '13:00');
+    next();
+    await screen.findByText('Schritt 3 von 9');
     next();
     expect(await screen.findByText('Welche Artikel?')).toBeInTheDocument();
     expect(screen.getByLabelText(/Etiketten/)).toHaveValue('small');
-    for (const step of [4, 5, 6]) {
+    for (const step of [5, 6, 7, 8]) {
       next();
-      await screen.findByText(`Schritt ${step} von 8`);
+      await screen.findByText(`Schritt ${step} von 9`);
     }
-    fillBasics('2099-04-18T09:00', '2099-04-18T13:00');
-    next();
-    await screen.findByText('Schritt 7 von 8');
+    fillDescription();
     next();
     // The last step shows the bazaar page
     expect(await screen.findByText('So sieht dein Basar aus')).toBeInTheDocument();
@@ -242,10 +259,11 @@ describe('creation wizard', () => {
   it('Enter in a field moves to the next step instead of creating the event', async () => {
     mockBackend({});
     renderAt('/events/new');
-    await toDetails();
-    fillBasics('2099-04-18T09:00', '2099-04-18T13:00');
+    fireEvent.click(screen.getByRole('button', { name: /^Kinderbasar/ }));
+    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
+    fillBasics('09:00', '13:00');
     fireEvent.submit(screen.getByLabelText('Veranstaltungsort *').closest('form')!);
-    expect(await screen.findByText('Schritt 7 von 8')).toBeInTheDocument();
+    expect(await screen.findByText('Schritt 3 von 9')).toBeInTheDocument();
     expect(createEvent).not.toHaveBeenCalled();
   }, 20_000);
 

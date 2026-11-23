@@ -83,6 +83,7 @@ pub enum Cat {
     Household,
     Accessories,
     Other,
+    BabyKids,
 }
 
 impl Cat {
@@ -98,7 +99,7 @@ impl Cat {
             Self::Toys => "toys",
             Self::Furniture => "chair",
             Self::Household | Self::Accessories => "tote",
-            Self::Other => "wooden_train",
+            Self::Other | Self::BabyKids => "wooden_train",
         }
     }
 }
@@ -116,7 +117,75 @@ pub const CATEGORIES: &[(Cat, Text)] = &[
     (Cat::Household, t("Haushalt", "Household")),
     (Cat::Accessories, t("Accessoires", "Accessories")),
     (Cat::Other, t("Sonstiges", "Other")),
+    (Cat::BabyKids, t("Baby & Kind", "Baby & child")),
 ];
+
+/// The sub-category of a demo item (German label of a default category), by words of its
+/// title in either language: items go into sub-categories, main categories only group them.
+pub fn sub_label(cat: Cat, title: &str) -> &'static str {
+    let title = title.to_lowercase();
+    let has = |words: &[&str]| words.iter().any(|word| title.contains(word));
+    match cat {
+        Cat::Clothing if has(&["ski", "funktions", "thermal"]) => "Sportbekleidung",
+        Cat::Clothing if has(&["body", "baby"]) => "Babykleidung",
+        Cat::Clothing if has(&["damen", "women"]) => "Damenkleidung",
+        Cat::Clothing if has(&["herren", "men's", "bomber", "w32"]) => "Herrenkleidung",
+        Cat::Clothing => "Kinderkleidung",
+        Cat::Shoes if has(&["skischuh", "ski boot"]) => "Skischuhe",
+        Cat::Shoes if has(&["laufschuh", "running"]) => "Sportschuhe",
+        Cat::Shoes if has(&["sneaker"]) => "Herrenschuhe",
+        Cat::Shoes => "Kinderschuhe",
+        Cat::Sports if has(&["yoga", "fitness"]) => "Fitness",
+        Cat::Sports if has(&["helm"]) => "Helme & Protektoren",
+        Cat::Sports if has(&["ball", "football"]) => "Ballsport",
+        Cat::Sports if has(&["outdoor", "wander", "hiking"]) => "Camping & Outdoor",
+        Cat::Sports => "Wintersport",
+        Cat::Bikes if has(&["kindersitz", "child bike seat", "child seat"]) => {
+            "Fahrrad-Kindersitze"
+        }
+        Cat::Bikes if has(&["e-bike"]) => "E-Bikes & Pedelecs",
+        Cat::Bikes if has(&["trekking"]) => "Trekkingräder",
+        Cat::Bikes if has(&["mountain", "fully", "mtb", "rockrider"]) => "Mountainbikes (MTB)",
+        Cat::Bikes if has(&["renn", "road", "gravel"]) => "Rennräder & Gravelbikes",
+        Cat::Bikes if has(&["falt", "fold"]) => "Falträder & Klappräder",
+        Cat::Bikes if has(&["kinder", "jugend", "child", "youth", "kid"]) => {
+            "Kinder- & Jugendräder"
+        }
+        Cat::Bikes => "Cityräder & Hollandräder",
+        Cat::Electronics if has(&["kopfhörer", "headphone", "radio"]) => "Audio & HiFi",
+        Cat::Electronics if has(&["kamera", "camera"]) => "Foto & Kamera",
+        Cat::Electronics if has(&["notebook", "laptop", "tablet"]) => "Computer & Tablets",
+        Cat::Electronics if has(&["smartphone", "handy", "phone"]) => "Handys & Smartphones",
+        Cat::Electronics => "Weitere Elektronik",
+        Cat::Books if has(&["kinder", "jugend", "erstlese", "bilderbuch"]) => {
+            "Kinder- & Jugendbücher"
+        }
+        Cat::Books if has(&["krimi", "roman", "klassiker"]) => "Romane",
+        Cat::Books if has(&["kochbuch"]) => "Kochbücher",
+        Cat::Books if has(&["sachbuch", "ratgeber", "reiseführer"]) => "Sachbücher",
+        Cat::Books => "Weitere Bücher",
+        Cat::Toys if has(&["kuschel", "puppe", "plüsch"]) => "Puppen & Plüsch",
+        Cat::Toys if has(&["baustein", "lego"]) => "Lego & Bausteine",
+        Cat::Toys if has(&["puzzle", "spiel"]) && !has(&["sandspiel"]) => "Spiele & Puzzles",
+        Cat::Toys if has(&["sand", "outdoor"]) => "Outdoor-Spielzeug",
+        Cat::Toys => "Weiteres Spielzeug",
+        Cat::Furniture if has(&["kinder"]) => "Kindermöbel",
+        Cat::Furniture if has(&["sofa", "sessel", "lowboard"]) => "Wohnzimmermöbel",
+        Cat::Furniture => "Weitere Möbel",
+        Cat::Household if has(&["kaffee", "küche", "pfanne"]) => "Küche & Kochen",
+        Cat::Household if has(&["bettwäsche"]) => "Heimtextilien",
+        Cat::Household => "Weiteres für den Haushalt",
+        Cat::Accessories if has(&["handschuh", "mütze"]) => "Mützen & Schals",
+        Cat::Accessories if has(&["beutel", "tasche"]) => "Taschen & Rucksäcke",
+        Cat::Accessories if has(&["gürtel"]) => "Gürtel",
+        Cat::Accessories => "Weitere Accessoires",
+        Cat::Other | Cat::BabyKids if has(&["autokindersitz", "car seat"]) => "Autokindersitze",
+        Cat::Other | Cat::BabyKids if has(&["kinderwagen", "pram"]) => "Kinderwagen & Buggys",
+        Cat::Other if has(&["gesellschaftsspiel", "board game"]) => "Spiele & Puzzles",
+        Cat::BabyKids => "Babyausstattung",
+        Cat::Other => "Sonstiges",
+    }
+}
 
 pub struct Person {
     pub first: Text,
@@ -302,7 +371,7 @@ pub const KIDS: &[Item] = &[
             "Fünf T-Shirts in Grün- und Blautönen, kaum getragen, keine Flecken.",
             "Five T-shirts in green and blue, hardly worn, no stains.",
         ),
-        &[("size", "110/116", "4-5 years")],
+        &[("size", "110/116", "4-5 y")],
     ),
     item(
         Cat::Clothing,
@@ -314,7 +383,7 @@ pub const KIDS: &[Item] = &[
             "Wasserabweisend, mit abnehmbarer Kapuze. Ärmel leicht ausgewaschen.",
             "Water-repellent with a detachable hood. Sleeves slightly faded.",
         ),
-        &[("size", "122", "6-7 years")],
+        &[("size", "122", "6-7 y")],
     ),
     item(
         Cat::Clothing,
@@ -356,7 +425,7 @@ pub const KIDS: &[Item] = &[
             "Nur einmal zur Kommunion getragen.",
             "Worn once for a family celebration.",
         ),
-        &[("size", "140", "10 years")],
+        &[("size", "140", "10 y")],
     ),
     item(
         Cat::Clothing,
@@ -383,7 +452,7 @@ pub const KIDS: &[Item] = &[
             "Bio-Baumwolle, kurz- und langärmlig gemischt.",
             "Organic cotton, short and long sleeves.",
         ),
-        &[("size", "62/68", "3-6 months")],
+        &[("size", "62/68", "3-6 m")],
     ),
     item(
         Cat::Shoes,
@@ -395,7 +464,7 @@ pub const KIDS: &[Item] = &[
             "Klettverschluss, helle Sohle, kaum Abrieb.",
             "Velcro straps, light sole, barely worn.",
         ),
-        &[("size", "31", "12.5 kids")],
+        &[("size", "31", "12.5 K")],
     ),
     item(
         Cat::Shoes,
@@ -714,7 +783,7 @@ pub const SKI: &[Item] = &[
             "Verstärkte Knie, verstellbare Träger.",
             "Reinforced knees, adjustable braces.",
         ),
-        &[("size", "140", "10 years")],
+        &[("size", "140", "10 y")],
     ),
     item(
         Cat::Clothing,
@@ -1188,5 +1257,196 @@ pub const BOOKS: &[Item] = &[
         ),
         t("Leinen, in Schmuckkassette.", "Cloth bound, in a slipcase."),
         &[],
+    ),
+];
+
+/// Bikes of the bike flea market, each with the frame number its record needs.
+pub const BIKE_MARKET: &[Item] = &[
+    item(
+        Cat::Bikes,
+        "very-good",
+        280.0,
+        Some("bike_city"),
+        t("Trekkingrad 28 Zoll", "Trekking bike 28 inch"),
+        t(
+            "Shimano Deore, Nabendynamo, Gepäckträger. Frisch gewartet.",
+            "Shimano Deore, hub dynamo, rack. Just serviced.",
+        ),
+        &[
+            ("frameNumber", "KH 4471 2093", "KH 4471 2093"),
+            ("frameSize", "56 cm", "56 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Kalkhoff", "Kalkhoff"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        190.0,
+        Some("bike_city"),
+        t("Hollandrad Damen", "Dutch city bike, step-through"),
+        t(
+            "Rücktritt, Korb vorne, Ständer. Kleine Kratzer am Schutzblech.",
+            "Coaster brake, front basket, kickstand. Small scratches on the mudguard.",
+        ),
+        &[
+            ("frameNumber", "GZ 88 120 457", "GZ 88 120 457"),
+            ("frameSize", "53 cm", "53 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Gazelle", "Gazelle"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        420.0,
+        Some("mtb"),
+        t("Mountainbike 27,5 Zoll", "Mountain bike 27.5 inch"),
+        t(
+            "Federgabel 120 mm, hydraulische Scheibenbremsen, 2 × 10 Gänge.",
+            "120 mm fork, hydraulic disc brakes, 2 × 10 speed.",
+        ),
+        &[
+            ("frameNumber", "CB 9X 33 812", "CB 9X 33 812"),
+            ("frameSize", "M", "M"),
+            ("wheelSize", "27,5 Zoll", "27.5 inch"),
+            ("brand", "Cube", "Cube"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        260.0,
+        Some("bike_road"),
+        t("Rennrad Stahl, Klassiker", "Classic steel road bike"),
+        t(
+            "Peugeot aus den 80ern, Rahmenschaltung, neue Bremsbeläge.",
+            "1980s Peugeot, down tube shifters, new brake pads.",
+        ),
+        &[
+            ("frameNumber", "PG 1983 0441", "PG 1983 0441"),
+            ("frameSize", "58 cm", "58 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Peugeot", "Peugeot"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        90.0,
+        Some("bike_city"),
+        t("Kinderrad 20 Zoll", "Kids' bike 20 inch"),
+        t(
+            "3-Gang-Nabe, Licht, ab etwa 6 Jahren.",
+            "3-speed hub, lights, for about 6 and up.",
+        ),
+        &[
+            ("frameNumber", "PK 20 5531", "PK 20 5531"),
+            ("frameSize", "30 cm", "30 cm"),
+            ("wheelSize", "20 Zoll", "20 inch"),
+            ("brand", "Puky", "Puky"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        950.0,
+        Some("bike_city"),
+        t("E-Bike Tiefeinsteiger", "Step-through e-bike"),
+        t(
+            "Bosch-Mittelmotor, Akku 500 Wh mit 310 Ladezyklen, Ladegerät dabei.",
+            "Bosch mid motor, 500 Wh battery with 310 charge cycles, charger included.",
+        ),
+        &[
+            ("frameNumber", "PE 7712 0815", "PE 7712 0815"),
+            ("frameSize", "50 cm", "50 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Pegasus", "Pegasus"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        720.0,
+        Some("bike_gravel"),
+        t("Gravelbike Alu", "Aluminium gravel bike"),
+        t(
+            "GRX 1 × 11, Steckachsen, 40-mm-Reifen.",
+            "GRX 1 × 11, thru axles, 40 mm tyres.",
+        ),
+        &[
+            ("frameNumber", "RS GR 2219 4", "RS GR 2219 4"),
+            ("frameSize", "L", "L"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Rose", "Rose"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        210.0,
+        Some("mtb_mountains"),
+        t("Jugendrad 26 Zoll", "Youth bike 26 inch"),
+        t(
+            "21 Gänge, V-Brakes, passt ab etwa 1,45 m.",
+            "21 speeds, V-brakes, fits from about 1.45 m.",
+        ),
+        &[
+            ("frameNumber", "GH 26 0091 7", "GH 26 0091 7"),
+            ("frameSize", "S", "S"),
+            ("wheelSize", "26 Zoll", "26 inch"),
+            ("brand", "Ghost", "Ghost"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "good",
+        160.0,
+        Some("bike_city"),
+        t("Faltrad 20 Zoll", "Folding bike 20 inch"),
+        t(
+            "Passt in jeden Kofferraum, 7 Gänge, mit Tasche.",
+            "Fits any car boot, 7 speeds, with bag.",
+        ),
+        &[
+            ("frameNumber", "DH 2004 7781", "DH 2004 7781"),
+            ("frameSize", "Einheitsgröße", "One size"),
+            ("wheelSize", "20 Zoll", "20 inch"),
+            ("brand", "Dahon", "Dahon"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "ok",
+        120.0,
+        Some("bike_city"),
+        t("Cityrad Herren", "Men's city bike"),
+        t(
+            "Fährt zuverlässig, Sattel und Griffe abgenutzt.",
+            "Rides reliably, saddle and grips worn.",
+        ),
+        &[
+            ("frameNumber", "HC 3301 552", "HC 3301 552"),
+            ("frameSize", "60 cm", "60 cm"),
+            ("wheelSize", "28 Zoll", "28 inch"),
+            ("brand", "Hercules", "Hercules"),
+        ],
+    ),
+    item(
+        Cat::Bikes,
+        "very-good",
+        1100.0,
+        Some("mtb_mountains"),
+        t("Fully 29 Zoll", "Full-suspension bike 29 inch"),
+        t(
+            "Federweg 130/120 mm, Dropper-Post, tubeless.",
+            "130/120 mm travel, dropper post, tubeless.",
+        ),
+        &[
+            ("frameNumber", "SP 29 FS 3310", "SP 29 FS 3310"),
+            ("frameSize", "L", "L"),
+            ("wheelSize", "29 Zoll", "29 inch"),
+            ("brand", "Specialized", "Specialized"),
+        ],
     ),
 ];

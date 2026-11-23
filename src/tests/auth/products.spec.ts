@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { approveEventByTitle } from '../helpers/eventApproval';
 import { fillEventWizard } from '../helpers/eventForm';
-import { isOverview } from '../utils';
+import { isOverview, pickCategory } from '../utils';
 
 test.describe('product inventory flow as co-organizer', () => {
   test('seller creates products, adds to event, co-organizer manages inventory', async ({
@@ -150,9 +150,8 @@ async function createProductWithEvent(
   await page.getByRole('radio', { name: 'Gebraucht, wie neu' }).click();
   await expect(page.getByRole('radio', { name: 'Gebraucht, wie neu' })).toBeChecked();
 
-  await page.getByLabel('Kategorie *').click();
-  await page.getByRole('option', { name: 'Sport' }).click();
-  await expect(page.locator('#categoryId')).toContainText('Sport');
+  await pickCategory(page, 'Sport', 'Wintersport');
+  await expect(page.locator('#categoryId')).toContainText('Sport › Wintersport');
 
   await page.getByLabel('Preis (€) *').fill('25');
 

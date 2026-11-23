@@ -1,0 +1,83 @@
+# Load-test stack on the production server: the released images with a database of their
+# own (demo data), behind the same proxy and Traefik as production, so the cash desks of
+# bazaar.js never write to real data. Set the image tag to the release to measure.
+#   docker compose -p lasttest up -d        (in /root/lasttest, next to measure.sh, probe.sh)
+#   docker compose -p lasttest down -v      afterwards: prepare.mjs made its accounts admins
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=bazarpro
+      - POSTGRES_PASSWORD=lasttest
+      - POSTGRES_DB=bazarpro
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'bazarpro']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  backend:
+    image: ghcr.io/bazarpro/core/backend:v2.5.1
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment: &env
+      - DATABASE_URL=postgres://bazarpro:lasttest@postgres:5432/bazarpro
+      - SITE_URL=https://lasttest.bazarpro.de
+      - BAZARPRO_MODE=platform
+      - RUST_LOG=warn
+      - AUTH_SMTP_HOST=127.0.0.1
+      - AUTH_SMTP_PORT=1025
+      - AUTH_SMTP_SECURE=false
+      - AUTH_SMTP_STARTTLS=false
+    volumes:
+      - files:/data/files
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.backend-lasttest.rule=Host(`lasttest.bazarpro.de`) && PathPrefix(`/api`)
+      - traefik.http.routers.backend-lasttest.entrypoints=websecure
+      - traefik.http.routers.backend-lasttest.tls.certresolver=le
+      - traefik.http.services.backend-lasttest.loadbalancer.server.port=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - backend-lasttest
+      proxy:
+  seed:
+    image: ghcr.io/bazarpro/core/backend:v2.5.1
+    restart: 'no'
+    command: ['bazarpro-backend', 'seed']
+    environment: *env
+    volumes:
+      - files:/data/files
+    depends_on:
+      backend:
+        condition: service_healthy
+  frontend:
+    image: ghcr.io/bazarpro/core:v2.5.1
+    environment:
+      - BACKEND_URL=http://backend-lasttest:3000
+      - SITE_URL=https://lasttest.bazarpro.de
+      - BAZARPRO_MODE=platform
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.frontend-lasttest.rule=Host(`lasttest.bazarpro.de`)
+      - traefik.http.routers.frontend-lasttest.entrypoints=websecure
+      - traefik.http.routers.frontend-lasttest.tls.certresolver=le
+      - traefik.http.services.frontend-lasttest.loadbalancer.server.port=8080
+    networks:
+      - default
+      - proxy
+networks:
+  proxy:
+    external: true
+volumes:
+  postgres_data:
+  files:
