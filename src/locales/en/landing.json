@@ -168,8 +168,10 @@
   "demo": {
     "checkout": "Checkout",
     "bike": "Dutch bike 28 inch",
+    "raincoat": "Raincoat age 4–5",
     "sell": "Sell",
     "sold": "Sold",
+    "total": "Total",
     "itemNumber": "No. {{number}}"
   },
   "process": {

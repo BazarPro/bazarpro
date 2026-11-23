@@ -61,7 +61,7 @@
     src: traefik.demo.yml.j2
     dest: '{{ demo_dir }}/traefik.yml'
     mode: '0644'
-  register: docker_demo_traefik
+  notify: Restart Traefik
 
 - name: Copy the reset script
   ansible.builtin.copy:
@@ -82,15 +82,6 @@
     state: present
     pull: always
     remove_orphans: true
-
-# Traefik reads its static configuration only when it starts
-- name: Restart Traefik after a configuration change
-  community.docker.docker_compose_v2:
-    project_src: '{{ demo_dir }}'
-    services:
-      - traefik
-    state: restarted
-  when: docker_demo_traefik.changed
 
 - name: Remove old images
   ansible.builtin.command: docker image prune --all --force

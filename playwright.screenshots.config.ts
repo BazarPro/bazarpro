@@ -36,8 +36,12 @@ export default defineConfig({
     deviceScaleFactor: 2,
     locale: 'en-US',
     timezoneId: 'Europe/Berlin',
-    colorScheme: 'light',
   },
+  // Every picture in the light and in the dark theme (name-dark.jpg)
+  projects: [
+    { name: 'light', use: { colorScheme: 'light' } },
+    { name: 'dark', use: { colorScheme: 'dark' } },
+  ],
   webServer: [
     {
       name: 'Backend',

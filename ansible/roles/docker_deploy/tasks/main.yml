@@ -43,13 +43,6 @@
     dest: '{{ remote_app_dir }}/scripts/backup.sh'
     mode: '0755'
 
-- name: Copy Traefik dynamic configuration
-  ansible.builtin.copy:
-    src: '../config/'
-    dest: '{{ remote_app_dir }}/config/'
-    mode: '0644'
-    directory_mode: '0755'
-
 - name: Create .env file from template
   ansible.builtin.template:
     src: env.j2

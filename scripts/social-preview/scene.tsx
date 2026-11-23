@@ -3,24 +3,14 @@
 // render.mjs. One scene in two sizes: 1200x630 (Open Graph) and 1280x640 (GitHub).
 import '@fontsource/inter/latin-400.css';
 import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-600.css';
 import '@fontsource/inter/latin-700.css';
 import '@fontsource/inter/latin-800.css';
 import '../../src/styles/index.css';
 import { createRoot } from 'react-dom/client';
-import { CheckCircle2, Code2, Printer, ReceiptText, ScanLine, ShoppingBag } from 'lucide-react';
-import {
-  AppBar,
-  BikePhoto,
-  BikeWithTag,
-  HangTag,
-  PhoneFrame,
-} from '../../src/pages/public/landing/components/demo/Illustrations';
-
-const CART = [
-  { name: 'Hollandrad 28"', seller: 'Nr. 12', price: '45,00 €', photo: true },
-  { name: 'Kinderjacke Gr. 110', seller: 'Nr. 7', price: '8,00 €' },
-  { name: 'Holzeisenbahn', seller: 'Nr. 31', price: '12,50 €' },
-];
+import { Code2, Printer, ReceiptText, ScanLine, ShoppingBag } from 'lucide-react';
+import i18n from '../../src/i18n';
+import { HeroSaleScene } from '../../src/pages/public/landing/components/demo/HeroSaleScene';
 
 const FEATURES = [
   { icon: Printer, text: 'QR-Etiketten' },
@@ -90,45 +80,15 @@ function Scene({ width, height, github }: { width: number; height: number; githu
         </p>
       </div>
 
-      {/* The bike with its label, scanned by the phone in front of it */}
-      <div className="relative z-10 h-full shrink-0" style={{ width: github ? 540 : 490 }}>
-        <div className="absolute -left-2 top-[56%] w-[290px] -translate-y-1/2">
-          <BikeWithTag
-            tag={<HangTag itemNumber="Nr. 12-034" className="scale-[1.35] origin-top" />}
-          />
-        </div>
-        <PhoneFrame className="absolute right-[48px] top-1/2 aspect-[71.6/124] w-[220px] -translate-y-1/2">
-          <AppBar title="Kasse" />
-          <div className="flex flex-1 flex-col gap-1.5 p-2">
-            <div className="overflow-hidden rounded-lg">
-              <BikePhoto className="px-6 pt-2" />
-            </div>
-            {CART.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between rounded-md border bg-white px-2 py-1"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-[0.62rem] font-semibold leading-tight">{item.name}</p>
-                  <p className="text-[0.5rem] text-zinc-500">Verkäufer {item.seller}</p>
-                </div>
-                <span className="text-[0.62rem] font-bold tabular-nums">{item.price}</span>
-              </div>
-            ))}
-            <div className="mt-0.5 flex items-baseline justify-between px-1">
-              <span className="text-[0.6rem] text-zinc-500">Summe (3 Artikel)</span>
-              <span className="text-[0.95rem] font-extrabold tabular-nums">65,50 €</span>
-            </div>
-            <div className="mt-auto flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-[0.65rem] font-semibold text-white">
-              <CheckCircle2 className="h-3 w-3" /> Verkauft
-            </div>
-          </div>
-        </PhoneFrame>
+      {/* The scene of the landing page, standing still: raincoat and bike sold together */}
+      <div className="relative z-10 shrink-0 pr-12" style={{ width: github ? 600 : 540 }}>
+        <HeroSaleScene still className="max-w-none" />
       </div>
     </div>
   );
 }
 
+await i18n.changeLanguage('de');
 createRoot(document.getElementById('root')!).render(
   <div className="flex flex-col items-start gap-8">
     <Scene width={1200} height={630} github={false} />

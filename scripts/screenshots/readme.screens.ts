@@ -16,10 +16,19 @@ const BAZAAR = "Sunshine Nursery Kids' Bazaar";
 test.describe.configure({ mode: 'serial' });
 let bazaarPath = '';
 
-test.beforeEach(async ({ page }) => {
+/** src/components/ui/theme-provider.tsx: the theme the user chose */
+const THEME_STORAGE_KEY = 'bazarpro-theme';
+let suffix = '';
+
+test.beforeEach(async ({ page }, testInfo) => {
+  const theme = testInfo.project.name === 'dark' ? 'dark' : 'light';
+  suffix = theme === 'dark' ? '-dark' : '';
   await page.addInitScript(
-    ([key]) => window.localStorage.setItem(key, 'en'),
-    [LANGUAGE_STORAGE_KEY]
+    ([languageKey, themeKey, value]) => {
+      window.localStorage.setItem(languageKey, 'en');
+      window.localStorage.setItem(themeKey, value);
+    },
+    [LANGUAGE_STORAGE_KEY, THEME_STORAGE_KEY, theme]
   );
 });
 
@@ -47,7 +56,7 @@ async function shot(page: Page, name: string) {
   await page.waitForTimeout(500);
   // JPEG: a quarter of the size of a PNG with the photos of the demo data
   await page.screenshot({
-    path: `${OUT}/${name}.jpg`,
+    path: `${OUT}/${name}${suffix}.jpg`,
     type: 'jpeg',
     quality: 85,
     animations: 'disabled',

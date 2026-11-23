@@ -35,7 +35,6 @@ ports: `5173` (Vite) and `3000` (backend).
 ```text
 ├── ansible/          # Deployment playbooks and server configuration
 ├── backend/          # Rust backend: migrations, modules (one per area), auth, demo data, tests
-├── config/           # Traefik's dynamic configuration (file provider), copied by Ansible
 ├── docs/             # This documentation, the README screenshots and the GitHub social preview
 ├── scripts/          # Prerendering, SEO files, backups, screenshots, link preview, event covers
 ├── server/           # Node server of the web image: static files, server-side SEO, sitemap
@@ -68,7 +67,8 @@ The E2E tests wipe and reseed their own database (`E2E_DATABASE_URL`, default
 `npm run screenshots` takes the pictures in `docs/screenshots/` with Playwright
 (`playwright.screenshots.config.ts`, `scripts/screenshots/`): it starts backend and Vite on
 ports 3200 and 5174, fills `bazarpro_screenshots_test` with the English demo data and signs in
-as the organizer of the running kids' bazaar.
+as the organizer of the running kids' bazaar. Every picture is taken in the light and the dark theme
+(`name-dark.jpg`); the README shows the one that matches the GitHub theme of the reader.
 
 ```bash
 SCREENSHOTS_DATABASE_URL=postgres://bazarpro:bazarpro@127.0.0.1:55432/bazarpro_screenshots_test \

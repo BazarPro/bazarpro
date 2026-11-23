@@ -1,6 +1,6 @@
 import { ShoppingBag } from 'lucide-react';
 import { QrCode } from '../../../../../components/ui/QrCode';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '../../../../../lib/utils';
 
 /*
@@ -150,12 +150,14 @@ interface HangTagProps {
   className?: string;
   /** Overlay over the QR code, e.g. a scan line */
   overlay?: ReactNode;
+  /** e.g. a width that follows the scene */
+  style?: CSSProperties;
 }
 
 /** Small BazarPro hang tag on a string, as attached to the bike's handlebar. */
-export function HangTag({ itemNumber, className, overlay }: HangTagProps) {
+export function HangTag({ itemNumber, className, overlay, style }: HangTagProps) {
   return (
-    <div className={cn('flex w-[3.6rem] flex-col items-center', className)}>
+    <div className={cn('flex w-[3.6rem] flex-col items-center', className)} style={style}>
       <span className="h-3 w-px bg-foreground/60" />
       <div className="relative w-full rounded-md bg-white p-1 text-zinc-900 shadow-lg ring-1 ring-black/10">
         <span className="absolute left-1/2 top-0.5 h-1 w-1 -translate-x-1/2 rounded-full bg-zinc-300" />
@@ -163,7 +165,7 @@ export function HangTag({ itemNumber, className, overlay }: HangTagProps) {
           <QrCode value="https://bazarpro.de" className="h-auto w-full" />
           {overlay}
         </div>
-        <p className="mt-0.5 text-center text-[0.5rem] font-bold tabular-nums leading-none text-zinc-600">
+        <p className="mt-0.5 whitespace-nowrap text-center text-[0.5rem] font-bold tabular-nums leading-none text-zinc-600">
           {itemNumber}
         </p>
       </div>
@@ -246,6 +248,134 @@ export function BikePhoto({ className }: { className?: string }) {
       )}
     >
       <BikeIllustration className="w-full text-zinc-800" />
+    </div>
+  );
+}
+
+/** Where the tag of the raincoat hangs in the 160x170 viewBox: from its right shoulder. */
+const RACK_TAG_ANCHOR = { left: `${(80 / 160) * 100}%`, top: `${(40 / 170) * 100}%` };
+
+/** Wire hanger on the rail, centered on x, hook at the top of the viewBox. */
+function Hanger({ x, y = 32 }: { x: number; y?: number }) {
+  return (
+    <g strokeWidth="1.6" className="text-foreground/60">
+      <path d={`M${x} ${y - 10} C${x} ${y - 16} ${x + 6} ${y - 16} ${x + 6} ${y - 12}`} />
+      <path d={`M${x} ${y - 10} L${x} ${y - 6}`} />
+    </g>
+  );
+}
+
+/**
+ * Clothes rack of a kids' bazaar: a yellow raincoat in front (it gets the tag), a
+ * striped shirt and a dress behind it. viewBox 160x170; works in both themes.
+ */
+export function ClothingRackIllustration({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 160 170"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn('text-foreground/80', className)}
+      aria-hidden="true"
+    >
+      {/* rack: rail, posts and feet */}
+      <g strokeWidth="3" className="text-zinc-500 dark:text-zinc-400">
+        <path d="M8 14 L152 14" />
+        <path d="M12 14 L12 162 M148 14 L148 162" />
+        <path d="M2 164 L22 164 M138 164 L158 164" strokeWidth="3.5" />
+      </g>
+
+      {/* dress, at the back */}
+      <Hanger x={124} />
+      <g strokeWidth="1.6">
+        <path
+          d="M112 24 L136 24 L134 40 L146 96 Q124 102 102 96 L114 40 Z"
+          fill="currentColor"
+          className="text-rose-300 dark:text-rose-400"
+        />
+        <path d="M114 40 L134 40" className="text-rose-500" />
+        <path d="M116 24 Q124 32 132 24" className="text-rose-500" />
+      </g>
+
+      {/* striped shirt */}
+      <Hanger x={98} />
+      <g strokeWidth="1.6">
+        <path
+          d="M86 24 Q98 30 110 24 L124 32 L128 50 L118 52 L116 44 L116 90 L80 90 L80 44 L78 52 L68 50 L72 32 Z"
+          fill="currentColor"
+          className="text-sky-200 dark:text-sky-300"
+        />
+        <path
+          d="M80 54 L116 54 M80 64 L116 64 M80 74 L116 74 M80 84 L116 84 M72 40 L124 40"
+          strokeWidth="3"
+          className="text-sky-500 dark:text-sky-600"
+        />
+      </g>
+
+      {/* raincoat, in front: hood folded back, toggles, pockets */}
+      <Hanger x={48} />
+      <g strokeWidth="2">
+        <path
+          d="M36 26 Q48 18 60 26 L58 32 L38 32 Z"
+          fill="currentColor"
+          className="text-yellow-500 dark:text-yellow-500"
+        />
+        <path
+          d="M38 26 Q48 34 58 26 L76 34 Q82 38 83 46 L90 98 L78 101 L72 58 L75 138 Q48 145 21 138 L24 58 L18 101 L6 98 L13 46 Q14 38 20 34 Z"
+          fill="currentColor"
+          className="text-yellow-300 dark:text-yellow-400"
+        />
+        <g className="text-yellow-700">
+          <path d="M38 26 Q48 34 58 26 L76 34 Q82 38 83 46 L90 98 L78 101 L72 58 L75 138 Q48 145 21 138 L24 58 L18 101 L6 98 L13 46 Q14 38 20 34 Z" />
+          <path d="M48 31 L48 140" strokeWidth="1.6" />
+          <path d="M24 58 Q22 52 20 46 M72 58 Q74 52 76 46" strokeWidth="1.4" />
+          <path
+            d="M28 104 L42 104 L42 120 L28 120 Z M54 104 L68 104 L68 120 L54 120 Z"
+            strokeWidth="1.6"
+          />
+          <path d="M28 108 L42 108 M54 108 L68 108" strokeWidth="1.4" />
+          <path d="M7 92 L18 95 M79 95 L89 92" strokeWidth="1.4" />
+        </g>
+        <g strokeWidth="1" fill="currentColor" className="text-amber-900">
+          <rect x="44" y="50" width="8" height="3" rx="1.5" />
+          <rect x="44" y="68" width="8" height="3" rx="1.5" />
+          <rect x="44" y="86" width="8" height="3" rx="1.5" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+/** Clothes rack with an optional element (usually a HangTag) at the raincoat's shoulder. */
+export function RackWithTag({ tag, className }: { tag?: ReactNode; className?: string }) {
+  return (
+    <div className={cn('relative', className)}>
+      <ClothingRackIllustration className="w-full" />
+      {tag && (
+        <div className="absolute -translate-x-1/2" style={RACK_TAG_ANCHOR}>
+          {tag}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** "Photo" of the raincoat for the cart (same colors in both themes). */
+export function RaincoatThumb({ className }: { className?: string }) {
+  return (
+    <div className={cn('flex items-center justify-center bg-yellow-50', className)}>
+      <svg viewBox="4 16 88 130" className="h-full" aria-hidden="true">
+        <path
+          d="M38 26 Q48 34 58 26 L76 34 Q82 38 83 46 L90 98 L78 101 L72 58 L75 138 Q48 145 21 138 L24 58 L18 101 L6 98 L13 46 Q14 38 20 34 Z"
+          fill="#fde047"
+          stroke="#a16207"
+          strokeWidth="3"
+          strokeLinejoin="round"
+        />
+        <path d="M48 31 L48 140" stroke="#a16207" strokeWidth="2.5" />
+      </svg>
     </div>
   );
 }

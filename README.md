@@ -14,7 +14,7 @@ Sellers list their items at home and print QR labels. At the bazaar every phone 
 
 [**Try the demo**](https://demo.bazarpro.de) · [Website](https://bazarpro.de) · [Guides](https://docs.bazarpro.de/en/) · [Self-hosting](#self-hosting)
 
-<img src="docs/screenshots/landing.jpg" alt="BazarPro landing page" width="860" />
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/landing-dark.jpg" /><img src="docs/screenshots/landing.jpg" alt="BazarPro landing page" width="860" /></picture>
 
 </div>
 
@@ -31,19 +31,20 @@ Sellers list their items at home and print QR labels. At the bazaar every phone 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/organizer-items.jpg" alt="Items of a bazaar with their status" /><br /><sub><b>Items:</b> intake, sale and returns at a glance</sub></td>
-    <td width="50%"><img src="docs/screenshots/cash-desk.jpg" alt="Cash desk with three scanned items" /><br /><sub><b>Cash desk:</b> scan the QR labels with the phone camera or a scanner</sub></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/organizer-items-dark.jpg" /><img src="docs/screenshots/organizer-items.jpg" alt="Items of a bazaar with their status" /></picture><br /><sub><b>Items:</b> intake, sale and returns at a glance</sub></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cash-desk-dark.jpg" /><img src="docs/screenshots/cash-desk.jpg" alt="Cash desk with three scanned items" /></picture><br /><sub><b>Cash desk:</b> scan the QR labels with the phone camera or a scanner</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/settlement.jpg" alt="Settlement of a bazaar" /><br /><sub><b>Settlement:</b> what is in the till and what each seller gets</sub></td>
-    <td width="50%"><img src="docs/screenshots/organizer-overview.jpg" alt="Overview of a bazaar for the organizer" /><br /><sub><b>Overview:</b> the next steps of a bazaar</sub></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settlement-dark.jpg" /><img src="docs/screenshots/settlement.jpg" alt="Settlement of a bazaar" /></picture><br /><sub><b>Settlement:</b> what is in the till and what each seller gets</sub></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/organizer-overview-dark.jpg" /><img src="docs/screenshots/organizer-overview.jpg" alt="Overview of a bazaar for the organizer" /></picture><br /><sub><b>Overview:</b> the next steps of a bazaar</sub></td>
   </tr>
 </table>
 
 <p align="center">
-  <img src="docs/screenshots/seller-items-phone.jpg" alt="A seller's items on a phone" width="260" />
+  <img src="docs/screenshots/seller-items-phone.jpg" alt="A seller's items on a phone, light theme" width="250" />
   &nbsp;&nbsp;
-  <img src="docs/screenshots/catalog-phone.jpg" alt="Catalog of a bazaar on a phone" width="260" />
+  <img src="docs/screenshots/catalog-phone-dark.jpg" alt="Catalog of a bazaar on a phone, dark theme" width="250" />
+  <br /><sub>On the phone, in the light and the dark theme. The screenshots above follow your GitHub theme.</sub>
 </p>
 
 ## Try it

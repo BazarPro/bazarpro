@@ -30,8 +30,6 @@ ping:
   manualRouting: true
 
 providers:
-  file:
-    directory: /etc/traefik/config/
   docker:
     endpoint: unix:///var/run/docker.sock
     exposedByDefault: false
