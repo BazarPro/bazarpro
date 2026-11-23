@@ -53,7 +53,21 @@ async fn add(app: &TestApp, seller: &Seller, args: Value) -> Uuid {
     reply.body["value"].as_str().unwrap().parse().unwrap()
 }
 
+/// The seller takes part in the event, as after joining (tested in event_seller.rs).
+async fn takes_part(app: &TestApp, event: Uuid, seller: &Seller) {
+    sqlx::query(
+        "INSERT INTO event_roles (event_id, user_id, role) VALUES ($1, $2, 'seller')
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(event)
+    .bind(seller.id)
+    .execute(&app.state.db)
+    .await
+    .unwrap();
+}
+
 async fn announce(app: &TestApp, seller: &Seller, event: Uuid, product: Uuid) -> common::Reply {
+    takes_part(app, event, seller).await;
     app.mutation(
         "eventProducts.addProductToEvent",
         json!({ "eventId": event, "productId": product }),
@@ -128,7 +142,12 @@ async fn adding_updating_and_deleting_items(db: PgPool) {
     assert_eq!(product["attributes"], json!({ "frameNumber": "WBK123" }));
     assert_eq!(
         product["attributeList"],
-        json!([{ "label": "Rahmennummer", "text": "frameNumber", "value": "WBK123" }])
+        json!([{
+            "label": "Rahmennummer",
+            "labelEn": "Frame number",
+            "text": "frameNumber",
+            "value": "WBK123"
+        }])
     );
     assert_eq!(product["minimumPrice"], 30.0);
     assert_eq!(product["categoryName"], "Fahrräder");
@@ -396,6 +415,7 @@ async fn sellers_only_announce_and_never_set_another_status(db: PgPool) {
     )
     .await;
     let item = add(&app, &erika, product_args(&erika, category, vec![])).await;
+    takes_part(&app, event, &erika).await;
     let sold = app
         .mutation(
             "eventProducts.addProductToEvent",
@@ -470,6 +490,82 @@ async fn the_item_limit_of_an_event(db: PgPool) {
         reply.body["params"],
         json!({ "event": "Basar", "limit": "2", "left": "0" })
     );
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_item_limit_of_the_whole_market(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let organizer = fixtures::user(&db, "Orga").await;
+    let erika = seller(&db, "Erika").await;
+    let max = seller(&db, "Max").await;
+    let category = fixtures::category(&db, "Fahrräder").await;
+    let event = fixtures::event(
+        &db,
+        EventSpec {
+            features: json!({ "photosOptional": true, "maxItemsTotal": 3 }),
+            ..EventSpec::new("Fahrradmarkt", organizer)
+        },
+    )
+    .await;
+    let places = || async {
+        app.query(
+            "events.getEvent",
+            json!({ "id": event }),
+            Some(&max.session),
+        )
+        .await
+        .body["value"]["itemPlacesLeft"]
+            .clone()
+    };
+    assert_eq!(places().await, json!(3));
+    let mut erikas = Vec::new();
+    for _ in 0..2 {
+        let item = add(&app, &erika, product_args(&erika, category, vec![])).await;
+        assert_eq!(
+            announce(&app, &erika, event, item).await.status,
+            StatusCode::OK
+        );
+        erikas.push(item);
+    }
+    let item = add(&app, &max, product_args(&max, category, vec![])).await;
+    assert_eq!(
+        announce(&app, &max, event, item).await.status,
+        StatusCode::OK
+    );
+    assert_eq!(places().await, json!(0));
+
+    // The market is full, for every seller
+    let late = add(&app, &max, product_args(&max, category, vec![])).await;
+    let reply = announce(&app, &max, event, late).await;
+    assert_eq!(reply.body["code"], "event.full", "{}", reply.body);
+    assert_eq!(
+        reply.body["params"],
+        json!({ "event": "Fahrradmarkt", "limit": "3" })
+    );
+
+    // A rejected item frees its place
+    sqlx::query("UPDATE event_products SET status = 'rejected' WHERE product_id = $1")
+        .bind(erikas[0])
+        .execute(&db)
+        .await
+        .unwrap();
+    assert_eq!(places().await, json!(1));
+    assert_eq!(
+        announce(&app, &max, event, late).await.status,
+        StatusCode::OK
+    );
+
+    // Lowering the limit keeps the items that are in
+    sqlx::query("UPDATE events SET features = '{\"photosOptional\": true, \"maxItemsTotal\": 1}' WHERE id = $1")
+        .bind(event)
+        .execute(&db)
+        .await
+        .unwrap();
+    assert_eq!(
+        status_of(&db, event, late).await.as_deref(),
+        Some("announced")
+    );
+    assert_eq!(places().await, json!(0));
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -585,6 +681,9 @@ async fn set_product_events_replaces_announcements_only(db: PgPool) {
         fixtures::event(&db, spec("C")).await,
     );
     let item = add(&app, &erika, product_args(&erika, category, vec![])).await;
+    for event in [a, b, c] {
+        takes_part(&app, event, &erika).await;
+    }
     let set = |events: Vec<Uuid>| {
         let (app, session, args) = (
             &app,
@@ -1537,4 +1636,100 @@ async fn upload_url_and_image_urls(db: PgPool) {
             image.as_str().unwrap()
         )])
     );
+}
+
+/// A category below another one, as an admin arranges them.
+async fn sub_category(db: &PgPool, label: &str, parent: Uuid) -> Uuid {
+    sqlx::query_scalar("INSERT INTO categories (label, parent_id) VALUES ($1, $2) RETURNING id")
+        .bind(label)
+        .bind(parent)
+        .fetch_one(db)
+        .await
+        .unwrap()
+}
+
+async fn allow(db: &PgPool, event: Uuid, categories: &[Uuid]) {
+    for (position, category) in categories.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO event_categories (event_id, position, category_id) VALUES ($1, $2, $3)",
+        )
+        .bind(event)
+        .bind(position as i32)
+        .bind(category)
+        .execute(db)
+        .await
+        .unwrap();
+    }
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn items_go_into_sub_categories_a_bazaar_allows(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let erika = seller(&db, "Erika").await;
+    let bikes = fixtures::category(&db, "Fahrräder").await;
+    let trekking = sub_category(&db, "Trekkingräder", bikes).await;
+    let trailers = sub_category(&db, "Fahrradanhänger", bikes).await;
+    let books = fixtures::category(&db, "Bücher").await;
+    let image = photo(&app, &erika).await;
+
+    // A main category with sub-categories only groups them
+    let main = app
+        .mutation(
+            "products.addProduct",
+            product_args(&erika, bikes, vec![image.clone()]),
+            Some(&erika.session),
+        )
+        .await;
+    assert_eq!(main.body["code"], "product.chooseSubcategory");
+    let bike = add(
+        &app,
+        &erika,
+        product_args(&erika, trekking, vec![image.clone()]),
+    )
+    .await;
+    let book = add(
+        &app,
+        &erika,
+        product_args(&erika, books, vec![image.clone()]),
+    )
+    .await;
+
+    // A bazaar that allows "Fahrräder" takes its sub-categories, nothing else
+    let organizer = fixtures::user(&db, "Olga").await;
+    let market = fixtures::event(&db, EventSpec::new("Radmarkt", organizer)).await;
+    allow(&db, market, &[bikes]).await;
+    assert_eq!(
+        announce(&app, &erika, market, bike).await.status,
+        StatusCode::OK
+    );
+    let refused = announce(&app, &erika, market, book).await;
+    assert_eq!(refused.body["code"], "product.categoryNotAllowed");
+    assert_eq!(
+        refused.body["message"],
+        "Diese Kategorie ist bei „Radmarkt“ nicht erlaubt."
+    );
+
+    // One that allows single sub-categories takes only those
+    let picky = fixtures::event(&db, EventSpec::new("Nur Trekking", organizer)).await;
+    allow(&db, picky, &[trekking]).await;
+    assert_eq!(
+        announce(&app, &erika, picky, bike).await.status,
+        StatusCode::OK
+    );
+
+    // An announced item cannot move to a category one of its bazaars does not take
+    let args = json!({
+        "productId": bike,
+        "title": "Kinderfahrrad",
+        "description": "Gut erhalten",
+        "condition": "good",
+        "productCategory": trailers,
+        "images": [image],
+        "price": 40,
+        "readyForSale": true,
+    });
+    let moved = app
+        .mutation("products.updateProduct", args, Some(&erika.session))
+        .await;
+    assert_eq!(moved.body["code"], "product.categoryNotAllowed");
 }

@@ -2,6 +2,7 @@
   "account": {
     "cannotReactivate": "The account cannot be reactivated.",
     "privacyRequired": "You must accept the privacy policy.",
+    "tooManySignUps": "A lot of accounts were just created from your connection. Please try again later.",
     "wrongPassword": "The old password is not correct."
   },
   "auth": {
@@ -38,10 +39,21 @@
     "labelEmpty": "Please enter a name.",
     "labelTaken": "A category with this name already exists.",
     "inUse": "This category is still in use and cannot be deleted.",
+    "parentNotMain": "A sub-category can only be placed under a main category.",
+    "hasSubcategories": "This category has sub-categories of its own and therefore cannot become a sub-category.",
+    "parentHasItems": "This category holds items and therefore cannot become a main category.",
+    "unknownField": "This extra field does not exist.",
+    "oneSize": "Please choose at most one kind of size.",
     "lastOne": "The last category cannot be deleted."
   },
   "common": {
     "invalidEmail": "Please enter a valid email address."
+  },
+  "contact": {
+    "incomplete": "Please enter your name and a message.",
+    "invalidEmail": "Please enter a valid email address so we can reply to you.",
+    "rateLimited": "We are receiving a lot of messages right now. Please try again later.",
+    "tooLong": "The message can have at most {{max}} characters."
   },
   "discount": {
     "max": "The maximum discount is {{max}}%.",
@@ -52,9 +64,11 @@
     "notYet": "Discounts are only possible from the time set by the organizer."
   },
   "event": {
+    "feeCapRange": "The fee cap must be between 0 and 10,000 €.",
+    "full": "“{{event}}” is full: all {{limit}} places for items are taken.",
     "blocked": "This bazaar was blocked by moderation.",
     "endBeforeStart": "The end of the {{label}} must be after its start.",
-    "feesOnlyLower": "Since sellers have registered, commission and intake fee can only be lowered.",
+    "feesOnlyLower": "Since sellers have registered, commission, intake fee and fee cap can only be lowered.",
     "intakeFeeRange": "The intake fee must be between 0 and 100 €.",
     "invalidLocationCategory": "Invalid location category for this bazaar.",
     "itemLimitInvalid": "The item limit must be a whole number from 1.",
@@ -70,12 +84,24 @@
     "pastNoEdit": "Past bazaars can no longer be edited.",
     "rejectionReasonRequired": "Please give a reason for the rejection.",
     "runningNoDate": "The date cannot be changed during the bazaar.",
-    "runningNoFees": "Commission and intake fee cannot be changed during the bazaar.",
+    "runningNoFees": "Commission, intake fee and fee cap cannot be changed during the bazaar.",
+    "directSaleLocked": "Sales are already booked. Direct sale can no longer be switched on or off.",
     "runningNoVisibility": "The visibility cannot be changed during the bazaar.",
     "accessCodeRequired": "This visibility needs an access code.",
     "sellerNoteTooLong": "The note for sellers may have at most {{max}} characters.",
     "settlementClosed": "The settlement of this bazaar is closed. Sales and returns can no longer be changed.",
-    "startMissing": "Please also give the start of the {{label}}."
+    "startMissing": "Please also give the start of the {{label}}.",
+    "registrationWindow": "Registration must end after it begins.",
+    "feeGroupsTooMany": "A bazaar can have at most 4 fee groups.",
+    "feeGroupLabel": "Every fee group needs a name of at most 60 characters.",
+    "feeGroupLabelTwice": "Two fee groups have the same name.",
+    "feeGroupHelpersTwice": "Only one fee group can apply to the helpers of the bazaar.",
+    "feeGroupCommission": "The commission of a fee group is between 0 and 100 %.",
+    "feeGroupProofHint": "The proof hint may be at most 200 characters long.",
+    "feeGroupsOnlyLower": "Since sellers have registered, fee groups can only get cheaper. They can no longer be removed or assigned differently.",
+    "helperGroupDearer": "Since sellers have registered, a new group for helpers may not cost more than the bazaar’s fees: it applies to all helpers at once.",
+    "postalCodeInvalid": "“{{code}}” is neither a postal code nor the start of one. Please use digits only, at most five.",
+    "postalCodesTooMany": "Please choose at most {{max}} postal code areas."
   },
   "feature": {
     "disabled": "This action is currently disabled.",
@@ -87,12 +113,18 @@
     "past": "You cannot join: the bazaar is already over.",
     "vendorLimit": "The maximum number of sellers has been reached.",
     "privateRequired": "Please confirm that you sell as a private person.",
-    "profileIncomplete": "Please complete your name, address and phone in your profile first."
+    "profileIncomplete": "Please complete your name, address and phone in your profile first.",
+    "closed": "Registration for this bazaar is closed.",
+    "notYet": "Registration for this bazaar has not opened yet.",
+    "excluded": "The organizer has excluded you from this bazaar.",
+    "postalCode": "This bazaar is only for sellers from its region: postal codes {{codes}}. If you would like to take part anyway, ask the organizer for an invitation.",
+    "postalCodeMissing": "Please add your postal code to your profile first: this bazaar is only for sellers from its region."
   },
   "leave": {
     "itemsHandledIn": "You cannot withdraw while items are already accepted, sold or returned.",
     "paidOut": "You cannot leave: you have already been paid out.",
-    "past": "You cannot withdraw from past bazaars."
+    "past": "You cannot withdraw from past bazaars.",
+    "excluded": "The organizer has excluded you from this bazaar. You no longer take part."
   },
   "moderation": {
     "noBanAdmin": "Administrators cannot be suspended.",
@@ -109,7 +141,8 @@
     "product": "Item not found.",
     "question": "Question not found.",
     "report": "Report not found.",
-    "user": "User not found."
+    "user": "User not found.",
+    "categoryField": "Extra field not found."
   },
   "offline": {
     "failed": "The action could not be replayed. Please do it by hand.",
@@ -164,13 +197,22 @@
     "unavailable": "The item is no longer available.",
     "walkInOnly": "Only items of sellers created on site can be recorded here.",
     "fieldRequired": "“{{event}}” requires the detail “{{field}}”.",
-    "dataFixed": "Title, category, price and required details are fixed: the item was accepted at a running bazaar that keeps a record."
+    "dataFixed": "Title, category, price and required details are fixed: the item was accepted at a running bazaar that keeps a record.",
+    "importEmpty": "The list contains no items.",
+    "importTooMany": "Import at most {{max}} items at once.",
+    "rejected": "The item was rejected. Take the rejection back first.",
+    "rejectedNoRemove": "Rejected items stay on record at the bazaar and cannot be removed.",
+    "notRegistered": "Register as a seller for this bazaar first.",
+    "rejectedHere": "“{{title}}” was rejected at “{{event}}” and cannot be registered there again.",
+    "chooseSubcategory": "Please choose a sub-category, for example the kind of bike under “Bikes”.",
+    "categoryNotAllowed": "This category is not allowed at “{{event}}”."
   },
   "profile": {
     "nameRequired": "Please enter your first and last name.",
     "nameTooLong": "The name may have at most {{max}} characters.",
     "titleLength": "The title needs 3 to {{max}} characters.",
-    "fixed": "Name and address are fixed: a bazaar that keeps a record accepted your items and is not over yet."
+    "fixed": "Name and address are fixed: a bazaar that keeps a record accepted your items and is not over yet.",
+    "postalCodeFixed": "Postal code and country are fixed: you are registered at a bazaar for its region that is not over yet."
   },
   "question": {
     "answerEmpty": "Please enter an answer.",
@@ -203,7 +245,9 @@
     "paidOutNoSales": "The seller has already been paid out, no more sales are possible.",
     "paidOutUndoFirst": "The seller is already settled. Undo the payout first to change their items.",
     "payoutStaffOnly": "Only organizers and helpers can mark payouts as done.",
-    "undoPayoutStaffOnly": "Only organizers and helpers can undo payouts."
+    "undoPayoutStaffOnly": "Only organizers and helpers can undo payouts.",
+    "unregisterPast": "Nobody can be unregistered after the bazaar.",
+    "unregisterMessageTooLong": "The message may be at most {{max}} characters long."
   },
   "settings": {
     "domainFormat": "Please enter the domain without https://, e.g. bazaar.example.org.",
@@ -216,7 +260,8 @@
     "invalid": "This invitation is no longer valid. Please ask the organizer for a new one.",
     "otherAccount": "This invitation is for a different email address. Please sign in with the invited address.",
     "invalidEmail": "Please enter a valid email address.",
-    "limit": "Enough invitations were sent today. Please try again tomorrow."
+    "limit": "Enough invitations were sent today. Please try again tomorrow.",
+    "excluded": "This person is excluded from this bazaar. Take the exclusion back first."
   },
   "helper": {
     "intake": "The organizer has not allowed you to do the intake.",
@@ -225,8 +270,36 @@
     "payout": "The organizer has not allowed you to settle and pay out sellers.",
     "cashSummary": "The organizer has not allowed you to see the cash summary."
   },
+  "exclusion": {
+    "hasItems": "The seller still has announced items at this bazaar. Reject them as not handed in first.",
+    "past": "Nobody can be excluded once the bazaar is over.",
+    "organizer": "The organizer cannot be excluded.",
+    "walkIn": "Sellers without an account cannot be excluded.",
+    "reasonTooLong": "The reason may have at most {{max}} characters.",
+    "vendorLimit": "The seller limit is reached. Raise it to lift the exclusion."
+  },
+  "rejection": {
+    "past": "Items can no longer be rejected once the bazaar is over.",
+    "sellerExcluded": "The seller is excluded from this bazaar.",
+    "sellerLeft": "The seller no longer takes part in this bazaar."
+  },
   "upload": {
     "quotaExceeded": "You have uploaded too many images that are not saved yet. Please save first or try again later.",
     "tooMany": "You have uploaded a lot of images. Please try again later."
+  },
+  "categoryField": {
+    "inUse": "Categories still use this extra field. Remove it there first."
+  },
+  "feeGroup": {
+    "unconfirmed": "{{group}}: Please check the proof first and confirm or remove the group.",
+    "unknown": "This fee group does not exist at this bazaar.",
+    "decided": "The team has already checked your group. Please talk to the team to change it.",
+    "locked": "Your items have already been accepted. Please talk to the team to change your group.",
+    "none": "This seller has not given a fee group.",
+    "organizerOnly": "Only organizers can put sellers in a fee group.",
+    "decidedOrganizerOnly": "This group has already been checked or was assigned. Only organizers can change it."
+  },
+  "leftovers": {
+    "notOver": "Remaining items can only be returned all at once after the bazaar."
   }
 }

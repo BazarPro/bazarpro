@@ -456,7 +456,7 @@ async fn my_sales_per_event_with_the_intake_fee(db: PgPool) {
     assert_eq!(group["items"][0]["sale"]["totalAmount"], 30.0);
     assert_eq!(
         group["totals"],
-        json!({ "revenue": 30.0, "commission": 3.0, "intakeFee": { "perItem": 0.5, "items": 2, "total": 1.0 }, "payout": 26.0 })
+        json!({ "revenue": 30.0, "commission": 3.0, "intakeFee": { "perItem": 0.5, "items": 2, "total": 1.0 }, "feeCapCredit": 0.0, "payout": 26.0 })
     );
     assert_eq!(group["paid"], false);
     assert_eq!(
@@ -713,6 +713,24 @@ async fn offline_sales_after_the_payout_and_of_vanished_items_are_conflicts(db: 
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn no_desk_books_a_direct_sale_at_a_bazaar_without_them(db: PgPool) {
+    let desk = Desk::new(db.clone(), json!({})).await;
+    let (product, relation) = desk.item("Ski", 50.0).await;
+    let mut sale = offline_sale(Uuid::new_v4(), &[(relation, product, 50.0)]);
+    sale["directSale"] = json!(true);
+    let reply = desk.sync(json!([sale])).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(reply.body["value"][0]["conflicts"], json!([product]));
+    let reason: String = sqlx::query_scalar("SELECT reason FROM sale_conflicts")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(reason, "checkout.directSaleMismatch");
+    // The seller is not booked with nothing to get
+    assert!(desk.purchase(product).await.is_none());
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn a_cart_sent_twice_is_sold_once(db: PgPool) {
     let desk = Desk::new(db.clone(), json!({})).await;
     let (product, relation) = desk.item("Ski", 20.0).await;
@@ -802,4 +820,418 @@ async fn the_snapshot_for_an_offline_desk(db: PgPool) {
         )
         .await;
     assert_eq!(forbidden.body["code"], "auth.forbidden");
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_direct_sale_takes_only_the_commission(db: PgPool) {
+    // The buyer paid the seller at the bike; the desk books it at the agreed price
+    let desk = Desk::new(db.clone(), json!({ "directSale": true })).await;
+    let (agreed, agreed_relation) = desk.item("Trekkingrad", 280.0).await;
+    let (listed, listed_relation) = desk.item("Hollandrad", 190.0).await;
+    // Without a minimum price any agreed price up to the label counts
+    let above = desk
+        .cart(
+            json!([{ "eventProductId": agreed_relation, "negotiatedPrice": 300 }]),
+            None,
+        )
+        .await;
+    assert_eq!(above.body["code"], "checkout.itemFailed", "{}", above.body);
+    let reply = desk
+        .cart(
+            json!([
+                { "eventProductId": agreed_relation, "negotiatedPrice": 250 },
+                { "eventProductId": listed_relation },
+            ]),
+            None,
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // The desk took 10 % of 440 €, nothing is paid out
+    assert_eq!(reply.body["value"]["total"], json!(440.0));
+    assert_eq!(reply.body["value"]["taken"], json!(44.0));
+    assert_eq!(
+        desk.purchase(agreed).await,
+        Some((250.0, 25.0, 0.0, Some("negotiated".into()), None))
+    );
+    assert_eq!(
+        desk.purchase(listed).await,
+        Some((190.0, 19.0, 0.0, Some("list".into()), None))
+    );
+    let direct: i64 = sqlx::query_scalar("SELECT count(*) FROM purchases WHERE direct_sale")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(direct, 2);
+
+    // The till holds the commission only; the seller is owed nothing
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(summary.status, StatusCode::OK, "{}", summary.body);
+    let summary = &summary.body["value"];
+    assert_eq!(summary["cashInHandSoll"], json!(44.0), "{summary}");
+    assert_eq!(summary["totalDirectSales"], json!(440.0));
+    assert_eq!(summary["totalDirectCommission"], json!(44.0));
+    assert_eq!(summary["totalPendingPayout"], json!(0.0));
+
+    // The seller's mail names the commission paid at the desk and no payout
+    let mail = desk
+        .mails()
+        .await
+        .into_iter()
+        .find(|(to, _)| to == "seller@test.example");
+    assert!(mail.is_some());
+    let html = desk
+        .app
+        .sent
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|m| m.to == "seller@test.example")
+        .unwrap()
+        .html
+        .clone();
+    assert!(html.contains("an der Kasse bezahlt"), "{html}");
+    assert!(!html.contains("Auszahlung</"), "{html}");
+}
+
+/// editEvent with `directSale` set, everything else as the event is.
+async fn switch_direct_sale(desk: &Desk, on: bool) -> common::Reply {
+    let event = desk
+        .app
+        .query(
+            "events.getEvent",
+            json!({ "id": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    let mut args = json!({ "id": desk.event, "features": { "directSale": on } });
+    for key in [
+        "title",
+        "description",
+        "location",
+        "startDate",
+        "endDate",
+        "categories",
+        "contactInfo",
+        "commission",
+        "services",
+        "visibility",
+    ] {
+        args[key] = event[key].clone();
+    }
+    desk.app
+        .mutation("events.editEvent", args, Some(&desk.team))
+        .await
+}
+
+async fn is_direct(db: &PgPool, product: Uuid) -> bool {
+    sqlx::query_scalar("SELECT direct_sale FROM purchases WHERE product_id = $1")
+        .bind(product)
+        .fetch_one(db)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn an_offline_sale_is_booked_the_way_the_desk_sold_it(db: PgPool) {
+    let desk = Desk::new(db.clone(), json!({})).await;
+    let (normal, normal_relation) = desk.item("Ski", 50.0).await;
+    let (direct, direct_relation) = desk.item("Rad", 200.0).await;
+    let (older, older_relation) = desk.item("Roller", 30.0).await;
+    // The desk took 50 € into the till offline; before the queue is booked the organizer
+    // switches to direct sale, which is possible while nothing is sold
+    let switched = switch_direct_sale(&desk, true).await;
+    assert_eq!(switched.status, StatusCode::OK, "{}", switched.body);
+
+    let mut as_normal = offline_sale(Uuid::new_v4(), &[(normal_relation, normal, 50.0)]);
+    as_normal["directSale"] = json!(false);
+    let mut as_direct = offline_sale(Uuid::new_v4(), &[(direct_relation, direct, 180.0)]);
+    as_direct["directSale"] = json!(true);
+    // An older app does not say how it sold: as the event says
+    let unsaid = offline_sale(Uuid::new_v4(), &[(older_relation, older, 30.0)]);
+    let reply = desk.sync(json!([as_normal, as_direct, unsaid])).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+
+    // The seller is still owed the 45 € that are in the till
+    assert_eq!(
+        desk.purchase(normal).await,
+        Some((50.0, 5.0, 45.0, Some("list".into()), None))
+    );
+    assert!(!is_direct(&db, normal).await);
+    assert_eq!(
+        desk.purchase(direct).await,
+        Some((180.0, 18.0, 0.0, Some("list".into()), None))
+    );
+    assert!(is_direct(&db, direct).await);
+    assert!(is_direct(&db, older).await);
+
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    // 50 € + the commissions of the direct sales (18 € + 3 €)
+    assert_eq!(summary["cashInHandSoll"], json!(71.0), "{summary}");
+    assert_eq!(summary["totalPendingPayout"], json!(45.0));
+    // One seller with money to settle
+    assert_eq!(summary["vendorsTotalCount"], json!(1));
+
+    // With sales booked the way of selling stays
+    let back = switch_direct_sale(&desk, false).await;
+    assert_eq!(back.body["code"], "event.directSaleLocked", "{}", back.body);
+    let same = switch_direct_sale(&desk, true).await;
+    assert_eq!(same.status, StatusCode::OK, "{}", same.body);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn direct_sellers_have_nothing_to_settle(db: PgPool) {
+    let desk = Desk::new(db.clone(), json!({ "directSale": true })).await;
+    // A label of one cent can be booked at one cent: no minimum price is involved
+    let (cheap, cheap_relation) = desk.item("Klingel", 0.01).await;
+    let (_, bike_relation) = desk.item("Rad", 250.0).await;
+    let reply = desk
+        .cart(
+            json!([
+                { "eventProductId": cheap_relation, "negotiatedPrice": 0.01 },
+                { "eventProductId": bike_relation, "negotiatedPrice": 200 },
+            ]),
+            None,
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(
+        desk.purchase(cheap).await,
+        Some((0.01, 0.0, 0.0, Some("negotiated".into()), None))
+    );
+
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    // Nobody waits for a payout, so nobody counts as open
+    assert_eq!(summary["vendorsTotalCount"], json!(0), "{summary}");
+    assert_eq!(summary["vendorsPaidCount"], json!(0));
+
+    let vendors = desk
+        .app
+        .query(
+            "eventRoles.getVendorsForEvent",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(vendors.status, StatusCode::OK, "{}", vendors.body);
+    let seller = &vendors.body["value"][0];
+    assert_eq!(seller["payout"], json!(0.0), "{seller}");
+    // 200.01 € from the buyers, less 20 € commission
+    assert_eq!(seller["receivedDirectly"], json!(180.01));
+}
+
+async fn vendor_of(desk: &Desk) -> Value {
+    let vendors = desk
+        .app
+        .query(
+            "eventRoles.getVendorsForEvent",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(vendors.status, StatusCode::OK, "{}", vendors.body);
+    vendors.body["value"][0].clone()
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_fee_cap_gives_back_what_is_above_it_at_the_payout(db: PgPool) {
+    // 10 % commission, 3 € per bike handed in, at most 20 € of fees per seller
+    let desk = Desk::new(
+        db.clone(),
+        json!({ "intakeFee": 3, "maxFeesPerSeller": 20 }),
+    )
+    .await;
+    let (_, ebike) = desk.item("E-Bike", 140.0).await;
+    let (_, trekking) = desk.item("Trekkingrad", 90.0).await;
+    desk.sell(json!({ "eventProductId": ebike })).await;
+    // Each sale keeps its full commission; the cap works on the sum
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["commission"], json!(14.0));
+    // 14 € + 2 × 3 € is just above the cap
+    assert_eq!(vendor["feeCapCredit"], json!(0.0));
+    assert_eq!(vendor["payout"], json!(126.0 - 6.0));
+
+    desk.sell(json!({ "eventProductId": trekking })).await;
+    // 23 € commission + 6 € intake fee = 29 €: 9 € come back
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["feeCapCredit"], json!(9.0), "{vendor}");
+    assert_eq!(vendor["payout"], json!(230.0 - 20.0));
+    let seller = fixtures::session(&db, desk.seller).await;
+    let sales = desk
+        .app
+        .query("purchases.getMySales", json!({}), Some(&seller))
+        .await;
+    let totals = &sales.body["value"][0]["totals"];
+    assert_eq!(totals["feeCapCredit"], json!(9.0), "{totals}");
+    assert_eq!(totals["payout"], json!(210.0));
+
+    // The payout stores the credit; a later change of the cap does not alter it
+    let args = json!({ "eventId": desk.event, "vendorUserId": desk.seller });
+    let paid = desk
+        .app
+        .mutation("eventSeller.settleVendor", args.clone(), Some(&desk.team))
+        .await;
+    assert_eq!(paid.status, StatusCode::OK, "{}", paid.body);
+    let stored: (f64, Option<f64>) = sqlx::query_as(
+        "SELECT payout_amount::float8, fee_cap_credit::float8 FROM event_sellers
+         WHERE event_id = $1 AND user_id = $2",
+    )
+    .bind(desk.event)
+    .bind(desk.seller)
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(stored, (210.0, Some(9.0)));
+    sqlx::query(
+        "UPDATE events SET features = '{\"intakeFee\": 3, \"maxFeesPerSeller\": 10}' WHERE id = $1",
+    )
+    .bind(desk.event)
+    .execute(&db)
+    .await
+    .unwrap();
+    assert_eq!(vendor_of(&desk).await["payout"], json!(210.0));
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    assert_eq!(summary["totalFeeCapCredits"], json!(9.0), "{summary}");
+    assert_eq!(summary["totalPaidOut"], json!(210.0));
+    // 230 € taken, 210 € paid out: the bazaar keeps exactly the cap
+    assert_eq!(summary["cashInHandSoll"], json!(20.0));
+
+    // Taking the payout back clears it; the new cap counts from then on
+    let undone = desk
+        .app
+        .mutation(
+            "eventSeller.unmarkVendorPayoutReceived",
+            args,
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(undone.status, StatusCode::OK, "{}", undone.body);
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["feeCapCredit"], json!(19.0), "{vendor}");
+    assert_eq!(vendor["payout"], json!(220.0));
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_direct_sale_takes_commission_only_up_to_the_cap(db: PgPool) {
+    let desk = Desk::new(
+        db.clone(),
+        json!({ "directSale": true, "maxFeesPerSeller": 20, "intakeFee": 2 }),
+    )
+    .await;
+    let (ebike, ebike_relation) = desk.item("E-Bike", 140.0).await;
+    let (trekking, trekking_relation) = desk.item("Trekkingrad", 90.0).await;
+    let (city, city_relation) = desk.item("Stadtrad", 50.0).await;
+    let left = |product: Uuid| {
+        let app = &desk.app;
+        let team = desk.team.clone();
+        async move {
+            app.query(
+                "purchases.getCheckoutItem",
+                json!({ "eventId": desk.event, "productId": product }),
+                Some(&team),
+            )
+            .await
+            .body["value"]["feeCapLeft"]
+                .clone()
+        }
+    };
+    assert_eq!(left(ebike).await, json!(20.0));
+
+    let reply = desk
+        .cart(
+            json!([{ "eventProductId": ebike_relation }, { "eventProductId": trekking_relation }]),
+            None,
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    // 14 € for the first bike, the rest of the cap (6 € instead of 9 €) for the second
+    assert_eq!(reply.body["value"]["taken"], json!(20.0));
+    assert_eq!(desk.purchase(ebike).await.unwrap().1, 14.0);
+    assert_eq!(desk.purchase(trekking).await.unwrap().1, 6.0);
+    assert_eq!(left(city).await, json!(0.0));
+    // The cap is reached: no more commission
+    desk.sell(json!({ "eventProductId": city_relation })).await;
+    assert_eq!(desk.purchase(city).await.unwrap().1, 0.0);
+
+    // The intake fee is above the cap as well: the seller owes nothing at the end
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["commission"], json!(20.0));
+    assert_eq!(vendor["feeCapCredit"], json!(6.0), "{vendor}");
+    assert_eq!(vendor["payout"], json!(0.0));
+
+    // Undone, its commission goes back; the room under the cap goes to the other sales,
+    // which owe their full commission again
+    sqlx::query(
+        "INSERT INTO feature_flags (key, value) VALUES ('allow_undo_inventory_actions', true)",
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+    let undo = desk
+        .app
+        .mutation(
+            "purchases.undoSale",
+            json!({ "eventProductId": ebike_relation }),
+            Some(&desk.team),
+        )
+        .await;
+    assert_eq!(undo.status, StatusCode::OK, "{}", undo.body);
+    // 9 € for the trekking bike, 5 € for the city bike: 6 € of the cap are left
+    assert_eq!(desk.purchase(trekking).await.unwrap().1, 9.0);
+    assert_eq!(desk.purchase(city).await.unwrap().1, 5.0);
+    assert_eq!(left(ebike).await, json!(6.0));
+    let vendor = vendor_of(&desk).await;
+    assert_eq!(vendor["commission"], json!(14.0));
+    // 14 € commission + 6 € intake fee are the cap; the desk took 6 €, the seller pays
+    // the other 8 € of commission and the intake fee at the settlement
+    assert_eq!(vendor["feeCapCredit"], json!(0.0));
+    assert_eq!(vendor["payout"], json!(-14.0), "{vendor}");
+    assert_eq!(vendor["receivedDirectly"], json!(140.0 - 6.0));
+    let summary = desk
+        .app
+        .query(
+            "events.getEventFinancialSummary",
+            json!({ "eventId": desk.event }),
+            Some(&desk.team),
+        )
+        .await
+        .body["value"]
+        .clone();
+    // Only what the desk really took is in the till
+    assert_eq!(summary["cashInHandSoll"], json!(6.0), "{summary}");
 }

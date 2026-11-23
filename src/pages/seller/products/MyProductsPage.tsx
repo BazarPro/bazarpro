@@ -42,6 +42,7 @@ import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
 import { Trans, useTranslation } from 'react-i18next';
 import { ListSkeleton, Loading } from '../../../components/ui/loading';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { isCategoryAllowed } from '../../../shared/categoryTree';
 
 /**
  * Main Product List View for the Users Producs
@@ -151,6 +152,12 @@ export function MyProductsPage() {
   const isEventSelectionMode = !!eventSelectionEventId;
   const bulkSelectionEnabled = isEventSelectionMode || isBulkSelectionEnabled;
   const filteredEvent = events?.find((event) => event._id === filterEvent);
+  // A market with a limit of all items: how many places are still free while choosing
+  const chosenEvent = useQuery(
+    api.events.getEvent,
+    eventSelectionEventId ? { id: eventSelectionEventId } : 'skip'
+  );
+  const placesLeft = chosenEvent?.itemPlacesLeft;
 
   // Discounts are set at the bazaar running now: the filtered one, else the item's own
   const runningEventIds = useMemo(() => {
@@ -222,22 +229,62 @@ export function MyProductsPage() {
     return map;
   }, [eventProductStatuses]);
 
+  const selectionEvent = events?.find((event) => event._id === eventSelectionEventId);
+  // The bazaar only takes items of the categories it allows
+  const isCategoryRefused = (productId: Id<'products'>) => {
+    const product = productsById.get(productId);
+    return (
+      !!product &&
+      !!selectionEvent &&
+      !assignedProductIds.has(productId) &&
+      !isCategoryAllowed(product.productCategory, selectionEvent.categories, categoryList)
+    );
+  };
+
   const isSelectionLocked = (productId: Id<'products'>) => {
     if (!isEventSelectionMode) return false;
     const product = productsById.get(productId);
     if (!product) return false;
     if (product.sold) return true;
+    if (isCategoryRefused(productId)) return true;
     if (!assignedProductIds.has(productId)) return false;
     const status = eventProductStatusMap.get(productId as string);
     return status !== 'announced';
   };
 
+  // Places of the whole market still free after this selection: a new item takes one, an
+  // announced item taken off gives its place back
+  const placesAfterSelection = (() => {
+    if (placesLeft === undefined) return undefined;
+    const selected = new Set(selectedProducts);
+    const added = selectedProducts.filter((id) => !assignedProductIds.has(id)).length;
+    const freed = [...assignedSelectableIds].filter(
+      (id) => !selected.has(id) && eventProductStatusMap.get(id as string) === 'announced'
+    ).length;
+    return placesLeft - added + freed;
+  })();
+  const isNewAtEvent = (productId: Id<'products'>) =>
+    isEventSelectionMode && !assignedProductIds.has(productId);
+
   const toggleProductSelection = (productId: Id<'products'>) => {
+    if (
+      isNewAtEvent(productId) &&
+      !selectedProducts.includes(productId) &&
+      placesAfterSelection !== undefined &&
+      placesAfterSelection <= 0
+    ) {
+      toast.error(t('myProducts.noPlaceLeft'));
+      return;
+    }
     if (isEventSelectionMode) {
       const product = productsById.get(productId);
       if (!product) return;
       if (product.sold) {
         toast.error(t('myProducts.soldCannotAdd'));
+        return;
+      }
+      if (isCategoryRefused(productId)) {
+        toast.error(t('myProducts.categoryNotAllowed', { event: selectionEvent?.title ?? '' }));
         return;
       }
       if (isSelectionLocked(productId)) {
@@ -431,6 +478,7 @@ export function MyProductsPage() {
         sortBy,
         minPrice,
         maxPrice,
+        categories: categoryList,
       })
     : [];
 
@@ -535,6 +583,29 @@ export function MyProductsPage() {
       : undefined;
 
   const selectedSet = new Set(selectedProducts);
+  // "Select all" covers what the filters show; handed-in items keep their place at the bazaar
+  const selectableIds = filteredProducts
+    .filter((p) => !isEventSelectionMode || !(p.sold || isSelectionLocked(p._id)))
+    .map((p) => p._id);
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
+  const toggleSelectAll = () => {
+    const ids = new Set<Id<'products'>>(selectableIds);
+    if (allSelected) {
+      setSelectedProducts((prev) => prev.filter((id) => !ids.has(id)));
+      return;
+    }
+    let adding = selectableIds.filter((id) => !selectedSet.has(id));
+    // A market with a limit of all items: new items only as far as places are free
+    if (placesAfterSelection !== undefined) {
+      let free = Math.max(placesAfterSelection, 0);
+      const fitting = adding.filter((id) => !isNewAtEvent(id) || free-- > 0);
+      if (fitting.length < adding.length) toast.error(t('myProducts.noPlaceLeft'));
+      adding = fitting;
+    }
+    setSelectedProducts((prev) => [...prev, ...adding]);
+  };
+  const selectAll =
+    selectableIds.length > 0 ? { allSelected, onToggle: toggleSelectAll } : undefined;
   const selectedForLabels = filteredProducts
     .filter((p) => selectedSet.has(p._id) && !p.sold)
     .map((p) => p._id);
@@ -621,7 +692,10 @@ export function MyProductsPage() {
             />
 
             {isBulkSelectionEnabled && !isEventSelectionMode && (
-              <SelectionBar title={t('myProducts.selected', { count: selectedProducts.length })}>
+              <SelectionBar
+                title={t('myProducts.selected', { count: selectedProducts.length })}
+                selectAll={selectAll}
+              >
                 <Button
                   variant="outline"
                   size="sm"
@@ -671,13 +745,29 @@ export function MyProductsPage() {
             {isEventSelectionMode && (
               <SelectionBar
                 title={filteredEvent?.title ?? t('myProducts.event')}
-                text={t('myProducts.selectedCount', { count: selectedProducts.length })}
+                text={[
+                  t('myProducts.selectedCount', { count: selectedProducts.length }),
+                  placesAfterSelection === undefined
+                    ? undefined
+                    : placesAfterSelection < 0
+                      ? t('myProducts.placesOver', { count: -placesAfterSelection })
+                      : placesAfterSelection === 0
+                        ? t('myProducts.marketFull')
+                        : t('myProducts.placesLeft', { count: placesAfterSelection }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                selectAll={selectAll}
               >
                 <Button
                   loading={isEventSelectionSaving}
                   type="button"
                   onClick={handleSaveEventSelection}
-                  disabled={isEventSelectionSaving || !eventSelectionStats.hasChanges}
+                  disabled={
+                    isEventSelectionSaving ||
+                    !eventSelectionStats.hasChanges ||
+                    (placesAfterSelection !== undefined && placesAfterSelection < 0)
+                  }
                   className="whitespace-nowrap"
                 >
                   {isEventSelectionSaving ? t('myProducts.saving') : t('myProducts.saveChanges')}
@@ -844,13 +934,17 @@ function SelectionBar({
   title,
   text,
   sticky = true,
+  selectAll,
   children,
 }: {
   title: string;
   text?: string;
   sticky?: boolean;
+  /** Offers to select (or clear) every item the filters show */
+  selectAll?: { allSelected: boolean; onToggle: () => void };
   children: ReactNode;
 }) {
+  const { t } = useTranslation('seller');
   return (
     <div
       className={cn(
@@ -860,7 +954,21 @@ function SelectionBar({
     >
       <div>
         <div className="text-base font-semibold">{title}</div>
-        {text && <div className="text-sm text-muted-foreground">{text}</div>}
+        {(text || selectAll) && (
+          <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+            {text}
+            {text && selectAll && <span aria-hidden>·</span>}
+            {selectAll && (
+              <button
+                type="button"
+                onClick={selectAll.onToggle}
+                className="font-medium text-primary hover:underline"
+              >
+                {selectAll.allSelected ? t('myProducts.selectNone') : t('myProducts.selectAll')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>

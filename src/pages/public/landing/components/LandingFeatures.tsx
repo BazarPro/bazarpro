@@ -33,6 +33,8 @@ import { useState } from 'react';
 import { cn } from '../../../../lib/utils';
 import { docsUrl } from '../../../../lib/links';
 import { Trans, useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { useLocalizedPath } from '../../../../i18n/useLocale';
 
 interface Feature {
   icon: LucideIcon;
@@ -103,6 +105,7 @@ const groups: FeatureGroup[] = [
 
 export function LandingFeatures() {
   const { t, i18n } = useTranslation('landing');
+  const localized = useLocalizedPath();
   // Below lg only one role is shown at a time; from lg on all three columns
   const [activeGroup, setActiveGroup] = useState(0);
 
@@ -131,14 +134,14 @@ export function LandingFeatures() {
               aria-controls={`features-panel-${index}`}
               onClick={() => setActiveGroup(index)}
               className={cn(
-                'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold transition-colors',
+                'flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-1.5 py-2 text-[0.8125rem] font-semibold transition-colors sm:px-2 sm:text-sm',
                 index === activeGroup
                   ? cn('shadow-sm', group.iconBox)
                   : 'text-muted-foreground hover:bg-muted'
               )}
             >
-              <group.icon className="h-4 w-4 shrink-0" />
-              {t(`features.groups.${group.id}.short`)}
+              <group.icon className="hidden h-4 w-4 shrink-0 min-[400px]:block" />
+              <span className="truncate">{t(`features.groups.${group.id}.short`)}</span>
             </button>
           ))}
         </div>
@@ -195,6 +198,26 @@ export function LandingFeatures() {
                   href={docsUrl(i18n.resolvedLanguage)}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="font-semibold text-primary underline-offset-4 hover:underline"
+                />
+              ),
+            }}
+          />
+        </p>
+        <p className="mt-3 text-center text-muted-foreground">
+          <Trans
+            i18nKey="features.more"
+            ns="landing"
+            components={{
+              features: (
+                <Link
+                  to={localized('/features')}
+                  className="font-semibold text-primary underline-offset-4 hover:underline"
+                />
+              ),
+              pricing: (
+                <Link
+                  to={localized('/pricing')}
                   className="font-semibold text-primary underline-offset-4 hover:underline"
                 />
               ),

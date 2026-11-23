@@ -47,6 +47,16 @@ async fn main() -> anyhow::Result<()> {
             println!("{}", value.as_str().unwrap_or_default());
             return Ok(());
         }
+        // Sets the password of an account, read from stdin: password <email> < file
+        [_, "password", email] => {
+            let mut line = String::new();
+            std::io::stdin().read_line(&mut line)?;
+            let new_password = line.trim_end_matches(['\r', '\n']).to_owned();
+            bazarpro_backend::auth::password_flows::set_password(&state.db, email, new_password)
+                .await?;
+            println!("Password of {email} set");
+            return Ok(());
+        }
         // Demo data: seed [--force] [--locale en] [--no-images]
         [_, "seed", flags @ ..] => {
             let locale = match flags.iter().position(|flag| *flag == "--locale") {

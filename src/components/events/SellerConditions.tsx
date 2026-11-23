@@ -1,40 +1,45 @@
 import { Check, ClipboardList, Coins, X, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
+  describeFeeGroups,
   describeSellerFees,
   describeSellerRules,
   describeSellerSchedule,
-  formatSignedEuro,
   type SellerConditionsEvent,
 } from '../../lib/sellerFees';
-import { resolveEventFeatures } from '../../shared/eventFeatures';
-import { cn, formatPriceDE } from '../../lib/utils';
+import { useCategoryFieldDefinitions } from '../../hooks/useCategoryFields';
+import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import type { Id } from '../../lib/api/types';
+import { FeeGroupList, MyFeeGroup } from './FeeGroups';
+import { RegionMapLink } from './RegionMap';
 
 /**
- * What sellers agree to at a bazaar: fees with a worked example, item limit, price
- * features and hand-in/pickup times. Shown before registering and to registered
- * sellers; `compact` (bazaar page sidebar) leaves out the example and what the
- * bazaar does not offer.
+ * What sellers agree to at a bazaar, only what applies (#303): fees with a worked example
+ * that fits the kind of bazaar, hand-in and pickup times, what sellers must do and what
+ * they can do. Shown before registering and to registered sellers; `compact` (bazaar page
+ * sidebar) leaves out the example.
  */
 export function SellerConditions({
   event,
   className,
   id,
   compact = false,
+  eventId,
 }: {
   event: SellerConditionsEvent;
   className?: string;
   id?: string;
   compact?: boolean;
+  /** With it, a registered seller sees their fee group there (#302) */
+  eventId?: Id<'events'>;
 }) {
   const { t } = useTranslation('events');
-  const { lines, example } = describeSellerFees({
-    commission: event.commission,
-    intakeFee: resolveEventFeatures(event).intakeFee,
-  });
-  const rules = describeSellerRules(event).filter((rule) => !compact || rule.allowed);
+  const { lines, example } = describeSellerFees(event);
+  const fieldDefinitions = useCategoryFieldDefinitions();
+  const { duties, options } = describeSellerRules(event, fieldDefinitions);
   const schedule = describeSellerSchedule(event);
+  const groups = describeFeeGroups(event);
 
   return (
     <div id={id} className={className}>
@@ -44,6 +49,7 @@ export function SellerConditions({
 
       <div className="divide-y [&>section]:py-4 [&>section:first-child]:pt-0 [&>section:last-child]:pb-0">
         <ConditionsSection title={t('conditions.fees')}>
+          {eventId && <MyFeeGroup eventId={eventId} event={event} />}
           {lines.length === 0 ? (
             <ul>
               <ConditionLine text={t('conditions.noFees')} />
@@ -55,49 +61,22 @@ export function SellerConditions({
               ))}
             </ul>
           )}
+          <FeeGroupList groups={groups} />
           {example && !compact && (
             <div className="mt-3 rounded-md border bg-background p-3 text-sm">
               <p className="font-medium">{t('conditions.example')}</p>
-              <p className="mb-2 text-muted-foreground">{example.intro}</p>
-              <table className="w-full tabular-nums">
-                <tbody>
-                  {example.rows.map((row) => (
-                    <tr key={row.label}>
-                      <td className="py-0.5 pr-3">{row.label}</td>
-                      <td
-                        className={cn(
-                          'py-0.5 text-right whitespace-nowrap',
-                          row.amount < 0 && 'text-red-600 dark:text-red-400'
-                        )}
-                      >
-                        {formatSignedEuro(row.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="border-t font-semibold">
-                    <td className="pt-1.5 pr-3">
-                      {example.total >= 0 ? t('conditions.youGet') : t('conditions.youPay')}
-                    </td>
-                    <td className="pt-1.5 text-right whitespace-nowrap">
-                      {formatPriceDE(Math.abs(example.total))} €
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <p className="text-muted-foreground">{example.text}</p>
+              {example.groups.map((group) => (
+                <p key={group} className="mt-1 text-muted-foreground">
+                  {group}
+                </p>
+              ))}
             </div>
           )}
         </ConditionsSection>
 
-        <ConditionsSection title={t('conditions.itemsAndPrices')}>
-          <ul className="space-y-2">
-            {rules.map((rule) => (
-              <ConditionLine key={rule.text} allowed={rule.allowed} text={rule.text} />
-            ))}
-          </ul>
-        </ConditionsSection>
-
         {(schedule.rows.length > 0 || schedule.note) && (
-          <ConditionsSection title={t('conditions.schedule')}>
+          <ConditionsSection title={schedule.title}>
             {schedule.rows.length > 0 && (
               <dl className="space-y-2 text-sm">
                 {schedule.rows.map((row) => (
@@ -114,6 +93,43 @@ export function SellerConditions({
               </p>
             )}
           </ConditionsSection>
+        )}
+
+        {[
+          { key: 'duties', rules: duties },
+          { key: 'options', rules: options },
+        ].map(
+          ({ key, rules }) =>
+            rules.length > 0 && (
+              <ConditionsSection key={key} title={t(`conditions.${key}` as 'conditions.duties')}>
+                <ul className="space-y-2">
+                  {rules.map((rule) => (
+                    <ConditionLine
+                      key={rule.text}
+                      allowed={rule.allowed}
+                      text={
+                        rule.regionCodes ? (
+                          <RegionMapLink image={event.regionMapImage} codes={rule.regionCodes}>
+                            {rule.text}
+                          </RegionMapLink>
+                        ) : (
+                          rule.text
+                        )
+                      }
+                    >
+                      {rule.details && (
+                        <details className="group">
+                          <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline">
+                            {t('conditions.details')}
+                          </summary>
+                          <p className="mt-1 text-xs text-muted-foreground">{rule.details}</p>
+                        </details>
+                      )}
+                    </ConditionLine>
+                  ))}
+                </ul>
+              </ConditionsSection>
+            )
         )}
       </div>
     </div>
@@ -135,10 +151,13 @@ function ConditionLine({
   text,
   allowed = true,
   icon,
+  children,
 }: {
-  text: string;
+  text: ReactNode;
   allowed?: boolean;
   icon?: LucideIcon;
+  /** More about it below the text */
+  children?: ReactNode;
 }) {
   const Icon = icon ?? (allowed ? Check : X);
   return (
@@ -149,7 +168,10 @@ function ConditionLine({
           icon ? 'text-muted-foreground' : allowed && 'text-green-600'
         )}
       />
-      {text}
+      <div className="min-w-0">
+        {text}
+        {children}
+      </div>
     </li>
   );
 }

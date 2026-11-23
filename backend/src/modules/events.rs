@@ -14,19 +14,21 @@ use rust_decimal::prelude::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use serde_with::skip_serializing_none;
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::access::{active_admins, is_platform_admin, require_admin};
-use super::category_fields::requirable_fields;
+use super::category_fields::{self, requirable_fields};
 use super::docs::{self, Event};
+use super::event_exclusions::{exclusion, has_handed_in};
 use super::event_roles::{
     self, Permission, Role, TEAM, has_any_role_or_admin, has_role_or_admin, is_bystander,
     load_vendors_with_calculations, require_permission,
 };
-use super::features::MAX_DISCOUNT_PERCENT;
+use super::features::{self, COUNTRIES, FeeGroupAssignment, MAX_DISCOUNT_PERCENT};
 use super::moderation::{LogEntry, log_action};
 use super::notifications::{self, Area, Content, T};
-use super::{retention, sales};
+use super::{retention, sales, seller_numbers};
 use crate::config::InstanceMode;
 use crate::error::{AppError, AppResult};
 use crate::i18n::{Locale, mail_text};
@@ -43,9 +45,10 @@ pub const TIME_BOUNDARIES_JOB: &str = "events.touchTimeBoundaries";
 /// covers its minute. A boundary seen twice only costs one more refetch.
 const TIME_BOUNDARY_WINDOW: Duration = Duration::minutes(2);
 const MAX_SELLER_NOTE: usize = 2000;
-const SERVICES: [&str; 5] = [
+const SERVICES: [&str; 6] = [
     "Parkplatz",
     "Skiservice",
+    "Fahrradcodierung",
     "Gastronomie",
     "Imbiss",
     "Getränke",
@@ -53,6 +56,9 @@ const SERVICES: [&str; 5] = [
 const VISIBILITIES: [&str; 3] = ["public", "logged-in", "approved"];
 const LABEL_FORMATS: [&str; 2] = ["standard", "small"];
 const LABEL_MARKS: [&str; 2] = ["universal", "none"];
+/// Kinds of bazaars of the creation wizard (`EVENT_TYPES` in src/lib/eventTypes.ts); the
+/// conditions pick their worked example by it (#303)
+const EVENT_TYPES: [&str; 4] = ["kidsBazaar", "clothingBazaar", "skiBazaar", "bikeExchange"];
 /// What viewers outside the team see instead of the access code
 const HIDDEN_ACCESS_CODE: &str = "••••";
 
@@ -75,6 +81,7 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Mutation "events.saveEventDraft" => save_event_draft);
     register!(registry, Mutation "events.deleteEventDraft" => delete_event_draft);
     register!(registry, Mutation "events.editEvent" => edit_event);
+    register!(registry, Mutation "events.setRegistrationOpen" => set_registration_open);
     register!(registry, Mutation "events.deleteEvent" => delete_event);
     register!(registry, Query "events.getMyRegisteredEvents" => get_my_registered_events);
     register!(registry, Mutation "events.leaveEvent" => leave_event);
@@ -216,7 +223,7 @@ struct ListArgs {
     include_past: Option<bool>,
 }
 
-fn time_condition(include_past: Option<bool>) -> &'static str {
+pub(crate) fn time_condition(include_past: Option<bool>) -> &'static str {
     if include_past == Some(true) {
         "true"
     } else {
@@ -559,6 +566,9 @@ pub struct EventDetails {
     pub cover_image_url: Option<String>,
     pub event_map_image_url: Option<String>,
     pub category_labels: Vec<String>,
+    /// Places for items left on the whole market; only with a limit (maxItemsTotal)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item_places_left: Option<i64>,
 }
 
 pub(super) async fn details(
@@ -575,7 +585,14 @@ pub(super) async fn details(
     .bind(event.id)
     .fetch_all(ctx.conn())
     .await?;
+    let item_places_left = match event.resolved_features().max_items_total {
+        Some(limit) => Some(
+            (i64::from(limit) - seller_numbers::items_taking_place(ctx, event.id).await?).max(0),
+        ),
+        None => None,
+    };
     Ok(EventDetails {
+        item_places_left,
         cover_image_url: event.cover_image.map(|id| storage::url(&config, id)),
         event_map_image_url: event.event_map_image.map(|id| storage::url(&config, id)),
         category_labels: labels,
@@ -742,12 +759,194 @@ struct FeaturesArgs {
     #[serde(default, with = "serde_with::rust::double_option")]
     required_fields: Option<Option<Vec<String>>>,
     max_items_per_seller: Option<f64>,
+    /// Some(None) (null) clears it; left out, the stored value stays (older apps)
+    #[serde(default, with = "serde_with::rust::double_option")]
+    max_items_total: Option<Option<f64>>,
     label_format: Option<String>,
     price_on_label: Option<bool>,
     label_mark: Option<String>,
     intake_fee: Option<f64>,
+    /// Some(None) (null) clears it; left out, the stored value stays (older apps)
+    #[serde(default, with = "serde_with::rust::double_option")]
+    max_fees_per_seller: Option<Option<f64>>,
     private_sellers_only: Option<bool>,
     fixed_seller_data: Option<bool>,
+    direct_sale: Option<bool>,
+    /// Absent (older apps): switch and window stay as stored
+    registration_open: Option<bool>,
+    registration_starts_at: Option<f64>,
+    registration_ends_at: Option<f64>,
+    /// Absent (older apps): the stored groups stay
+    fee_groups: Option<Vec<FeeGroupArgs>>,
+    /// The kind of bazaar (#303); null clears it, left out the stored one stays
+    #[serde(default, with = "serde_with::rust::double_option")]
+    event_type: Option<Option<String>>,
+    /// Prefixes of the postal codes whose sellers may join, per country (#304), e.g.
+    /// `{"DE": ["89"], "AT": ["6"]}`; null or empty: everyone, left out (older apps): the
+    /// stored ones stay
+    #[serde(default, with = "serde_with::rust::double_option")]
+    allowed_postal_codes: Option<Option<BTreeMap<String, Vec<String>>>>,
+}
+
+/// Most prefixes a bazaar's region may have; the map joins whole areas to shorter ones
+const MAX_POSTAL_PREFIXES: usize = 500;
+
+/// The region of the bazaar (#304) per country: known countries only, each with digits
+/// only, 1 to 5 of them, without prefixes another one already covers ("89" covers
+/// "890"). Countries without prefixes go; empty: no region.
+fn sanitize_postal_region(
+    countries: BTreeMap<String, Vec<String>>,
+) -> AppResult<BTreeMap<String, Vec<String>>> {
+    let mut region = BTreeMap::new();
+    let mut total = 0;
+    for (country, prefixes) in countries {
+        let country = country.trim().to_ascii_uppercase();
+        if !COUNTRIES.contains(&country.as_str()) {
+            return Err(invalid("allowedPostalCodes"));
+        }
+        let prefixes = sanitize_postal_codes(prefixes)?;
+        total += prefixes.len();
+        if !prefixes.is_empty() {
+            region.insert(country, prefixes);
+        }
+    }
+    if total > MAX_POSTAL_PREFIXES {
+        return Err(AppError::coded(
+            StatusCode::BAD_REQUEST,
+            "event.postalCodesTooMany",
+            &[("max", &MAX_POSTAL_PREFIXES.to_string())],
+        ));
+    }
+    Ok(region)
+}
+
+/// Prefixes of one country: digits only, 1 to 5 of them, without those another one
+/// already covers ("89" covers "890").
+fn sanitize_postal_codes(prefixes: Vec<String>) -> AppResult<Vec<String>> {
+    let mut clean: Vec<String> = Vec::new();
+    for prefix in prefixes {
+        let trimmed = prefix.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if !trimmed.chars().all(|c| c.is_ascii_digit()) || trimmed.len() > 5 {
+            return Err(AppError::coded(
+                StatusCode::BAD_REQUEST,
+                "event.postalCodeInvalid",
+                &[("code", trimmed)],
+            ));
+        }
+        clean.push(trimmed.to_owned());
+    }
+    clean.sort_by(|a, b| a.len().cmp(&b.len()).then_with(|| a.cmp(b)));
+    let mut kept: Vec<String> = Vec::new();
+    for prefix in clean {
+        if !kept
+            .iter()
+            .any(|shorter| prefix.starts_with(shorter.as_str()))
+        {
+            kept.push(prefix);
+        }
+    }
+    kept.sort();
+    Ok(kept)
+}
+
+/// One fee group as the form sends it (#302)
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct FeeGroupArgs {
+    id: String,
+    label: String,
+    commission: f64,
+    intake_fee: Option<f64>,
+    max_fees_per_seller: Option<f64>,
+    max_items_per_seller: Option<f64>,
+    assignment: FeeGroupAssignment,
+    proof_hint: Option<String>,
+}
+
+/// At most this many fee groups per bazaar
+const MAX_FEE_GROUPS: usize = 4;
+
+/// Checks the fee groups and stores them like the bazaar's own fees: cents, trimmed text.
+fn sanitize_fee_groups(groups: Vec<FeeGroupArgs>) -> AppResult<Value> {
+    if groups.len() > MAX_FEE_GROUPS {
+        return Err(AppError::bad_request("event.feeGroupsTooMany"));
+    }
+    // Helpers are in their group by role: two such groups would put them in both
+    let helper_groups = groups
+        .iter()
+        .filter(|group| group.assignment == FeeGroupAssignment::Helpers)
+        .count();
+    if helper_groups > 1 {
+        return Err(AppError::bad_request("event.feeGroupHelpersTwice"));
+    }
+    let mut ids: Vec<String> = Vec::new();
+    let mut labels: Vec<String> = Vec::new();
+    let mut stored = Vec::new();
+    for group in groups {
+        let id = group.id.trim().to_owned();
+        let valid_id = !id.is_empty()
+            && id.len() <= 40
+            && id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        if !valid_id || ids.contains(&id) {
+            return Err(invalid("feeGroups.id"));
+        }
+        let label = group.label.trim().to_owned();
+        if label.is_empty() || label.chars().count() > 60 {
+            return Err(AppError::bad_request("event.feeGroupLabel"));
+        }
+        if labels
+            .iter()
+            .any(|other| other.to_lowercase() == label.to_lowercase())
+        {
+            return Err(AppError::bad_request("event.feeGroupLabelTwice"));
+        }
+        if !group.commission.is_finite() || !(0.0..=100.0).contains(&group.commission) {
+            return Err(AppError::bad_request("event.feeGroupCommission"));
+        }
+        let proof_hint = group
+            .proof_hint
+            .map(|hint| hint.trim().to_owned())
+            .filter(|hint| !hint.is_empty());
+        if proof_hint
+            .as_ref()
+            .is_some_and(|hint| hint.chars().count() > 200)
+        {
+            return Err(AppError::bad_request("event.feeGroupProofHint"));
+        }
+        let mut entry = Map::new();
+        entry.insert("id".into(), json!(id));
+        entry.insert("label".into(), json!(label));
+        entry.insert(
+            "commission".into(),
+            json!((group.commission * 100.0).round() / 100.0),
+        );
+        if let Some(fee) = sanitize_intake_fee(group.intake_fee)? {
+            entry.insert("intakeFee".into(), json!(fee));
+        }
+        if let Some(cap) = sanitize_fee_cap(group.max_fees_per_seller)? {
+            entry.insert("maxFeesPerSeller".into(), json!(cap));
+        }
+        if let Some(limit) = sanitize_item_limit(group.max_items_per_seller)? {
+            entry.insert("maxItemsPerSeller".into(), json!(limit));
+        }
+        entry.insert("assignment".into(), json!(group.assignment));
+        if let Some(hint) = proof_hint {
+            entry.insert("proofHint".into(), json!(hint));
+        }
+        ids.push(id);
+        labels.push(label);
+        stored.push(Value::Object(entry));
+    }
+    Ok(if stored.is_empty() {
+        Value::Null
+    } else {
+        Value::Array(stored)
+    })
 }
 
 fn sanitize_item_limit(limit: Option<f64>) -> AppResult<Option<f64>> {
@@ -758,6 +957,18 @@ fn sanitize_item_limit(limit: Option<f64>) -> AppResult<Option<f64>> {
             Err(AppError::bad_request("event.itemLimitInvalid"))
         }
         Some(limit) => Ok(Some(limit)),
+    }
+}
+
+/// The fee cap per seller in €; 0 is allowed and waives every fee.
+fn sanitize_fee_cap(cap: Option<f64>) -> AppResult<Option<f64>> {
+    match cap {
+        None => Ok(None),
+        Some(cap) if cap.is_nan() => Ok(None),
+        Some(cap) if !cap.is_finite() || !(0.0..=10_000.0).contains(&cap) => {
+            Err(AppError::bad_request("event.feeCapRange"))
+        }
+        Some(cap) => Ok(Some((cap * 100.0).round() / 100.0)),
     }
 }
 
@@ -774,7 +985,20 @@ fn sanitize_intake_fee(fee: Option<f64>) -> AppResult<Option<f64>> {
 
 /// Validates the organizer's choice. `previous`: the stored features; switches an older
 /// client does not send keep their value.
-fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppResult<Value> {
+/// The keys of the fields a bazaar can make required, e.g. "frameNumber".
+async fn requirable_keys(ctx: &mut Ctx) -> sqlx::Result<Vec<String>> {
+    let definitions = category_fields::load_definitions(ctx.conn()).await?;
+    Ok(requirable_fields(&definitions)
+        .into_iter()
+        .map(|field| field.key.clone())
+        .collect())
+}
+
+fn sanitize_features(
+    features: FeaturesArgs,
+    previous: Option<&Value>,
+    known: &[String],
+) -> AppResult<Value> {
     let max = features.max_discount_percent;
     if let Some(max) = max
         && (!max.is_finite() || !(1.0..=MAX_DISCOUNT_PERCENT as f64).contains(&max))
@@ -795,18 +1019,23 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
     {
         return Err(invalid("labelMark"));
     }
+    if let Some(Some(kind)) = &features.event_type
+        && !EVENT_TYPES.contains(&kind.as_str())
+    {
+        return Err(invalid("eventType"));
+    }
     let previous_bool = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_bool);
+    let previous_number = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
     let required_fields: Option<Vec<String>> = match features.required_fields {
         Some(fields) => fields,
         None => previous
             .and_then(|p| p.get("requiredFields"))
             .and_then(|v| serde_json::from_value(v.clone()).ok()),
     };
-    let known: Vec<&'static str> = requirable_fields().iter().map(|f| f.key).collect();
     let required_fields: Vec<String> = required_fields
         .unwrap_or_default()
         .into_iter()
-        .filter(|key| known.contains(&key.as_str()))
+        .filter(|key| known.contains(key))
         .fold(Vec::new(), |mut keys, key| {
             if !keys.contains(&key) {
                 keys.push(key);
@@ -875,6 +1104,14 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
         json!(sanitize_item_limit(features.max_items_per_seller)?),
     );
     put(
+        "maxItemsTotal",
+        json!(sanitize_item_limit(
+            features
+                .max_items_total
+                .unwrap_or_else(|| previous_number("maxItemsTotal"))
+        )?),
+    );
+    put(
         "labelFormat",
         json!(
             features
@@ -903,6 +1140,14 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
         json!(sanitize_intake_fee(features.intake_fee)?),
     );
     put(
+        "maxFeesPerSeller",
+        json!(sanitize_fee_cap(
+            features
+                .max_fees_per_seller
+                .unwrap_or_else(|| previous_number("maxFeesPerSeller"))
+        )?),
+    );
+    put(
         "privateSellersOnly",
         json!(
             features
@@ -919,6 +1164,82 @@ fn sanitize_features(features: FeaturesArgs, previous: Option<&Value>) -> AppRes
                 .or(previous_bool("fixedSellerData"))
                 .unwrap_or(false)
         ),
+    );
+    put(
+        "directSale",
+        json!(
+            features
+                .direct_sale
+                .or(previous_bool("directSale"))
+                .unwrap_or(false)
+        ),
+    );
+    let previous_time = |key: &str| previous.and_then(|p| p.get(key)).and_then(Value::as_f64);
+    let sent_window = (
+        features.registration_starts_at,
+        features.registration_ends_at,
+    );
+    let previous_window = (
+        previous_time("registrationStartsAt"),
+        previous_time("registrationEndsAt"),
+    );
+    let (registration_open, (starts, ends)) = match features.registration_open {
+        Some(true) => (true, sent_window),
+        // Closed: the form hides the window and sends none. The stored one stays, like with
+        // the quick switch (`set_registration_open`), so opening again brings the deadline back
+        Some(false) if sent_window == (None, None) => (false, previous_window),
+        Some(false) => (false, sent_window),
+        // An older app sends none of it
+        None => (
+            previous_bool("registrationOpen").unwrap_or(true),
+            previous_window,
+        ),
+    };
+    for (time, key) in [
+        (starts, "registrationStartsAt"),
+        (ends, "registrationEndsAt"),
+    ] {
+        if time.is_some_and(|ms| from_ms(ms).is_none()) {
+            return Err(invalid(key));
+        }
+    }
+    if let (Some(starts), Some(ends)) = (starts, ends)
+        && ends <= starts
+    {
+        return Err(AppError::bad_request("event.registrationWindow"));
+    }
+    put("registrationOpen", json!(registration_open));
+    put("registrationStartsAt", json!(starts));
+    put("registrationEndsAt", json!(ends));
+    put(
+        "feeGroups",
+        match features.fee_groups {
+            Some(groups) => sanitize_fee_groups(groups)?,
+            None => previous
+                .and_then(|p| p.get("feeGroups"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        },
+    );
+    let previous_postal = |key: &str| previous.and_then(|p| p.get(key)).cloned();
+    let postal_codes = match features.allowed_postal_codes {
+        Some(region) => sanitize_postal_region(region.unwrap_or_default())?,
+        None => previous_postal("allowedPostalCodes")
+            .and_then(|value| serde_json::from_value(value).ok())
+            .unwrap_or_default(),
+    };
+    if !postal_codes.is_empty() {
+        put("allowedPostalCodes", json!(postal_codes));
+    }
+    put(
+        "eventType",
+        match features.event_type {
+            Some(kind) => json!(kind),
+            None => previous
+                .and_then(|p| p.get("eventType"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        },
     );
     Ok(Value::Object(stored))
 }
@@ -959,9 +1280,6 @@ struct Address {
     city: Option<String>,
     country: Option<String>,
 }
-
-/// Countries the address form offers (ISO 3166-1 alpha-2).
-const COUNTRIES: [&str; 5] = ["DE", "AT", "CH", "LI", "LU"];
 
 fn sanitize_address(args: Option<AddressArgs>) -> AppResult<Address> {
     let part = |value: Option<String>, max: usize| -> AppResult<Option<String>> {
@@ -1040,6 +1358,80 @@ fn time_arg(ms: f64, field: &str) -> AppResult<DateTime<Utc>> {
     from_ms(ms).ok_or_else(|| invalid(field))
 }
 
+/// Fee groups once sellers registered: none may go and none may get dearer, like the fees
+/// of the bazaar; while it runs they stay as they are. Name and hint may change. A new
+/// helper group applies to the registered helpers at once, so it may not ask more of them
+/// than the bazaar (`commission` is the bazaar's new one).
+fn check_fee_groups_lock(
+    old: &features::EventFeatures,
+    new: &features::EventFeatures,
+    commission: Decimal,
+    running: bool,
+) -> AppResult<()> {
+    let infinite = |value: Option<Decimal>| value.unwrap_or(Decimal::MAX);
+    let added_helper_groups = new.fee_groups.iter().filter(|group| {
+        group.assignment == features::FeeGroupAssignment::Helpers
+            && !old.fee_groups.iter().any(|old| old.id == group.id)
+    });
+    for group in added_helper_groups {
+        if group.commission > commission
+            || group.intake_fee.unwrap_or_default() > new.intake_fee.unwrap_or_default()
+            || infinite(group.max_fees_per_seller.or(new.max_fees_per_seller))
+                > infinite(new.max_fees_per_seller)
+        {
+            return Err(AppError::bad_request("event.helperGroupDearer"));
+        }
+        if group
+            .max_items_per_seller
+            .or(new.max_items_per_seller)
+            .unwrap_or(u32::MAX)
+            < new.max_items_per_seller.unwrap_or(u32::MAX)
+        {
+            return Err(AppError::bad_request("event.limitOnlyHigher"));
+        }
+    }
+    for group in &old.fee_groups {
+        let Some(next) = new.fee_groups.iter().find(|next| next.id == group.id) else {
+            return Err(AppError::bad_request(if running {
+                "event.runningNoFees"
+            } else {
+                "event.feeGroupsOnlyLower"
+            }));
+        };
+        let fees = |g: &features::FeeGroup, f: &features::EventFeatures| {
+            (
+                g.commission,
+                g.intake_fee.unwrap_or_default(),
+                infinite(g.max_fees_per_seller.or(f.max_fees_per_seller)),
+            )
+        };
+        let (before, after) = (fees(group, old), fees(next, new));
+        let items = |g: &features::FeeGroup, f: &features::EventFeatures| {
+            g.max_items_per_seller
+                .or(f.max_items_per_seller)
+                .unwrap_or(u32::MAX)
+        };
+        if running {
+            if before != after || group.assignment != next.assignment {
+                return Err(AppError::bad_request("event.runningNoFees"));
+            }
+        } else if after.0 > before.0
+            || after.1 > before.1
+            || after.2 > before.2
+            || group.assignment != next.assignment
+        {
+            return Err(AppError::bad_request("event.feeGroupsOnlyLower"));
+        }
+        if items(next, new) < items(group, old) {
+            return Err(AppError::bad_request("event.limitOnlyHigher"));
+        }
+    }
+    if running && new.fee_groups.len() != old.fee_groups.len() {
+        return Err(AppError::bad_request("event.runningNoFees"));
+    }
+    Ok(())
+}
+
 fn money(value: f64, field: &str) -> AppResult<Decimal> {
     Decimal::from_f64(value)
         .map(|v| v.cents())
@@ -1107,6 +1499,8 @@ struct CreateArgs {
     description: String,
     cover_image: Option<Id>,
     event_map_image: Option<Id>,
+    /// Picture of the region (#304), drawn by the app
+    region_map_image: Option<Id>,
     location: String,
     address: Option<AddressArgs>,
     start_date: f64,
@@ -1135,11 +1529,20 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     }
     check_lists(&args.services, &args.visibility)?;
     check_access_code(&args.visibility, args.access_code.as_deref())?;
-    check_files(ctx, &[args.cover_image, args.event_map_image]).await?;
+    check_files(
+        ctx,
+        &[
+            args.cover_image,
+            args.event_map_image,
+            args.region_map_image,
+        ],
+    )
+    .await?;
     let public = args.visibility == "public" && !single;
+    let known = requirable_keys(ctx).await?;
     let features = args
         .features
-        .map(|f| sanitize_features(f, None))
+        .map(|f| sanitize_features(f, None, &known))
         .transpose()?;
     let logistics = args.seller_logistics.map(sanitize_logistics).transpose()?;
     let logistics = logistics.as_ref();
@@ -1148,10 +1551,10 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
         "INSERT INTO events (title, description, cover_image_id, map_image_id, location, start_date,
            end_date, contact_info, services, visibility, is_approved, approval_status, access_code,
            vendor_limit, commission, features, dropoff_start, dropoff_end, pickup_start, pickup_end,
-           logistics_note, organizer_id, street, postal_code, city, country)
+           logistics_note, organizer_id, street, postal_code, city, country, region_map_image_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::event_service[], $10::event_visibility, $11,
            $12::approval_status, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
-           $26)
+           $26, $27)
          RETURNING id",
     )
     .bind(&args.title)
@@ -1180,6 +1583,7 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     .bind(&address.postal_code)
     .bind(&address.city)
     .bind(&address.country)
+    .bind(args.region_map_image.map(|id| id.0))
     .fetch_one(ctx.conn())
     .await?;
     set_categories(ctx, id, &args.categories).await?;
@@ -1199,6 +1603,8 @@ struct EditArgs {
     description: String,
     cover_image: Option<Id>,
     event_map_image: Option<Id>,
+    /// Picture of the region (#304), drawn by the app
+    region_map_image: Option<Id>,
     location: String,
     /// Absent (older apps): the stored address stays
     address: Option<AddressArgs>,
@@ -1214,17 +1620,21 @@ struct EditArgs {
     clear_vendor_limit: Option<bool>,
     clear_cover_image: Option<bool>,
     clear_event_map_image: Option<bool>,
+    clear_region_map_image: Option<bool>,
     features: Option<FeaturesArgs>,
     seller_logistics: Option<LogisticsArgs>,
 }
 
 /// Edits an event (organizer only). A running event keeps its dates, commission and
 /// visibility; once sellers registered, fees only go down and the item limit only up.
+/// The platform admin may change everything, also of events that are over, e.g. to
+/// correct a mistake.
 async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     let user = ctx.require_user()?;
     let event = load(ctx, args.id.0).await?;
     let now = Utc::now();
-    if event.end_date < now {
+    let admin = is_platform_admin(ctx.conn(), Some(user)).await?;
+    if event.end_date < now && !admin {
         return Err(AppError::bad_request("event.pastNoEdit"));
     }
     if !has_role_or_admin(ctx.conn(), event.id, user, Role::Organizer).await? {
@@ -1235,11 +1645,19 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     // Without a code in the arguments the stored one stays
     let event_code = args.access_code.as_deref().or(event.access_code.as_deref());
     check_access_code(&args.visibility, event_code)?;
-    check_files(ctx, &[args.cover_image, args.event_map_image]).await?;
+    check_files(
+        ctx,
+        &[
+            args.cover_image,
+            args.event_map_image,
+            args.region_map_image,
+        ],
+    )
+    .await?;
     let mut start = time_arg(args.start_date, "startDate")?;
     let mut end = time_arg(args.end_date, "endDate")?;
     let commission = money(args.commission, "commission")?;
-    let running = event.start_date <= now && now <= event.end_date;
+    let running = !admin && event.start_date <= now && now <= event.end_date;
     if running {
         // datetime-local inputs drop seconds, so an unchanged date may differ slightly
         let changed =
@@ -1253,11 +1671,30 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         start = event.start_date;
         end = event.end_date;
     }
+    let known = requirable_keys(ctx).await?;
     let features = match args.features {
-        Some(features) => sanitize_features(features, event.features.as_ref())?,
+        Some(features) => sanitize_features(features, event.features.as_ref(), &known)?,
         None => event.features.clone().unwrap_or_else(|| json!({})),
     };
-    if fees_locked(ctx, &event).await? {
+    // A sale is booked the way the event was set when it was made. Switching afterwards
+    // would leave one cash summary with both kinds, and desks selling the old way
+    let direct = |features: Option<&Value>| {
+        features
+            .and_then(|f| f.get("directSale"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    };
+    if !admin && direct(Some(&features)) != direct(event.features.as_ref()) {
+        let sold: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM purchases WHERE event_id = $1)")
+                .bind(event.id)
+                .fetch_one(ctx.conn())
+                .await?;
+        if sold {
+            return Err(AppError::bad_request("event.directSaleLocked"));
+        }
+    }
+    if !admin && fees_locked(ctx, &event).await? {
         let fee = |features: Option<&Value>| {
             features
                 .and_then(|f| f.get("intakeFee"))
@@ -1265,11 +1702,19 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
                 .unwrap_or(0.0)
         };
         let (old_fee, new_fee) = (fee(event.features.as_ref()), fee(Some(&features)));
+        // No cap is the highest one
+        let cap = |features: Option<&Value>| {
+            features
+                .and_then(|f| f.get("maxFeesPerSeller"))
+                .and_then(Value::as_f64)
+                .unwrap_or(f64::INFINITY)
+        };
+        let (old_cap, new_cap) = (cap(event.features.as_ref()), cap(Some(&features)));
         if running {
-            if commission != event.commission || new_fee != old_fee {
+            if commission != event.commission || new_fee != old_fee || new_cap != old_cap {
                 return Err(AppError::bad_request("event.runningNoFees"));
             }
-        } else if commission > event.commission || new_fee > old_fee {
+        } else if commission > event.commission || new_fee > old_fee || new_cap > old_cap {
             return Err(AppError::bad_request("event.feesOnlyLower"));
         }
         let limit = |features: Option<&Value>| {
@@ -1281,8 +1726,16 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         if limit(Some(&features)) < limit(event.features.as_ref()) {
             return Err(AppError::bad_request("event.limitOnlyHigher"));
         }
+        check_fee_groups_lock(
+            &event.resolved_features(),
+            &features::resolve(Some(&features)),
+            commission,
+            running,
+        )?;
     }
-    let making_public = event.visibility != "public"
+    // The admin approves anyway: no request to themselves
+    let making_public = !admin
+        && event.visibility != "public"
         && args.visibility == "public"
         && ctx.state.config.mode != InstanceMode::Single;
     let logistics = args.seller_logistics.map(sanitize_logistics).transpose()?;
@@ -1309,7 +1762,9 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
            street = CASE WHEN $27 THEN street ELSE $28 END,
            postal_code = CASE WHEN $27 THEN postal_code ELSE $29 END,
            city = CASE WHEN $27 THEN city ELSE $30 END,
-           country = CASE WHEN $27 THEN country ELSE $31 END
+           country = CASE WHEN $27 THEN country ELSE $31 END,
+           region_map_image_id =
+             CASE WHEN $32 THEN NULL ELSE COALESCE($33, region_map_image_id) END
          WHERE id = $1",
     )
     .bind(event.id)
@@ -1352,12 +1807,59 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
     .bind(&address.postal_code)
     .bind(&address.city)
     .bind(&address.country)
+    .bind(args.clear_region_map_image == Some(true))
+    .bind(args.region_map_image.map(|id| id.0))
     .execute(ctx.conn())
     .await?;
     set_categories(ctx, event.id, &args.categories).await?;
     if making_public {
         notify_admins_about_pending_event(ctx, event.id, user).await?;
     }
+    touch_event(ctx, event.id);
+    Ok(())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RegistrationArgs {
+    event_id: Id,
+    open: bool,
+}
+
+/// The quick switch on the sellers page (organizer only). Closing keeps the window, so
+/// opening again brings a deadline back. Opening means now: a planned start goes, as
+/// does a deadline already passed.
+async fn set_registration_open(ctx: &mut Ctx, args: RegistrationArgs) -> AppResult<()> {
+    let user = ctx.require_user()?;
+    let event = load(ctx, args.event_id.0).await?;
+    let now = Utc::now();
+    if event.end_date < now {
+        return Err(AppError::bad_request("event.pastNoEdit"));
+    }
+    if !has_role_or_admin(ctx.conn(), event.id, user, Role::Organizer).await? {
+        return Err(AppError::forbidden("auth.forbidden"));
+    }
+    let mut features = match event.features {
+        Some(Value::Object(features)) => features,
+        _ => Map::new(),
+    };
+    features.insert("registrationOpen".to_owned(), json!(args.open));
+    if args.open {
+        features.remove("registrationStartsAt");
+        let passed = features
+            .get("registrationEndsAt")
+            .and_then(Value::as_f64)
+            .and_then(from_ms)
+            .is_some_and(|end| end <= now);
+        if passed {
+            features.remove("registrationEndsAt");
+        }
+    }
+    sqlx::query("UPDATE events SET features = $2 WHERE id = $1")
+        .bind(event.id)
+        .bind(Value::Object(features))
+        .execute(ctx.conn())
+        .await?;
     touch_event(ctx, event.id);
     Ok(())
 }
@@ -1423,25 +1925,23 @@ async fn leave_event(ctx: &mut Ctx, args: EventArgs) -> AppResult<()> {
     if event.end_date < Utc::now() {
         return Err(AppError::bad_request("leave.past"));
     }
+    // Excluded: already out. The seller row stays, so the organizer still finds the person
+    // in the seller list and can take the exclusion back, with the same number.
+    if exclusion(ctx.conn(), event.id, user).await?.is_some() {
+        return Err(AppError::bad_request("leave.excluded"));
+    }
     let seller = docs::event_seller(ctx.conn(), event.id, user).await?;
     if seller.as_ref().is_some_and(|s| s.payout_received) {
         return Err(AppError::bad_request("leave.paidOut"));
     }
-    let handed_in: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
-        "SELECT EXISTS (SELECT 1 FROM event_products ep JOIN products p ON p.id = ep.product_id
-                        WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status IN {})",
-        sales::ACCEPTED_STATUSES
-    )))
-    .bind(event.id)
-    .bind(user)
-    .fetch_one(ctx.conn())
-    .await?;
-    if handed_in {
+    if has_handed_in(ctx.conn(), event.id, user).await? {
         return Err(AppError::bad_request("leave.itemsHandledIn"));
     }
+    // Rejected items stay: leaving and joining again does not announce them anew
     let products: Vec<Uuid> = sqlx::query_scalar(
         "DELETE FROM event_products ep USING products p
          WHERE ep.product_id = p.id AND ep.event_id = $1 AND p.vendor_id = $2
+           AND ep.status <> 'rejected'
          RETURNING ep.product_id",
     )
     .bind(event.id)
@@ -1465,9 +1965,10 @@ async fn get_my_product_count_for_event(ctx: &mut Ctx, args: EventArgs) -> AppRe
     let Some(user) = ctx.user else { return Ok(0) };
     ctx.read(Topic::Event(args.event_id.0));
     ctx.read(Topic::User(user));
+    // Like the item limit: a rejected item takes no place
     Ok(sqlx::query_scalar(
         "SELECT count(*) FROM event_products ep JOIN products p ON p.id = ep.product_id
-         WHERE ep.event_id = $1 AND p.vendor_id = $2",
+         WHERE ep.event_id = $1 AND p.vendor_id = $2 AND ep.status <> 'rejected'",
     )
     .bind(args.event_id.0)
     .bind(user)
@@ -1491,10 +1992,16 @@ struct FinancialSummary {
     total_net_revenue: Decimal,
     total_discounts: Decimal,
     total_commission: Decimal,
+    /// Sales paid to the seller at the item; the till holds only their commission
+    total_direct_sales: Decimal,
+    /// Their commission, the part of them in the till
+    total_direct_commission: Decimal,
     total_payout_soll: Decimal,
     total_paid_out: Decimal,
     total_pending_payout: Decimal,
     total_intake_fees: Decimal,
+    /// Fees above the cap given back to sellers
+    total_fee_cap_credits: Decimal,
     total_fees_collected: Decimal,
     total_fees_to_collect: Decimal,
     sellers_to_collect: Vec<SellerToCollect>,
@@ -1517,10 +2024,29 @@ async fn get_event_financial_summary(
     let net: Decimal = purchases.iter().map(|p| p.total_amount).sum();
     let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
     let payout_soll: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
+    let direct: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.total_amount)
+        .sum();
+    let direct_commission: Decimal = purchases
+        .iter()
+        .filter(|p| p.direct_sale)
+        .map(|p| p.commission_amount)
+        .sum();
+    let taken: Decimal = purchases.iter().map(docs::Purchase::taken).sum();
 
     let vendors = load_vendors_with_calculations(ctx, event).await?;
     // A seller whose sales do not cover the intake fee pays in instead of getting paid out
     let owes = |payout: Decimal| payout < Decimal::new(-5, 3);
+    // At a direct-sale event a seller without money either way has nothing to settle; the
+    // progress counts only those who have, or who were settled anyway
+    let direct_event = docs::event(ctx.conn(), event)
+        .await?
+        .is_some_and(|event| event.resolved_features().direct_sale);
+    let to_settle = |v: &&event_roles::VendorWithCalculations| {
+        !direct_event || v.paid || v.payout.abs() >= Decimal::new(5, 3)
+    };
     let sum = |paid: bool, owing: bool| -> Decimal {
         vendors
             .iter()
@@ -1550,17 +2076,20 @@ async fn get_event_financial_summary(
         total_net_revenue: net,
         total_discounts: gross - net,
         total_commission: commission,
+        total_direct_sales: direct,
+        total_direct_commission: direct_commission,
         total_payout_soll: payout_soll,
         total_paid_out: paid_out,
         total_pending_payout: pending,
         total_intake_fees: vendors.iter().map(|v| v.intake_fee.total).sum(),
+        total_fee_cap_credits: vendors.iter().map(|v| v.fee_cap_credit).sum(),
         total_fees_collected: fees_collected,
         total_fees_to_collect: to_collect.iter().map(|s| s.amount).sum(),
         sellers_to_collect: to_collect,
-        cash_in_hand_soll: net - paid_out + fees_collected,
+        cash_in_hand_soll: taken - paid_out + fees_collected,
         sales_count: purchases.len(),
         vendors_paid_count: vendors.iter().filter(|v| v.paid).count(),
-        vendors_total_count: vendors.len(),
+        vendors_total_count: vendors.iter().filter(to_settle).count(),
     })
 }
 
@@ -1578,21 +2107,24 @@ async fn count_pending_approvals(ctx: &mut Ctx, _: NoArgs) -> AppResult<i64> {
     .await?)
 }
 
-/// The events whose start, end or discount start lies in `(from, to]`.
+/// The events whose start, end, discount start or registration window (opening or
+/// closing) lies in `(from, to]`.
 pub async fn events_crossing_time_boundaries(
     conn: &mut sqlx::PgConnection,
     from: DateTime<Utc>,
     to: DateTime<Utc>,
 ) -> sqlx::Result<Vec<Uuid>> {
-    // discountStartsAt is kept in milliseconds, like every time in `features`
+    // Times in `features` are kept in milliseconds
     sqlx::query_scalar(
         "SELECT id FROM events,
-           LATERAL (SELECT CASE WHEN jsonb_typeof(features->'discountStartsAt') = 'number'
-             THEN to_timestamp((features->>'discountStartsAt')::double precision / 1000)
-           END AS discount_start) d
+           LATERAL (SELECT ARRAY(
+             SELECT to_timestamp((features->>key)::double precision / 1000)
+             FROM unnest(ARRAY['discountStartsAt', 'registrationStartsAt', 'registrationEndsAt']) key
+             WHERE jsonb_typeof(features->key) = 'number'
+           ) AS times) f
          WHERE (start_date > $1 AND start_date <= $2)
             OR (end_date > $1 AND end_date <= $2)
-            OR (discount_start > $1 AND discount_start <= $2)",
+            OR EXISTS (SELECT 1 FROM unnest(f.times) t WHERE t > $1 AND t <= $2)",
     )
     .bind(from)
     .bind(to)
@@ -1734,6 +2266,10 @@ pub fn notify_admins_event_pending(
 mod tests {
     use super::*;
 
+    fn known() -> Vec<String> {
+        vec!["frameNumber".into(), "size".into()]
+    }
+
     #[test]
     fn features_are_sanitized() {
         let stored = sanitize_features(
@@ -1746,15 +2282,20 @@ mod tests {
                     "frameNumber".into(),
                 ])),
                 intake_fee: Some(0.555),
+                max_fees_per_seller: Some(Some(19.999)),
+                max_items_total: Some(Some(200.0)),
                 ..FeaturesArgs::default()
             },
             Some(&json!({ "fixedSellerData": true, "labelMark": "universal" })),
+            &known(),
         )
         .unwrap();
         assert_eq!(stored["discounts"], false);
         assert!(stored.get("discountStartsAt").is_none());
         assert_eq!(stored["requiredFields"], json!(["frameNumber"]));
         assert_eq!(stored["intakeFee"], 0.56);
+        assert_eq!(stored["maxFeesPerSeller"], 20.0);
+        assert_eq!(stored["maxItemsTotal"], 200.0);
         // Not sent by an older client: kept
         assert_eq!(stored["fixedSellerData"], true);
         assert_eq!(stored["labelMark"], "universal");
@@ -1772,6 +2313,7 @@ mod tests {
                 ..FeaturesArgs::default()
             },
             None,
+            &known(),
         )
         .unwrap();
         assert_eq!(stored["publicCatalog"], false);
@@ -1784,6 +2326,7 @@ mod tests {
                 ..FeaturesArgs::default()
             },
             Some(&stored),
+            &known(),
         )
         .unwrap();
         assert_eq!(kept["publicCatalog"], false);
@@ -1791,8 +2334,62 @@ mod tests {
     }
 
     #[test]
+    fn item_limit_and_fee_cap_stay_unless_cleared() {
+        let stored = json!({ "maxItemsTotal": 200.0, "maxFeesPerSeller": 20.0 });
+        // An older app does not send them: kept
+        let kept = sanitize_features(FeaturesArgs::default(), Some(&stored), &known()).unwrap();
+        assert_eq!(kept["maxItemsTotal"], 200.0);
+        assert_eq!(kept["maxFeesPerSeller"], 20.0);
+        // Sent as null: cleared
+        let cleared = sanitize_features(
+            FeaturesArgs {
+                max_items_total: Some(None),
+                max_fees_per_seller: Some(None),
+                ..FeaturesArgs::default()
+            },
+            Some(&stored),
+            &known(),
+        )
+        .unwrap();
+        assert!(cleared.get("maxItemsTotal").is_none());
+        assert!(cleared.get("maxFeesPerSeller").is_none());
+    }
+
+    #[test]
+    fn event_type_is_known_and_stays_unless_cleared() {
+        let sanitize = |event_type, previous: Option<&Value>| {
+            sanitize_features(
+                FeaturesArgs {
+                    event_type,
+                    ..FeaturesArgs::default()
+                },
+                previous,
+                &known(),
+            )
+        };
+        let stored = sanitize(Some(Some("bikeExchange".into())), None).unwrap();
+        assert_eq!(stored["eventType"], "bikeExchange");
+        // Not sent by an older client: kept
+        assert_eq!(
+            sanitize(None, Some(&stored)).unwrap()["eventType"],
+            "bikeExchange"
+        );
+        assert!(
+            sanitize(Some(None), Some(&stored))
+                .unwrap()
+                .get("eventType")
+                .is_none()
+        );
+        assert!(sanitize(Some(Some("flea".into())), None).is_err());
+    }
+
+    #[test]
     fn feature_ranges_are_checked() {
-        let err = |features: FeaturesArgs| sanitize_features(features, None).unwrap_err().code();
+        let err = |features: FeaturesArgs| {
+            sanitize_features(features, None, &known())
+                .unwrap_err()
+                .code()
+        };
         assert_eq!(
             err(FeaturesArgs {
                 max_discount_percent: Some(80.0),
@@ -1813,6 +2410,20 @@ mod tests {
                 ..Default::default()
             }),
             Some("event.intakeFeeRange")
+        );
+        assert_eq!(
+            err(FeaturesArgs {
+                max_items_total: Some(Some(0.0)),
+                ..Default::default()
+            }),
+            Some("event.itemLimitInvalid")
+        );
+        assert_eq!(
+            err(FeaturesArgs {
+                max_fees_per_seller: Some(Some(-1.0)),
+                ..Default::default()
+            }),
+            Some("event.feeCapRange")
         );
     }
 

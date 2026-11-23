@@ -34,6 +34,10 @@ struct ExportEvent {
     end_date: DateTime<Utc>,
     /// Percent of each sale the bazaar keeps
     commission: Decimal,
+    /// Fee cap per seller (#301); with it the seller table has a column for it
+    max_fees_per_seller: Option<Decimal>,
+    /// The bazaar has fee groups (#302); with it the seller table has a column for them
+    fee_groups: bool,
 }
 
 #[skip_serializing_none]
@@ -51,6 +55,8 @@ struct ExportSale {
     price_source: String,
     commission: Decimal,
     payout: Decimal,
+    /// Paid to the seller at the item; the desk took only the commission
+    direct_sale: bool,
 }
 
 #[skip_serializing_none]
@@ -67,9 +73,13 @@ struct ExportSeller {
     revenue: Decimal,
     commission: Decimal,
     intake_fee: Decimal,
+    /// Fees above the cap given back
+    fee_cap_credit: Decimal,
     /// Negative when the seller owes the bazaar
     payout: Decimal,
     paid: bool,
+    /// The fee group applied (#302)
+    fee_group: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -118,6 +128,7 @@ async fn get_export(ctx: &mut Ctx, args: EventArgs) -> AppResult<Export> {
                 price_source: sale.price_source,
                 commission: sale.commission,
                 payout: sale.payout,
+                direct_sale: sale.direct_sale,
             }
         })
         .collect();
@@ -134,13 +145,17 @@ async fn get_export(ctx: &mut Ctx, args: EventArgs) -> AppResult<Export> {
             revenue: vendor.total_revenue,
             commission: vendor.commission,
             intake_fee: vendor.intake_fee.total,
+            fee_cap_credit: vendor.fee_cap_credit,
             payout: vendor.payout,
             paid: vendor.paid,
+            fee_group: vendor.fee_group.map(|group| group.label),
         })
         .collect();
     sellers.sort_by_key(|seller| seller.seller_number.unwrap_or(i32::MAX));
     Ok(Export {
         event: ExportEvent {
+            max_fees_per_seller: event.resolved_features().max_fees_per_seller,
+            fee_groups: !event.resolved_features().fee_groups.is_empty(),
             location: event.place(),
             title: event.title,
             start_date: event.start_date,

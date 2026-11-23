@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { runBackend } from '../utils';
+import { pickCategory, runBackend } from '../utils';
 import {
   BUYER,
   ORGANIZER,
@@ -42,7 +42,7 @@ test.describe('event settings', () => {
     await expect(page.locator('#maxDiscountPercent')).toHaveValue('30');
     await expect(page.getByLabel('Preisvorschläge online')).toBeChecked();
     await expect(page.getByText('Der Basar läuft gerade.')).toBeVisible();
-    await expect(page.locator('#startDate')).toHaveAttribute('readonly', '');
+    await expect(page.locator('#startDay')).toHaveAttribute('readonly', '');
     await expect(page.locator('#commission')).toHaveAttribute('readonly', '');
 
     // Discounts from the next full hour, maximum 25 %
@@ -233,6 +233,10 @@ test.describe('discounts and editing rules', () => {
 
     const slider = page.locator('#discount-slider');
     await expect(slider).toHaveAttribute('max', '30');
+    // The dialog slides in; measure the track only once it has settled
+    await page
+      .getByRole('dialog')
+      .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
     // Drag the thumb across the track
     const box = (await slider.boundingBox())!;
     await page.mouse.move(box.x + 2, box.y + box.height / 2);
@@ -244,6 +248,9 @@ test.describe('discounts and editing rules', () => {
     await page.getByRole('button', { name: 'Rabatt speichern' }).click();
     await page.getByRole('button', { name: 'Ja, Rabatt anwenden' }).click();
     await expectToast(page, 'Rabatt erfolgreich aktualisiert');
+    // The toast fires before both dialogs have closed; they also show the new price.
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByText('-20% Rabatt')).toBeVisible();
     await expect(page.getByText('304,00 €')).toBeVisible();
   });
@@ -267,12 +274,12 @@ test.describe('organizer tools', () => {
     await expectToast(page, 'Max Vorort wurde angelegt');
     await page.waitForURL('**/products?vendor=*');
 
-    await page.getByRole('button', { name: 'Artikel erfassen' }).click();
+    await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
+    await page.getByRole('menuitem', { name: 'Einzeln erfassen' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Titel *').fill(itemTitle);
     await dialog.getByRole('radio', { name: 'Gebraucht', exact: true }).click();
-    await dialog.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Fahrräder' }).click();
+    await pickCategory(page, 'Fahrräder', 'Trekkingräder', dialog);
     await dialog.getByLabel('Rahmennummer').fill('BAT 123');
     await dialog.getByLabel('Preis (€) *').fill('140');
     await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
@@ -312,13 +319,13 @@ test.describe('category fields', () => {
   test('bike categories show bike fields in the product form, others do not', async ({ page }) => {
     await login(page, SELLER);
     await page.goto('/products/new');
-    await page.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Fahrräder' }).click();
+    await pickCategory(page, 'Fahrräder', 'Trekkingräder');
     await expect(page.getByLabel('Rahmennummer')).toBeVisible();
-    await expect(page.getByText('Bei Rädern ab ca. 500 € dringend empfohlen.')).toBeVisible();
+    await expect(page.getByText(/Nicht gefunden\? Schreib „nicht gefunden“ hinein/)).toBeVisible();
+    await page.getByRole('button', { name: 'Nicht gefunden' }).click();
+    await expect(page.getByLabel('Rahmennummer')).toHaveValue('nicht gefunden');
 
-    await page.locator('#categoryId').click();
-    await page.getByRole('option', { name: 'Bücher' }).click();
+    await pickCategory(page, 'Bücher', 'Romane');
     await expect(page.getByLabel('Rahmennummer')).toHaveCount(0);
   });
 });

@@ -37,6 +37,9 @@ zusätzlich 100 pro Stunde je Adresse über alle Clients; ein Code aus dem Postf
 5 falschen Eingaben ungültig. Der Client ist der letzte Eintrag von `X-Forwarded-For`, den
 der Reverse Proxy (Traefik) selbst schreibt. Das Backend darf deshalb nur über den Proxy
 erreichbar sein; ohne den Header zählen alle Anfragen als ein Client.
+Code-Mails: 10 pro Stunde je Adresse, egal aus welchem Ablauf (Bestätigung, Zurücksetzen,
+Anmeldung mit unbestätigtem Konto). Registrierungen: 20 pro Stunde je Client (ohne Proxy
+unbegrenzt, weil sonst die ganze Instanz ein Client wäre).
 
 Aus Convex importierte Passwörter (Lucia-scrypt) funktionieren weiter und werden bei der
 nächsten Anmeldung auf Argon2id umgestellt.
@@ -70,6 +73,7 @@ Sitzungen werden nicht übernommen, alle melden sich einmal neu an.
 ```sh
 bazarpro-backend                                   # Server (migriert beim Start)
 bazarpro-backend admin <email>                     # bestehendes Konto wird Administrator
+bazarpro-backend password <email> < datei         # neues Passwort (von stdin), meldet überall ab
 bazarpro-backend seed [--force] [--locale en] [--no-images]   # Demo-Daten, s. src/demo
 bazarpro-backend run <modul.funktion> '<json>'     # Funktion aufrufen, auch interne
 bazarpro-backend import <export.zip>               # Convex-Export einspielen

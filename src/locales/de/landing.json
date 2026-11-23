@@ -10,7 +10,7 @@
         "items": {
           "camera": {
             "title": "Artikel schnell erfasst",
-            "text": "Mit oder ohne Foto, mit Zusatzfeldern wie Größe oder Rahmennummer – mit „Erstellen & weiterer Artikel“ ein Teil nach dem anderen."
+            "text": "Mit oder ohne Foto, mit Feldern wie Größe oder Rahmennummer – ein Teil nach dem anderen."
           },
           "layers": {
             "title": "Mehrere Basare",
@@ -18,15 +18,15 @@
           },
           "printer": {
             "title": "Etiketten als PDF",
-            "text": "Groß oder klein, als wiederverwendbares Universal-Etikett oder nur mit QR-Code – einzeln oder alle auf einmal."
+            "text": "Groß, klein oder als wiederverwendbares Universal-Etikett – einzeln oder alle auf einmal."
           },
           "badgePercent": {
             "title": "Rabatte",
-            "text": "Preise während des Basars senken – ohne neues Etikett, ab der Uhrzeit, die der Veranstalter festlegt."
+            "text": "Preise während des Basars senken – ohne neues Etikett."
           },
           "handshake": {
             "title": "Preisvorschläge & VB",
-            "text": "Angebote von Käufern annehmen oder ablehnen, oder einen Mindestpreis für die Kasse hinterlegen."
+            "text": "Angebote annehmen oder ablehnen, oder einen Mindestpreis für die Kasse hinterlegen."
           },
           "messagesSquare": {
             "title": "Fragen beantworten",
@@ -34,7 +34,7 @@
           },
           "radio": {
             "title": "Live-Status & Erinnerungen",
-            "text": "Sehen, was verkauft ist, und am Vorabend alle Infos zur Abgabe per E-Mail. Welche Mails du bekommst, entscheidest du."
+            "text": "Sehen, was verkauft ist – und am Vorabend alle Infos zur Abgabe per E-Mail."
           },
           "idCard": {
             "title": "Digitaler Ausweis",
@@ -52,7 +52,7 @@
         "items": {
           "calendarPlus": {
             "title": "Basar anlegen mit Assistent",
-            "text": "Fahrradbörse, Kinderbasar oder Flohmarkt wählen: passende Einstellungen sind gesetzt, jeder Schritt erklärt sie."
+            "text": "Vorlage wählen: passende Einstellungen sind gesetzt, jeder Schritt erklärt sie."
           },
           "slidersHorizontal": {
             "title": "Deine Regeln pro Basar",
@@ -80,7 +80,7 @@
           },
           "wifiOff": {
             "title": "Kasse auch ohne Internet",
-            "text": "Die BazarPro-App verkauft weiter, wenn das Netz in der Halle ausfällt, und bucht alles nach, sobald es wieder da ist."
+            "text": "Die App verkauft weiter, wenn das Netz in der Halle ausfällt, und bucht später nach."
           },
           "userPlus": {
             "title": "Walk-in-Verkäufer",
@@ -114,7 +114,7 @@
           },
           "handCoins": {
             "title": "Preis vorschlagen",
-            "text": "Während des Basars online ein Angebot machen, wenn der Basar Preisvorschläge erlaubt."
+            "text": "Während des Basars online ein Angebot machen."
           },
           "messageCircleQuestionMark": {
             "title": "Fragen stellen",
@@ -127,7 +127,8 @@
         },
         "short": "Besucher"
       }
-    }
+    },
+    "more": "Sieh dir <features>alle Funktionen im Detail</features> an oder <pricing>was BazarPro kostet</pricing>."
   },
   "seo": {
     "title": "BazarPro – kostenlose Software für Kleiderbasar, Fahrradbörse und Flohmarkt",
@@ -140,18 +141,18 @@
     "joinAsSeller": "Als Verkäufer mitmachen"
   },
   "hero": {
-    "titleStart": "Second‑Hand‑Basare",
+    "titleStart": "Second-Hand-Basare",
     "titleHighlight": "ohne",
     "titleEnd": "Zettelwirtschaft",
     "line1Start": "Verkäufer inserieren zu Hause",
-    "line1End": "und hängen einen QR‑Code dran.",
+    "line1End": "und hängen einen QR-Code dran.",
     "line2Start": "Beim Basar wird nur noch gescannt –",
     "line2End": "den Rest rechnet BazarPro."
   },
   "cta": {
     "title": "Bereit für deinen nächsten Basar?",
     "text": "Leg deinen Basar an oder melde dich als Verkäufer – kostenlos.",
-    "openSource": "BazarPro ist Open Source (MIT) – <github>Code auf GitHub</github>"
+    "openSource": "BazarPro ist Open Source (MIT) – <github>Code auf GitHub</github> · <about>Über das Projekt</about>"
   },
   "events": {
     "badge": "Marktplatz",
@@ -167,8 +168,10 @@
   "demo": {
     "checkout": "Kasse",
     "bike": "Hollandrad 28 Zoll",
+    "raincoat": "Regenjacke Gr. 110",
     "sell": "Verkaufen",
     "sold": "Verkauft",
+    "total": "Summe",
     "itemNumber": "Nr. {{number}}"
   },
   "process": {

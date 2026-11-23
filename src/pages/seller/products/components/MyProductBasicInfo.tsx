@@ -1,23 +1,15 @@
 import { FieldError } from '../../../../components/ui/field-error';
 import { useFormContext } from 'react-hook-form';
-import { categoryName } from '../../../../i18n/categories';
 import { Label } from '../../../../components/ui/label';
 import { Input } from '../../../../components/ui/input';
 import { Textarea } from '../../../../components/ui/text-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../../../components/ui/select';
-import { CONDITION_OPTIONS } from '../../../../constants/records';
-import { PRODUCT_CONDITIONS } from '../../../../shared/constants';
 import { api } from '../../../../lib/api/functions';
 import { useQuery } from '../../../../lib/api/react';
-import type { Doc } from '../../../../lib/api/types';
-import { cn } from '../../../../lib/utils';
 import { MyProductCategoryFields, MyProductNegotiation } from './MyProductExtras';
+import { CategoryPicker } from '../../../../components/products/CategoryPicker';
+import { ConditionPicker } from '../../../../components/products/ConditionPicker';
+import { isCategoryAllowed } from '../../../../shared/categoryTree';
+import { categoryName } from '../../../../i18n/categories';
 import { useTranslation } from 'react-i18next';
 import { FormSkeleton, Loading } from '../../../../components/ui/loading';
 import type { ReactNode } from 'react';
@@ -29,17 +21,20 @@ import type { ReactNode } from 'react';
  * category fields a chosen bazaar requires. `fixedFields`: set while a bazaar keeps a
  * record of the item; title, category, price and these fields cannot change then.
  * `negotiation`: the negotiation box, or what to show instead (e.g. a button to open it).
+ * `bazaars`: the chosen bazaars; only categories all of them take can be picked.
  */
 export function MyProductBasicInfo({
   allowOffers = true,
   requiredFields,
   fixedFields,
   negotiation,
+  bazaars = [],
 }: {
   allowOffers?: boolean;
   requiredFields?: string[];
   fixedFields?: string[];
   negotiation?: ReactNode;
+  bazaars?: { title: string; categories?: string[] }[];
 }) {
   const fixed = fixedFields !== undefined;
   const { t } = useTranslation('seller');
@@ -55,6 +50,18 @@ export function MyProductBasicInfo({
   // Watch values for controlled components like Select
   const categoryId = watch('categoryId');
   const condition = watch('condition');
+  // Only categories every chosen bazaar takes
+  const restricting = bazaars.filter((event) => (event.categories?.length ?? 0) > 0);
+  const restricted = restricting.length > 0;
+  const isAllowed = (id: string) =>
+    restricting.every((event) => isCategoryAllowed(id, event.categories, categoryList));
+  const chosenCategory = categoryList?.find((category) => category._id === categoryId);
+  const refusedBy =
+    chosenCategory && !fixed
+      ? restricting.find(
+          (event) => !isCategoryAllowed(chosenCategory._id, event.categories, categoryList)
+        )
+      : undefined;
 
   if (!categoryList) {
     return (
@@ -105,59 +112,48 @@ export function MyProductBasicInfo({
 
         <div className="space-y-2">
           <Label htmlFor="categoryId">{t('form.category')}</Label>
-          <Select
-            value={categoryId ?? ''}
+          <CategoryPicker
+            id="categoryId"
+            categories={categoryList}
+            value={categoryId || undefined}
             disabled={fixed}
-            onValueChange={(val) =>
-              setValue('categoryId', val, { shouldValidate: true, shouldDirty: true })
+            invalid={!!errors.categoryId || !!refusedBy}
+            isAllowed={isAllowed}
+            placeholder={t('form.chooseCategory')}
+            onChange={(id) =>
+              setValue('categoryId', id, { shouldValidate: true, shouldDirty: true })
             }
-          >
-            <SelectTrigger id="categoryId">
-              <SelectValue placeholder={t('form.chooseCategory')} />
-            </SelectTrigger>
-            <SelectContent>
-              {categoryList.map((c: Doc<'categories'>) => (
-                <SelectItem key={c._id} value={c._id}>
-                  {categoryName(c)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.categoryId && <FieldError>{errors.categoryId.message as string}</FieldError>}
+          />
+          {errors.categoryId ? (
+            <FieldError>{errors.categoryId.message as string}</FieldError>
+          ) : refusedBy ? (
+            <FieldError>
+              {t('form.categoryNotAllowed', {
+                category: categoryName(chosenCategory!),
+                event: refusedBy.title,
+              })}
+            </FieldError>
+          ) : (
+            restricted && (
+              <p className="text-xs text-muted-foreground">
+                {t('form.categoriesOfBazaar', {
+                  events: restricting.map((event) => event.title).join(', '),
+                })}
+              </p>
+            )
+          )}
         </div>
       </div>
 
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-medium leading-none">{t('form.condition')}</legend>
-        <div
-          className="grid grid-cols-2 gap-2 lg:grid-cols-4"
-          role="radiogroup"
-          aria-label={t('form.condition')}
-        >
-          {PRODUCT_CONDITIONS.map((value) => {
-            const checked = condition === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={checked}
-                title={CONDITION_OPTIONS[value].description}
-                onClick={() =>
-                  setValue('condition', value, { shouldValidate: true, shouldDirty: true })
-                }
-                className={cn(
-                  'min-h-9 rounded-md border px-3 py-1.5 text-left text-sm leading-snug transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                  checked
-                    ? 'border-primary bg-primary/10 font-medium text-primary dark:bg-primary/25 dark:text-foreground'
-                    : 'bg-background hover:bg-accent'
-                )}
-              >
-                {CONDITION_OPTIONS[value].title}
-              </button>
-            );
-          })}
-        </div>
+        <ConditionPicker
+          value={condition}
+          label={t('form.condition')}
+          onChange={(value) =>
+            setValue('condition', value, { shouldValidate: true, shouldDirty: true })
+          }
+        />
         {errors.condition && <FieldError>{errors.condition.message as string}</FieldError>}
       </fieldset>
 

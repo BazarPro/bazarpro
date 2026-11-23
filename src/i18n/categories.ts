@@ -1,5 +1,6 @@
 import type { CategoryTranslations } from '../lib/api/types';
 import i18n from '.';
+import { collapseSubcategories } from '../shared/categoryTree';
 
 type NamedCategory = { label: string; translations?: CategoryTranslations | undefined };
 
@@ -21,4 +22,16 @@ export function categoryNames(
   return found.every((category) => category !== undefined)
     ? found.map((category) => categoryName(category as NamedCategory))
     : undefined;
+}
+
+/**
+ * The names of the categories a bazaar allows, shortened: a main category chosen with all
+ * its sub-categories stands for them.
+ */
+export function eventCategoryNames(
+  ids: readonly string[] | undefined,
+  categories: readonly (NamedCategory & { _id: string; parentCategory?: string })[] | undefined
+): string[] | undefined {
+  if (!ids || !categories) return undefined;
+  return categoryNames(collapseSubcategories(ids, categories), categories);
 }

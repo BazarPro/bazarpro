@@ -4,11 +4,13 @@ import { clashingSortCodes } from '../../../../shared/sortCode';
 import { PageSkeleton } from '../../../../components/ui/loading';
 import { PageHeader } from '../../../../components/ui/page-header';
 import { SearchInput } from '../../../../components/ui/search-input';
+import { NativeSelect } from '../../../../components/ui/native-select';
 import { useMemo, useState } from 'react';
 import { WalkInBadge } from '../../../../components/walkIn/WalkInBadge';
 import { SellerNumberBadge } from '../../../../components/sellers/SellerNumberBadge';
+import { FeeGroupBadge } from '../../../../components/sellers/FeeGroupBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
-import { useQuery, useMutation } from '../../../../lib/api/react';
+import { useQuery } from '../../../../lib/api/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../../lib/api/functions';
 import type { Id } from '../../../../lib/api/types';
@@ -28,13 +30,11 @@ import {
   Phone,
   ChevronRight,
   UserPlus,
-  UserMinus,
   ShieldCheck,
   Crown,
   Megaphone,
   Plus,
   Printer,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { formatPriceDE } from '../../../../lib/utils';
 import type { VendorWithCalculations } from '../../../../lib/api/types';
@@ -42,7 +42,6 @@ import { Tabs, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
 import { Button } from '../../../../components/ui/button';
 import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
-import { ConfirmDialog } from '../../../../components/ui/confirm-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,30 +53,24 @@ import { WalkInSellerDialog } from '../../../../components/walkIn/WalkInSellerDi
 import { BroadcastDialog } from '../../../../components/broadcasts/BroadcastDialog';
 import { BroadcastList } from '../../../../components/broadcasts/BroadcastList';
 import { HelperPickerDialog } from '../../../../components/helpers/HelperPickerDialog';
-import { HelperPermissionsFields } from '../../../../components/helpers/HelperPermissionsFields';
-import { HELPER_PERMISSIONS, type HelperPermission } from '../../../../shared/constants';
+import {
+  HelperRoleDialog,
+  type HelperAction,
+} from '../../../../components/helpers/HelperRoleDialog';
 import { InviteDialog } from '../../../../components/invitations/InviteDialog';
 import { OpenInvitations } from '../../../../components/invitations/OpenInvitations';
-import { Trans, useTranslation } from 'react-i18next';
+import { ExcludedBadge } from '../../../../components/participation/ExcludedBadge';
+import { RegistrationPanel } from '../../../../components/participation/RegistrationPanel';
+import { useTranslation } from 'react-i18next';
+import { SellersWithoutItems } from '../../../../components/sellers/SellersWithoutItems';
+import type { BroadcastAudience } from '../../../../shared/constants';
 
 const NO_LABELS: Id<'products'>[] = [];
 
-/** Texts of the helper dialog by what it does */
-const HELPER_DIALOG = {
-  add: {
-    title: 'sellers.appointHelper',
-    text: 'sellers.appointText',
-    confirm: 'sellers.appoint',
-  },
-  edit: {
-    title: 'sellers.editPermissions',
-    text: 'sellers.editPermissionsText',
-    confirm: 'sellers.savePermissions',
-  },
-  remove: { title: 'sellers.revoke', text: 'sellers.revokeText', confirm: 'sellers.revoke' },
-} as const;
+type SellerFilter = 'all' | 'open' | 'paid' | 'helpers' | 'withoutItems';
 
-type SellerFilter = 'all' | 'open' | 'paid' | 'helpers';
+/** All sellers, those without a group, or the id of one fee group */
+type GroupFilter = 'all' | 'none' | (string & {});
 
 export function SellerManagementPage() {
   const { t } = useTranslation('organizer');
@@ -85,8 +78,10 @@ export function SellerManagementPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<SellerFilter>('all');
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastAudience, setBroadcastAudience] = useState<BroadcastAudience>('all');
   const [helperPickerOpen, setHelperPickerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [allLabelsOpen, setAllLabelsOpen] = useState(false);
@@ -95,23 +90,7 @@ export function SellerManagementPage() {
     allLabelsOpen ? { eventId: eventId as Id<'events'> } : 'skip'
   );
 
-  // State for Helper Dialogs
-  const [helperAction, setHelperAction] = useState<{
-    mode: 'add' | 'edit' | 'remove';
-    vendor: VendorWithCalculations;
-  } | null>(null);
-  // What the helper may do, chosen in the dialog for 'add' and 'edit'
-  const [helperPermissions, setHelperPermissions] = useState<HelperPermission[]>([
-    ...HELPER_PERMISSIONS,
-  ]);
-  const openHelperDialog = (mode: 'add' | 'edit' | 'remove', vendor: VendorWithCalculations) => {
-    setHelperPermissions(
-      mode === 'edit'
-        ? (vendor.helperPermissions ?? [...HELPER_PERMISSIONS])
-        : [...HELPER_PERMISSIONS]
-    );
-    setHelperAction({ mode, vendor });
-  };
+  const [helperAction, setHelperAction] = useState<HelperAction | null>(null);
 
   const event = useQuery(api.events.getEvent, { id: eventId as Id<'events'> });
   // Writing to all sellers and appointing helpers stays with the organizer (and admins),
@@ -137,10 +116,16 @@ export function SellerManagementPage() {
   // Baskets that differ by the extra letter only
   const clashingCodes = clashingSortCodes(sortSheetSellers.map((seller) => seller.sortCode));
 
-  const addHelper = useMutation(api.eventRoles.addCoOrganizerForEvent);
   useAssignMissingSellerNumbers(eventId as Id<'events'>, vendors, canManage);
-  const removeHelper = useMutation(api.eventRoles.removeCoOrganizerForEvent);
-  const setPermissions = useMutation(api.eventRoles.setHelperPermissions);
+
+  const feeGroups = event?.features?.feeGroups ?? [];
+  const pendingIn = (groupId: string) =>
+    (vendors ?? []).filter((v) => v.feeGroup?.pending && v.feeGroup.id === groupId).length;
+  // A group gone from the settings (or another bazaar's) filters nothing
+  const shownGroupFilter =
+    groupFilter === 'all' || groupFilter === 'none' || feeGroups.some((g) => g.id === groupFilter)
+      ? groupFilter
+      : 'all';
 
   const filteredVendors = useMemo(() => {
     if (!vendors) return [];
@@ -150,6 +135,14 @@ export function SellerManagementPage() {
     if (activeFilter === 'open') result = result.filter((v) => !v.paid);
     if (activeFilter === 'paid') result = result.filter((v) => v.paid);
     if (activeFilter === 'helpers') result = result.filter((v) => v.isHelper);
+    if (activeFilter === 'withoutItems') result = result.filter((v) => v.withoutItems);
+    if (shownGroupFilter === 'none') result = result.filter((v) => !v.feeGroup);
+    // Unchecked self-declarations first: they hold up the intake
+    else if (shownGroupFilter !== 'all') {
+      result = result
+        .filter((v) => v.feeGroup?.id === shownGroupFilter)
+        .sort((a, b) => Number(!!b.feeGroup?.pending) - Number(!!a.feeGroup?.pending));
+    }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase().trim();
@@ -164,36 +157,24 @@ export function SellerManagementPage() {
     }
 
     return result;
-  }, [vendors, searchTerm, activeFilter]);
+  }, [vendors, searchTerm, activeFilter, shownGroupFilter]);
+
+  const withoutItems = (vendors ?? []).filter((v) => v.withoutItems).length;
+  const openBroadcast = (audience: BroadcastAudience) => {
+    setBroadcastAudience(audience);
+    setBroadcastOpen(true);
+  };
 
   const handleSelectVendor = (vendorId: Id<'users'>) => {
     navigate(`/events/view/${eventId}/products?vendor=${vendorId}`);
   };
 
-  const executeToggleHelper = async () => {
-    if (!helperAction) return;
-    const { mode, vendor } = helperAction;
-    const eId = eventId as Id<'events'>;
-
-    try {
-      if (mode === 'remove') {
-        await removeHelper({ eventId: eId, userId: vendor._id });
-        toast.success(t('sellers.helperRemoved', { name: vendor.name }));
-      } else if (mode === 'edit') {
-        await setPermissions({ eventId: eId, userId: vendor._id, permissions: helperPermissions });
-        toast.success(t('sellers.permissionsSaved', { name: vendor.name }));
-      } else {
-        await addHelper({ eventId: eId, userId: vendor._id, permissions: helperPermissions });
-        toast.success(t('sellers.helperAdded', { name: vendor.name }));
-      }
-    } catch (error) {
-      toast.error(t('sellers.actionFailed'), {
-        description: error instanceof Error ? error.message : t('sellers.unknownError'),
-      });
-    } finally {
-      setHelperAction(null);
-    }
-  };
+  const pendingGroups =
+    shownGroupFilter === 'all' || shownGroupFilter === 'none' ? 0 : pendingIn(shownGroupFilter);
+  const emptyText =
+    activeFilter === 'helpers' && !searchTerm && shownGroupFilter === 'all'
+      ? t('sellers.noHelpers')
+      : undefined;
 
   if (rolesLoading) return <PageSkeleton />;
   if (!canManage) return <div className="p-8 text-center">{t('sellers.noAccess')}</div>;
@@ -205,7 +186,7 @@ export function SellerManagementPage() {
         actions={
           <div className="flex flex-wrap gap-2 *:flex-1 sm:*:flex-none">
             {canBroadcast && (
-              <Button variant="outline" className="gap-2" onClick={() => setBroadcastOpen(true)}>
+              <Button variant="outline" className="gap-2" onClick={() => openBroadcast('all')}>
                 <Megaphone className="h-4 w-4" /> {t('sellers.broadcast')}
               </Button>
             )}
@@ -270,6 +251,8 @@ export function SellerManagementPage() {
         }
       />
 
+      {event && <RegistrationPanel event={event} canSwitch={canBroadcast} />}
+
       {clashingCodes.size > 0 && (
         <p
           role="alert"
@@ -285,21 +268,68 @@ export function SellerManagementPage() {
           onValueChange={(v) => setActiveFilter(v as SellerFilter)}
           className="w-full sm:w-auto"
         >
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid h-auto w-full grid-cols-3 sm:grid-cols-5">
             <TabsTrigger value="all">{t('sellers.all')}</TabsTrigger>
             <TabsTrigger value="open">{t('sellers.open')}</TabsTrigger>
             <TabsTrigger value="paid">{t('sellers.paid')}</TabsTrigger>
             <TabsTrigger value="helpers">{t('sellers.helpers')}</TabsTrigger>
+            <TabsTrigger value="withoutItems" className="gap-1.5">
+              {t('sellers.withoutItems')}
+              {withoutItems > 0 && (
+                <span className="rounded-full bg-amber-500/20 px-1.5 text-[11px] font-semibold tabular-nums text-amber-800 dark:text-amber-200">
+                  {withoutItems}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <SearchInput
-          className="w-full sm:w-72"
-          placeholder={t('sellers.search')}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          {feeGroups.length > 0 && (
+            <NativeSelect
+              aria-label={t('sellerFeeGroup.filter')}
+              className="w-full sm:w-52"
+              value={shownGroupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+            >
+              <option value="all">{t('sellerFeeGroup.allGroups')}</option>
+              {feeGroups.map((group) => {
+                const pending = pendingIn(group.id);
+                return (
+                  <option key={group.id} value={group.id}>
+                    {pending > 0
+                      ? t('sellerFeeGroup.withPending', { group: group.label, count: pending })
+                      : group.label}
+                  </option>
+                );
+              })}
+              <option value="none">{t('sellerFeeGroup.none')}</option>
+            </NativeSelect>
+          )}
+          <SearchInput
+            className="w-full sm:w-72"
+            placeholder={t('sellers.search')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
+
+      {activeFilter === 'withoutItems' && vendors && (
+        <SellersWithoutItems
+          eventId={eventId as Id<'events'>}
+          count={withoutItems}
+          canAct={canBroadcast}
+          over={!!event && event.endDate < Date.now()}
+          onRemind={() => openBroadcast('withoutItems')}
+        />
+      )}
+
+      {pendingGroups > 0 && (
+        <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          {t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
+        </p>
+      )}
 
       {/* Table only where it fits; the side menu takes room on tablets, too */}
       <div className="@container">
@@ -319,9 +349,7 @@ export function SellerManagementPage() {
               {filteredVendors.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">
-                    {activeFilter === 'helpers' && !searchTerm
-                      ? t('sellers.noHelpers')
-                      : t('sellers.noneForFilter')}
+                    {emptyText ?? t('sellers.noneForFilter')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -347,6 +375,8 @@ export function SellerManagementPage() {
                               <span className="font-medium">{v.name}</span>
                               <SellerNumberBadge number={v.sellerNumber} />
                               {v.managedByEventId && <WalkInBadge />}
+                              {v.excluded && <ExcludedBadge exclusion={v.excluded} />}
+                              <FeeGroupBadge group={v.feeGroup} />
                               {v.isHelper && !isOwner && (
                                 <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
                               )}
@@ -388,17 +418,9 @@ export function SellerManagementPage() {
                             <Crown className="h-3 w-3" /> {t('sellers.owner')}
                           </Badge>
                         ) : v.isHelper ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Badge variant="secondary" className="gap-1">
-                              <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
-                            </Badge>
-                            {canManageHelpers && (
-                              <EditPermissionsButton
-                                iconOnly
-                                onClick={() => openHelperDialog('edit', v)}
-                              />
-                            )}
-                          </span>
+                          <Badge variant="secondary" className="gap-1">
+                            <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
+                          </Badge>
                         ) : null}
                       </TableCell>
                       <TableCell>
@@ -415,9 +437,7 @@ export function SellerManagementPage() {
         <div className="grid gap-4 @2xl:grid-cols-2 @4xl:hidden">
           {filteredVendors.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground bg-card border rounded-xl italic @2xl:col-span-2">
-              {activeFilter === 'helpers' && !searchTerm
-                ? t('sellers.noHelpers')
-                : t('sellers.none')}
+              {emptyText ?? t('sellers.none')}
             </div>
           ) : (
             filteredVendors.map((v) => {
@@ -442,6 +462,8 @@ export function SellerManagementPage() {
                           <span className="break-words font-medium">{v.name}</span>
                           <SellerNumberBadge number={v.sellerNumber} />
                           {v.managedByEventId && <WalkInBadge />}
+                          {v.excluded && <ExcludedBadge exclusion={v.excluded} />}
+                          <FeeGroupBadge group={v.feeGroup} />
                           {isOwner && <Crown className="h-3.5 w-3.5 text-primary" />}
                           {v.isHelper && !isOwner && (
                             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -467,12 +489,6 @@ export function SellerManagementPage() {
                       <PaidBadge paid={v.paid} />
                     </div>
                   </div>
-
-                  {canManageHelpers && !isOwner && v.isHelper && (
-                    <div className="mt-auto">
-                      <EditPermissionsButton onClick={() => openHelperDialog('edit', v)} />
-                    </div>
-                  )}
                 </div>
               );
             })
@@ -486,6 +502,7 @@ export function SellerManagementPage() {
 
       <BroadcastDialog
         eventId={eventId as Id<'events'>}
+        initialAudience={broadcastAudience}
         open={broadcastOpen}
         onOpenChange={setBroadcastOpen}
       />
@@ -497,7 +514,7 @@ export function SellerManagementPage() {
           onOpenChange={setHelperPickerOpen}
           onPick={(vendor) => {
             setHelperPickerOpen(false);
-            openHelperDialog('add', vendor);
+            setHelperAction({ mode: 'add', vendor });
           }}
         />
       )}
@@ -516,7 +533,6 @@ export function SellerManagementPage() {
         onCreated={(sellerId) => navigate(`/events/view/${eventId}/products?vendor=${sellerId}`)}
       />
 
-      {/* Helper Confirmation Dialogs */}
       <LabelPrintDialog
         open={allLabelsOpen}
         onOpenChange={setAllLabelsOpen}
@@ -524,37 +540,11 @@ export function SellerManagementPage() {
         eventId={eventId}
       />
 
-      <ConfirmDialog
-        open={!!helperAction}
-        onOpenChange={(open) => !open && setHelperAction(null)}
-        title={t(HELPER_DIALOG[helperAction?.mode ?? 'add'].title)}
-        description={
-          <Trans
-            i18nKey={HELPER_DIALOG[helperAction?.mode ?? 'add'].text}
-            ns="organizer"
-            values={{ name: helperAction?.vendor.name }}
-            components={{ b: <b /> }}
-          />
-        }
-        confirmLabel={t(HELPER_DIALOG[helperAction?.mode ?? 'add'].confirm)}
-        destructive={helperAction?.mode === 'remove'}
-        onConfirm={executeToggleHelper}
-      >
-        {helperAction && helperAction.mode !== 'remove' && (
-          <HelperPermissionsFields value={helperPermissions} onChange={setHelperPermissions} />
-        )}
-        {/* Taking the role back lives here, so each helper needs just one button */}
-        {helperAction?.mode === 'edit' && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-mt-2 justify-self-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => setHelperAction({ mode: 'remove', vendor: helperAction.vendor })}
-          >
-            <UserMinus className="h-4 w-4" /> {t('sellers.removeHelper')}
-          </Button>
-        )}
-      </ConfirmDialog>
+      <HelperRoleDialog
+        eventId={eventId as Id<'events'>}
+        action={helperAction}
+        onActionChange={setHelperAction}
+      />
     </div>
   );
 }
@@ -570,27 +560,5 @@ function PaidBadge({ paid }: { paid?: boolean }) {
     <Badge variant="outline" className="whitespace-nowrap">
       {t('sellers.open')}
     </Badge>
-  );
-}
-
-/** Changes what the helper may do; the dialog also takes the helper role back. */
-function EditPermissionsButton({ onClick, iconOnly }: { onClick: () => void; iconOnly?: boolean }) {
-  const { t } = useTranslation('organizer');
-  const label = t('sellers.editPermissions');
-  return (
-    <Button
-      variant="ghost"
-      size={iconOnly ? 'icon' : 'sm'}
-      title={label}
-      aria-label={label}
-      className={iconOnly ? 'text-muted-foreground' : 'w-full gap-2 text-muted-foreground'}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-    >
-      <SlidersHorizontal className="h-4 w-4" />
-      {!iconOnly && label}
-    </Button>
   );
 }

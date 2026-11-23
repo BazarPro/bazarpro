@@ -2,6 +2,7 @@
   "account": {
     "cannotReactivate": "Account kann nicht reaktiviert werden.",
     "privacyRequired": "Du musst der Datenschutzerklärung zustimmen.",
+    "tooManySignUps": "Von deinem Anschluss wurden gerade sehr viele Konten angelegt. Bitte versuche es später noch einmal.",
     "wrongPassword": "Altes Passwort ist nicht korrekt"
   },
   "auth": {
@@ -38,10 +39,21 @@
     "labelEmpty": "Bitte gib einen Namen ein.",
     "labelTaken": "Eine Kategorie mit diesem Namen gibt es schon.",
     "inUse": "Diese Kategorie wird noch verwendet und kann nicht gelöscht werden.",
+    "parentNotMain": "Eine Unterkategorie kann nur unter einer Hauptkategorie stehen.",
+    "hasSubcategories": "Diese Kategorie hat selbst Unterkategorien und kann deshalb keine Unterkategorie werden.",
+    "parentHasItems": "Diese Kategorie enthält Artikel und kann deshalb keine Hauptkategorie werden.",
+    "unknownField": "Dieses Zusatzfeld gibt es nicht.",
+    "oneSize": "Bitte wähle höchstens eine Art von Größe.",
     "lastOne": "Die letzte Kategorie kann nicht gelöscht werden."
   },
   "common": {
     "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein."
+  },
+  "contact": {
+    "incomplete": "Bitte gib deinen Namen und eine Nachricht ein.",
+    "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse an, damit wir dir antworten können.",
+    "rateLimited": "Gerade gehen sehr viele Nachrichten ein. Bitte versuche es später erneut.",
+    "tooLong": "Die Nachricht darf höchstens {{max}} Zeichen haben."
   },
   "discount": {
     "max": "Maximaler Rabatt ist {{max}}%",
@@ -52,9 +64,11 @@
     "notYet": "Rabatte sind erst ab der vom Veranstalter festgelegten Uhrzeit möglich."
   },
   "event": {
+    "feeCapRange": "Der Gebühren-Deckel muss zwischen 0 und 10.000 € liegen.",
+    "full": "„{{event}}“ ist voll: Alle {{limit}} Plätze für Artikel sind vergeben.",
     "blocked": "Dieser Basar wurde von der Moderation gesperrt.",
     "endBeforeStart": "Das Ende der {{label}} muss nach dem Beginn liegen.",
-    "feesOnlyLower": "Seit sich Verkäufer angemeldet haben, können Provision und Annahmegebühr nur noch gesenkt werden.",
+    "feesOnlyLower": "Seit sich Verkäufer angemeldet haben, können Provision, Annahmegebühr und Gebühren-Deckel nur noch gesenkt werden.",
     "intakeFeeRange": "Die Annahmegebühr muss zwischen 0 und 100 € liegen.",
     "invalidLocationCategory": "Ungültige Standortkategorie für dieses Event.",
     "itemLimitInvalid": "Die Artikelgrenze muss eine ganze Zahl ab 1 sein.",
@@ -70,12 +84,24 @@
     "pastNoEdit": "Vergangene Basare können nicht mehr bearbeitet werden.",
     "rejectionReasonRequired": "Bitte gib einen Grund für die Ablehnung an.",
     "runningNoDate": "Während des Basars kann das Datum nicht geändert werden.",
-    "runningNoFees": "Während des Basars können Provision und Annahmegebühr nicht geändert werden.",
+    "runningNoFees": "Während des Basars können Provision, Annahmegebühr und Gebühren-Deckel nicht geändert werden.",
+    "directSaleLocked": "Es sind schon Verkäufe gebucht. Der Direktverkauf lässt sich jetzt nicht mehr ein- oder ausschalten.",
     "runningNoVisibility": "Während des Basars kann die Sichtbarkeit nicht geändert werden.",
     "accessCodeRequired": "Für diese Sichtbarkeit brauchst du einen Zugangscode.",
     "sellerNoteTooLong": "Der Hinweis für Verkäufer darf höchstens {{max}} Zeichen haben.",
     "settlementClosed": "Die Abwicklung dieses Basars ist abgeschlossen. Verkäufe und Rückgaben lassen sich nicht mehr ändern.",
-    "startMissing": "Bitte auch den Beginn der {{label}} angeben."
+    "startMissing": "Bitte auch den Beginn der {{label}} angeben.",
+    "registrationWindow": "Das Ende der Anmeldung muss nach ihrem Beginn liegen.",
+    "feeGroupsTooMany": "Ein Basar kann höchstens 4 Gebührengruppen haben.",
+    "feeGroupLabel": "Jede Gebührengruppe braucht einen Namen mit höchstens 60 Zeichen.",
+    "feeGroupLabelTwice": "Zwei Gebührengruppen haben denselben Namen.",
+    "feeGroupHelpersTwice": "Nur eine Gebührengruppe kann für die Helfer des Basars gelten.",
+    "feeGroupCommission": "Die Provision einer Gebührengruppe liegt zwischen 0 und 100 %.",
+    "feeGroupProofHint": "Der Hinweis zum Nachweis darf höchstens 200 Zeichen lang sein.",
+    "feeGroupsOnlyLower": "Seit sich Verkäufer angemeldet haben, können Gebührengruppen nur noch günstiger werden. Entfernen oder anders zuordnen geht nicht mehr.",
+    "helperGroupDearer": "Seit sich Verkäufer angemeldet haben, darf eine neue Gruppe für Helfer nicht mehr kosten als die Gebühren des Basars: Sie gilt sofort für alle Helfer.",
+    "postalCodeInvalid": "„{{code}}“ ist keine Postleitzahl und kein Anfang davon. Bitte nur Ziffern, höchstens fünf.",
+    "postalCodesTooMany": "Bitte wähle höchstens {{max}} Postleitzahlbereiche."
   },
   "feature": {
     "disabled": "Diese Aktion ist derzeit deaktiviert.",
@@ -87,12 +113,18 @@
     "past": "Beitritt nicht möglich: Basar liegt bereits in der Vergangenheit.",
     "vendorLimit": "Das Teilnehmerlimit für Verkäufer ist erreicht.",
     "privateRequired": "Bitte bestätige, dass du als Privatperson verkaufst.",
-    "profileIncomplete": "Bitte vervollständige zuerst Name, Anschrift und Telefon in deinem Profil."
+    "profileIncomplete": "Bitte vervollständige zuerst Name, Anschrift und Telefon in deinem Profil.",
+    "closed": "Die Anmeldung für diesen Basar ist geschlossen.",
+    "notYet": "Die Anmeldung für diesen Basar ist noch nicht geöffnet.",
+    "excluded": "Der Veranstalter hat dich von diesem Basar ausgeschlossen.",
+    "postalCode": "Dieser Basar ist nur für Verkäufer aus seiner Region: Postleitzahlen {{codes}}. Wenn du trotzdem mitmachen möchtest, frag beim Veranstalter nach einer Einladung.",
+    "postalCodeMissing": "Bitte trag zuerst deine Postleitzahl in dein Profil ein: Dieser Basar ist nur für Verkäufer aus seiner Region."
   },
   "leave": {
     "itemsHandledIn": "Du kannst dich nicht abmelden, solange Artikel bereits angenommen, verkauft oder zurückgegeben sind.",
     "paidOut": "Abmeldung nicht möglich: Auszahlung bereits erhalten.",
-    "past": "Eine Abmeldung ist für vergangene Basare nicht möglich."
+    "past": "Eine Abmeldung ist für vergangene Basare nicht möglich.",
+    "excluded": "Der Veranstalter hat dich von diesem Basar ausgeschlossen. Du nimmst nicht mehr teil."
   },
   "moderation": {
     "noBanAdmin": "Administratoren können nicht gesperrt werden.",
@@ -109,7 +141,8 @@
     "product": "Artikel nicht gefunden.",
     "question": "Frage nicht gefunden.",
     "report": "Meldung nicht gefunden.",
-    "user": "Nutzer nicht gefunden."
+    "user": "Nutzer nicht gefunden.",
+    "categoryField": "Zusatzfeld nicht gefunden."
   },
   "offline": {
     "failed": "Die Aktion ließ sich nicht nachholen. Bitte von Hand erledigen.",
@@ -164,13 +197,22 @@
     "unavailable": "Der Artikel ist nicht mehr verfügbar.",
     "walkInOnly": "Nur Artikel von vor Ort angelegten Verkäufern können hier erfasst werden.",
     "fieldRequired": "Für „{{event}}“ ist die Angabe „{{field}}“ nötig.",
-    "dataFixed": "Titel, Kategorie, Preis und Pflichtangaben sind fest: Der Artikel wurde bei einem laufenden Basar mit Nachweis angenommen."
+    "dataFixed": "Titel, Kategorie, Preis und Pflichtangaben sind fest: Der Artikel wurde bei einem laufenden Basar mit Nachweis angenommen.",
+    "importEmpty": "Die Liste enthält keine Artikel.",
+    "importTooMany": "Höchstens {{max}} Artikel auf einmal importieren.",
+    "rejected": "Der Artikel wurde abgelehnt. Nimm zuerst die Ablehnung zurück.",
+    "rejectedNoRemove": "Abgelehnte Artikel bleiben beim Basar vermerkt und können nicht entfernt werden.",
+    "notRegistered": "Melde dich zuerst als Verkäufer bei diesem Basar an.",
+    "rejectedHere": "„{{title}}“ wurde bei „{{event}}“ abgelehnt und kann dort nicht erneut angemeldet werden.",
+    "chooseSubcategory": "Bitte wähle eine Unterkategorie, zum Beispiel unter „Fahrräder“ die Art des Rads.",
+    "categoryNotAllowed": "Diese Kategorie ist bei „{{event}}“ nicht erlaubt."
   },
   "profile": {
     "nameRequired": "Bitte Vor- und Nachnamen angeben.",
     "nameTooLong": "Der Name darf höchstens {{max}} Zeichen haben.",
     "titleLength": "Der Titel muss 3 bis {{max}} Zeichen haben.",
-    "fixed": "Name und Anschrift sind fest: Ein Basar mit Nachweis hat deine Artikel angenommen und ist noch nicht vorbei."
+    "fixed": "Name und Anschrift sind fest: Ein Basar mit Nachweis hat deine Artikel angenommen und ist noch nicht vorbei.",
+    "postalCodeFixed": "Postleitzahl und Land sind fest: Du bist bei einem Basar für seine Region angemeldet, der noch nicht vorbei ist."
   },
   "question": {
     "answerEmpty": "Bitte gib eine Antwort ein.",
@@ -203,7 +245,9 @@
     "paidOutNoSales": "Verkäufer wurde bereits ausbezahlt, weitere Verkäufe sind nicht mehr möglich.",
     "paidOutUndoFirst": "Der Verkäufer ist bereits abgerechnet. Nimm zuerst die Auszahlung zurück, um seine Artikel zu ändern.",
     "payoutStaffOnly": "Nur Veranstalter und Helfer können Auszahlungen als erledigt markieren",
-    "undoPayoutStaffOnly": "Nur Veranstalter und Helfer können Auszahlungen zurücknehmen"
+    "undoPayoutStaffOnly": "Nur Veranstalter und Helfer können Auszahlungen zurücknehmen",
+    "unregisterPast": "Nach dem Basar kann niemand mehr abgemeldet werden.",
+    "unregisterMessageTooLong": "Die Nachricht darf höchstens {{max}} Zeichen lang sein."
   },
   "settings": {
     "domainFormat": "Bitte gib die Domain ohne https:// an, z. B. basar.example.org.",
@@ -216,7 +260,8 @@
     "invalid": "Diese Einladung gilt nicht mehr. Bitte frag beim Veranstalter nach einer neuen.",
     "otherAccount": "Diese Einladung gilt für eine andere E-Mail-Adresse. Bitte melde dich mit der eingeladenen Adresse an.",
     "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse an.",
-    "limit": "Für heute wurden genug Einladungen verschickt. Bitte versuche es morgen wieder."
+    "limit": "Für heute wurden genug Einladungen verschickt. Bitte versuche es morgen wieder.",
+    "excluded": "Diese Person ist von diesem Basar ausgeschlossen. Hebe zuerst den Ausschluss auf."
   },
   "helper": {
     "intake": "Die Warenannahme hat dir der Veranstalter nicht freigegeben.",
@@ -225,8 +270,36 @@
     "payout": "Abrechnung und Auszahlung hat dir der Veranstalter nicht freigegeben.",
     "cashSummary": "Den Kassensturz hat dir der Veranstalter nicht freigegeben."
   },
+  "exclusion": {
+    "hasItems": "Der Verkäufer hat noch angemeldete Artikel bei diesem Basar. Lehne sie zuerst als nicht abgegeben ab.",
+    "past": "Nach dem Basar kann niemand mehr ausgeschlossen werden.",
+    "organizer": "Der Veranstalter kann nicht ausgeschlossen werden.",
+    "walkIn": "Verkäufer ohne Konto können nicht ausgeschlossen werden.",
+    "reasonTooLong": "Die Begründung darf höchstens {{max}} Zeichen haben.",
+    "vendorLimit": "Das Verkäuferlimit ist erreicht. Erhöhe es, um den Ausschluss aufzuheben."
+  },
+  "rejection": {
+    "past": "Nach dem Basar können Artikel nicht mehr abgelehnt werden.",
+    "sellerExcluded": "Der Verkäufer ist von diesem Basar ausgeschlossen.",
+    "sellerLeft": "Der Verkäufer nimmt nicht mehr an diesem Basar teil."
+  },
   "upload": {
     "quotaExceeded": "Du hast zu viele Bilder hochgeladen, die noch nicht gespeichert sind. Bitte speichere zuerst oder versuche es später noch einmal.",
     "tooMany": "Du hast sehr viele Bilder hochgeladen. Bitte versuche es später noch einmal."
+  },
+  "categoryField": {
+    "inUse": "Dieses Zusatzfeld wird noch von Kategorien verwendet. Entferne es dort zuerst."
+  },
+  "feeGroup": {
+    "unconfirmed": "{{group}}: Bitte zuerst den Nachweis prüfen und die Gruppe bestätigen oder entfernen.",
+    "unknown": "Diese Gebührengruppe gibt es bei diesem Basar nicht.",
+    "decided": "Das Team hat deine Gruppe schon geprüft. Für eine Änderung sprich bitte das Team an.",
+    "locked": "Deine Artikel wurden schon angenommen. Für eine Änderung der Gruppe sprich bitte das Team an.",
+    "none": "Dieser Verkäufer hat keine Gebührengruppe angegeben.",
+    "organizerOnly": "Nur Veranstalter können Verkäufer einer Gebührengruppe zuordnen.",
+    "decidedOrganizerOnly": "Diese Gruppe wurde schon geprüft oder zugeordnet. Ändern können sie nur Veranstalter."
+  },
+  "leftovers": {
+    "notOver": "Übrige Artikel können erst nach dem Basar gesammelt zurückgegeben werden."
   }
 }

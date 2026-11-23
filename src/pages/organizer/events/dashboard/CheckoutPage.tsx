@@ -28,12 +28,16 @@ import { Label } from '../../../../components/ui/label';
 import { ImageWithFallback } from '../../../../components/ui/image-with-fallback';
 import { QRCodeScanner } from '../../../../components/ui/QRCodeScanner';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
-import { formatPriceDE } from '../../../../lib/utils';
+import { cn, formatPriceDE } from '../../../../lib/utils';
 import { Trans, useTranslation } from 'react-i18next';
+import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useEventAccess } from '../../../../hooks/useEventAccess';
 import { PageSkeleton } from '../../../../components/ui/loading';
 import {
   clearCachedCart,
+  commissionOf,
+  deskCommissions,
+  deskTakes,
   getCheckoutCameraEnabled,
   getCheckoutSoundEnabled,
   loadCachedCart,
@@ -58,6 +62,7 @@ import { OfflineQueueRefused } from './components/OfflineQueueRefused';
 import { useOfflinePreparation } from '../../../../lib/offlinePrefetch';
 import { downloadPrivateInvoicesForSale } from '../../../../lib/privateInvoice';
 import { provisionalSale } from '../../../../lib/saleBreakdown';
+import { resolveEventFeatures } from '../../../../shared/eventFeatures';
 
 /** The same code stays in front of the camera for a moment: ignore repeats meanwhile. */
 const REPEAT_SCAN_MS = 2500;
@@ -67,6 +72,11 @@ export type ResolvedLine =
   | {
       ok: true;
       price: number;
+      /** Direct sale with a fee cap: the seller and what is left of their cap */
+      sellerId?: Id<'users'>;
+      feeCapLeft?: number;
+      /** The seller's commission when their fee group has its own (#302) */
+      commissionPercent?: number;
       /** For the offline queue: what the desk sold and why at this price */
       productId: Id<'products'>;
       title: string;
@@ -146,6 +156,9 @@ function CashDesk() {
   // Product pages and seller IDs too, for a look at an item without internet
   const event = useQuery(api.events.getEvent, eventId ? { id: eventId as Id<'events'> } : 'skip');
   useOfflinePreparation(eventId, event, true);
+  // Direct sale: the buyer paid the seller, the desk books it and takes the commission
+  const directSale = !!event && resolveEventFeatures(event).directSale;
+  const commissionPercent = event?.commission ?? 0;
   const offline = useOfflineCheckout(eventId, ({ booked, conflicts }) => {
     if (conflicts > 0) {
       toast.warning(t('checkout.offline.conflicts', { count: conflicts }));
@@ -256,6 +269,19 @@ function CashDesk() {
   const lines = cart.map((entry) => resolved[entry.productId]);
   const allReady = cart.length > 0 && lines.every((line) => line?.ok);
   const total = lines.reduce((sum, line) => sum + (line?.ok ? line.price : 0), 0);
+  const ready = lines.flatMap((line) => (line?.ok ? [line] : []));
+  // Direct sale: the commission of each item, items of one seller share their fee cap
+  const commissions = deskCommissions(ready, commissionPercent);
+  const commissionOfLine = new Map(
+    ready.map((line, index) => [line.productId, commissions[index]])
+  );
+  const taken = directSale
+    ? commissions.reduce((sum, commission) => Math.round((sum + commission) * 100) / 100, 0)
+    : deskTakes(
+        ready.map((line) => line.price),
+        false,
+        commissionPercent
+      );
   const emailValid = buyerEmail.trim() === '' || EMAIL_PATTERN.test(buyerEmail.trim());
   const saleKey = `${cart.map((entry) => entry.productId).join()}:${total}`;
   const moneyReceived = paidFor === saleKey;
@@ -270,20 +296,37 @@ function CashDesk() {
 
   /** Keeps the sale on the device; the money is taken, so it is done for the buyer. */
   const queueSale = async (deskSaleId: string, ready: Extract<ResolvedLine, { ok: true }>[]) => {
-    await enqueueSale(eventId!, {
-      deskSaleId,
-      soldAt: Date.now(),
-      buyerEmail: buyerEmail.trim() || undefined,
-      items: ready.map((line) => ({
-        eventProductId: line.request.eventProductId,
-        productId: line.productId,
-        title: line.title,
-        paid: line.price,
-        priceSource: line.source,
-        offerId: line.request.offerId,
-      })),
-    });
-    setLastSale({ count: ready.length, total, queued: true, lines: ready });
+    // What this cart takes from each seller's fee cap, so the next offline cart starts
+    // from the rest
+    const feeCapSpent: Record<string, number> = {};
+    if (directSale) {
+      for (const line of ready) {
+        const commission = commissionOfLine.get(line.productId);
+        if (line.sellerId === undefined || line.feeCapLeft === undefined || !commission) continue;
+        feeCapSpent[line.sellerId] =
+          Math.round(((feeCapSpent[line.sellerId] ?? 0) + commission) * 100) / 100;
+      }
+    }
+    await enqueueSale(
+      eventId!,
+      {
+        deskSaleId,
+        soldAt: Date.now(),
+        buyerEmail: buyerEmail.trim() || undefined,
+        // The desk took the money this way; it is booked so even if the event changes
+        directSale,
+        items: ready.map((line) => ({
+          eventProductId: line.request.eventProductId,
+          productId: line.productId,
+          title: line.title,
+          paid: line.price,
+          priceSource: line.source,
+          offerId: line.request.offerId,
+        })),
+      },
+      feeCapSpent
+    );
+    setLastSale({ count: ready.length, total: taken, queued: true, lines: ready });
     nextBuyer();
   };
 
@@ -304,7 +347,8 @@ function CashDesk() {
       });
       setLastSale({
         count: result.purchaseIds.length,
-        total: result.total,
+        // Older backends do not send what the desk took
+        total: result.taken ?? result.total,
         queued: false,
         lines: ready,
       });
@@ -436,7 +480,15 @@ function CashDesk() {
               <CheckCircle2 className="h-5 w-5 shrink-0" />
               <p className="min-w-0 flex-1 basis-48">
                 <Trans
-                  i18nKey={lastSale.queued ? 'checkout.offline.queued' : 'checkout.sold'}
+                  i18nKey={
+                    directSale
+                      ? lastSale.queued
+                        ? 'checkout.offline.queuedDirect'
+                        : 'checkout.soldDirect'
+                      : lastSale.queued
+                        ? 'checkout.offline.queued'
+                        : 'checkout.sold'
+                  }
                   ns="organizer"
                   count={lastSale.count}
                   values={{ total: formatPriceDE(lastSale.total) }}
@@ -469,6 +521,9 @@ function CashDesk() {
                   entry={entry}
                   offline={offline.offline}
                   snapshot={offline.snapshot}
+                  directSale={directSale}
+                  commissionPercent={commissionPercent}
+                  commission={commissionOfLine.get(entry.productId)}
                   onChange={(change) => updateEntry(entry.productId, change)}
                   onRemove={() => removeEntry(entry.productId)}
                   onResolved={onResolved}
@@ -494,9 +549,29 @@ function CashDesk() {
               </div>
               {/* Sum and the way to finish stay in reach, however long the cart is */}
               <StickyActionBar className="lg:static lg:mx-0 lg:rounded-xl lg:border lg:bg-card lg:p-4 lg:backdrop-blur-none">
+                {directSale && (
+                  <div className="flex w-full items-baseline justify-between text-sm text-muted-foreground">
+                    <span>{t('checkout.direct.paidToSeller')}</span>
+                    <span className="tabular-nums">{formatPriceDE(total)} €</span>
+                  </div>
+                )}
                 <div className="flex w-full items-baseline justify-between">
-                  <span>{t('checkout.sum', { count: cart.length })}</span>
-                  <span className="text-2xl font-bold tabular-nums">{formatPriceDE(total)} €</span>
+                  <span>
+                    {directSale
+                      ? ready.some(
+                          (line) =>
+                            line.commissionPercent !== undefined &&
+                            line.commissionPercent !== commissionPercent
+                        )
+                        ? // Sellers of fee groups pay their own percentage
+                          t('checkout.direct.sumMixed', { count: cart.length })
+                        : t('checkout.direct.sum', {
+                            count: cart.length,
+                            percent: commissionPercent,
+                          })
+                      : t('checkout.sum', { count: cart.length })}
+                  </span>
+                  <span className="text-2xl font-bold tabular-nums">{formatPriceDE(taken)} €</span>
                 </div>
                 {/* A sale is only one tap away otherwise; a changed cart asks again */}
                 <Label
@@ -510,7 +585,9 @@ function CashDesk() {
                     onCheckedChange={(checked) => setPaidFor(checked ? saleKey : null)}
                     className="size-5"
                   />
-                  {t('checkout.received', { total: formatPriceDE(total) })}
+                  {directSale
+                    ? t('checkout.direct.received', { total: formatPriceDE(taken) })
+                    : t('checkout.received', { total: formatPriceDE(total) })}
                 </Label>
                 <div className="flex w-full gap-2">
                   <Button
@@ -541,12 +618,36 @@ function CashDesk() {
   );
 }
 
+/** The commission of a direct-sale line; below its full amount the seller's fee cap is reached. */
+function DirectCommission({ full, taken = full }: { full: number; taken?: number }) {
+  const { t } = useTranslation('organizer');
+  const capped = taken < full;
+  return (
+    <span
+      className={cn(
+        'whitespace-nowrap text-xs tabular-nums',
+        capped ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'
+      )}
+      data-testid="checkout-commission"
+    >
+      {capped && taken === 0
+        ? t('checkout.direct.capReached')
+        : t(capped ? 'checkout.direct.commissionCapped' : 'checkout.direct.commission', {
+            amount: formatPriceDE(taken),
+          })}
+    </span>
+  );
+}
+
 /** One scanned item: live data (offline: the copy on the device), price choice and its problems. */
 function CartLine({
   eventId,
   entry,
   offline,
   snapshot,
+  directSale,
+  commissionPercent,
+  commission,
   onChange,
   onRemove,
   onResolved,
@@ -555,6 +656,11 @@ function CartLine({
   entry: CartEntry;
   offline: boolean;
   snapshot: CheckoutSnapshot | null;
+  /** The buyer paid the seller: the desk enters the agreed price, takes the commission */
+  directSale: boolean;
+  commissionPercent: number;
+  /** What the desk takes for it at a direct sale, after the seller's fee cap */
+  commission?: number;
   onChange: (change: Partial<CartEntry>) => void;
   onRemove: () => void;
   onResolved: (productId: Id<'products'>, line: ResolvedLine | undefined) => void;
@@ -586,15 +692,21 @@ function CartLine({
     const sale = {
       title: item.title,
       productId: entry.productId,
+      sellerId: item.sellerId,
+      feeCapLeft: item.feeCapLeft,
+      commissionPercent: item.commissionPercent,
       invoice: {
-        description: item.attributes.map((a) => `${a.label}: ${a.value}`).join(', '),
+        description: item.attributes
+          .map((a) => `${categoryFieldText(a, 'label') ?? a.label}: ${a.value}`)
+          .join(', '),
         image: item.image ?? undefined,
         price: item.price,
         discountPercent: item.discountPercent ?? undefined,
       },
     };
     if (entry.choice === 'negotiated') {
-      const min = item.minimumPrice;
+      // At a direct sale any price up to the label counts, seller and buyer agreed on it
+      const min = directSale ? 0.01 : item.minimumPrice;
       if (min === undefined) return { ok: false, problem: t('checkout.problem.noNegotiation') };
       if (!Number.isFinite(negotiated) || negotiated < min || negotiated > item.listPrice) {
         return {
@@ -626,11 +738,12 @@ function CartLine({
       };
     }
     return { ok: true, price: item.listPrice, ...sale, source: 'list', request };
-  }, [item, offers, entry.choice, entry.productId, negotiated, offline, snapshot, t]);
+  }, [item, offers, entry.choice, entry.productId, negotiated, offline, snapshot, directSale, t]);
 
   useEffect(() => onResolved(entry.productId, line), [entry.productId, line, onResolved]);
 
-  const hasOptions = !!item && ((offers?.length ?? 0) > 0 || item.minimumPrice !== undefined);
+  const hasOptions =
+    !!item && (directSale || (offers?.length ?? 0) > 0 || item.minimumPrice !== undefined);
 
   return (
     <li className="flex gap-3 p-3" data-testid="checkout-line">
@@ -666,7 +779,7 @@ function CartLine({
               <ul className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                 {item.attributes.map((attribute) => (
                   <li key={attribute.label} className="[overflow-wrap:anywhere]">
-                    {attribute.label}: {attribute.value}
+                    {categoryFieldText(attribute, 'label') ?? attribute.label}: {attribute.value}
                   </li>
                 ))}
               </ul>
@@ -674,8 +787,16 @@ function CartLine({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {line?.ok && (
-              <span className="whitespace-nowrap font-semibold tabular-nums">
-                {formatPriceDE(line.price)} €
+              <span className="flex flex-col items-end">
+                <span className="whitespace-nowrap font-semibold tabular-nums">
+                  {formatPriceDE(line.price)} €
+                </span>
+                {directSale && (
+                  <DirectCommission
+                    full={commissionOf(line.price, line.commissionPercent ?? commissionPercent)}
+                    taken={commission}
+                  />
+                )}
               </span>
             )}
             <Button
@@ -722,10 +843,14 @@ function CartLine({
                   })}
                 </option>
               ))}
-              {item.minimumPrice !== undefined && (
-                <option value="negotiated">
-                  {t('checkout.negotiated', { min: formatPriceDE(item.minimumPrice) })}
-                </option>
+              {directSale ? (
+                <option value="negotiated">{t('checkout.direct.agreed')}</option>
+              ) : (
+                item.minimumPrice !== undefined && (
+                  <option value="negotiated">
+                    {t('checkout.negotiated', { min: formatPriceDE(item.minimumPrice) })}
+                  </option>
+                )
               )}
             </select>
             {entry.choice === 'negotiated' && (
@@ -734,7 +859,9 @@ function CartLine({
                 inputMode="decimal"
                 value={entry.negotiatedInput}
                 onChange={(e) => onChange({ negotiatedInput: e.target.value })}
-                aria-label={t('checkout.negotiatedPrice')}
+                aria-label={
+                  directSale ? t('checkout.direct.agreedPrice') : t('checkout.negotiatedPrice')
+                }
                 placeholder={t('checkout.price')}
               />
             )}

@@ -100,6 +100,7 @@ export function InvitePage() {
         eventTitle={event.title}
         hasAccessCode={false}
         invitation={token}
+        invitedAsHelper={helper}
         conditions={event}
         onSuccess={() => navigate(`/public-events/${event._id}`)}
       />

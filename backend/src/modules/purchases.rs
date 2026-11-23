@@ -19,6 +19,7 @@ use super::event_roles::{
     Permission, assert_vendor_not_paid_out, require_permission, require_team,
 };
 use super::features::discounted_price;
+use super::fee_groups::{self, FeeBook};
 use super::instance::EMAIL_PATTERN;
 use super::notifications::{self, Area, Category, Content, T, format_euro};
 use super::offers::{
@@ -77,6 +78,15 @@ struct SoldItem {
     total: Decimal,
     commission: Decimal,
     payout: Decimal,
+    /// Paid to the seller at the item; the desk took only the commission
+    direct: bool,
+}
+
+impl SoldItem {
+    /// What the cash desk took for the item: the price, or the commission at a direct sale
+    fn taken(&self) -> Decimal {
+        docs::desk_takes(self.direct, self.total, self.commission)
+    }
 }
 
 fn receipt_address(buyer_email: Option<&str>) -> AppResult<Option<String>> {
@@ -153,14 +163,20 @@ async fn online_price(ctx: &mut Ctx, item: &Sellable, request: &SaleRequest) -> 
         });
     }
     if let Some(negotiated) = request.negotiated_price {
-        let Some(minimum) = item
-            .product
-            .minimum_price
-            .filter(|_| item.event.resolved_features().minimum_price)
-        else {
+        let features = item.event.resolved_features();
+        // At a direct sale seller and buyer agree on the price themselves; the desk books it
+        let minimum = if features.direct_sale {
+            Some(Decimal::new(1, 2))
+        } else {
+            item.product
+                .minimum_price
+                .filter(|_| features.minimum_price)
+        };
+        let Some(minimum) = minimum else {
             return Err(AppError::bad_request("checkout.noNegotiation"));
         };
-        if minimum >= list_price {
+        // The guard is about the seller's minimum; a direct sale has none
+        if !features.direct_sale && minimum >= list_price {
             return Err(AppError::bad_request("checkout.labelAtMinimum"));
         }
         let price = money(negotiated).filter(|price| *price >= minimum && *price <= list_price);
@@ -206,6 +222,7 @@ async fn book(
     item: Sellable,
     price: Price,
     desk_sale: Option<DeskSale>,
+    direct: bool,
 ) -> AppResult<(Event, SoldItem)> {
     let Sellable {
         relation,
@@ -213,12 +230,25 @@ async fn book(
         product,
     } = item;
     let total = price.total;
-    let commission = total
-        .checked_mul(event.commission)
-        .ok_or_else(|| AppError::bad_request("checkout.invalidPrice"))?
-        / Decimal::ONE_HUNDRED;
-    let commission = commission.cents();
-    let payout = total - commission;
+    // The seller's fees: their group's or the bazaar's (#302)
+    let fees = fee_groups::seller_fees(ctx.conn(), &event, product.vendor_id).await?;
+    let mut commission = fees
+        .commission_of(total)
+        .ok_or_else(|| AppError::bad_request("checkout.invalidPrice"))?;
+    // The seller pays the commission of a direct sale right away: only up to the fee cap
+    let cap = fees.max_fees_per_seller;
+    if direct && cap.is_some() {
+        // Two desks selling for the same seller at once must not both take the rest
+        sales::lock_seller_fees(ctx.conn(), event.id, product.vendor_id).await?;
+        let paid = sales::direct_commission_paid(ctx.conn(), event.id, product.vendor_id).await?;
+        commission = sales::capped_commission(commission, paid, cap);
+    }
+    // Direct sale: the seller has the money already and pays the commission at the desk
+    let payout = if direct {
+        Decimal::ZERO
+    } else {
+        total - commission
+    };
 
     sqlx::query("UPDATE event_products SET status = 'sold' WHERE id = $1")
         .bind(relation.id)
@@ -254,12 +284,12 @@ async fn book(
         "INSERT INTO purchases (product_id, event_id, seller_id, total_amount, commission_amount, payout_amount,
            payout_status, payout_date, discount_percent, list_price, price_source, offer_id,
            product_title, category_id, category_label, product_attributes, seller_number,
-           offer_record_id, desk_sale_id, created_at)
+           offer_record_id, desk_sale_id, created_at, direct_sale)
          VALUES ($1, $2, $3, $4, $5, $6, false, 'epoch', $7, $8, $9::purchase_price_source, $10,
            $11, $12, (SELECT label FROM categories WHERE id = $12), $13,
            (SELECT number FROM event_sellers WHERE event_id = $2 AND user_id = $3),
            (SELECT id FROM offer_records WHERE event_id = $2 AND product_id = $1),
-           $14, COALESCE($15, now()))
+           $14, COALESCE($15, now()), $16)
          RETURNING id",
     )
     .bind(product.id)
@@ -277,6 +307,7 @@ async fn book(
     .bind(&product.attributes)
     .bind(desk_sale.map(|sale| sale.id))
     .bind(desk_sale.map(|sale| sale.sold_at))
+    .bind(direct)
     .fetch_one(ctx.conn())
     .await?;
     snapshot_seller(ctx.conn(), &event, product.vendor_id, false).await?;
@@ -292,6 +323,7 @@ async fn book(
             total,
             commission,
             payout,
+            direct,
         },
     ))
 }
@@ -316,7 +348,8 @@ async fn sell_event_product(
 ) -> AppResult<(Event, SoldItem)> {
     let item = sellable(ctx, event, request.event_product_id.0).await?;
     let price = online_price(ctx, &item, request).await?;
-    book(ctx, item, price, desk_sale).await
+    let direct = item.event.resolved_features().direct_sale;
+    book(ctx, item, price, desk_sale, direct).await
 }
 
 /// A sale of one cash desk (desk_sales): the ID comes from the app, so the same sale sent
@@ -379,6 +412,13 @@ async fn notify_seller(
     items: &[&SoldItem],
 ) -> AppResult<()> {
     let title = event.title.clone();
+    // A direct sale pays nothing out: the seller has the money and paid the commission
+    let direct = items.iter().any(|item| item.direct);
+    let (commission_key, footnote_key) = if direct {
+        ("sale.commissionPaid", "sale.directFootnote")
+    } else {
+        ("sale.commission", "sale.footnote")
+    };
     if let [item] = items {
         let (product, total, commission, payout) = (
             item.product.title.clone(),
@@ -394,22 +434,25 @@ async fn notify_seller(
                 subject: t.t("sale.one.subject", &[("title", &product)]),
                 heading: t.t("sale.one.heading", &[]),
                 paragraphs: vec![t.t("sale.one.text", &[("title", &product), ("event", &title)])],
-                details: vec![
-                    Detail {
+                details: [
+                    Some(Detail {
                         label: t.t("sale.price", &[]),
                         value: format_euro(total),
-                    },
-                    Detail {
-                        label: t.t("sale.commission", &[]),
+                    }),
+                    Some(Detail {
+                        label: t.t(commission_key, &[]),
                         value: format_euro(commission),
-                    },
-                    Detail {
+                    }),
+                    (!direct).then(|| Detail {
                         label: t.t("sale.payout", &[]),
                         value: format_euro(payout),
-                    },
-                ],
+                    }),
+                ]
+                .into_iter()
+                .flatten()
+                .collect(),
                 link: t.link("sale.one.link", "/my-products"),
-                footnote: Some(t.t("sale.footnote", &[])),
+                footnote: Some(t.t(footnote_key, &[])),
             },
             Some(Area::Sales),
             Duration::zero(),
@@ -435,13 +478,15 @@ async fn notify_seller(
                 })
                 .collect();
             details.push(Detail {
-                label: t.t("sale.commission", &[]),
+                label: t.t(commission_key, &[]),
                 value: format_euro(commission),
             });
-            details.push(Detail {
-                label: t.t("sale.payout", &[]),
-                value: format_euro(payout),
-            });
+            if !direct {
+                details.push(Detail {
+                    label: t.t("sale.payout", &[]),
+                    value: format_euro(payout),
+                });
+            }
             Content {
                 category: Some(Category::Sales),
                 subject: t.count("sale.many.subject", count, &[("event", &title)]),
@@ -449,7 +494,7 @@ async fn notify_seller(
                 paragraphs: vec![t.count("sale.many.text", count, &[("event", &title)])],
                 details,
                 link: t.link("sale.many.link", "/my-sales"),
-                footnote: Some(t.t("sale.footnote", &[])),
+                footnote: Some(t.t(footnote_key, &[])),
             }
         },
         Some(Area::Sales),
@@ -487,7 +532,7 @@ async fn send_receipt(
 ) -> AppResult<()> {
     let title = event.title.clone();
     if let [item] = items {
-        let fields = fields_of(ctx.conn(), item.product.product_category).await?;
+        let fields = &fields_of(ctx.conn(), item.product.product_category).await?;
         let attributes =
             category_fields::describe_attributes(fields, item.product.attributes.as_ref());
         let (product, total, path) = (
@@ -501,7 +546,10 @@ async fn send_receipt(
                 value: product.clone(),
             }];
             details.extend(attributes.iter().map(|a| Detail {
-                label: a.label.to_owned(),
+                label: match (&a.label_en, locale) {
+                    (Some(en), Locale::En) => en.clone(),
+                    _ => a.label.clone(),
+                },
                 value: a.value.clone(),
             }));
             details.push(Detail {
@@ -602,6 +650,8 @@ struct CartArgs {
 struct CartResult {
     purchase_ids: Vec<Uuid>,
     total: Decimal,
+    /// What the desk took: the total, at direct sales only their commission
+    taken: Decimal,
 }
 
 /// The cart: all items of one buyer in one transaction. If one cannot be sold, nothing is
@@ -638,15 +688,12 @@ async fn sell_products(ctx: &mut Ctx, args: CartArgs) -> AppResult<CartResult> {
                 sold_at: Utc::now(),
             };
             if let Claim::Booked(purchase_ids) = claim_desk_sale(ctx, sale, event_id, user).await? {
-                let total: Decimal = sqlx::query_scalar(
-                    "SELECT COALESCE(sum(total_amount), 0) FROM purchases WHERE desk_sale_id = $1",
-                )
-                .bind(sale.id)
-                .fetch_one(ctx.conn())
-                .await?;
+                let booked =
+                    docs::purchases_where(ctx.conn(), "desk_sale_id = $1", sale.id).await?;
                 return Ok(CartResult {
                     purchase_ids,
-                    total,
+                    total: booked.iter().map(|p| p.total_amount).sum(),
+                    taken: booked.iter().map(docs::Purchase::taken).sum(),
                 });
             }
             Some(sale)
@@ -686,6 +733,7 @@ async fn sell_products(ctx: &mut Ctx, args: CartArgs) -> AppResult<CartResult> {
     let result = CartResult {
         purchase_ids: sold.iter().map(|item| item.purchase).collect(),
         total: sold.iter().map(|item| item.total).sum(),
+        taken: sold.iter().map(SoldItem::taken).sum(),
     };
     if let Some(address) = address {
         let locale = cash_desk_locale(ctx, user).await?;
@@ -719,6 +767,60 @@ struct CheckoutItem {
     attributes: Vec<Attribute>,
     /// The team's note from the drop-off, e.g. the hook of the key
     internal_note: Option<String>,
+    /// The seller, so a cart can share the rest of the fee cap among their items
+    seller_id: Uuid,
+    /// Direct sale with a fee cap: the commission the seller still pays at most (#301)
+    fee_cap_left: Option<Decimal>,
+    /// The seller's commission in percent, when their fee group has its own (#302)
+    commission_percent: Option<Decimal>,
+}
+
+/// What the desk needs of each seller's fees: the commission when it is not the bazaar's
+/// (fee group, #302) and, at a direct sale with a fee cap, what is left of the cap after
+/// the commissions they paid at the desk.
+struct DeskFees {
+    book: FeeBook,
+    direct: bool,
+    paid: HashMap<Uuid, Decimal>,
+    commission: Decimal,
+}
+
+impl DeskFees {
+    async fn load(conn: &mut sqlx::PgConnection, event: &Event) -> sqlx::Result<Self> {
+        let direct = event.resolved_features().direct_sale;
+        let book = FeeBook::load(&mut *conn, event).await?;
+        let paid: Vec<(Uuid, Decimal)> = if direct {
+            sqlx::query_as(
+                "SELECT seller_id, sum(commission_amount) FROM purchases
+                 WHERE event_id = $1 AND direct_sale GROUP BY seller_id",
+            )
+            .bind(event.id)
+            .fetch_all(conn)
+            .await?
+        } else {
+            Vec::new()
+        };
+        Ok(Self {
+            book,
+            direct,
+            paid: paid.into_iter().collect(),
+            commission: event.commission,
+        })
+    }
+
+    fn cap_left(&self, seller: Uuid) -> Option<Decimal> {
+        let cap = self
+            .book
+            .get(seller)
+            .max_fees_per_seller
+            .filter(|_| self.direct)?;
+        let paid = self.paid.get(&seller).copied().unwrap_or_default();
+        Some((cap - paid).max(Decimal::ZERO))
+    }
+
+    fn commission_percent(&self, seller: Uuid) -> Option<Decimal> {
+        Some(self.book.get(seller).commission).filter(|percent| *percent != self.commission)
+    }
 }
 
 fn nullable<S: serde::Serializer>(value: &Option<Uuid>, serializer: S) -> Result<S::Ok, S::Error> {
@@ -750,10 +852,21 @@ async fn get_checkout_item(
         .await?
         .is_some_and(|seller| seller.payout_received);
     let list_price = current_list_price(&product, &relation);
-    let fields = fields_of(ctx.conn(), product.product_category).await?;
+    let fields = &fields_of(ctx.conn(), product.product_category).await?;
     let minimum_price = product
         .minimum_price
         .filter(|minimum| event.resolved_features().minimum_price && *minimum < list_price);
+    let features = event.resolved_features();
+    let fees = fee_groups::seller_fees(ctx.conn(), &event, product.vendor_id).await?;
+    let fee_cap_left = match fees.max_fees_per_seller.filter(|_| features.direct_sale) {
+        Some(cap) => {
+            let paid =
+                sales::direct_commission_paid(ctx.conn(), event.id, product.vendor_id).await?;
+            Some((cap - paid).max(Decimal::ZERO))
+        }
+        None => None,
+    };
+    let commission_percent = Some(fees.commission).filter(|percent| *percent != event.commission);
     Ok(Some(CheckoutItem {
         event_product_id: relation.id,
         product_id: product.id,
@@ -766,6 +879,9 @@ async fn get_checkout_item(
         seller_paid_out: paid_out,
         attributes: category_fields::describe_attributes(fields, product.attributes.as_ref()),
         internal_note: relation.internal_note,
+        seller_id: product.vendor_id,
+        fee_cap_left,
+        commission_percent,
         title: product.title,
     }))
 }
@@ -824,15 +940,16 @@ async fn get_checkout_snapshot(ctx: &mut Ctx, args: EventIdArgs) -> AppResult<Ch
     .bind(event_id)
     .fetch_all(ctx.conn())
     .await?;
-    let categories = category_fields::load_categories(ctx.conn()).await?;
+    let index = category_fields::FieldIndex::load(ctx.conn()).await?;
     let mut offers = accepted_offers_of_event(ctx, event_id).await?;
+    let desk_fees = DeskFees::load(ctx.conn(), &event).await?;
     let mut items = Vec::with_capacity(relations.len());
     for relation in relations {
         let Some(product) = products.get(&relation.product_id) else {
             continue;
         };
         let list_price = current_list_price(product, &relation);
-        let fields = category_fields::category_fields(product.product_category, &categories);
+        let fields = index.fields(product.product_category);
         items.push(SnapshotItem {
             offers: offers.remove(&relation.id).unwrap_or_default(),
             item: CheckoutItem {
@@ -849,10 +966,13 @@ async fn get_checkout_snapshot(ctx: &mut Ctx, args: EventIdArgs) -> AppResult<Ch
                     .filter(|minimum| minimum_allowed && *minimum < list_price),
                 seller_paid_out: paid_out.contains(&product.vendor_id),
                 attributes: category_fields::describe_attributes(
-                    fields,
+                    &fields,
                     product.attributes.as_ref(),
                 ),
                 internal_note: relation.internal_note,
+                seller_id: product.vendor_id,
+                fee_cap_left: desk_fees.cap_left(product.vendor_id),
+                commission_percent: desk_fees.commission_percent(product.vendor_id),
             },
         });
     }
@@ -891,6 +1011,12 @@ struct OfflineSale {
     sold_at: DateTime<Utc>,
     items: Vec<OfflineItem>,
     buyer_email: Option<String>,
+    /// How the desk sold: true, it took only the commission. False counts whatever the
+    /// event says by now: the money changed hands that way and is in the till. True only
+    /// where the event has direct sales, else it is a conflict for the team: no desk may
+    /// book a sale whose seller then gets nothing at a bazaar without direct sales.
+    /// Absent (older apps): as the event says
+    direct_sale: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -997,6 +1123,12 @@ async fn sync_offline_sales(ctx: &mut Ctx, args: SyncArgs) -> AppResult<Vec<Sync
         let mut conflicts = Vec::new();
         for request in &sale.items {
             let checked = match sellable(ctx, event_id, request.event_product_id.0).await {
+                Ok(item)
+                    if sale.direct_sale == Some(true)
+                        && !item.event.resolved_features().direct_sale =>
+                {
+                    Err("checkout.directSaleMismatch")
+                }
                 Ok(item) => match offline_price(ctx, &item, request).await? {
                     Some(price) => Ok((item, price)),
                     None => Err("checkout.invalidPrice"),
@@ -1004,7 +1136,12 @@ async fn sync_offline_sales(ctx: &mut Ctx, args: SyncArgs) -> AppResult<Vec<Sync
                 Err(err) => Err(err.code().ok_or(err)?),
             };
             match checked {
-                Ok((item, price)) => sold.push(book(ctx, item, price, Some(desk_sale)).await?.1),
+                Ok((item, price)) => {
+                    let direct = sale
+                        .direct_sale
+                        .unwrap_or_else(|| item.event.resolved_features().direct_sale);
+                    sold.push(book(ctx, item, price, Some(desk_sale), direct).await?.1)
+                }
                 Err(reason) => {
                     record_conflict(ctx, desk_sale.id, event_id, request, reason).await?;
                     conflicts.push(request.product_id.0);
@@ -1160,17 +1297,30 @@ async fn undo_sale(ctx: &mut Ctx, args: UndoArgs) -> AppResult<Success> {
         .await?
         .ok_or_else(|| AppError::not_found("notFound.product"))?;
     assert_vendor_not_paid_out(ctx.conn(), relation.event_id, product.vendor_id).await?;
-    let offer: Option<Option<Uuid>> = sqlx::query_scalar(
+    if fee_groups::seller_fees(ctx.conn(), &event, product.vendor_id)
+        .await?
+        .max_fees_per_seller
+        .is_some()
+    {
+        sales::lock_seller_fees(ctx.conn(), event.id, product.vendor_id).await?;
+    }
+    let deleted: Option<(Option<Uuid>, bool)> = sqlx::query_as(
         "DELETE FROM purchases WHERE id = (
            SELECT id FROM purchases WHERE event_id = $1 AND seller_id = $2 AND product_id = $3
            ORDER BY created_at LIMIT 1)
-         RETURNING offer_id",
+         RETURNING offer_id, direct_sale",
     )
     .bind(relation.event_id)
     .bind(product.vendor_id)
     .bind(product.id)
     .fetch_optional(ctx.conn())
     .await?;
+    // The commission of an undone direct sale no longer counts towards the fee cap: the
+    // seller's later direct sales owe theirs again, up to the cap
+    if let Some((_, true)) = deleted {
+        sales::recap_seller_direct_sales(ctx.conn(), &event, product.vendor_id).await?;
+    }
+    let offer = deleted.map(|(offer, _)| offer);
     // The buyer gets their deal back, so the offer can be redeemed at the next sale
     if let Some(Some(offer)) = offer {
         sqlx::query(
@@ -1220,6 +1370,7 @@ struct SaleItem {
     sale: SaleInfo,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SalesEvent {
@@ -1230,7 +1381,10 @@ struct SalesEvent {
     start_date: DateTime<Utc>,
     #[serde(with = "ms")]
     end_date: DateTime<Utc>,
+    /// The seller's commission: their fee group's or the bazaar's
     commission_percent: Decimal,
+    /// The seller's fee group (#302)
+    fee_group: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -1239,6 +1393,8 @@ struct Totals {
     revenue: Decimal,
     commission: Decimal,
     intake_fee: IntakeFee,
+    /// Fees above the cap given back
+    fee_cap_credit: Decimal,
     payout: Decimal,
 }
 
@@ -1324,15 +1480,36 @@ async fn get_my_sales(ctx: &mut Ctx, _: NoArgs) -> AppResult<Vec<SalesGroup>> {
         }
         let revenue: Decimal = items.iter().map(|i| i.sale.total_amount).sum();
         let commission: Decimal = items.iter().map(|i| i.sale.commission).sum();
-        let payout: Decimal =
-            items.iter().map(|i| i.sale.payout).sum::<Decimal>() - intake_fee.total;
+        let fees = fee_groups::seller_fees(ctx.conn(), &event, user).await?;
+        let fee_cap_credit =
+            sales::fee_cap_credit_of(&fees, seller.as_ref(), commission, &intake_fee);
+        let paid = seller.as_ref().is_some_and(|s| s.payout_received);
+        // Paid out: group and rate as settled, not as the settings are now
+        let (fee_group, commission_percent) = if paid {
+            (
+                seller.as_ref().and_then(|s| s.fee_group_label.clone()),
+                seller
+                    .as_ref()
+                    .and_then(|s| s.commission_percent)
+                    .unwrap_or(fees.commission),
+            )
+        } else {
+            (
+                fees.group.as_ref().map(|group| group.label.clone()),
+                fees.commission,
+            )
+        };
+        let payout: Decimal = items.iter().map(|i| i.sale.payout).sum::<Decimal>()
+            - intake_fee.total
+            + fee_cap_credit;
         groups.push(SalesGroup {
             event: SalesEvent {
                 id: event.id,
                 title: event.title.clone(),
                 start_date: event.start_date,
                 end_date: event.end_date,
-                commission_percent: event.commission,
+                commission_percent,
+                fee_group,
             },
             paid: seller.as_ref().is_some_and(|s| s.payout_received),
             seller_number: seller.and_then(|s| s.number),
@@ -1341,6 +1518,7 @@ async fn get_my_sales(ctx: &mut Ctx, _: NoArgs) -> AppResult<Vec<SalesGroup>> {
                 revenue,
                 commission,
                 intake_fee,
+                fee_cap_credit,
                 payout,
             },
         });

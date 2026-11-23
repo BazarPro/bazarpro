@@ -2,6 +2,7 @@
   "myProducts": {
     "soldCannotAdd": "Verkaufte Artikel können nicht mehr zu Basaren hinzugefügt werden.",
     "cannotUnregister": "Dieser Artikel kann nicht mehr abgemeldet werden.",
+    "categoryNotAllowed": "Die Kategorie dieses Artikels ist bei „{{event}}“ nicht erlaubt.",
     "deletedMany_one": "{{count}} Artikel gelöscht",
     "deletedMany_other": "{{count}} Artikel gelöscht",
     "deleteFailed": "Löschen fehlgeschlagen",
@@ -15,6 +16,8 @@
     "productsUpdated": "Artikel aktualisiert",
     "selected_one": "Artikel ausgewählt",
     "selected_other": "Artikel ausgewählt",
+    "selectAll": "Alle auswählen",
+    "selectNone": "Auswahl aufheben",
     "labelsPdf": "Etiketten als PDF",
     "labelsPdfShort": "Etiketten",
     "pdfCreating": "PDF wird erstellt…",
@@ -37,7 +40,13 @@
     "createForEvent": "Artikel für Basar erstellen",
     "soldHidden_one": "1 verkaufter Artikel ist ausgeblendet.",
     "soldHidden_other": "{{count}} verkaufte Artikel sind ausgeblendet.",
-    "showAllOrSales": "<all>Alle anzeigen</all> oder <sales>zu Meine Verkäufe</sales>"
+    "showAllOrSales": "<all>Alle anzeigen</all> oder <sales>zu Meine Verkäufe</sales>",
+    "placesLeft_one": "noch {{count}} Platz frei",
+    "placesLeft_other": "noch {{count}} Plätze frei",
+    "marketFull": "Basar voll",
+    "placesOver_one": "{{count}} Artikel zu viel für die freien Plätze",
+    "placesOver_other": "{{count}} Artikel zu viel für die freien Plätze",
+    "noPlaceLeft": "Auf dem Basar ist kein Platz mehr frei."
   },
   "header": {
     "title": "Meine Artikel",
@@ -61,6 +70,7 @@
     "questions_one": "{{count}} offene Frage",
     "questions_other": "{{count}} offene Fragen",
     "payout": "Auszahlung an dich: {{amount}} €",
+    "receivedDirectly": "Direkt erhalten, abzüglich Provision: {{amount}} €",
     "privateInvoice": "Privatrechnung",
     "forBuyer": "Für den Käufer",
     "forMe": "Für mich (mit Bazar-Gebühr)",
@@ -119,6 +129,10 @@
     "chooseCondition": "Zustand wählen",
     "category": "Kategorie *",
     "chooseCategory": "Kategorie wählen",
+    "noCategories": "Keine passende Kategorie.",
+    "categoryNotAllowed": "„{{category}}“ ist bei „{{event}}“ nicht erlaubt. Wähle eine andere Kategorie oder einen anderen Basar.",
+    "categoryNotAllowedShort": "Die Kategorie ist bei „{{event}}“ nicht erlaubt.",
+    "categoriesOfBazaar": "Nur Kategorien, die {{events}} erlaubt.",
     "price": "Preis (€) *",
     "images": "Bilder *",
     "negotiable": "Preis verhandelbar?",
@@ -217,6 +231,9 @@
     "clash": "Achtung: Ein anderer Verkäufer bei diesem Basar hat dasselbe Muster wie du. Eure Etiketten unterscheiden sich nur im Zusatzbuchstaben. Du musst nichts ändern, das Team sieht es auf den Sortierblättern. Bitte weise beim Abgeben darauf hin.",
     "clashAt": "Achtung: Bei {{bazaars}} hat ein anderer Verkäufer dasselbe Muster wie du. Eure Etiketten unterscheiden sich nur im Zusatzbuchstaben. Bitte weise beim Abgeben darauf hin.",
     "basket": "Korb-Etikett drucken",
+    "print": "Drucken",
+    "printItems": "Artikel-Etiketten",
+    "printBasket": "Korb-Etikett",
     "basketHint": "Dein Sortierzeichen groß zum Aufkleben auf deinen Korb"
   },
   "price": {

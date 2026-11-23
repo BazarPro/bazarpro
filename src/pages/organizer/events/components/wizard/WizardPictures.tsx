@@ -7,17 +7,20 @@ import { ImageUpload } from '../../../../../components/ui/ImageUpload';
 import { Label } from '../../../../../components/ui/label';
 import { coverForKind, coverUrl, EVENT_COVERS } from '../../../../../lib/eventCovers';
 import { cn } from '../../../../../lib/utils';
+import { InfoTip, LabelWithInfo } from '../../../../../components/ui/info-tip';
 
 /** Own pictures cannot wait in the browser until the account exists. */
 function LoginForUpload({ onLogin }: { onLogin: () => void }) {
   const { t } = useTranslation('organizer');
   return (
-    <div className="space-y-3 rounded-lg border border-dashed bg-muted/30 p-4 text-center">
-      <Lock className="mx-auto h-5 w-5 text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">{t('wizard.pictures.locked')}</p>
-      <Button type="button" variant="outline" size="sm" onClick={onLogin}>
-        {t('wizard.pictures.login')}
-      </Button>
+    <div className="flex items-start gap-3 rounded-lg border border-dashed bg-muted/30 p-3">
+      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">{t('wizard.pictures.locked')}</p>
+        <Button type="button" variant="outline" size="sm" onClick={onLogin}>
+          {t('wizard.pictures.login')}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -48,18 +51,17 @@ export function WizardPictures({
   };
 
   return (
-    <div className="space-y-6 rounded-xl border bg-card p-4 sm:p-5">
-      <div>
-        <h3 className="text-lg font-semibold">{t('wizard.pictures.title')}</h3>
-        <p className="text-sm text-muted-foreground">{t('wizard.pictures.intro')}</p>
+    <div className="space-y-5 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex items-center gap-1">
+        <h3 className="font-semibold">{t('wizard.pictures.title')}</h3>
+        <InfoTip>{t('wizard.pictures.intro')}</InfoTip>
       </div>
 
-      <div className="space-y-3">
-        <div>
-          <p className="font-medium">{t('wizard.pictures.cover')}</p>
-          <p className="text-xs text-muted-foreground">{t('wizard.pictures.coverText')}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+      <div className="space-y-2">
+        <LabelWithInfo info={t('wizard.pictures.coverText')}>
+          {t('wizard.pictures.cover')}
+        </LabelWithInfo>
+        <div className="grid grid-cols-3 gap-1.5">
           {covers.map((id) => {
             const active = !coverImage && template === id;
             return (
@@ -70,62 +72,60 @@ export function WizardPictures({
                 aria-label={t('wizard.pictures.coverPick', {
                   name: t(`wizard.pictures.names.${id}`),
                 })}
+                title={t(`wizard.pictures.names.${id}`)}
                 disabled={!!coverImage}
                 // A second click takes the picture away again
                 onClick={() =>
                   setValue('coverTemplate', active ? undefined : id, { shouldDirty: true })
                 }
                 className={cn(
-                  'relative overflow-hidden rounded-md border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40',
-                  active ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                  'relative overflow-hidden rounded-md ring-2 ring-offset-1 ring-offset-card transition-all focus-visible:outline-none focus-visible:ring-ring disabled:opacity-40',
+                  active ? 'ring-primary' : 'ring-transparent hover:ring-primary/40'
                 )}
               >
                 <img
                   src={coverUrl(id)}
                   alt=""
                   loading="lazy"
-                  className="aspect-video w-full object-cover"
+                  className="aspect-[4/3] w-full object-cover"
                 />
                 {active && (
-                  <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                    <Check className="h-3 w-3" />
+                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                    <Check className="h-2.5 w-2.5" />
                   </span>
                 )}
               </button>
             );
           })}
         </div>
-        <div className="space-y-2">
-          <Label>{t('wizard.pictures.own')}</Label>
-          {isGuest ? (
-            <LoginForUpload onLogin={onLogin} />
-          ) : (
+      </div>
+
+      {isGuest ? (
+        <LoginForUpload onLogin={onLogin} />
+      ) : (
+        <>
+          <div className="space-y-2">
+            <Label>{t('wizard.pictures.own')}</Label>
             <ImageUpload
               onFilesChange={chooseOwnCover}
               initialFiles={coverImage ? [coverImage] : undefined}
               maxFiles={1}
             />
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-3 border-t pt-5">
-        <div>
-          <p className="font-medium">{t('wizard.pictures.map')}</p>
-          <p className="text-xs text-muted-foreground">{t('wizard.pictures.mapText')}</p>
-        </div>
-        {isGuest ? (
-          <LoginForUpload onLogin={onLogin} />
-        ) : (
-          <ImageUpload
-            onFilesChange={(files) =>
-              setValue('eventMapImageFile', files[0], { shouldDirty: true })
-            }
-            initialFiles={mapImage ? [mapImage] : undefined}
-            maxFiles={1}
-          />
-        )}
-      </div>
+          </div>
+          <div className="space-y-2 border-t pt-4">
+            <LabelWithInfo info={t('wizard.pictures.mapText')}>
+              {t('wizard.pictures.map')}
+            </LabelWithInfo>
+            <ImageUpload
+              onFilesChange={(files) =>
+                setValue('eventMapImageFile', files[0], { shouldDirty: true })
+              }
+              initialFiles={mapImage ? [mapImage] : undefined}
+              maxFiles={1}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

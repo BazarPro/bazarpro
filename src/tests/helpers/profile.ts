@@ -24,7 +24,9 @@ export async function fillProfileForm(page: Page) {
         await street.fill('Musterstrasse 1', { timeout: 2000 });
         await page.getByRole('textbox', { name: 'Postleitzahl' }).fill('12345', { timeout: 2000 });
         await page.getByRole('textbox', { name: 'Ort' }).fill('de', { timeout: 2000 });
-        await page.getByRole('textbox', { name: 'Land' }).fill('de', { timeout: 2000 });
+        // The country is a select by now, which keeps its default
+        const country = page.getByRole('textbox', { name: 'Land' });
+        if (await country.count()) await country.fill('de', { timeout: 2000 });
         await page.getByRole('button', { name: /speichern/i }).click({ timeout: 2000 });
       }
     } catch {

@@ -3,7 +3,6 @@
   "greetingAnonymous": "Welcome back!",
   "nextBazaar": {
     "title": "Your next bazaar",
-    "running": "Happening now",
     "products_one": "{{count}} item registered",
     "products_other": "{{count}} items registered",
     "noProducts": "No items registered yet",
@@ -21,7 +20,7 @@
     "noSales": "Nothing sold yet"
   },
   "organizer": {
-    "current": "Your current bazaar",
+    "current": "Selected bazaar",
     "later": "More bazaars",
     "none": "No other upcoming bazaars.",
     "showAll": "Show all {{count}}",
@@ -36,8 +35,12 @@
     "registered": "Registered for the bazaar",
     "products": "Add items",
     "labels": "Print labels and hand in",
+    "labelsDirect": "Print labels and bring them to setup",
     "labelsText": "The organizer tells you when to hand in",
+    "labelsTextDirect": "The organizer will tell you when setup is",
     "dropoff": "Hand-in from {{date}}",
-    "payout": "Sale and payout"
+    "setup": "Setup from {{date}}",
+    "payout": "Sale and payout",
+    "payoutDirect": "Sales and settlement"
   }
 }

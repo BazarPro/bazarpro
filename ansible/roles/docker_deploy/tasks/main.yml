@@ -3,7 +3,7 @@
   ansible.builtin.assert:
     that:
       - postgres_password | length > 0
-    fail_msg: Set the repository secret POSTGRES_PASSWORD before deploying (see ENV.md).
+    fail_msg: Set the repository secret POSTGRES_PASSWORD before deploying (see docs/env.md).
 
 - name: Ensure remote backup directory exists
   ansible.builtin.file:
@@ -42,13 +42,6 @@
     src: '../scripts/backup.sh'
     dest: '{{ remote_app_dir }}/scripts/backup.sh'
     mode: '0755'
-
-- name: Copy Traefik dynamic configuration
-  ansible.builtin.copy:
-    src: '../config/'
-    dest: '{{ remote_app_dir }}/config/'
-    mode: '0644'
-    directory_mode: '0755'
 
 - name: Create .env file from template
   ansible.builtin.template:

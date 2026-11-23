@@ -39,7 +39,7 @@ export interface ProductToComplete {
 export function findProductsToComplete(
   products: CompletionProduct[],
   targetEvents: CompletionEvent[],
-  categories?: { _id: string; label: string; parentCategory?: string }[]
+  categories?: { _id: string; fieldList?: CategoryField[] }[]
 ): ProductToComplete[] {
   const result: ProductToComplete[] = [];
   for (const product of products) {

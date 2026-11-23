@@ -27,10 +27,17 @@ import {
   Tag,
   Truck,
   Users,
+  Warehouse,
 } from 'lucide-react';
+import {
+  formatRegion,
+  postalRegion,
+  type PostalCodesByCountry,
+} from '../../../../../shared/postalCodes';
 import { Badge } from '../../../../../components/ui/badge';
 import { ItemPhoto } from '../../../../../components/illustrations/ItemIllustrations';
 import { SafeMarkdown } from '../../../../../components/markdown/SafeMarkdown';
+import { EventContactCard } from '../../../../../components/events/EventContactCard';
 import { SellerConditions } from '../../../../../components/events/SellerConditions';
 import { AppBar, PhoneFrame } from '../../../../public/landing/components/demo/Illustrations';
 import { useQuery } from '../../../../../lib/api/react';
@@ -39,15 +46,17 @@ import { coverUrl } from '../../../../../lib/eventCovers';
 import { EVENT_TYPES, type EventType } from '../../../../../lib/eventTypes';
 import {
   describeSellerFees,
-  formatSignedEuro,
+  feesFromForm,
   type SellerConditionsEvent,
+  formGroupAdvantages,
 } from '../../../../../lib/sellerFees';
+import type { FeeGroup } from '../../../../../shared/feeGroups';
 import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
-import { REQUIRABLE_FIELDS } from '../../../../../shared/categoryFields';
+import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
 import { formatEventPlace } from '../../../../../shared/eventJsonLd';
 import { MAX_DISCOUNT_PERCENT } from '../../../../../shared/eventFeatures';
-import { categoryName } from '../../../../../i18n/categories';
+import { eventCategoryNames } from '../../../../../i18n/categories';
 
 /*
  * Previews of the creation wizard: next to each step they show what buyers and sellers
@@ -61,6 +70,7 @@ const FALLBACK_TYPE = EVENT_TYPES.find((type) => type.id === 'clothingBazaar')!;
 interface WizardValues {
   title?: string;
   description?: string;
+  contactInfo?: string;
   location?: string;
   address?: { street?: string; postalCode?: string; city?: string; country?: string };
   startDate?: string;
@@ -85,12 +95,19 @@ interface WizardValues {
     publicCatalog?: boolean;
     requiredFields?: string[];
     maxItemsPerSeller?: number;
+    maxItemsTotal?: number;
     labelFormat?: 'standard' | 'small';
     priceOnLabel?: boolean;
     labelMark?: LabelMark;
     intakeFee?: number;
+    maxFeesPerSeller?: number;
+    feeGroups?: FeeGroup[];
     privateSellersOnly?: boolean;
+    regionOnly?: boolean;
+    allowedPostalCodes?: PostalCodesByCountry;
     fixedSellerData?: boolean;
+    directSale?: boolean;
+    eventType?: string;
   };
   sellerLogistics?: {
     dropoffStart?: string;
@@ -406,13 +423,16 @@ export function ItemsPreview({ type }: { type?: EventType }) {
   const features = values.features ?? {};
   const { kind, items } = useExamples(type);
   const categoryList = useQuery(api.categories.getAllCategories);
-  const chosen = (categoryList ?? [])
-    .filter((category) => values.categories?.includes(category._id as string))
-    .map((category) => categoryName(category));
-  const required = REQUIRABLE_FIELDS.filter((field) =>
-    features.requiredFields?.includes(field.key)
-  ).map((field) => categoryFieldText(field, 'label') ?? field.label);
+  const requirable = useRequirableFields();
+  const chosenIds = (categoryList ?? [])
+    .map((category) => category._id as string)
+    .filter((id) => values.categories?.includes(id));
+  const chosen = eventCategoryNames(chosenIds, categoryList) ?? [];
+  const required = requirable
+    .filter((field) => features.requiredFields?.includes(field.key))
+    .map((field) => categoryFieldText(field, 'label') ?? field.label);
   const limit = given(features.maxItemsPerSeller);
+  const total = given(features.maxItemsTotal);
   const small = features.labelFormat === 'small';
   const showPrice = !!features.priceOnLabel && !features.discounts;
   const mark = resolveEventFeatures({ features: features as StoredEventFeatures }).labelMark;
@@ -445,6 +465,11 @@ export function ItemsPreview({ type }: { type?: EventType }) {
           <Note icon={<Package className="h-3.5 w-3.5" />}>
             {limit ? t('wizard.preview.maxItems', { count: limit }) : t('wizard.preview.unlimited')}
           </Note>
+          {total && (
+            <Note icon={<Warehouse className="h-3.5 w-3.5" />}>
+              {t('wizard.preview.maxItemsTotal', { count: total })}
+            </Note>
+          )}
           {required.length > 0 && (
             <Note icon={<ClipboardCheck className="h-3.5 w-3.5" />}>
               {t('wizard.preview.requiredFields', { fields: required.join(', ') })}
@@ -496,11 +521,18 @@ export function FeesPreview({ type }: { type?: EventType }) {
   const price = items[0].price;
   const commission = Math.min(Math.max(given(values.commission) ?? 0, 0), 100);
   const intakeFee = Math.max(given(values.features?.intakeFee) ?? 0, 0);
-  const kept = Math.round(price * commission) / 100;
+  const cap = given(values.features?.maxFeesPerSeller);
+  const fullCommission = Math.round(price * commission) / 100;
+  const kept = cap === undefined ? fullCommission : Math.min(fullCommission, Math.max(cap, 0));
   const sellerGets = Math.max(price - kept, 0);
   const sellerShare = price > 0 ? (sellerGets / price) * 100 : 100;
-  // The worked example sellers also see in the conditions
-  const { example } = describeSellerFees({ commission, intakeFee });
+  // The worked example sellers also see in the conditions, for the chosen kind of bazaar
+  const { example } = describeSellerFees(
+    feesFromForm({
+      ...values,
+      features: { ...values.features, eventType: values.features?.eventType || type?.id },
+    })
+  );
 
   return (
     <PreviewCanvas caption={t('wizard.preview.sellerView')}>
@@ -538,27 +570,42 @@ export function FeesPreview({ type }: { type?: EventType }) {
             {t('wizard.preview.intakePerItem', { fee: `${formatPriceDE(intakeFee)} €` })}
           </p>
         )}
+        {cap !== undefined && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 animate-in fade-in duration-300 dark:text-emerald-400">
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+            {t('wizard.preview.feeCap', { fee: `${formatPriceDE(cap)} €` })}
+          </p>
+        )}
         {kept === 0 && intakeFee === 0 && (
           <p className="text-xs text-emerald-700 dark:text-emerald-400">
             {t('wizard.preview.free')}
           </p>
         )}
+        {/* Own fees for groups of sellers (#302) */}
+        {(values.features?.feeGroups ?? [])
+          .filter((group) => group.label.trim())
+          .map((group) => (
+            <p
+              key={group.id}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground animate-in fade-in duration-300"
+            >
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              {t('wizard.preview.feeGroup', {
+                label: group.label.trim(),
+                advantages: formGroupAdvantages(values, group),
+              })}
+            </p>
+          ))}
       </div>
       {example && (
-        <div className="mt-4 space-y-2 rounded-xl border bg-card p-4 text-xs shadow-sm">
-          <p className="text-xs text-muted-foreground">{example.intro}</p>
-          <dl className="space-y-1">
-            {example.rows.map((row) => (
-              <div key={row.label} className="flex justify-between gap-3">
-                <dt>{row.label}</dt>
-                <dd className="tabular-nums">{formatSignedEuro(row.amount)}</dd>
-              </div>
-            ))}
-            <div className="flex justify-between gap-3 border-t pt-1 font-semibold">
-              <dt>{t('wizard.preview.sellerGets')}</dt>
-              <dd className="tabular-nums">{formatPriceDE(example.total)} €</dd>
-            </div>
-          </dl>
+        <div className="mt-4 space-y-1 rounded-xl border bg-card p-4 text-xs shadow-sm animate-in fade-in duration-300">
+          <p className="font-semibold">{t('wizard.preview.example')}</p>
+          <p className="text-muted-foreground">{example.text}</p>
+          {example.groups.map((group) => (
+            <p key={group} className="text-muted-foreground">
+              {group}
+            </p>
+          ))}
         </div>
       )}
     </PreviewCanvas>
@@ -586,6 +633,13 @@ export function ListingPreview({ type }: { type?: EventType }) {
     chips.push({
       icon: <Users className="h-3 w-3" />,
       text: t('wizard.preview.spots', { count: limit }),
+    });
+  }
+  const region = features.regionOnly ? postalRegion(features) : undefined;
+  if (region) {
+    chips.push({
+      icon: <MapPin className="h-3 w-3" />,
+      text: t('region.short', { codes: formatRegion(region, 3) }),
     });
   }
   if (features.privateSellersOnly) {
@@ -677,8 +731,18 @@ function HeroPreview({ type, values }: { type?: EventType; values: WizardValues 
   );
 }
 
-/** Step "basics": the top of the bazaar page and the description as it will read. */
-export function PlacePreview({ type }: { type?: EventType }) {
+/**
+ * Steps "basics" and "details": the top of the bazaar page, the description as it will
+ * read and, while writing it, the contact box.
+ */
+export function PlacePreview({
+  type,
+  withContact,
+}: {
+  type?: EventType;
+  /** Only in the step where the contact is written */
+  withContact?: boolean;
+}) {
   const { t } = useTranslation('organizer');
   const values = useWizardValues();
   return (
@@ -692,6 +756,13 @@ export function PlacePreview({ type }: { type?: EventType }) {
             <p className="text-muted-foreground">{t('wizard.preview.descriptionOpen')}</p>
           )}
         </div>
+        {withContact && (
+          <EventContactCard
+            contact={values.contactInfo}
+            empty={t('wizard.preview.contactOpen')}
+            compact
+          />
+        )}
       </div>
     </PreviewCanvas>
   );
@@ -702,6 +773,7 @@ export function LogisticsPreview() {
   const { t, i18n } = useTranslation('organizer');
   const values = useWizardValues();
   const logistics = values.sellerLogistics ?? {};
+  const direct = !!values.features?.directSale;
   const span = (from?: string, to?: string) => {
     const start = formatLocal(from, i18n.language);
     const end = formatLocal(to, i18n.language);
@@ -711,7 +783,7 @@ export function LogisticsPreview() {
   const steps = [
     {
       icon: <Truck className="h-4 w-4" />,
-      label: t('wizard.preview.dropoff'),
+      label: t(direct ? 'wizard.preview.setup' : 'wizard.preview.dropoff'),
       when: span(logistics.dropoffStart, logistics.dropoffEnd),
     },
     {
@@ -721,7 +793,7 @@ export function LogisticsPreview() {
     },
     {
       icon: <Package className="h-4 w-4" />,
-      label: t('wizard.preview.pickup'),
+      label: t(direct ? 'wizard.preview.teardown' : 'wizard.preview.pickup'),
       when: span(logistics.pickupStart, logistics.pickupEnd),
     },
   ];
@@ -914,6 +986,12 @@ export function EventPagePreview({
               className="rounded-xl border bg-card p-4 text-sm shadow-sm"
               event={conditions}
               compact
+            />
+            <EventContactCard
+              contact={values.contactInfo}
+              empty={t('wizard.preview.contactOpen')}
+              compact
+              className="shadow-sm"
             />
           </aside>
         </div>

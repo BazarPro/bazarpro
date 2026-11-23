@@ -1,3 +1,5 @@
+import { formatRegion, postalRegion } from '../../../../../shared/postalCodes';
+import { countryName } from '../../../../../i18n/countries';
 import type { ReactNode } from 'react';
 import { Check, Minus } from 'lucide-react';
 import type { Doc } from '../../../../../lib/api/types';
@@ -8,9 +10,9 @@ import { Badge } from '../../../../../components/ui/badge';
 import { dateLocale } from '../../../../../i18n/format';
 import { useTranslation } from 'react-i18next';
 import { serviceLabel } from '../../../../../i18n/services';
-import { REQUIRABLE_FIELDS } from '../../../../../shared/categoryFields';
+import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
-import { categoryNames } from '../../../../../i18n/categories';
+import { eventCategoryNames } from '../../../../../i18n/categories';
 import { api } from '../../../../../lib/api/functions';
 import { useQuery } from '../../../../../lib/api/react';
 import { formatEventPlace } from '../../../../../shared/eventJsonLd';
@@ -60,6 +62,7 @@ function formatRange(start: number, end?: number) {
 /** Read-only overview of the current event settings. */
 export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
   const { t } = useTranslation('organizer');
+  const requirable = useRequirableFields();
   const categoryList = useQuery(api.categories.getAllCategories);
   const timeFormat = new Intl.DateTimeFormat(dateLocale(), {
     weekday: 'short',
@@ -69,6 +72,7 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
     minute: '2-digit',
   });
   const features = resolveEventFeatures(event);
+  const region = postalRegion(event.features);
   const logistics = event.sellerLogistics;
   const discountDetail = [
     features.discountStartsAt
@@ -94,23 +98,39 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
           ? t('summary.sellers', { count: event.vendorLimit })
           : t('summary.unlimited')}
       </Row>
-      <Row label={t('summary.dropoff')}>
+      <Row label={t('summary.registration')}>
+        {!features.registrationOpen
+          ? t('summary.registrationClosed')
+          : features.registrationStartsAt !== undefined || features.registrationEndsAt !== undefined
+            ? [
+                features.registrationStartsAt !== undefined &&
+                  t('summary.fromTime', { time: timeFormat.format(features.registrationStartsAt) }),
+                features.registrationEndsAt !== undefined &&
+                  t('summary.untilTime', { time: timeFormat.format(features.registrationEndsAt) }),
+              ]
+                .filter(Boolean)
+                .join(' ')
+            : t('summary.registrationOpen')}
+      </Row>
+      <Row label={t(features.directSale ? 'summary.setup' : 'summary.dropoff')}>
         {logistics?.dropoffStart !== undefined
           ? formatRange(logistics.dropoffStart, logistics.dropoffEnd)
           : t('summary.notGiven')}
       </Row>
-      <Row label={t('summary.pickup')}>
+      <Row label={t(features.directSale ? 'summary.teardown' : 'summary.pickup')}>
         {logistics?.pickupStart !== undefined
           ? formatRange(logistics.pickupStart, logistics.pickupEnd)
           : t('summary.notGiven')}
       </Row>
       <Row label={t('summary.categories')}>
         <div className="flex flex-wrap gap-1">
-          {(categoryNames(event.categories, categoryList) ?? event.categoryLabels).map((label) => (
-            <Badge key={label} variant="outline">
-              {label}
-            </Badge>
-          ))}
+          {(eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels).map(
+            (label) => (
+              <Badge key={label} variant="outline">
+                {label}
+              </Badge>
+            )
+          )}
         </div>
       </Row>
       <Row label={t('summary.services')}>
@@ -120,6 +140,7 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
       </Row>
       <Row label={t('summary.features')}>
         <ul className="space-y-1.5">
+          <Feature on={features.directSale} title={t('summary.directSale')} />
           <Feature on={features.discounts} title={t('summary.discounts')} detail={discountDetail} />
           <Feature on={features.priceOffers} title={t('summary.offers')} />
           <Feature on={features.minimumPrice} title={t('summary.minimum')} />
@@ -134,15 +155,21 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
           />
           <Feature on={features.photosOptional} title={t('summary.photosOptional')} />
           <Feature on={features.publicCatalog} title={t('summary.publicCatalog')} />
+          {region && (
+            <Feature
+              on={true}
+              title={t('region.short', { codes: formatRegion(region, 8) })}
+              detail={region.parts.map((part) => countryName(part.country)).join(', ')}
+            />
+          )}
           <Feature on={features.privateSellersOnly} title={t('summary.privateSellers')} />
           <Feature on={features.fixedSellerData} title={t('summary.fixedData')} />
           {(features.requiredFields?.length ?? 0) > 0 && (
             <Feature
               on={true}
               title={t('summary.requiredFields', {
-                fields: REQUIRABLE_FIELDS.filter((field) =>
-                  features.requiredFields?.includes(field.key)
-                )
+                fields: requirable
+                  .filter((field) => features.requiredFields?.includes(field.key))
                   .map((field) => categoryFieldText(field, 'label') ?? field.label)
                   .join(', '),
               })}
@@ -154,10 +181,31 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
               title={t('summary.maxItems', { count: features.maxItemsPerSeller })}
             />
           )}
+          {features.maxItemsTotal !== undefined && (
+            <Feature
+              on={true}
+              title={t('summary.maxItemsTotal', { count: features.maxItemsTotal })}
+            />
+          )}
           {features.intakeFee !== undefined && (
             <Feature
               on={true}
               title={t('summary.intakeFee', { amount: formatPriceDE(features.intakeFee) })}
+            />
+          )}
+          {features.maxFeesPerSeller !== undefined && (
+            <Feature
+              on={true}
+              title={t('summary.maxFees', { amount: formatPriceDE(features.maxFeesPerSeller) })}
+            />
+          )}
+          {(features.feeGroups?.length ?? 0) > 0 && (
+            <Feature
+              on={true}
+              title={t('summary.feeGroups', {
+                count: features.feeGroups!.length,
+                groups: features.feeGroups!.map((group) => group.label).join(', '),
+              })}
             />
           )}
           <Feature

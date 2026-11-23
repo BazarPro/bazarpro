@@ -41,7 +41,7 @@ async fn create(app: &TestApp, session: &str, args: Value) -> Uuid {
 }
 
 /// The arguments of editEvent from the current state of the event.
-async fn edit_args(app: &TestApp, session: &str, id: Uuid) -> Value {
+pub async fn edit_args(app: &TestApp, session: &str, id: Uuid) -> Value {
     let event = app
         .query("events.getEvent", json!({ "id": id }), Some(session))
         .await
@@ -623,6 +623,57 @@ async fn editing_keeps_and_clears_images_and_features(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn stores_and_drops_the_picture_of_the_region(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let session = app.user_session("orga@example.org", false).await;
+    let upload = |name: &str| {
+        let png = [b"\x89PNG\r\n\x1a\n".as_slice(), name.as_bytes()].concat();
+        app.upload(png, "image/png", Some(&session))
+    };
+    let first = upload("region-1").await.body["storageId"].clone();
+    let mut args = event_args("Basar", "logged-in");
+    args["regionMapImage"] = first.clone();
+    args["features"] = json!({ "allowedPostalCodes": { "DE": ["89"] } });
+    let id = create(&app, &session, args).await;
+    let picture = || async {
+        app.query("events.getEvent", json!({ "id": id }), Some(&session))
+            .await
+            .body["value"]
+            .get("regionMapImage")
+            .cloned()
+    };
+    assert_eq!(picture().await, Some(first.clone()));
+
+    // Kept unless a new one comes; the old file then belongs to nothing
+    let args = edit_args(&app, &session, id).await;
+    app.mutation("events.editEvent", args.clone(), Some(&session))
+        .await;
+    assert_eq!(picture().await, Some(first.clone()));
+    let second = upload("region-2").await.body["storageId"].clone();
+    let mut change = args.clone();
+    change["regionMapImage"] = second.clone();
+    let reply = app
+        .mutation("events.editEvent", change, Some(&session))
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(picture().await, Some(second));
+    let referenced: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM events WHERE region_map_image_id = $1::uuid)",
+    )
+    .bind(first.as_str().unwrap())
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert!(!referenced);
+
+    let mut clear = args.clone();
+    clear["clearRegionMapImage"] = json!(true);
+    app.mutation("events.editEvent", clear, Some(&session))
+        .await;
+    assert_eq!(picture().await, None);
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn running_events_keep_dates_fees_and_visibility(db: PgPool) {
     let app = TestApp::new(db.clone());
     let organizer = fixtures::user(&db, "Orga").await;
@@ -672,6 +723,57 @@ async fn running_events_keep_dates_fees_and_visibility(db: PgPool) {
         )
         .await;
     assert_eq!(lock.body["value"], json!({ "locked": true }));
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_platform_admin_changes_every_setting(db: PgPool) {
+    let app = TestApp::new(db.clone());
+    let organizer = fixtures::user(&db, "Orga").await;
+    let admin = fixtures::session(&db, fixtures::admin(&db, "Admin").await).await;
+    let running = fixtures::event(
+        &db,
+        EventSpec {
+            start_hours: -1,
+            end_hours: 5,
+            features: json!({ "intakeFee": 1, "maxItemsPerSeller": 20 }),
+            ..EventSpec::new("Läuft", organizer)
+        },
+    )
+    .await;
+    fixtures::role(&db, running, fixtures::user(&db, "Seller").await, "seller").await;
+    let mut args = edit_args(&app, &admin, running).await;
+    args["startDate"] = json!(args["startDate"].as_f64().unwrap() + HOUR);
+    args["visibility"] = json!("logged-in");
+    args["commission"] = json!(25);
+    args["features"] = json!({ "intakeFee": 3, "maxItemsPerSeller": 5, "directSale": true });
+    let result = app
+        .mutation("events.editEvent", args.clone(), Some(&admin))
+        .await;
+    assert_eq!(result.body["value"], Value::Null, "{:?}", result.body);
+    let event = app
+        .query("events.getEvent", json!({ "id": running }), Some(&admin))
+        .await
+        .body["value"]
+        .clone();
+    assert_eq!(event["startDate"], args["startDate"]);
+    assert_eq!(event["visibility"], "logged-in");
+    assert_eq!(event["features"]["intakeFee"], 3.0);
+    assert_eq!(event["features"]["maxItemsPerSeller"], 5.0);
+
+    // Also when it is over
+    let past = fixtures::event(
+        &db,
+        EventSpec {
+            start_hours: -10,
+            end_hours: -5,
+            ..EventSpec::new("Vorbei", organizer)
+        },
+    )
+    .await;
+    let mut args = edit_args(&app, &admin, past).await;
+    args["title"] = json!("Korrigiert");
+    let result = app.mutation("events.editEvent", args, Some(&admin)).await;
+    assert_eq!(result.body["value"], Value::Null, "{:?}", result.body);
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
@@ -726,6 +828,25 @@ async fn after_the_first_seller_fees_only_go_down_and_the_limit_only_up(db: PgPo
         edit(5.0, json!({ "intakeFee": 0.5, "maxItemsPerSeller": 30 })).await["value"],
         Value::Null
     );
+    // The fee cap only for the sellers: set or lowered, never raised or removed
+    let terms =
+        |cap: Value| json!({ "intakeFee": 0.5, "maxItemsPerSeller": 30, "maxFeesPerSeller": cap });
+    assert_eq!(edit(5.0, terms(json!(20))).await["value"], Value::Null);
+    assert_eq!(
+        edit(5.0, terms(json!(25))).await["code"],
+        "event.feesOnlyLower"
+    );
+    assert_eq!(
+        edit(5.0, terms(Value::Null)).await["code"],
+        "event.feesOnlyLower"
+    );
+    assert_eq!(edit(5.0, terms(json!(15))).await["value"], Value::Null);
+    // The limit of the whole market is free: items already in stay
+    let mut market = terms(json!(15));
+    market["maxItemsTotal"] = json!(200);
+    assert_eq!(edit(5.0, market.clone()).await["value"], Value::Null);
+    market["maxItemsTotal"] = json!(100);
+    assert_eq!(edit(5.0, market).await["value"], Value::Null);
 }
 
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]

@@ -187,7 +187,7 @@ pub async fn insert_feature_showcase(
         .bind(bike.description)
         .bind(Decimal::from(bike.price))
         .bind(vendor)
-        .bind(category)
+        .bind(seeder.item_category(Cat::Bikes, bike.title))
         .bind(listing.status == "sold")
         .bind(bike.attributes)
         .bind(bike.accepts_offers.then_some(true))
@@ -732,10 +732,12 @@ async fn insert_event(seeder: &Seeder, ctx: &mut Ctx, spec: EventSpec<'_>) -> Ap
     .fetch_one(ctx.conn())
     .await?;
     sqlx::query(
-        "INSERT INTO event_categories (event_id, position, category_id) VALUES ($1, 0, $2)",
+        "INSERT INTO event_categories (event_id, position, category_id)
+         VALUES ($1, 0, $2), ($1, 1, $3)",
     )
     .bind(id)
     .bind(seeder.category(Cat::Sports))
+    .bind(seeder.category(Cat::Bikes))
     .execute(ctx.conn())
     .await?;
     seeder
@@ -745,6 +747,7 @@ async fn insert_event(seeder: &Seeder, ctx: &mut Ctx, spec: EventSpec<'_>) -> Ap
 }
 
 struct ProductSpec<'a> {
+    cat: Cat,
     title: &'a str,
     description: &'a str,
     condition: &'a str,
@@ -767,7 +770,7 @@ async fn insert_product(seeder: &Seeder, ctx: &mut Ctx, spec: ProductSpec<'_>) -
     .bind(spec.condition)
     .bind(Decimal::from(spec.price))
     .bind(spec.vendor)
-    .bind(seeder.category(Cat::Sports))
+    .bind(seeder.item_category(spec.cat, spec.title))
     .bind(spec.sold)
     .bind(at)
     .fetch_one(ctx.conn())
@@ -839,6 +842,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
     .await?;
 
     insert_product(seeder, ctx, ProductSpec {
+        cat: Cat::Sports,
         title: tr("Hochwertige Outdoor-Jacke", "High-quality outdoor jacket"),
         description: tr(
             "Verkaufe meine wenig getragene Outdoor-Jacke der Marke NorthFace in Größe L. Sie ist wind- und wasserdicht, atmungsaktiv und ideal für Wanderungen oder den täglichen Weg zur Arbeit bei schlechtem Wetter. Die Jacke hat keinerlei Beschädigungen, alle Reißverschlüsse funktionieren einwandfrei. Farbe: Dunkelblau mit orangen Akzenten. Neupreis lag bei 250€. Tierfreier Nichtraucherhaushalt.",
@@ -854,6 +858,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
     .await?;
 
     insert_product(seeder, ctx, ProductSpec {
+        cat: Cat::Sports,
         title: tr("Wanderstiefel Gr. 42", "Hiking boots size 8"),
         description: tr(
             "Robuste Wanderstiefel von Meindl, Modell \"Borneo\", Größe 42. Das Leder ist gut gepflegt und wurde regelmäßig gewachst. Die Sohle hat noch ein sehr gutes Profil und bietet sicheren Halt auch in schwierigem Gelände. Ich verkaufe sie nur, weil sie mir nach einer Fußverletzung leider nicht mehr optimal passen. Perfekt für die nächste Bergtour! Einlegesohlen sind frisch gewaschen.",
@@ -909,6 +914,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
     .await?;
 
     let ski = insert_product(seeder, ctx, ProductSpec {
+        cat: Cat::Sports,
         title: tr("Atomic Carving Ski 160cm", "Atomic carving skis 160 cm"),
         description: tr(
             "Verkaufe meine treuen Atomic Redster Carving Ski in der Länge 160cm. Sie sind etwa 3 Jahre alt und wurden pro Saison ca. 1 Woche gefahren. Der Belag hat vor dem letzten Urlaub einen frischen Service bekommen (Kanten geschliffen, gewachst) und ist in einem top Zustand ohne tiefe Kratzer. Die Bindung ist natürlich dabei und voll funktionsfähig. Ideal für fortgeschrittene Fahrer, die einen sportlichen aber fehlerverzeihenden Ski suchen.",
@@ -924,6 +930,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
     .await?;
 
     let helmet = insert_product(seeder, ctx, ProductSpec {
+        cat: Cat::Sports,
         title: tr("Uvex Skihelm Gr. M (55-59cm)", "Uvex ski helmet size M (55-59 cm)"),
         description: tr(
             "Sicherheit geht vor! Ich biete hier einen hochwertigen Skihelm der Marke Uvex in Matt-Schwarz an. Größe M, verstellbar für Kopfumfang 55-59cm. Der Helm ist sturzfrei und wurde nur eine Saison getragen, daher ist er praktisch wie neu und hat keine sichtbaren Gebrauchsspuren. Er verfügt über ein verstellbares Belüftungssystem und ein herausnehmbares, waschbares Innenfutter. Neupreis war 89€.",
@@ -939,6 +946,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
     .await?;
 
     let mtb = insert_product(seeder, ctx, ProductSpec {
+        cat: Cat::Bikes,
         title: tr(
             "Mountainbike 'Rockrider' 26 Zoll",
             "Mountain bike 'Rockrider' 26 inch",
@@ -957,6 +965,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
     .await?;
 
     let seat = insert_product(seeder, ctx, ProductSpec {
+        cat: Cat::Bikes,
         title: tr("Kindersitz Römer für Fahrrad", "Römer child bike seat"),
         description: tr(
             "Sicherer Kindersitz für das Fahrrad. Einfache Montage am Rahmen. Inklusive Halterung und Anschnallgurten. Der Bezug ist waschbar und in einem kräftigen Rot.",
@@ -1012,6 +1021,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
         seeder,
         ctx,
         ProductSpec {
+            cat: Cat::Sports,
             title: tr("Vintage Lederball", "Vintage leather football"),
             description: tr(
                 "Ein echtes Sammlerstück aus den 70ern.",
@@ -1030,6 +1040,7 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, users: &CoreUsers) -> AppRes
         seeder,
         ctx,
         ProductSpec {
+            cat: Cat::Sports,
             title: tr("Alte Schlittschuhe Gr. 39", "Old ice skates size 6"),
             description: tr(
                 "Gut erhaltene Kufen für Einsteiger.",

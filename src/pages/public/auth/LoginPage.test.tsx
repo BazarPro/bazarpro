@@ -166,6 +166,25 @@ describe('LoginPage', () => {
     expect(screen.queryByText('Bitte E-Mail und Passwort eingeben.')).toBeNull();
   });
 
+  it('fills in a demo account in demo mode', () => {
+    state.flags = { is_demo_mode: true };
+    renderAt();
+    fireEvent.click(screen.getByRole('button', { name: /Verkäuferin/ }));
+    expect(screen.getByLabelText('E-Mail-Adresse')).toHaveValue('laura.zimmermann@example.org');
+    expect(screen.getByLabelText('Passwort')).toHaveValue('123456');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
+    expect(signIn).toHaveBeenCalledWith(
+      'password',
+      expect.objectContaining({ email: 'laura.zimmermann@example.org', password: '123456' })
+    );
+  });
+
+  it('shows no demo accounts outside demo mode', () => {
+    renderAt();
+    expect(screen.queryByTestId('demo-accounts')).toBeNull();
+  });
+
   it('reports a banned or deleted account coming back from Google or GitHub', async () => {
     renderAt('/login?error=1&oauth=1&redirect=%2Fevents%2F1');
     expect(await screen.findByText(/gesperrt oder gelöscht/)).toBeInTheDocument();

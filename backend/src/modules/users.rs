@@ -17,9 +17,11 @@ use super::access::require_admin;
 use super::account_deletion;
 use super::docs::{self, User};
 use super::event_roles::{Role, has_any_role, require_team};
+use super::features::{postal_code_digits, profile_country};
 use super::offline;
 use super::seller_records::{
-    FIXED_PROFILE_FIELDS, is_profile_fixed, missing_profile_fields, profile_field,
+    FIXED_PROFILE_FIELDS, is_postal_code_fixed, is_profile_fixed, missing_profile_fields,
+    postal_code_fixed_by, profile_field,
 };
 use crate::auth::{session, users::promote_configured_admin};
 use crate::error::{AppError, AppResult};
@@ -37,6 +39,7 @@ pub fn register(registry: &mut Registry) {
     register!(registry, Query "users.getUserById" => get_user_by_id);
     register!(registry, Mutation "users.update" => update);
     register!(registry, Query "users.isMyProfileFixed" => is_my_profile_fixed);
+    register!(registry, Query "users.isMyPostalCodeFixed" => is_my_postal_code_fixed);
     register!(registry, Query "users.getMissinfProfileData" => get_missing_profile_data);
     register!(registry, Mutation "users.setDeleted" => set_deleted);
     register!(registry, Mutation "users.generateCheckInToken" => generate_check_in_token);
@@ -182,6 +185,15 @@ async fn update(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
     if changes_fixed && is_profile_fixed(ctx.conn(), id).await? {
         return Err(AppError::bad_request("profile.fixed"));
     }
+    // As the region reads them: "89073 " is 89073, no country is Germany
+    let changes_postal_code = args.zip_code.as_deref().is_some_and(|code| {
+        postal_code_digits(code) != postal_code_digits(user.zip_code.as_deref().unwrap_or(""))
+    }) || args.country.as_deref().is_some_and(|country| {
+        profile_country(Some(country)) != profile_country(user.country.as_deref())
+    });
+    if changes_postal_code && is_postal_code_fixed(ctx.conn(), id).await? {
+        return Err(AppError::bad_request("profile.postalCodeFixed"));
+    }
     let first = args.first_name.clone().or(user.first_name);
     let last = args.last_name.clone().or(user.last_name);
     let name = [first, last]
@@ -211,6 +223,19 @@ async fn update(ctx: &mut Ctx, args: UpdateArgs) -> AppResult<()> {
     .await?;
     ctx.touch(Topic::User(id));
     Ok(())
+}
+
+/// Whether postal code and country stay as they are: a bazaar for its region (#304) let the
+/// user in by them.
+async fn is_my_postal_code_fixed(ctx: &mut Ctx, _: NoArgs) -> AppResult<bool> {
+    let Some(id) = ctx.user else { return Ok(false) };
+    ctx.read(Topic::User(id));
+    let (fixed, events) = postal_code_fixed_by(ctx.conn(), id).await?;
+    // The organizer may take the region away or move the end
+    for event in events {
+        ctx.read(Topic::Event(event));
+    }
+    Ok(fixed)
 }
 
 async fn is_my_profile_fixed(ctx: &mut Ctx, _: NoArgs) -> AppResult<bool> {
@@ -689,7 +714,7 @@ impl UserStatus {
     }
 }
 
-/// Admins set the status of a user; a ban ends the user's sessions.
+/// Admins set the status of a user; banning or deleting ends the user's sessions.
 async fn set_user_status_for_admin(ctx: &mut Ctx, args: StatusArgs) -> AppResult<Done> {
     let admin = require_admin(ctx).await?;
     let user = args.user_id.0;
@@ -710,7 +735,7 @@ async fn set_user_status_for_admin(ctx: &mut Ctx, args: StatusArgs) -> AppResult
     if updated.rows_affected() == 0 {
         return Err(AppError::not_found("notFound.user"));
     }
-    if args.status == UserStatus::Banned {
+    if matches!(args.status, UserStatus::Banned | UserStatus::Deleted) {
         revoke_sessions(ctx.conn(), user).await?;
     }
     ctx.touch(Topic::User(user));

@@ -2,6 +2,7 @@
   "myProducts": {
     "soldCannotAdd": "Sold items can no longer be added to bazaars.",
     "cannotUnregister": "This item can no longer be withdrawn.",
+    "categoryNotAllowed": "The category of this item is not allowed at “{{event}}”.",
     "deletedMany_one": "{{count}} item deleted",
     "deletedMany_other": "{{count}} items deleted",
     "deleteFailed": "Deleting failed",
@@ -15,6 +16,8 @@
     "productsUpdated": "Items updated",
     "selected_one": "item selected",
     "selected_other": "items selected",
+    "selectAll": "Select all",
+    "selectNone": "Clear selection",
     "labelsPdf": "Labels as PDF",
     "labelsPdfShort": "Labels",
     "pdfCreating": "Creating PDF…",
@@ -37,7 +40,13 @@
     "createForEvent": "Create item for bazaar",
     "soldHidden_one": "1 sold item is hidden.",
     "soldHidden_other": "{{count}} sold items are hidden.",
-    "showAllOrSales": "<all>Show all</all> or <sales>go to My sales</sales>"
+    "showAllOrSales": "<all>Show all</all> or <sales>go to My sales</sales>",
+    "placesLeft_one": "{{count}} place left",
+    "placesLeft_other": "{{count}} places left",
+    "marketFull": "bazaar full",
+    "placesOver_one": "{{count}} item more than places are free",
+    "placesOver_other": "{{count}} items more than places are free",
+    "noPlaceLeft": "There is no place left at the bazaar."
   },
   "header": {
     "title": "My items",
@@ -61,6 +70,7 @@
     "questions_one": "{{count}} open question",
     "questions_other": "{{count}} open questions",
     "payout": "Payout to you: {{amount}} €",
+    "receivedDirectly": "Received directly, less commission: {{amount}} €",
     "privateInvoice": "Private invoice",
     "forBuyer": "For the buyer",
     "forMe": "For me (with bazaar fee)",
@@ -119,6 +129,10 @@
     "chooseCondition": "Choose condition",
     "category": "Category *",
     "chooseCategory": "Choose category",
+    "noCategories": "No matching category.",
+    "categoryNotAllowed": "“{{category}}” is not allowed at “{{event}}”. Choose another category or bazaar.",
+    "categoryNotAllowedShort": "The category is not allowed at “{{event}}”.",
+    "categoriesOfBazaar": "Only categories {{events}} allows.",
     "price": "Price (€) *",
     "images": "Photos *",
     "negotiable": "Price negotiable?",
@@ -217,6 +231,9 @@
     "clash": "Note: another seller at this bazaar has the same pattern as you. Your labels differ by the extra letter only. You need not change anything, the team sees it on the sorting sheets. Please point it out when you hand in your items.",
     "clashAt": "Note: at {{bazaars}} another seller has the same pattern as you. Your labels differ by the extra letter only. Please point it out when you hand in your items.",
     "basket": "Print basket label",
+    "print": "Print",
+    "printItems": "Item labels",
+    "printBasket": "Basket label",
     "basketHint": "Your sorting mark in large print to stick on your basket"
   },
   "price": {

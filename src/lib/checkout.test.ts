@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   _resetAudioContext,
   clearCachedCart,
+  commissionOf,
+  deskCommissions,
+  deskTakes,
   getCheckoutCartStorageKey,
   getCheckoutSoundEnabled,
   loadCachedCart,
@@ -199,5 +202,47 @@ describe('checkout storage failures', () => {
     _resetAudioContext();
     vi.stubGlobal('AudioContext', undefined);
     expect(() => playScanBeep()).not.toThrow();
+  });
+});
+
+describe('what the desk takes', () => {
+  it('rounds the commission like the backend, halves up', () => {
+    // Floats put these just below the half cent: 4.1 * 15 = 61.49999…
+    expect(commissionOf(4.1, 15)).toBe(0.62);
+    expect(commissionOf(16.9, 15)).toBe(2.54);
+    expect(commissionOf(33.3, 15)).toBe(5);
+    expect(commissionOf(1.25, 10)).toBe(0.13);
+    expect(commissionOf(250, 10)).toBe(25);
+    expect(commissionOf(19.99, 12.5)).toBe(2.5);
+    expect(commissionOf(0.01, 10)).toBe(0);
+    expect(commissionOf(80, 0)).toBe(0);
+  });
+
+  it('is the prices, at a direct sale the commission of each item', () => {
+    expect(deskTakes([250, 190], false, 10)).toBe(440);
+    expect(deskTakes([250, 190], true, 10)).toBe(44);
+    // Each item rounds on its own, as each is booked on its own
+    expect(deskTakes([4.1, 4.1], true, 15)).toBe(1.24);
+    expect(deskTakes([0.1, 0.2], false, 10)).toBe(0.3);
+    expect(deskTakes([], true, 10)).toBe(0);
+  });
+
+  it('shares the rest of the fee cap among the items of a seller', () => {
+    const lines = [
+      { price: 140, sellerId: 'anna', feeCapLeft: 20 },
+      { price: 90, sellerId: 'ben', feeCapLeft: 20 },
+      { price: 90, sellerId: 'anna', feeCapLeft: 20 },
+      { price: 50, sellerId: 'anna', feeCapLeft: 20 },
+    ];
+    // Anna: 14 €, then the rest of 6 €, then nothing; Ben is on his own
+    expect(deskCommissions(lines, 10)).toEqual([14, 9, 6, 0]);
+    // Without a cap every item pays its commission
+    expect(deskCommissions([{ price: 140 }, { price: 90 }], 10)).toEqual([14, 9]);
+  });
+
+  it("takes the commission of the seller's fee group", () => {
+    expect(deskCommissions([{ price: 140, commissionPercent: 5 }, { price: 90 }], 10)).toEqual([
+      7, 9,
+    ]);
   });
 });

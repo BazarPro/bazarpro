@@ -6,7 +6,9 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { HelperPermission } from '../../shared/constants';
+import type { CategoryField, DescribedAttribute } from '../../shared/categoryFields';
+import type { FeeGroup } from '../../shared/feeGroups';
+import type { EventProductStatus, EventServices, HelperPermission } from '../../shared/constants';
 
 export type TableName =
   | '_storage'
@@ -84,6 +86,8 @@ export interface Docs {
     moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
     coverImage?: Id<'_storage'> | undefined;
     eventMapImage?: Id<'_storage'> | undefined;
+    /** Picture of the region of a bazaar for its region (#304), made by the app */
+    regionMapImage?: Id<'_storage'> | undefined;
     isApproved?: boolean | undefined;
     approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
     approvedAt?: number | undefined;
@@ -93,6 +97,8 @@ export interface Docs {
     rejectionReason?: string | undefined;
     accessCode?: string | undefined;
     vendorLimit?: number | undefined;
+    /** Places taken by sellers, only with a vendorLimit */
+    sellerCount?: number | undefined;
     lastSellerNumber?: number | undefined;
     saleFeeFixed?: number | undefined;
     saleFeePercentage?: number | undefined;
@@ -109,12 +115,19 @@ export interface Docs {
           publicCatalog?: boolean | undefined;
           requiredFields?: string[] | undefined;
           maxItemsPerSeller?: number | undefined;
+          maxItemsTotal?: number | undefined;
           labelFormat?: 'small' | 'standard' | undefined;
           priceOnLabel?: boolean | undefined;
           labelMark?: 'universal' | 'none' | undefined;
           intakeFee?: number | undefined;
+          maxFeesPerSeller?: number | undefined;
+          feeGroups?: FeeGroup[] | undefined;
           privateSellersOnly?: boolean | undefined;
           fixedSellerData?: boolean | undefined;
+          directSale?: boolean | undefined;
+          registrationOpen?: boolean | undefined;
+          registrationStartsAt?: number | undefined;
+          registrationEndsAt?: number | undefined;
         }
       | undefined;
     sellerLogistics?:
@@ -127,6 +140,8 @@ export interface Docs {
         }
       | undefined;
     remindersSent?: { dayBefore?: number | undefined; pickup?: number | undefined } | undefined;
+    /** The nightly cron returned the items left over after the bazaar (#305) */
+    leftoversReturnedAt?: number | undefined;
     categories: Id<'categories'>[];
     title: string;
     description: string;
@@ -139,7 +154,7 @@ export interface Docs {
     startDate: number;
     endDate: number;
     contactInfo: string;
-    services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+    services: EventServices[];
     visibility: 'public' | 'logged-in' | 'approved';
     commission: number;
     organizerId: Id<'users'>;
@@ -168,7 +183,9 @@ export interface Docs {
     discountPercent?: number | undefined;
     locationCategoryId?: Id<'eventLocationCategories'> | undefined;
     internalNote?: string | undefined;
-    status: 'sold' | 'announced' | 'available' | 'returned';
+    /** Returned by the nightly cron after the bazaar, not by a person (#305) */
+    autoReturnedAt?: number | undefined;
+    status: EventProductStatus;
     eventId: Id<'events'>;
     productId: Id<'products'>;
   };
@@ -179,6 +196,10 @@ export interface Docs {
     parentCategory?: Id<'categories'> | undefined;
     updatedAt: number;
     label: string;
+    /** Ids of the extra fields an admin picked; unset: those of the main category */
+    fields?: string[] | undefined;
+    /** The extra fields its items have, from its own choice or its main category */
+    fieldList: CategoryField[];
   };
   eventLocationCategories: {
     _id: Id<'eventLocationCategories'>;
@@ -243,6 +264,8 @@ export interface Docs {
     payoutAmount: number;
     payoutStatus: boolean;
     payoutDate: number;
+    /** Paid to the seller at the item; the desk took only the commission */
+    directSale: boolean;
   };
   eventSeller: {
     _id: Id<'eventSeller'>;
@@ -287,7 +310,7 @@ export interface Docs {
     senderId: Id<'users'>;
     subject: string;
     body: string;
-    audience: 'pickup' | 'all' | 'accepted';
+    audience: 'pickup' | 'all' | 'accepted' | 'withoutItems';
     important: boolean;
     recipientIds: Id<'users'>[];
     createdAt: number;
@@ -335,7 +358,7 @@ export interface Docs {
 }
 
 export type BroadcastView = {
-  audience?: 'pickup' | 'all' | 'accepted' | undefined;
+  audience?: 'pickup' | 'all' | 'accepted' | 'withoutItems' | undefined;
   recipientCount?: number | undefined;
   subject: string;
   body: string;
@@ -344,16 +367,11 @@ export type BroadcastView = {
   _id: Id<'eventBroadcasts'>;
 };
 
-export type CategoryFieldText =
-  | 'brand'
-  | 'frameNumber'
-  | 'frameSize'
-  | 'wheelSize'
-  | 'bikeBrand'
-  | 'clothingSize'
-  | 'shoeSize'
-  | 'sportSize'
-  | 'model';
+/** An extra field of item categories, as admins define it */
+export type CategoryFieldDefinition = CategoryField;
+
+/** A value of an item with the name of its field (in German and maybe English) */
+export type CategoryAttribute = DescribedAttribute;
 
 export type DiscountRules = {
   allowed: boolean;
@@ -376,12 +394,19 @@ export type EventFeatures = {
   publicCatalog: boolean;
   requiredFields?: string[] | undefined;
   maxItemsPerSeller?: number | undefined;
+  maxItemsTotal?: number | undefined;
   labelFormat: 'small' | 'standard';
   priceOnLabel: boolean;
   labelMark: 'universal' | 'none';
   intakeFee?: number | undefined;
+  maxFeesPerSeller?: number | undefined;
+  feeGroups?: FeeGroup[] | undefined;
   privateSellersOnly: boolean;
   fixedSellerData: boolean;
+  directSale: boolean;
+  registrationOpen?: boolean | undefined;
+  registrationStartsAt?: number | undefined;
+  registrationEndsAt?: number | undefined;
 };
 
 export type IntakeFee = { perItem: number; items: number; total: number };
@@ -421,7 +446,7 @@ export type ProofItem = {
   productId?: Id<'products'> | undefined;
   title: string;
   category: string;
-  attributes: { label: string; text: CategoryFieldText; value: string }[];
+  attributes: CategoryAttribute[];
   price: number;
   status: string;
   soldFor?: number | undefined;
@@ -451,6 +476,10 @@ export type SettlementExport = {
     startDate: number;
     endDate: number;
     commission: number;
+    /** Fee cap per seller; with it the seller table has its column */
+    maxFeesPerSeller?: number | undefined;
+    /** The bazaar has fee groups; with it the seller table has a column for them */
+    feeGroups?: boolean | undefined;
   };
   sales: SettlementSale[];
   sellers: SettlementSeller[];
@@ -466,6 +495,8 @@ export type SettlementSale = {
   priceSource: SaleInfo['priceSource'];
   commission: number;
   payout: number;
+  /** Paid to the seller at the item; the desk took only the commission */
+  directSale: boolean;
 };
 
 export type SettlementSeller = {
@@ -479,9 +510,13 @@ export type SettlementSeller = {
   revenue: number;
   commission: number;
   intakeFee: number;
+  /** Fees above the cap given back; missing from older backends */
+  feeCapCredit?: number;
   /** Negative when the seller owes the bazaar */
   payout: number;
   paid: boolean;
+  /** The fee group applied (#302) */
+  feeGroup?: string | undefined;
 };
 
 export type SaleInfo = {
@@ -490,7 +525,10 @@ export type SaleInfo = {
   priceSource: 'list' | 'offer' | 'negotiated';
   totalAmount: number;
   commission: number;
+  /** What the seller gets from the bazaar; 0 at a direct sale */
   payout: number;
+  /** The buyer paid the seller at the item; the seller paid the commission at the desk */
+  directSale: boolean;
   soldAt: number;
 };
 
@@ -547,7 +585,12 @@ export type VendorWithCalculations = {
   totalRevenue: number;
   commission: number;
   intakeFee: IntakeFee;
+  /** Fees above the cap (maxFeesPerSeller) the seller gets back */
+  feeCapCredit: number;
+  /** Sales less commission and intake fee, plus feeCapCredit */
   payout: number;
+  /** Direct sales: what the seller got from the buyers and keeps; not in the payout */
+  receivedDirectly: number;
   paid: boolean;
   grossRevenue: number;
   totalDiscount: number;
@@ -559,6 +602,50 @@ export type VendorWithCalculations = {
   sortCode?: number | undefined;
   /** Bazaars with fixedSellerData: name and address are recorded (first item accepted) */
   detailsRecorded?: boolean | undefined;
+  /** The organizer took the seller out of the bazaar */
+  excluded?: Exclusion | undefined;
+  /** The fee group whose fees apply (#302) */
+  feeGroup?: VendorFeeGroup | undefined;
+  /** The seller's commission in percent: their group's or the bazaar's; once paid out the one settled with */
+  commissionPercent: number;
+  /** Has not announced any item yet (#304); not for the team, walk-in or excluded sellers */
+  withoutItems?: boolean | undefined;
+};
+
+/** A seller's fee group as the team sees it (#302) */
+export type VendorFeeGroup = {
+  /** Missing once paid out: then the group as settled */
+  id?: string | undefined;
+  label: string;
+  /** Self-declared and not checked yet: the intake confirms or takes it away first */
+  pending: boolean;
+  /** By the helper role, not chosen or put in */
+  byRole: boolean;
+  /** The group the seller chose or was put in, when another one applies */
+  chosen?: string | undefined;
+};
+
+/** The signed-in seller's fee group at a bazaar (#302) */
+export type MyFeeGroup = {
+  chosen?: string | undefined;
+  /** The group whose fees apply */
+  applied?: string | undefined;
+  /** Still to be checked at the intake */
+  pending: boolean;
+  decidedAt?: number | undefined;
+  /** The seller can no longer change it */
+  locked: boolean;
+};
+
+/** The organizer took a seller out of the bazaar (#252) */
+export type Exclusion = { excludedAt: number; reason?: string | undefined };
+
+/** The seller's own item the team turned down at a bazaar: not handed in on time */
+export type MyRejection = {
+  productId: Id<'products'>;
+  title: string;
+  image?: Id<'_storage'> | undefined;
+  rejectedAt: number;
 };
 
 export interface FunctionReference<Kind extends 'query' | 'mutation', Args = any, Returns = any> {
@@ -577,7 +664,7 @@ export interface Api {
   broadcasts: {
     getBroadcastPreview: FunctionReference<
       'query',
-      { eventId: Id<'events'>; audience: 'pickup' | 'all' | 'accepted' },
+      { eventId: Id<'events'>; audience: 'pickup' | 'all' | 'accepted' | 'withoutItems' },
       { recipients: number; left: number; importantLeft: number }
     >;
     sendSellerBroadcast: FunctionReference<
@@ -586,7 +673,7 @@ export interface Api {
         eventId: Id<'events'>;
         subject: string;
         body: string;
-        audience: 'pickup' | 'all' | 'accepted';
+        audience: 'pickup' | 'all' | 'accepted' | 'withoutItems';
         important: boolean;
       },
       number
@@ -605,12 +692,21 @@ export interface Api {
         parentCategory?: Id<'categories'> | undefined;
         label: string;
         translations?: CategoryTranslations | undefined;
+        fields?: string[] | undefined;
       },
       Id<'categories'>
     >;
     updateCategory: FunctionReference<
       'mutation',
-      { categoryId: Id<'categories'>; label: string; translations: CategoryTranslations },
+      {
+        categoryId: Id<'categories'>;
+        label: string;
+        translations: CategoryTranslations;
+        /** Unset: a main category */
+        parentCategory?: Id<'categories'> | undefined;
+        /** Unset: those of the main category */
+        fields?: string[] | undefined;
+      },
       null
     >;
     deleteCategory: FunctionReference<'mutation', { categoryId: Id<'categories'> }, null>;
@@ -619,18 +715,29 @@ export interface Api {
       EmptyObject,
       (Doc<'categories'> & { productCount: number; eventCount: number; childCount: number })[]
     >;
-    getAllCategories: FunctionReference<
+    getAllCategories: FunctionReference<'query', EmptyObject, Doc<'categories'>[]>;
+    listFields: FunctionReference<'query', EmptyObject, CategoryField[]>;
+    listFieldsForAdmin: FunctionReference<
       'query',
       EmptyObject,
-      {
-        _id: Id<'categories'>;
-        _creationTime: number;
-        parentCategory?: Id<'categories'> | undefined;
-        updatedAt: number;
-        label: string;
-        translations: CategoryTranslations;
-      }[]
+      (CategoryField & { categoryCount: number })[]
     >;
+    saveField: FunctionReference<
+      'mutation',
+      {
+        /** Unset: a new field */
+        fieldId?: string | undefined;
+        label: string;
+        labelEn?: string | undefined;
+        placeholder?: string | undefined;
+        placeholderEn?: string | undefined;
+        hint?: string | undefined;
+        hintEn?: string | undefined;
+        short: boolean;
+      },
+      string
+    >;
+    deleteField: FunctionReference<'mutation', { fieldId: string }, null>;
     getCategoryLabel: FunctionReference<'query', { categoryId: Id<'categories'> }, string | null>;
     getCategoryId: FunctionReference<'query', { categoryLabel: string }, Id<'categories'> | null>;
   };
@@ -700,7 +807,7 @@ export interface Api {
       { eventId: Id<'events'> },
       {
         productId: Id<'products'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         discountPercent: number | undefined;
       }[]
     >;
@@ -715,7 +822,7 @@ export interface Api {
       { eventId: Id<'events'> },
       {
         eventProductId: Id<'eventProducts'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         discountPercent: number | undefined;
         locationCategoryId: Id<'eventLocationCategories'> | undefined;
         locationLabel: string | undefined;
@@ -741,12 +848,14 @@ export interface Api {
       { eventId: Id<'events'> },
       {
         eventProductId: Id<'eventProducts'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         discountPercent: number | undefined;
         locationCategoryId: Id<'eventLocationCategories'> | undefined;
         locationLabel: string | undefined;
         internalNote: string | undefined;
         sale: SaleInfo | undefined;
+        /** Returned by the nightly cron after the bazaar (#305) */
+        autoReturnedAt?: number | undefined;
         _id: Id<'products'>;
         _creationTime: number;
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
@@ -835,7 +944,7 @@ export interface Api {
         discountPercent?: number | undefined;
         locationCategoryId?: Id<'eventLocationCategories'> | undefined;
         internalNote?: string | undefined;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         eventId: Id<'events'>;
         productId: Id<'products'>;
       } | null
@@ -863,7 +972,7 @@ export interface Api {
       'mutation',
       {
         locationCategoryId?: Id<'eventLocationCategories'> | undefined;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         eventProductId: Id<'eventProducts'>;
         /** The status the team saw; refused if the item has moved on since */
         fromStatus?: 'sold' | 'announced' | 'available' | 'returned' | undefined;
@@ -888,11 +997,42 @@ export interface Api {
       { vendorId: Id<'users'>; eventId: Id<'events'> },
       { updatedCount: number }
     >;
+    /**
+     * After the bazaar: returns the given items still available at once (#305), not those
+     * of sellers paid out. Sold, announced and rejected items stay.
+     */
+    returnLeftovers: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; productIds: Id<'products'>[] },
+      { returnedCount: number; sellerCount: number }
+    >;
     undoReturn: FunctionReference<
       'mutation',
       { eventProductId: Id<'eventProducts'> },
       { success: boolean }
     >;
+    /**
+     * Turns down announced items the sellers did not hand in on time (only the given ones,
+     * optionally of one seller); each seller gets one mail. They cannot be announced there
+     * again.
+     */
+    rejectNotHandedIn: FunctionReference<
+      'mutation',
+      {
+        eventId: Id<'events'>;
+        vendorId?: Id<'users'> | undefined;
+        productIds: Id<'products'>[];
+      },
+      { rejectedCount: number; sellerCount: number }
+    >;
+    /** The item is announced again, as before */
+    undoRejection: FunctionReference<
+      'mutation',
+      { eventProductId: Id<'eventProducts'> },
+      { success: boolean }
+    >;
+    /** The signed-in seller's items turned down at this bazaar, newest first */
+    getMyRejections: FunctionReference<'query', { eventId: Id<'events'> }, MyRejection[]>;
   };
   eventRoles: {
     isOrganizerOfAnyProductEvent: FunctionReference<
@@ -966,6 +1106,26 @@ export interface Api {
       } | null
     >;
   };
+  eventExclusions: {
+    exclude: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; userId: Id<'users'>; reason?: string | undefined },
+      { success: boolean }
+    >;
+    readmit: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; userId: Id<'users'> },
+      { success: boolean }
+    >;
+    /** Whether the organizer excluded the signed-in user, and why */
+    getMine: FunctionReference<'query', { eventId: Id<'events'> }, Exclusion | null>;
+    /** The bazaars the organizer excluded the signed-in user from, for "Meine Basare" */
+    getMyExcludedEvents: FunctionReference<
+      'query',
+      { includePast?: boolean | undefined },
+      { event: Doc<'events'>; exclusion: Exclusion }[]
+    >;
+  };
   eventSeller: {
     joinEvent: FunctionReference<
       'mutation',
@@ -973,11 +1133,19 @@ export interface Api {
         accessCode?: string | undefined;
         privateSeller?: boolean | undefined;
         invitation?: string | undefined;
+        /** A self-declared fee group, checked at the intake (#302) */
+        feeGroupId?: string | undefined;
         eventId: Id<'events'>;
       },
       Id<'eventSeller'>
     >;
     removeSellerAndCoorganizerRoles: FunctionReference<'mutation', EmptyObject, false | null>;
+    /** Unregisters every seller without items (#304); returns how many */
+    removeSellersWithoutItems: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; message?: string | undefined },
+      number
+    >;
     isEventSellerForEvent: FunctionReference<'query', { eventId: Id<'events'> }, boolean>;
     checkAccessCode: FunctionReference<
       'mutation',
@@ -1009,6 +1177,33 @@ export interface Api {
       null
     >;
   };
+  feeGroups: {
+    getMyFeeGroup: FunctionReference<'query', { eventId: Id<'events'> }, MyFeeGroup | null>;
+    /** The seller chooses a self-declared group, or none, until the first item is accepted */
+    chooseFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; groupId: string | null },
+      null
+    >;
+    /** The team saw the proof at the intake */
+    confirmFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; sellerId: Id<'users'> },
+      null
+    >;
+    /** The proof is missing: the bazaar's fees apply */
+    removeFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; sellerId: Id<'users'> },
+      null
+    >;
+    /** The organizer puts a seller in a group by hand, or takes them out */
+    assignFeeGroup: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; sellerId: Id<'users'>; groupId: string | null },
+      null
+    >;
+  };
   events: {
     getFeeLock: FunctionReference<'query', { eventId: Id<'events'> }, { locked: boolean } | null>;
     getMyEventDraft: FunctionReference<
@@ -1027,6 +1222,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1036,6 +1233,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1052,12 +1251,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1081,7 +1284,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1096,6 +1299,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1105,6 +1310,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1121,12 +1328,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1150,7 +1361,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1167,6 +1378,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1176,6 +1389,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1192,12 +1407,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1221,7 +1440,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1240,6 +1459,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         approvedAt?: number | undefined;
         approvedBy?: Id<'users'> | undefined;
         rejectedAt?: number | undefined;
@@ -1247,6 +1468,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1263,12 +1486,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1292,7 +1519,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1312,11 +1539,15 @@ export interface Api {
         coverImageUrl: string | null;
         eventMapImageUrl: string | null;
         categoryLabels: string[];
+        /** Places for items left on the whole market; only with maxItemsTotal */
+        itemPlacesLeft?: number;
         _id: Id<'events'>;
         _creationTime: number;
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1326,6 +1557,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1342,12 +1575,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1371,7 +1608,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1384,11 +1621,15 @@ export interface Api {
         coverImageUrl: string | null;
         eventMapImageUrl: string | null;
         categoryLabels: string[];
+        /** Places for items left on the whole market; only with maxItemsTotal */
+        itemPlacesLeft?: number;
         _id: Id<'events'>;
         _creationTime: number;
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1398,6 +1639,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1414,12 +1657,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1443,7 +1690,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1458,6 +1705,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1467,6 +1716,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1483,12 +1734,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1512,7 +1767,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1523,8 +1778,12 @@ export interface Api {
       {
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         features?:
           | {
               questions?: boolean | undefined;
@@ -1538,12 +1797,17 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              /** null clears it; left out, the stored value stays (older apps) */
+              maxItemsTotal?: number | null | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | null | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1576,8 +1840,12 @@ export interface Api {
       {
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         features?:
           | {
               questions?: boolean | undefined;
@@ -1591,12 +1859,17 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              /** null clears it; left out, the stored value stays (older apps) */
+              maxItemsTotal?: number | null | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | null | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1611,6 +1884,7 @@ export interface Api {
         clearVendorLimit?: boolean | undefined;
         clearCoverImage?: boolean | undefined;
         clearEventMapImage?: boolean | undefined;
+        clearRegionMapImage?: boolean | undefined;
         categories: Id<'categories'>[];
         id: Id<'events'>;
         title: string;
@@ -1628,6 +1902,12 @@ export interface Api {
       },
       null
     >;
+    /** Organizer's quick switch: opening means now, closing keeps the window */
+    setRegistrationOpen: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; open: boolean },
+      null
+    >;
     deleteEvent: FunctionReference<'mutation', { id: Id<'events'> }, null>;
     getMyRegisteredEvents: FunctionReference<
       'query',
@@ -1638,6 +1918,8 @@ export interface Api {
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
         coverImage?: Id<'_storage'> | undefined;
         eventMapImage?: Id<'_storage'> | undefined;
+        /** Picture of the region of a bazaar for its region (#304), made by the app */
+        regionMapImage?: Id<'_storage'> | undefined;
         isApproved?: boolean | undefined;
         approvalStatus?: 'approved' | 'pending' | 'rejected' | undefined;
         approvedAt?: number | undefined;
@@ -1647,6 +1929,8 @@ export interface Api {
         rejectionReason?: string | undefined;
         accessCode?: string | undefined;
         vendorLimit?: number | undefined;
+        /** Places taken by sellers, only with a vendorLimit */
+        sellerCount?: number | undefined;
         lastSellerNumber?: number | undefined;
         saleFeeFixed?: number | undefined;
         saleFeePercentage?: number | undefined;
@@ -1663,12 +1947,16 @@ export interface Api {
               publicCatalog?: boolean | undefined;
               requiredFields?: string[] | undefined;
               maxItemsPerSeller?: number | undefined;
+              maxItemsTotal?: number | undefined;
               labelFormat?: 'small' | 'standard' | undefined;
               priceOnLabel?: boolean | undefined;
               labelMark?: 'universal' | 'none' | undefined;
               intakeFee?: number | undefined;
+              maxFeesPerSeller?: number | undefined;
+              feeGroups?: FeeGroup[] | undefined;
               privateSellersOnly?: boolean | undefined;
               fixedSellerData?: boolean | undefined;
+              directSale?: boolean | undefined;
             }
           | undefined;
         sellerLogistics?:
@@ -1692,7 +1980,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: ('Parkplatz' | 'Skiservice' | 'Gastronomie' | 'Imbiss' | 'Getränke')[];
+        services: EventServices[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1708,10 +1996,15 @@ export interface Api {
         totalNetRevenue: number;
         totalDiscounts: number;
         totalCommission: number;
+        /** Paid to the seller at the item; the till holds only their commission */
+        totalDirectSales: number;
+        totalDirectCommission: number;
         totalPayoutSoll: number;
         totalPaidOut: number;
         totalPendingPayout: number;
         totalIntakeFees: number;
+        /** Fees above the cap given back to sellers; missing from older backends */
+        totalFeeCapCredits?: number;
         totalFeesCollected: number;
         totalFeesToCollect: number;
         sellersToCollect: { name: string; sellerNumber: number | undefined; amount: number }[];
@@ -2054,11 +2347,14 @@ export interface Api {
     getUnreadNoticeCounts: FunctionReference<
       'query',
       EmptyObject,
-      { events: number; messages: number; products: number; sales: number }
+      { events: number; messages: number; participation: number; products: number; sales: number }
     >;
     markNoticesSeen: FunctionReference<
       'mutation',
-      { eventId?: Id<'events'> | undefined; area: 'events' | 'messages' | 'products' | 'sales' },
+      {
+        eventId?: Id<'events'> | undefined;
+        area: 'events' | 'messages' | 'participation' | 'products' | 'sales';
+      },
       null
     >;
     getMyNotificationPrefs: FunctionReference<
@@ -2325,7 +2621,7 @@ export interface Api {
           'minimumPrice'
         > & {
           minimumPrice?: number | undefined;
-          attributeList: { label: string; value: string }[];
+          attributeList: CategoryAttribute[];
           activeListing: {
             eventId: Id<'events'>;
             eventProductId: Id<'eventProducts'>;
@@ -2392,7 +2688,12 @@ export interface Api {
         /** From the app: a retry after a lost reply returns the first sale */
         deskSaleId?: string | undefined;
       },
-      { purchaseIds: Id<'purchase'>[]; total: number }
+      {
+        purchaseIds: Id<'purchase'>[];
+        total: number;
+        /** What the desk took: the total, at direct sales only their commission */
+        taken: number;
+      }
     >;
     getCheckoutItem: FunctionReference<
       'query',
@@ -2402,14 +2703,20 @@ export interface Api {
         productId: Id<'products'>;
         title: string;
         image: Id<'_storage'>;
-        status: 'sold' | 'announced' | 'available' | 'returned';
+        status: EventProductStatus;
         price: number;
         discountPercent: number | undefined;
         listPrice: number;
         minimumPrice: number | undefined;
         sellerPaidOut: boolean;
-        attributes: { label: string; text: CategoryFieldText; value: string }[];
+        attributes: CategoryAttribute[];
         internalNote?: string;
+        /** The seller, so a cart shares the rest of the fee cap among their items */
+        sellerId: Id<'users'>;
+        /** Direct sale with a fee cap: the commission the seller still pays at most */
+        feeCapLeft?: number;
+        /** The seller's commission in percent, when their fee group has its own (#302) */
+        commissionPercent?: number;
       } | null
     >;
     getCheckoutSnapshot: FunctionReference<
@@ -2430,6 +2737,8 @@ export interface Api {
           deskSaleId: string;
           soldAt: number;
           buyerEmail?: string | undefined;
+          /** How the desk sold: it took only the commission. Booked that way */
+          directSale?: boolean | undefined;
           items: {
             eventProductId: Id<'eventProducts'>;
             productId: Id<'products'>;
@@ -2506,7 +2815,10 @@ export interface Api {
           title: string;
           startDate: number;
           endDate: number;
+          /** The seller's commission: their fee group's or the bazaar's */
           commissionPercent: number;
+          /** The seller's fee group (#302) */
+          feeGroup?: string | undefined;
         };
         paid: boolean;
         sellerNumber: number | undefined;
@@ -2518,7 +2830,14 @@ export interface Api {
           images: Id<'_storage'>[];
           sale: SaleInfo;
         }[];
-        totals: { revenue: number; commission: number; intakeFee: IntakeFee; payout: number };
+        totals: {
+          revenue: number;
+          commission: number;
+          intakeFee: IntakeFee;
+          /** Fees above the cap given back */
+          feeCapCredit: number;
+          payout: number;
+        };
       }[]
     >;
   };
@@ -2669,6 +2988,8 @@ export interface Api {
       null
     >;
     isMyProfileFixed: FunctionReference<'query', EmptyObject, boolean>;
+    /** A bazaar for its region (#304) let the user in by postal code and country */
+    isMyPostalCodeFixed: FunctionReference<'query', EmptyObject, boolean>;
     getMissinfProfileData: FunctionReference<'query', { userId: Id<'users'> }, string[]>;
     setDeleted: FunctionReference<
       'mutation',
@@ -2890,6 +3211,22 @@ export interface Api {
         productId: Id<'products'>;
       },
       null
+    >;
+    importWalkInProducts: FunctionReference<
+      'mutation',
+      {
+        eventId: Id<'events'>;
+        sellerId: Id<'users'>;
+        items: {
+          title: string;
+          description: string;
+          condition: 'new' | 'very-good' | 'good' | 'ok';
+          productCategory: Id<'categories'>;
+          price: number;
+          attributes?: Record<string, string> | undefined;
+        }[];
+      },
+      number
     >;
   };
 }

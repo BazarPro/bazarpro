@@ -1,4 +1,5 @@
 import type { Id } from '../lib/api/types';
+import { withSubcategories } from '../shared/categoryTree';
 
 export interface ProductForFilter {
   _id: Id<'products'>;
@@ -21,6 +22,8 @@ export interface MyProductsFilterState {
   sortBy: string;
   minPrice: string;
   maxPrice: string;
+  /** For the filter on a main category, which also shows its sub-categories */
+  categories?: readonly { _id: string; parentCategory?: string }[];
 }
 
 /**
@@ -31,11 +34,14 @@ export function filterAndSortProducts<T extends ProductForFilter>(
   products: T[],
   state: MyProductsFilterState
 ): T[] {
+  const inCategory =
+    state.filterCategory === 'all'
+      ? undefined
+      : withSubcategories(state.filterCategory, state.categories);
   let filtered = products.filter((p) => {
     const matchesSearch = p.title.toLowerCase().includes(state.searchTerm.toLowerCase());
     const matchesEvent = state.filterEvent === 'all' || p.eventIds.includes(state.filterEvent);
-    const matchesCategory =
-      state.filterCategory === 'all' || p.productCategory === state.filterCategory;
+    const matchesCategory = !inCategory || inCategory.has(p.productCategory);
     const matchesStatus =
       state.filterStatus === 'all' ||
       (state.filterStatus === 'sold' && p.sold) ||

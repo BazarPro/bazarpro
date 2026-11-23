@@ -7,25 +7,29 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, anyhow};
+use bytes::Bytes;
 use chrono::{DateTime, Duration, DurationRound, NaiveTime, TimeZone, Utc};
 use chrono_tz::Europe::Berlin;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
 use super::catalog::{
-    self, BOOKS, BUYERS, Cat, GENERAL, HELPERS, INACTIVE, Item, KIDS, ORGANIZERS, Person, SELLERS,
-    SKI, SPAMMER, STREETS, Text, UNVERIFIED, WALK_IN, t,
+    self, BIKE_MARKET, BOOKS, BUYERS, Cat, GENERAL, HELPERS, INACTIVE, Item, KIDS, ORGANIZERS,
+    Person, SELLERS, SKI, SPAMMER, STREETS, Text, UNVERIFIED, WALK_IN, t,
 };
 use super::core::CoreUsers;
 use super::{Seeder, UserSpec};
 use crate::config::InstanceMode;
 use crate::i18n::Locale;
 use crate::rpc::Ctx;
+use crate::storage;
 
 pub const KIDS_TITLE: Text = t(
     "Kinderbasar Kita Sonnenschein",
     "Sunshine Nursery Kids' Bazaar",
 );
+
+pub const BIKE_MARKET_TITLE: Text = t("Fahrradflohmarkt Ulm", "Ulm Bike Flea Market");
 
 /// Small deterministic random numbers, so every seed looks the same.
 struct Dice(u64);
@@ -100,6 +104,11 @@ struct People {
     emails: HashMap<Uuid, String>,
 }
 
+/// Pictures of the demo regions, drawn by the app (see `Demo::region`)
+const REGION_KIDS: &[u8] = include_bytes!("regions/kids.webp");
+const REGION_SKI: &[u8] = include_bytes!("regions/ski.webp");
+const REGION_BOOKS: &[u8] = include_bytes!("regions/books.webp");
+
 struct Demo<'a> {
     seeder: &'a Seeder,
     ctx: &'a mut Ctx,
@@ -137,6 +146,38 @@ struct EventPlan {
 impl Demo<'_> {
     fn text(&self, text: Text) -> &'static str {
         self.seeder.text(text)
+    }
+
+    /// Only sellers from the region join on their own (#304), switched on once the demo
+    /// sellers joined: in English they live in Oxford. The picture is the one the app draws
+    /// when the organizer saves the region (src/lib/regionImage.ts), made with the address
+    /// of the German demo.
+    async fn region(
+        &mut self,
+        event: Uuid,
+        postal_codes: Value,
+        picture: &'static [u8],
+    ) -> anyhow::Result<()> {
+        let state = self.ctx.state.clone();
+        let image = storage::store(
+            &state,
+            self.ctx.conn(),
+            Bytes::from_static(picture),
+            "image/webp",
+            None,
+        )
+        .await?;
+        sqlx::query(
+            "UPDATE events SET region_map_image_id = $3,
+               features = features || jsonb_build_object('allowedPostalCodes', $2::jsonb)
+             WHERE id = $1",
+        )
+        .bind(event)
+        .bind(postal_codes)
+        .bind(image)
+        .execute(self.ctx.conn())
+        .await?;
+        Ok(())
     }
 
     async fn call(&mut self, user: Uuid, name: &str, args: Value) -> anyhow::Result<Value> {
@@ -366,7 +407,7 @@ impl Demo<'_> {
                 "description": self.text(item.description),
                 "condition": item.condition,
                 "images": images,
-                "productCategory": self.seeder.category(item.cat),
+                "productCategory": self.seeder.item_category(item.cat, item.title.de),
                 "price": item.price,
                 "readyForSale": true,
                 "sold": false,
@@ -632,6 +673,9 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, core: &CoreUsers) -> anyhow:
     kids_bazaar(&mut demo, &people)
         .await
         .context("kids' bazaar")?;
+    bike_flea_market(&mut demo, &people)
+        .await
+        .context("bike flea market")?;
     ski_bazaar(&mut demo, &people).await.context("ski bazaar")?;
     flea_market(&mut demo, &people)
         .await
@@ -660,6 +704,120 @@ pub async fn insert(seeder: &Seeder, ctx: &mut Ctx, core: &CoreUsers) -> anyhow:
         }
     }
     Ok(())
+}
+
+/// Running right now, like a bike flea market of a cycling club: every seller stays with
+/// their own bike and the buyer pays them (direct sale); the info stand checks the bikes
+/// in against the frame number and books each sale, taking only the 20 % commission.
+/// The record for the police lists every bike. One seller has not come by yet, so the
+/// intake can be shown live.
+async fn bike_flea_market(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()> {
+    let now = demo.seeder.now;
+    let organizer = people.organizers[3];
+    let helper = people.helpers[2];
+    let event = demo
+        .create_event(
+            &EventPlan {
+                organizer,
+                title: BIKE_MARKET_TITLE,
+                description: t(
+                    "Gebrauchte Fahrräder von privat an privat. Jeder Verkäufer steht bei seinem Rad, \
+                     der Preis hängt am Rad, bezahlt wird direkt beim Verkäufer. \
+                     Nach dem Verkauf geht ihr gemeinsam zum Infostand: \
+                     Dort wird der Verkauf gebucht und die Provision von 20 % bezahlt. \
+                     Anmeldung vorab mit bis zu 5 Rädern und Rahmennummer.",
+                    "Used bikes from private sellers. Every seller stays with their bike, \
+                     the price is on the bike, and you pay the seller directly. \
+                     After the sale, go to the info stand together: \
+                     the sale is booked there and the 20 % commission paid. \
+                     Register up to 5 bikes with their frame numbers beforehand.",
+                ),
+                location: t("Münsterplatz", "Cathedral Square, Ulm"),
+                address: Some(Venue {
+                    street: t("Münsterplatz", ""),
+                    postal_code: t("89073", ""),
+                    city: t("Ulm", ""),
+                    country: "DE",
+                }),
+                contact: "fahrradmarkt@example.org",
+                services: &[],
+                visibility: "public",
+                access_code: None,
+                vendor_limit: None,
+                commission: 20.0,
+                categories: &[Cat::Bikes],
+                cover: "cover_bikes",
+                features: json!({
+                    "eventType": "bikeExchange",
+                    "directSale": true,
+                    "discounts": false,
+                    "priceOffers": false,
+                    "minimumPrice": false,
+                    "questions": false,
+                    "publicCatalog": false,
+                    "photosOptional": true,
+                    "requiredFields": ["frameNumber"],
+                    "maxItemsPerSeller": 5,
+                    "labelFormat": "standard",
+                    "priceOnLabel": true,
+                    "labelMark": "none",
+                    "privateSellersOnly": true,
+                    "fixedSellerData": true,
+                }),
+            },
+            true,
+        )
+        .await?;
+    demo.helper(organizer, event, helper, None).await?;
+
+    // Bikes per seller, in the order of BIKE_MARKET; the last seller is still on the way
+    let shares: [usize; 6] = [2, 1, 2, 2, 2, 2];
+    let mut next = 0;
+    let mut bikes: Vec<Vec<Listed>> = Vec::new();
+    for (seller, count) in people.sellers[10..16].iter().copied().zip(shares) {
+        demo.join(seller, event, None).await?;
+        let items: Vec<&'static Item> = BIKE_MARKET[next..next + count].iter().collect();
+        next += count;
+        bikes.push(demo.bring(seller, event, &items, false).await?);
+    }
+    let arrived = &bikes[..bikes.len() - 1];
+    for listed in arrived.iter().flatten() {
+        demo.check_in(helper, listed, None).await?;
+    }
+
+    // Sold at the bike; the info stand books it at the agreed price
+    let sale = |listed: &Listed, agreed: Option<f64>| match agreed {
+        Some(price) => json!({ "eventProductId": listed.relation, "negotiatedPrice": price }),
+        None => json!({ "eventProductId": listed.relation }),
+    };
+    let sales = [
+        (&arrived[0][0], Some(250.0)),
+        (&arrived[1][0], None),
+        (&arrived[2][0], Some(230.0)),
+        (&arrived[3][0], Some(900.0)),
+        (&arrived[4][1], None),
+    ];
+    for (listed, agreed) in sales {
+        demo.sell(helper, &[sale(listed, agreed)], None).await?;
+    }
+
+    // On full hours, it looks better in screenshots
+    let start = now.duration_trunc(Duration::hours(1))? - Duration::hours(2);
+    let end = start + Duration::hours(6);
+    demo.finish(
+        event,
+        start,
+        end,
+        Some(Logistics {
+            dropoff: (start - Duration::hours(1), start + Duration::hours(1)),
+            pickup: (end - Duration::hours(1), end),
+            note: t(
+                "Bitte Rad, Ausweis und Rahmennummer zum Infostand bringen.",
+                "Please bring your bike, your ID and the frame number to the info stand.",
+            ),
+        }),
+    )
+    .await
 }
 
 /// Running right now: check-in done, the cash desk busy, discounts since noon.
@@ -692,9 +850,10 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                 access_code: None,
                 vendor_limit: Some(60),
                 commission: 15.0,
-                categories: &[Cat::Clothing, Cat::Shoes, Cat::Toys, Cat::Books, Cat::Other],
+                categories: &[Cat::Clothing, Cat::Shoes, Cat::Toys, Cat::Books, Cat::Other, Cat::BabyKids, Cat::Bikes, Cat::Sports, Cat::Furniture],
                 cover: "cover_clothes",
                 features: json!({
+                    "eventType": "kidsBazaar",
                     "discounts": true,
                     "discountStartsAt": millis(now - Duration::minutes(30)),
                     "maxDiscountPercent": 50,
@@ -707,6 +866,11 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                     "privateSellersOnly": true,
                     "fixedSellerData": true,
                     "maxItemsPerSeller": 40,
+                    // Helpers sell without commission and bring more (#302)
+                    "feeGroups": [{
+                        "id": "helfer", "label": "Helferinnen und Helfer", "commission": 0,
+                        "maxItemsPerSeller": 60, "assignment": "helpers",
+                    }],
                 }),
             },
             true,
@@ -888,7 +1052,7 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                     "title": demo.text(item.title),
                     "description": demo.text(item.description),
                     "condition": item.condition,
-                    "productCategory": demo.seeder.category(item.cat),
+                    "productCategory": demo.seeder.item_category(item.cat, item.title.de),
                     "price": item.price,
                 }),
             )
@@ -951,6 +1115,9 @@ async fn kids_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
     )
     .await?;
 
+    // Only for families from around Ulm
+    demo.region(event, json!({ "DE": ["890", "891", "892"] }), REGION_KIDS)
+        .await?;
     // On full hours, it looks better in screenshots
     let start = now.duration_trunc(Duration::hours(1))? - Duration::hours(2);
     demo.finish(event, start, start + Duration::hours(10), None)
@@ -991,6 +1158,7 @@ async fn ski_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()> 
                 categories: &[Cat::Sports, Cat::Shoes, Cat::Clothing, Cat::Accessories],
                 cover: "cover_winter",
                 features: json!({
+                    "eventType": "skiBazaar",
                     "discounts": false,
                     "priceOffers": true,
                     "minimumPrice": true,
@@ -998,6 +1166,12 @@ async fn ski_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()> 
                     "photosOptional": true,
                     "priceOnLabel": true,
                     "intakeFee": 1,
+                    // Club members pay less; the intake checks the card (#302)
+                    "feeGroups": [{
+                        "id": "mitglieder", "label": "Vereinsmitglieder", "commission": 5,
+                        "assignment": "selfDeclared",
+                        "proofHint": "Mitgliedsausweis bei der Abgabe zeigen",
+                    }],
                 }),
             },
             true,
@@ -1094,6 +1268,13 @@ async fn ski_bazaar(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()> 
     )
     .await?;
 
+    // The Blautal and its neighbours; club members from elsewhere use the access code
+    demo.region(
+        event,
+        json!({ "DE": ["733", "890", "891", "896"] }),
+        REGION_SKI,
+    )
+    .await?;
     let start = berlin(now, 9, 9, 0);
     let end = berlin(now, 9, 14, 0);
     demo.finish(
@@ -1142,7 +1323,19 @@ async fn flea_market(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
                 access_code: None,
                 vendor_limit: None,
                 commission: 10.0,
-                categories: &[Cat::Household, Cat::Furniture, Cat::Electronics, Cat::Bikes, Cat::Clothing],
+                categories: &[
+                    Cat::Household,
+                    Cat::Furniture,
+                    Cat::Electronics,
+                    Cat::Bikes,
+                    Cat::Clothing,
+                    Cat::Shoes,
+                    Cat::Accessories,
+                    Cat::Sports,
+                    Cat::Toys,
+                    Cat::Books,
+                    Cat::Other,
+                ],
                 cover: "cover_market",
                 features: json!({
                     "discounts": true,
@@ -1381,6 +1574,20 @@ async fn book_market(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()>
         )
         .await?;
     }
+    // Around the lake, across three borders
+    demo.region(
+        event,
+        json!({
+            "AT": [
+                "672", "684", "685", "686", "687", "688", "689", "690", "691", "692", "693",
+                "694", "695", "696", "697"
+            ],
+            "CH": ["903", "904", "940", "941", "942", "943", "944", "945"],
+            "DE": ["880", "881"],
+        }),
+        REGION_BOOKS,
+    )
+    .await?;
     demo.finish(
         event,
         berlin(now, -240, 10, 0),
@@ -1476,7 +1683,8 @@ async fn other_events(demo: &mut Demo<'_>, people: &People) -> anyhow::Result<()
             &EventPlan {
                 vendor_limit: Some(3),
                 visibility: "logged-in",
-                categories: &[Cat::Clothing, Cat::Shoes],
+                // Children's things from the kids' list
+                categories: &[Cat::Clothing, Cat::Shoes, Cat::Toys, Cat::Books, Cat::Other, Cat::BabyKids, Cat::Bikes, Cat::Sports, Cat::Furniture],
                 features: json!({ "discounts": false, "labelFormat": "small", "labelMark": "universal" }),
                 ..plan(
                     sabine,

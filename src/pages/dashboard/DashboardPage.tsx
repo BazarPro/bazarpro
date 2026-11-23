@@ -31,13 +31,14 @@ import { useFeatureFlags } from '../../hooks/useFeatureFlags';
 import { useInstanceConfig } from '../../hooks/useInstanceConfig';
 import { useMarkNoticesSeen } from '../../hooks/useMarkNoticesSeen';
 import { selectedOrCurrent, useSelectedEventId } from '../../lib/selectedEvent';
-import { formatDateRangeDE, formatDateTimeDE, formatPriceDE } from '../../lib/utils';
+import { cn, formatDateRangeDE, formatDateTimeDE, formatPriceDE } from '../../lib/utils';
 import { AdminOverviewPage } from '../administrator/AdminOverviewPage';
 import { formatEventPlace } from '../../shared/eventJsonLd';
 import { EventApprovalBadge } from '../../components/events/EventApprovalBadge';
+import { EventPhaseBadge } from '../../components/events/EventPhaseBadge';
+import { resolveEventFeatures } from '../../shared/eventFeatures';
 import { eventApproval } from '../../lib/eventApproval';
 import { eventDraftTitle } from '../../lib/eventDraft';
-import { useNowPassing } from '../../hooks/useNowPassing';
 
 /**
  * Start page for signed-in users (#158), one per role of the role switch: sellers see
@@ -122,6 +123,8 @@ function SellerOverview() {
   const seller = next ? sales?.find((group) => group.event._id === next._id) : undefined;
   const started = !!next && next.startDate <= Date.now();
   const dropoff = next?.sellerLogistics?.dropoffStart;
+  // Sellers stand at their items: they set up instead of handing in (#299)
+  const direct = !!next && resolveEventFeatures(next).directSale;
 
   // The way through a bazaar; the first open step is the one to do now
   const steps: NextStep[] = [
@@ -151,10 +154,10 @@ function SellerOverview() {
     {
       id: 'labels',
       icon: Printer,
-      title: t('steps.labels'),
+      title: t(direct ? 'steps.labelsDirect' : 'steps.labels'),
       text: dropoff
-        ? t('steps.dropoff', { date: formatDateTimeDE(dropoff) })
-        : t('steps.labelsText'),
+        ? t(direct ? 'steps.setup' : 'steps.dropoff', { date: formatDateTimeDE(dropoff) })
+        : t(direct ? 'steps.labelsTextDirect' : 'steps.labelsText'),
       to: '/my-products',
       state: next ? { filterEvent: next._id } : undefined,
       // Only with items there was something to hand in
@@ -163,7 +166,7 @@ function SellerOverview() {
     {
       id: 'payout',
       icon: Receipt,
-      title: t('steps.payout'),
+      title: t(direct ? 'steps.payoutDirect' : 'steps.payout'),
       text: [salesSummary(sales, t), seller?.paid && t('nextBazaar.paid')]
         .filter(Boolean)
         .join(' · '),
@@ -273,6 +276,7 @@ function OrganizerOverview({ canCreate }: { canCreate: boolean }) {
       {draftCard}
       <BazaarHero
         testId="current-event"
+        to={`/events/view/${selected._id}`}
         event={selected}
         label={t('organizer.current')}
         badges={
@@ -280,9 +284,6 @@ function OrganizerOverview({ canCreate }: { canCreate: boolean }) {
             <EventApprovalBadge event={selected} />
             {isHelper(selected) && (
               <Badge variant="outline">{t('myEvents.helper', { ns: 'organizer' })}</Badge>
-            )}
-            {selected.endDate < now && (
-              <Badge variant="secondary">{t('myEvents.ended', { ns: 'organizer' })}</Badge>
             )}
           </>
         }
@@ -394,6 +395,7 @@ function EventList({
                 <p className="font-medium break-words">{event.title}</p>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <span>{formatDateRangeDE(event.startDate, event.endDate)}</span>
+                  <EventPhaseBadge event={event} />
                   <EventApprovalBadge event={event} />
                   {isHelper(event) && (
                     <Badge variant="outline">{t('myEvents.helper', { ns: 'organizer' })}</Badge>
@@ -465,6 +467,7 @@ function BazaarHero({
   actions,
   footer,
   testId,
+  to,
 }: {
   event: Doc<'events'>;
   label: string;
@@ -474,13 +477,20 @@ function BazaarHero({
   actions: ReactNode;
   footer?: ReactNode;
   testId?: string;
+  /** The whole card opens this page (#299); buttons and links on it keep their own */
+  to?: string;
 }) {
-  const { t } = useTranslation('dashboard');
   // A picture that does not load leaves no empty box (e.g. a deleted file)
   const [failedImage, setFailedImage] = useState<string | null>(null);
-  const running = event.startDate <= useNowPassing([event.startDate]);
   return (
-    <Card className="overflow-hidden sm:flex" data-testid={testId}>
+    <Card
+      className={cn(
+        'overflow-hidden sm:flex',
+        to &&
+          'relative transition-shadow hover:shadow-md hover:border-primary/40 has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-ring has-[[data-card-link]:focus-visible]:ring-offset-2'
+      )}
+      data-testid={testId}
+    >
       {event.coverImage && event.coverImage !== failedImage && (
         <StorageImage
           storageId={event.coverImage}
@@ -492,11 +502,23 @@ function BazaarHero({
       <CardContent className="min-w-0 flex-1 space-y-3 p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>{label}</span>
-          {running && <Badge>{t('nextBazaar.running')}</Badge>}
+          <EventPhaseBadge event={event} />
           {badges}
         </div>
         {/* Full title: long names of bazaars wrap instead of being cut off */}
-        <h2 className="text-xl font-semibold break-words sm:text-2xl">{event.title}</h2>
+        <h2 className="text-xl font-semibold break-words sm:text-2xl">
+          {to ? (
+            <Link
+              to={to}
+              data-card-link
+              className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+            >
+              {event.title}
+            </Link>
+          ) : (
+            event.title
+          )}
+        </h2>
         <div className="space-y-1 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4 shrink-0" />
@@ -510,7 +532,9 @@ function BazaarHero({
           )}
         </div>
         {note}
-        <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">{actions}</div>
+        <div className="relative z-10 flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
+          {actions}
+        </div>
         {footer && <p className="text-sm">{footer}</p>}
       </CardContent>
     </Card>

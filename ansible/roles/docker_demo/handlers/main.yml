@@ -1,0 +1,8 @@
+---
+# Traefik reads its static configuration only when it starts
+- name: Restart Traefik
+  community.docker.docker_compose_v2:
+    project_src: '{{ demo_dir }}'
+    services:
+      - traefik
+    state: restarted

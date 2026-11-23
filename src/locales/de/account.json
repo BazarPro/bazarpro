@@ -1,7 +1,7 @@
 {
   "title": "Kontoverwaltung",
   "profile": {
-    "title": "Persönliche Informationen & Adresse",
+    "title": "Persönliche Daten",
     "firstName": "Vorname",
     "firstNamePlaceholder": "Dein Vorname",
     "lastName": "Nachname",
@@ -21,7 +21,8 @@
     "save": "Profil aktualisieren",
     "saved": "Profil erfolgreich aktualisiert!",
     "saveFailed": "Fehler beim Aktualisieren des Profils.",
-    "fixed": "Ein Basar, der einen Nachweis führt, hat deine Artikel angenommen. Name und Anschrift bleiben deshalb bis zum Ende des Basars so, wie sie bei der Annahme waren."
+    "fixed": "Ein Basar, der einen Nachweis führt, hat deine Artikel angenommen. Name und Anschrift bleiben deshalb bis zum Ende des Basars so, wie sie bei der Annahme waren.",
+    "postalCodeFixed": "Du bist bei einem Basar nur für Verkäufer aus seiner Region angemeldet. Postleitzahl und Land bleiben deshalb bis zum Ende des Basars so, wie sie bei der Anmeldung waren."
   },
   "security": {
     "title": "Sicherheit",
@@ -45,12 +46,13 @@
   "digitalId": {
     "title": "Digitaler Ausweis",
     "hide": "Ausblenden",
+    "show": "Anzeigen",
     "showId": "Ausweis anzeigen",
-    "onlyOnSite": "Wird nur zur Identifizierung vor Ort benötigt.",
-    "usage": "Nutze diesen QR-Code zur Identifizierung bei der Inventur oder Warenabgabe.",
+    "onlyOnSite": "Zum Vorzeigen bei Annahme und Abholung.",
+    "usage": "Mit diesem QR-Code weist du dich vor Ort aus, z. B. bei der Warenannahme und der Abholung. Er wechselt laufend.",
     "validFor": "Gültig für {{seconds}}s",
     "refresh": "Jetzt aktualisieren",
-    "noScreenshot": "Sicherheitshinweis: Kein Screenshot verwenden.",
+    "noScreenshot": "Kein Screenshot – der Code wechselt laufend.",
     "loadFailed": "Digitaler Ausweis konnte nicht geladen werden.",
     "offline": "Offline-Ausweis · neuer Code alle {{seconds}}s",
     "noOfflineKey": "Ohne Internet nicht verfügbar: Öffne den Ausweis einmal mit Internet, dann geht er auch offline."
@@ -86,7 +88,7 @@
     }
   },
   "danger": {
-    "title": "Datenschutz & Gefahrenzone",
+    "title": "Daten und Konto",
     "intro": "Gemäß DSGVO hast du das Recht, eine Kopie deiner bei uns gespeicherten Daten zu erhalten oder dein Konto dauerhaft zu löschen.",
     "export": "Daten extrahieren (JSON)",
     "exporting": "Exportiere…",

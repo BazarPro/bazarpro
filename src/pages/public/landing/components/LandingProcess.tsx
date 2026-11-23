@@ -158,7 +158,7 @@ export function LandingProcess() {
 
         <div
           ref={ref}
-          className="mx-auto grid max-w-6xl items-center gap-4 lg:grid-cols-2 lg:gap-16"
+          className="mx-auto grid max-w-6xl items-start gap-4 lg:grid-cols-2 lg:gap-16"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onFocus={() => setHovered(true)}
@@ -290,11 +290,17 @@ export function LandingProcess() {
                         <StepNumber index={index} role={step.group.role} active={isActive} />
                         <div className="min-w-0 space-y-1 pt-1">
                           <h3 className="font-bold leading-snug">{stepTitle(step)}</h3>
-                          {isActive && (
-                            <p className="text-sm leading-relaxed text-muted-foreground">
+                          {/* Opens by its height, so the steps below glide instead of jumping */}
+                          <div
+                            className={cn(
+                              'grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none',
+                              isActive ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                            )}
+                          >
+                            <p className="min-h-0 overflow-hidden text-sm leading-relaxed text-muted-foreground">
                               {stepDescription(step)}
                             </p>
-                          )}
+                          </div>
                         </div>
                       </div>
                       {isActive && autoplay && (

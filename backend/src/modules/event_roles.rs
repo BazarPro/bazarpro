@@ -1,6 +1,8 @@
 //! Roles in an event: organizer, co-organizer (helper), seller.
 //! Platform administrators count as organizer of every event.
 
+use std::collections::{HashMap, HashSet};
+
 use chrono::Utc;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -10,7 +12,9 @@ use uuid::Uuid;
 
 use super::access::is_platform_admin;
 use super::docs::{self, User};
+use super::event_exclusions::{Exclusion, exclusions_of_event};
 use super::features::label_mark;
+use super::fee_groups::{self, Membership};
 use super::labels::seller_sort_code;
 use super::sales::{self, IntakeFee};
 use super::seller_records::{keeps_seller_record, with_snapshot};
@@ -286,6 +290,28 @@ pub async fn require_team(ctx: &mut Ctx, event: Uuid) -> AppResult<Uuid> {
     Ok(user)
 }
 
+/// The bazaar lists show the places left for sellers of a bazaar with a seller limit: who
+/// joins, leaves, is excluded or changes sides with the team moves them. Other bazaars
+/// show no places, so their sellers do not make every open list load anew.
+pub async fn touch_seller_places(ctx: &mut Ctx, event: Uuid) -> sqlx::Result<()> {
+    let limited: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM events WHERE id = $1 AND vendor_limit > 0)",
+    )
+    .bind(event)
+    .fetch_one(ctx.conn())
+    .await?;
+    if limited {
+        ctx.touch(Topic::Events);
+    }
+    Ok(())
+}
+
+async fn touch_roles(ctx: &mut Ctx, event: Uuid, user: Uuid) -> sqlx::Result<()> {
+    ctx.touch(Topic::Event(event));
+    ctx.touch(Topic::User(user));
+    touch_seller_places(ctx, event).await
+}
+
 pub async fn add_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sqlx::Result<()> {
     sqlx::query(
         "INSERT INTO event_roles (event_id, user_id, role) VALUES ($1, $2, $3::event_role_kind)
@@ -296,9 +322,7 @@ pub async fn add_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sql
     .bind(role.as_str())
     .execute(ctx.conn())
     .await?;
-    ctx.touch(Topic::Event(event));
-    ctx.touch(Topic::User(user));
-    Ok(())
+    touch_roles(ctx, event, user).await
 }
 
 pub async fn remove_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> sqlx::Result<()> {
@@ -308,9 +332,7 @@ pub async fn remove_role(ctx: &mut Ctx, event: Uuid, user: Uuid, role: Role) -> 
         .bind(role.as_str())
         .execute(ctx.conn())
         .await?;
-    ctx.touch(Topic::Event(event));
-    ctx.touch(Topic::User(user));
-    Ok(())
+    touch_roles(ctx, event, user).await
 }
 
 /// Once a seller is paid out, the settlement is final: no more sales, returns or undos
@@ -394,8 +416,13 @@ pub struct VendorWithCalculations {
     pub commission: Decimal,
     /// Fixed fee per accepted item, kept from the payout
     pub intake_fee: IntakeFee,
-    /// Sales minus commission and intake fee; negative when the seller owes the bazaar
+    /// Fees above the cap (maxFeesPerSeller) the seller gets back
+    pub fee_cap_credit: Decimal,
+    /// Sales minus commission and intake fee, plus the cap credit; negative when the seller
+    /// owes the bazaar
     pub payout: Decimal,
+    /// Direct sales: what the seller got from the buyers and keeps, so it is not in the payout
+    pub received_directly: Decimal,
     pub paid: bool,
     pub gross_revenue: Decimal,
     pub total_discount: Decimal,
@@ -409,6 +436,30 @@ pub struct VendorWithCalculations {
     /// Bazaars with fixedSellerData: name and address are recorded (first item accepted).
     /// Before, the team checks them against the ID card and the seller may still correct them.
     pub details_recorded: Option<bool>,
+    /// The organizer took the seller out of the bazaar
+    pub excluded: Option<Exclusion>,
+    /// The fee group whose fees apply (#302)
+    pub fee_group: Option<VendorFeeGroup>,
+    /// The seller's commission in percent: their group's or the bazaar's; once paid out the
+    /// one settled with
+    pub commission_percent: Decimal,
+    /// Has not announced any item yet (#304, `event_seller::WITHOUT_ITEMS`)
+    pub without_items: Option<bool>,
+}
+
+/// A seller's fee group as the team sees it.
+#[skip_serializing_none]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VendorFeeGroup {
+    pub id: Option<String>,
+    pub label: String,
+    /// Self-declared and not checked yet: the intake has to confirm or take it away
+    pub pending: bool,
+    /// By the helper role, not chosen or assigned
+    pub by_role: bool,
+    /// The group the seller chose or was put in, when another one applies or none
+    pub chosen: Option<String>,
 }
 
 /// Sellers of an event with their sales totals and payout state. No permission check.
@@ -436,7 +487,11 @@ pub async fn load_vendors_with_calculations(
     .bind(event_id)
     .fetch_all(ctx.conn())
     .await?;
-    let accepted = if event.resolved_features().intake_fee.is_some() {
+    let features = event.resolved_features();
+    let groups = !features.fee_groups.is_empty();
+    let accepted = if features.intake_fee.is_some()
+        || features.fee_groups.iter().any(|g| g.intake_fee.is_some())
+    {
         sales::accepted_items_by_seller(ctx.conn(), event_id).await?
     } else {
         Default::default()
@@ -448,52 +503,107 @@ pub async fn load_vendors_with_calculations(
     .fetch_all(ctx.conn())
     .await?;
 
+    let mut exclusions = exclusions_of_event(ctx.conn(), event_id).await?;
     let all_purchases = docs::purchases_where(ctx.conn(), "event_id = $1", event_id).await?;
-    let mut vendors = Vec::new();
-    let users = docs::users(ctx.conn(), &vendor_ids).await?;
+    let mut purchases_by_seller: HashMap<Uuid, Vec<&docs::Purchase>> = HashMap::new();
+    for purchase in &all_purchases {
+        purchases_by_seller
+            .entry(purchase.seller_id)
+            .or_default()
+            .push(purchase);
+    }
+    let helpers: HashMap<Uuid, Option<Vec<String>>> = helpers.into_iter().collect();
+    let mut vendors = Vec::with_capacity(vendor_ids.len());
+    let mut users: HashMap<Uuid, docs::User> = docs::users(ctx.conn(), &vendor_ids)
+        .await?
+        .into_iter()
+        .map(|user| (user.id, user))
+        .collect();
     let over = event.end_date < Utc::now();
     let keeps_record = keeps_seller_record(&event);
     let universal = label_mark(&event) == "universal";
     for vendor in vendor_ids {
-        let Some(mut user) = users.iter().find(|user| user.id == vendor).cloned() else {
+        let Some(mut user) = users.remove(&vendor) else {
             continue;
         };
         ctx.read(Topic::User(vendor));
-        let purchases: Vec<_> = all_purchases
-            .iter()
-            .filter(|purchase| purchase.seller_id == vendor)
-            .collect();
+        let purchases = purchases_by_seller.remove(&vendor).unwrap_or_default();
         let total_revenue: Decimal = purchases.iter().map(|p| p.total_amount).sum();
         let commission: Decimal = purchases.iter().map(|p| p.commission_amount).sum();
         let sales_payout: Decimal = purchases.iter().map(|p| p.payout_amount).sum();
         let gross_revenue: Decimal = purchases.iter().map(|p| sales::list_price(p)).sum();
+        let received_directly: Decimal = purchases.iter().map(|p| p.received_directly()).sum();
         let seller = docs::event_seller(ctx.conn(), event_id, vendor).await?;
         if (over || user.status.as_deref() == Some("deleted"))
             && let Some(snapshot) = seller.as_ref().and_then(|s| s.seller_snapshot.as_ref())
         {
             user = with_snapshot(user, snapshot);
         }
+        let helper_permissions = helpers
+            .get(&vendor)
+            .map(|stored| permissions_of(stored.clone()));
+        let member = if groups {
+            Membership {
+                stored: seller.as_ref().and_then(|s| s.fee_group_id.clone()),
+                decided_at: seller.as_ref().and_then(|s| s.fee_group_decided_at),
+                helper: helper_permissions.is_some(),
+            }
+        } else {
+            Membership::default()
+        };
+        let fees = member.fees(&event);
+        // A group still to be checked shows, marked pending, though its fees do not apply yet
+        let shown = member.claimed(&event);
+        let pending = member.pending(&event).is_some();
+        let paid = seller.as_ref().is_some_and(|seller| seller.payout_received);
+        let commission_percent = seller
+            .as_ref()
+            .filter(|_| paid)
+            .and_then(|seller| seller.commission_percent)
+            .unwrap_or(fees.commission);
+        let fee_group = match (
+            &shown.group,
+            seller.as_ref().and_then(|s| s.fee_group_label.clone()),
+        ) {
+            // Paid out: the group as settled
+            (_, Some(label)) if paid => Some(VendorFeeGroup {
+                id: None,
+                label,
+                pending: false,
+                by_role: false,
+                chosen: None,
+            }),
+            _ if paid => None,
+            (Some(group), _) => Some(VendorFeeGroup {
+                id: Some(group.id.clone()),
+                label: group.label.clone(),
+                pending,
+                by_role: member.stored.as_deref() != Some(group.id.as_str()),
+                chosen: member.stored.clone().filter(|chosen| *chosen != group.id),
+            }),
+            (None, _) => None,
+        };
         let intake_fee = sales::intake_fee_of(
-            &event,
+            &fees,
             seller.as_ref(),
             accepted.get(&vendor).copied().unwrap_or(0),
         );
+        let fee_cap_credit =
+            sales::fee_cap_credit_of(&fees, seller.as_ref(), commission, &intake_fee);
         let sort_code = if universal {
             seller_sort_code(ctx, vendor).await?
         } else {
             None
         };
-        let helper_permissions = helpers
-            .iter()
-            .find(|(user, _)| *user == vendor)
-            .map(|(_, stored)| permissions_of(stored.clone()));
         vendors.push(VendorWithCalculations {
             user,
             total_revenue,
             commission,
             intake_fee,
-            payout: sales_payout - intake_fee.total,
-            paid: seller.as_ref().is_some_and(|seller| seller.payout_received),
+            fee_cap_credit,
+            payout: sales_payout - intake_fee.total + fee_cap_credit,
+            received_directly,
+            paid,
             gross_revenue,
             total_discount: gross_revenue - total_revenue,
             is_helper: helper_permissions.is_some(),
@@ -505,6 +615,11 @@ pub async fn load_vendors_with_calculations(
             }),
             seller_number: seller.and_then(|seller| seller.number),
             sort_code,
+            excluded: exclusions.remove(&vendor),
+            fee_group,
+            commission_percent,
+            // Only the seller list needs it: `get_vendors_for_event`
+            without_items: None,
         });
     }
     Ok(vendors)
@@ -521,7 +636,16 @@ async fn get_vendors_for_event(
     args: EventArgs,
 ) -> AppResult<Vec<VendorWithCalculations>> {
     require_team(ctx, args.event_id.0).await?;
-    load_vendors_with_calculations(ctx, args.event_id.0).await
+    let mut vendors = load_vendors_with_calculations(ctx, args.event_id.0).await?;
+    let without_items: HashSet<Uuid> =
+        super::event_seller::sellers_without_items(ctx.conn(), args.event_id.0)
+            .await?
+            .into_iter()
+            .collect();
+    for vendor in &mut vendors {
+        vendor.without_items = without_items.contains(&vendor.user.id).then_some(true);
+    }
+    Ok(vendors)
 }
 
 #[derive(Deserialize)]
@@ -665,9 +789,13 @@ async fn add_co_organizer_for_event(ctx: &mut Ctx, args: AddHelperArgs) -> AppRe
     if !has_role(ctx.conn(), event, user, Role::Seller).await? {
         return Err(AppError::bad_request("seller.notParticipant"));
     }
+    // Excluded sellers keep the role for the return of handed-in items, not for the team
+    super::event_exclusions::assert_not_excluded(ctx.conn(), event, user).await?;
     add_role(ctx, event, user, Role::Coorganizer).await?;
     // Also when already a helper: appointing again sets the rights anew
     store_permissions(ctx, event, user, args.permissions.as_deref()).await?;
+    // Helpers may pay the fees of a helper group (#302)
+    fee_groups::after_role_change(ctx, event, user).await?;
     Ok(Success { success: true })
 }
 
@@ -717,6 +845,7 @@ async fn remove_co_organizer_for_event(ctx: &mut Ctx, args: EventUserArgs) -> Ap
         return Err(AppError::bad_request("seller.organizerRoleFixed"));
     }
     remove_role(ctx, event, user, Role::Coorganizer).await?;
+    fee_groups::after_role_change(ctx, event, user).await?;
     // Their devices may keep the keys of the sellers' ID codes
     super::offline::renew_check_in_keys(ctx, event).await?;
     Ok(Success { success: true })
@@ -742,6 +871,8 @@ async fn transfer_organizer(ctx: &mut Ctx, args: EventUserArgs) -> AppResult<Suc
     add_role(ctx, event, user, Role::Organizer).await?;
     remove_role(ctx, event, organizer, Role::Organizer).await?;
     add_role(ctx, event, organizer, Role::Coorganizer).await?;
+    fee_groups::after_role_change(ctx, event, user).await?;
+    fee_groups::after_role_change(ctx, event, organizer).await?;
     ctx.touch(Topic::Events);
     Ok(Success { success: true })
 }

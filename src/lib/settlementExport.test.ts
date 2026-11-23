@@ -47,6 +47,7 @@ const sale = (overrides: Partial<SettlementSale> = {}): SettlementSale => ({
   priceSource: 'offer',
   commission: 14,
   payout: 126,
+  directSale: false,
   ...overrides,
 });
 const settlement = (sellers: SettlementSeller[], sales: SettlementSale[]): SettlementExport => ({
@@ -89,6 +90,29 @@ describe('settlement export', () => {
       '14,00',
       '126,00',
     ]);
+  });
+
+  it('has the fee cap column at every event with a cap, credits or not', () => {
+    const columns = (data: SettlementExport) => sellersCsv(data).split('\r\n')[0].split(';').length;
+    const capped = (sellers: SettlementSeller[]) => ({
+      ...settlement(sellers, []),
+      event: { ...settlement([], []).event, maxFeesPerSeller: 20 },
+    });
+    expect(columns(settlement([seller()], []))).toBe(8);
+    expect(columns(capped([seller()]))).toBe(9);
+    expect(columns(capped([seller({ feeCapCredit: 3 })]))).toBe(9);
+  });
+
+  it('names the fee group of each seller', () => {
+    const data = {
+      ...settlement([seller({ feeGroup: 'Vereinsmitglieder' }), seller({ sellerNumber: 8 })], []),
+      event: { ...settlement([], []).event, feeGroups: true },
+    };
+    const [header, first, second] = sellersCsv(data).split('\r\n');
+    expect(header.split(';').at(-1)).toBe('Gebührengruppe');
+    expect(first.split(';').at(-1)).toBe('Vereinsmitglieder');
+    expect(second.split(';').at(-1)).toBe('');
+    expect(sellerRows(data.sellers, false, 'name')[0][1]).toBe('Anna Rad (Vereinsmitglieder)');
   });
 
   it('writes two CSV tables that spreadsheets open', () => {
