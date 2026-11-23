@@ -198,6 +198,8 @@
     "walkInOnly": "Nur Artikel von vor Ort angelegten Verkäufern können hier erfasst werden.",
     "fieldRequired": "Für „{{event}}“ ist die Angabe „{{field}}“ nötig.",
     "dataFixed": "Titel, Kategorie, Preis und Pflichtangaben sind fest: Der Artikel wurde bei einem laufenden Basar mit Nachweis angenommen.",
+    "importEmpty": "Die Liste enthält keine Artikel.",
+    "importTooMany": "Höchstens {{max}} Artikel auf einmal importieren.",
     "rejected": "Der Artikel wurde abgelehnt. Nimm zuerst die Ablehnung zurück.",
     "rejectedNoRemove": "Abgelehnte Artikel bleiben beim Basar vermerkt und können nicht entfernt werden.",
     "notRegistered": "Melde dich zuerst als Verkäufer bei diesem Basar an.",
