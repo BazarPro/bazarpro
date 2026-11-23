@@ -1,5 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+// The font of the app, self-hosted: the same on every device and in the screenshots
+// (system-ui differs per platform). Only the subsets a page needs are downloaded.
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+import '@fontsource/inter/900.css';
 import './styles/index.css';
 import './i18n';
 import App from './App.tsx';

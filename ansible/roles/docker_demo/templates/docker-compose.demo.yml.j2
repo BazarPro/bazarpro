@@ -1,0 +1,105 @@
+# Demo instance on {{ demo_domain }}: frontend, backend and database with the demo data.
+# scripts/reset-demo.sh removes the volumes every night, so visitors always find the
+# demo data again. Nothing leaves the server by mail: without AUTH_SMTP_HOST the backend
+# only logs its emails.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  traefik:
+    image: 'traefik:v3.6.11'
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging: *logging
+
+  postgres:
+    image: 'postgres:17-alpine'
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=bazarpro
+      - POSTGRES_PASSWORD=demo
+      - POSTGRES_DB=bazarpro
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'bazarpro']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    logging: *logging
+
+  backend:
+    image: '{{ ci_registry_image }}/backend:{{ image_tag }}'
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment: &backend_environment
+      - DATABASE_URL=postgres://bazarpro:demo@postgres:5432/bazarpro
+      - SITE_URL=https://{{ demo_domain }}
+      - BAZARPRO_MODE=platform
+      - RUST_LOG=warn
+    volumes:
+      - files:/data/files
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.backend.rule=Host(`{{ demo_domain }}`) && PathPrefix(`/api`)'
+      - 'traefik.http.routers.backend.entrypoints=websecure'
+      - 'traefik.http.routers.backend.tls.certresolver=le'
+      - 'traefik.http.services.backend.loadbalancer.server.port=3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  # Demo data with photos (registration off, demo banner on); on later deploys it only
+  # moves the running demo bazaars to today
+  seed:
+    image: '{{ ci_registry_image }}/backend:{{ image_tag }}'
+    restart: 'no'
+    command: ['bazarpro-backend', 'seed']
+    environment: *backend_environment
+    volumes:
+      - files:/data/files
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging: *logging
+
+  frontend:
+    image: '{{ ci_registry_image }}:{{ image_tag }}'
+    restart: unless-stopped
+    environment:
+      - BACKEND_URL=http://backend:3000
+      - SITE_URL=https://{{ demo_domain }}
+      - BAZARPRO_MODE=platform
+      - PLAUSIBLE_DOMAIN={{ demo_domain }}
+      - PLAUSIBLE_API_HOST={{ plausible_api_host }}
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.frontend.rule=Host(`{{ demo_domain }}`)'
+      - 'traefik.http.routers.frontend.entrypoints=websecure'
+      - 'traefik.http.routers.frontend.tls.certresolver=le'
+      # The demo bazaars are made up and copy bazarpro.de: keep them out of search engines
+      - 'traefik.http.routers.frontend.middlewares=demo-noindex'
+      - 'traefik.http.middlewares.demo-noindex.headers.customresponseheaders.X-Robots-Tag=noindex, nofollow'
+      - 'traefik.http.services.frontend.loadbalancer.server.port=8080'
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    logging: *logging
+
+volumes:
+  postgres_data:
+  files:

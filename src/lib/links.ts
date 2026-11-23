@@ -2,7 +2,7 @@
 export const DOCS_URL = 'https://docs.bazarpro.de';
 
 /** Source code of BazarPro (MIT). */
-export const GITHUB_URL = 'https://github.com/BazarPro/core';
+export const GITHUB_URL = 'https://github.com/BazarPro/bazarpro';
 
 /** A page of the documentation in the app language; English pages live under /en/. */
 export function docsUrl(language: string | undefined, path = '/'): string {

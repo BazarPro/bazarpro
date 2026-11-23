@@ -73,6 +73,7 @@ Sitzungen werden nicht übernommen, alle melden sich einmal neu an.
 ```sh
 bazarpro-backend                                   # Server (migriert beim Start)
 bazarpro-backend admin <email>                     # bestehendes Konto wird Administrator
+bazarpro-backend password <email> < datei         # neues Passwort (von stdin), meldet überall ab
 bazarpro-backend seed [--force] [--locale en] [--no-images]   # Demo-Daten, s. src/demo
 bazarpro-backend run <modul.funktion> '<json>'     # Funktion aufrufen, auch interne
 bazarpro-backend import <export.zip>               # Convex-Export einspielen

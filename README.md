@@ -1,222 +1,91 @@
+<div align="center">
+
+<img src="public/favicon.svg" alt="" width="72" height="72" />
+
 # BazarPro
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**Free, open-source software for kids' consignment sales, flea markets and bike swaps.**<br />
+Sellers list their items at home and print QR labels. At the bazaar every phone becomes a cash desk, and BazarPro does the payouts.
+
+[![CI](https://github.com/BazarPro/bazarpro/actions/workflows/pipeline.yml/badge.svg?branch=main)](https://github.com/BazarPro/bazarpro/actions/workflows/pipeline.yml)
+[![Release](https://img.shields.io/github/v/release/BazarPro/bazarpro)](https://github.com/BazarPro/bazarpro/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Docs](https://img.shields.io/badge/Docs-docs.bazarpro.de-1d3fe0.svg)](https://docs.bazarpro.de)
 
-> 📖 **Documentation (German):** guides for organizers, sellers and visitors at **[docs.bazarpro.de](https://docs.bazarpro.de)** ([source](https://github.com/BazarPro/docs)).
+[**Try the demo**](https://demo.bazarpro.de) · [Website](https://bazarpro.de) · [Guides](https://docs.bazarpro.de/en/) · [Self-hosting](#self-hosting)
 
-BazarPro is a modern, real-time platform designed to streamline the organization and execution of bazaar-style events—from local bicycle markets to community flea markets. It handles everything from product registration and QR-code labeling to on-site sales and automated payout calculations.
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/landing-dark.jpg" /><img src="docs/screenshots/landing.jpg" alt="BazarPro landing page" width="860" /></picture>
 
-## Key Features
+</div>
 
-### For Organizers
+> 🇩🇪 **Auf Deutsch:** BazarPro ist eine kostenlose Open-Source-Software für **Kinderbasare, Kleiderbasare, Flohmärkte, Fahrradbörsen und Skibasare**. Verkäufer erfassen ihre Artikel zu Hause und drucken **QR-Etiketten**. Am Basartag wird mit dem Handy **gescannt und kassiert**, und die **Abrechnung mit Provision** erstellt BazarPro automatisch. Ohne Installation auf [bazarpro.de](https://bazarpro.de) oder **selbst gehostet** mit Docker. Zum Ausprobieren: [demo.bazarpro.de](https://demo.bazarpro.de). Anleitungen gibt es auf [docs.bazarpro.de](https://docs.bazarpro.de).
 
-- **Event Management:** Create and configure events with specific commissions, fees, and categories.
-- **On-Site Tooling:** Integrated QR-code scanner for rapid sales processing and real-time inventory updates.
-- **Insights:** Monitor sales, participant activity, and financial summaries.
-- **Feature Flags:** Toggle system capabilities (e.g., registrations, demo mode) on the fly without redeploying.
+## Features
 
-### For Sellers
+| For organizers                                                                       | For sellers                                           | For visitors                                             |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------- |
+| Set up a bazaar with commission, fees, categories and seller limits                  | Register items with photos, sizes and prices          | Browse the catalog of a bazaar before and during the day |
+| Invite sellers or let them register, by region (postal codes) or with an access code | Print QR labels for all items at once                 | Upcoming bazaars on the website, prerendered for search  |
+| Intake, cash desk and returns on any phone: scan the label, done, also offline       | Follow sales live and see the payout after commission | Make offers or ask questions about an item               |
+| Settlement per seller, receipts, posters and flyers                                  | Take part in several bazaars with the same items      |                                                          |
 
-- **Digital Inventory:** Register products with images, descriptions, and pricing.
-- **QR-Code Labels:** Generate and print unique QR-codes for each item to facilitate secure, fast checkouts.
-- **Event Participation:** Join multiple events and track the status of your items (available, sold, returned).
-- **Automated Payouts:** Transparent view of earnings after event commissions.
+<table>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/organizer-items-dark.jpg" /><img src="docs/screenshots/organizer-items.jpg" alt="Items of a bazaar with their status" /></picture><br /><sub><b>Items:</b> intake, sale and returns at a glance</sub></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cash-desk-dark.jpg" /><img src="docs/screenshots/cash-desk.jpg" alt="Cash desk with three scanned items" /></picture><br /><sub><b>Cash desk:</b> scan the QR labels with the phone camera or a scanner</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settlement-dark.jpg" /><img src="docs/screenshots/settlement.jpg" alt="Settlement of a bazaar" /></picture><br /><sub><b>Settlement:</b> what is in the till and what each seller gets</sub></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/organizer-overview-dark.jpg" /><img src="docs/screenshots/organizer-overview.jpg" alt="Overview of a bazaar for the organizer" /></picture><br /><sub><b>Overview:</b> the next steps of a bazaar</sub></td>
+  </tr>
+</table>
 
-### For Buyers
+<p align="center">
+  <img src="docs/screenshots/seller-items-phone.jpg" alt="A seller's items on a phone, light theme" width="250" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/catalog-phone-dark.jpg" alt="Catalog of a bazaar on a phone, dark theme" width="250" />
+  <br /><sub>On the phone, in the light and the dark theme. The screenshots above follow your GitHub theme.</sub>
+</p>
 
-- **Live Catalog:** Browse available items online before and during the event.
-- **SEO Optimized:** Event and product pages are pre-rendered for better search engine visibility.
+## Try it
 
----
+- **Demo:** [demo.bazarpro.de](https://demo.bazarpro.de) with sample bazaars; it is reset every night and sends no emails. Sign in with one of the demo accounts shown on the login page.
+- **Hosted:** [bazarpro.de](https://bazarpro.de), free for bazaars.
+- **Self-hosted:** see below.
 
-## License
+## Self-hosting
 
-This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for the full license text.
-
----
-
-## Tech Stack
-
-- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI.
-- **Backend:** Rust (Axum, sqlx) with PostgreSQL (`backend/`): live updates over WebSocket, sign-in, uploads, emails and cron jobs.
-- **Infrastructure:** Docker, Traefik, a small Node server with server-side SEO (`server/`), Ansible (for automated deployments).
-- **Testing:** Vitest, Playwright (E2E), `cargo test` (backend, one database per test).
-
----
-
-## Quick Start
-
-### 1. Installation
-
-```bash
-npm install
-```
-
-### 2. Local Development
-
-Start Postgres, then the backend and the Vite frontend (Rust via [rustup](https://rustup.rs)):
+One server with Docker is enough, no build and no CI needed:
 
 ```bash
-docker compose -f backend/docker-compose.dev.yml up -d postgres
-export DATABASE_URL=postgres://bazarpro:bazarpro@127.0.0.1:55432/bazarpro STORAGE_DIR=.files
-npm run dev:full    # backend on :3000, Vite on :5173 (forwards /api to the backend)
-```
-
-Navigate to `http://localhost:5173`.
-
-### 3. Demo Data
-
-Populate your local environment with sample users, events, and products:
-
-```bash
-npm run seed                    # German
-npm run seed -- --locale en     # English, e.g. for screenshots
-```
-
-All demo accounts use the password `123456`, e.g. `admin@bazarpro.de`, `user1@bazarpro.de` or
-`sarah.miller@example.org` (English) / `sabine.krause@example.org` (German), the organizer of the
-running kids' bazaar.
-
----
-
-## Project Structure
-
-```text
-├── ansible/          # Deployment playbooks and server configuration
-├── backend/          # Rust backend: migrations, modules (one per area), auth, demo data, tests
-├── scripts/          # Prerendering, SEO generation, and backup scripts
-├── src/
-│   ├── components/   # UI library (shadcn/ui) and shared components
-│   ├── hooks/        # Custom React hooks (auth, feature flags, etc.)
-│   ├── lib/          # Utilities (PDF generation, image processing), lib/api: backend client
-│   ├── shared/       # Constants and rules the app shares with the backend's behaviour
-│   └── pages/        # Application routes (organized by Role)
-└── playwright/       # E2E test suites
-```
-
-## Development Environment
-
-### Dev Container
-
-For a consistent development experience, BazarPro includes a pre-configured **Dev Container** for Visual Studio Code. This environment comes with all necessary dependencies, including Node.js 22, and essential extensions (ESLint, Prettier, Playwright).
-
-- **How to use:** Open the project folder in VS Code and click "Reopen in Container" when prompted.
-- **Forwarded Ports:**
-  - `5173`: Frontend (Vite)
-  - `3000`: Backend
-
----
-
-## Testing
-
-- **Unit & Integration:** `npm run test`
-- **Backend:** `cd backend && cargo test` (needs `DATABASE_URL`, see above)
-- **End-to-End:** `npm run test:e2e`
-- **Coverage:** `npm run test:coverage`
-- **Run all tests:** `npm test:all`
-- **Run E2E tests with UI Interaction:** `npx playwright test --ui`
-
----
-
-## Self-Hosting
-
-Run your own BazarPro instance with Docker on a single server – no build, no CI required:
-
-```bash
-curl -O https://raw.githubusercontent.com/BazarPro/core/main/docker-compose.selfhost.yml
-curl -o .env https://raw.githubusercontent.com/BazarPro/core/main/.env.selfhost.example
+curl -O https://raw.githubusercontent.com/BazarPro/bazarpro/main/docker-compose.selfhost.yml
+curl -o .env https://raw.githubusercontent.com/BazarPro/bazarpro/main/.env.selfhost.example
 # edit .env: domain, e-mail for Let's Encrypt, SMTP server
 docker compose -f docker-compose.selfhost.yml up -d
 ```
 
-The stack contains Traefik (HTTPS via Let's Encrypt), PostgreSQL, the BazarPro backend and the web app, all under one domain (`/api` goes to the backend). The site URL is read at runtime, so the published images work under any domain.
+The stack contains Traefik (HTTPS via Let's Encrypt), PostgreSQL, the backend and the web app, all under one domain. The account in `ADMIN_EMAIL` becomes administrator once it has signed up. Step-by-step guide: [English](https://docs.bazarpro.de/en/selbst-hosten/) · [Deutsch](https://docs.bazarpro.de/selbst-hosten/).
 
-The account in `ADMIN_EMAIL` becomes administrator once it has signed up; for another account:
+The iOS and Android apps can switch to a self-hosted server, see [docs/mobile-app.md](./docs/mobile-app.md).
 
-```bash
-docker compose -f docker-compose.selfhost.yml exec backend bazarpro-backend admin you@example.org
-```
-
-Instances still running on Convex move their data with `bazarpro-backend import <export.zip>` (see `backend/README.md`).
-
-Step-by-step guide (German): **[docs.bazarpro.de/selbst-hosten](https://docs.bazarpro.de/selbst-hosten/)**
-
-## Mobile App
-
-The iOS and Android apps wrap the web app with [Capacitor](https://capacitorjs.com) (`android/`, `ios/`, `capacitor.config.ts`). The app starts with bazarpro.de; "Server wechseln" on the sign-in and account pages switches to a self-hosted instance. It talks to the server's `/api` with a bearer token instead of the session cookie (`src/native/`).
+## Development
 
 ```bash
-npm run build:app      # vite --mode app → dist-app/, then cap sync
-npx cap open android   # Android Studio
-npx cap open ios       # Xcode (macOS only)
+npm install
+docker compose -f backend/docker-compose.dev.yml up -d postgres
+export DATABASE_URL=postgres://bazarpro:bazarpro@127.0.0.1:55432/bazarpro STORAGE_DIR=.files
+npm run seed        # demo data, all accounts with password 123456
+npm run dev:full    # backend on :3000, Vite on :5173
 ```
 
-Self-hosted instances need nothing extra: the backend allows the app's origins by default (`APP_ORIGINS`). For Google/GitHub sign-in the app opens the system browser and comes back via `bazarpro://auth`. The app refuses servers whose `instance.getConfig` reports an `appApi` below its minimum (`APP_API` in `backend/src/modules/instance.rs`); raise both on breaking changes of the app's API.
+**Stack:** React 19, TypeScript, Vite, Tailwind CSS · Rust (Axum, sqlx) with PostgreSQL and live updates over WebSocket · Capacitor for the mobile apps · Docker, Traefik, Ansible · Vitest, Playwright, `cargo test`.
 
-Every CI run attaches a debug APK (`bazarpro-debug-apk`) for testing on Android devices.
+More in [docs/](./docs/README.md): [development and tests](./docs/development.md), [deployment and feature flags](./docs/deployment.md), [CI/CD pipeline](./docs/pipeline.md), [environment variables](./docs/env.md), [mobile app](./docs/mobile-app.md).
 
-Icon and splash screen are made from `assets/*.svg`; the PNGs in `android/` and `ios/` are rendered from them in the sizes of the Capacitor template.
+## Contributing
 
-**Store release checklist**
+Issues and pull requests are welcome, see [CONTRIBUTING.md](./CONTRIBUTING.md). Code, commits and issues are in English; the app and the user guides are in German and English. Please report security issues privately as described in [SECURITY.md](./SECURITY.md).
 
-- Android: create an upload keystore, add a `release` signing config to `android/app/build.gradle`, raise `versionCode`/`versionName`, build with `./gradlew bundleRelease` and upload the `.aab` to the Play Console
-- iOS: set team and bundle id `de.bazarpro.app` in Xcode, raise the version, Product → Archive, upload to App Store Connect
-- Store listings need a privacy policy URL and the data-safety/privacy details (account data, photos, camera for the QR scanner); accounts can be deleted in the app (Account → danger zone), as Apple requires
+## License
 
-## Deployment & Infrastructure
-
-### Local Production Test (Docker)
-
-```bash
-docker-compose build
-docker-compose up
-```
-
-### CI/CD (GitHub)
-
-The pipeline handles deployments to self-hosted environments. Ensure all required environment variables are set in GitHub Actions secrets. The Environment Variables are documented in detail in the [ENV.md](./ENV.md) file.
-Detailed pipeline documentation (including stage explanations and references to `ENV.md`) is available in [pipeline.md](./pipeline.md).
-
-### Ansible Commands
-
-For manual infrastructure management:
-
-```bash
-# Syntax check
-uvx --from ansible-core ansible-playbook -i ansible/inventory ansible/site.yml --syntax-check
-
-# Dry-run with diff
-uvx --from ansible-core ansible-playbook -i ansible/inventory ansible/site.yml --check --diff
-```
-
-The `backup` service of `docker-compose.yml` dumps the database and archives the uploaded files every night (`scripts/backup.sh`, kept for 7 days); `scripts/restore.sh` restores them. Every deploy also dumps the database first.
-
----
-
-## Configuration & Flags
-
-BazarPro is highly configurable through environment variables and feature flags.
-
-### Environment Variables
-
-Detailed information about all configuration options for the frontend, backend, and CI/CD pipelines can be found in the [ENV.md](./ENV.md) file.
-
-### Feature Flags
-
-Manage system capabilities (e.g., event creation, demo mode) with the backend CLI:
-
-```bash
-# Example: Toggle event creation
-bazarpro-backend run seed.toggleFeatureFlag '{"key": "is_event_creation_enabled"}'
-```
-
-#### Default Feature Flags after seeding:
-
-- **is_demo_mode**: Shows a demo banner on the landing page. Default is `true`.
-- **is_login_enabled**: Enables the login page. Default is `true`.
-- **is_registration_enabled**: Enables the registration page. Default is `true`.
-- **is_event_creation_enabled**: Enables creation of new events. Default is `true`.
-- **allow_undo_inventory_actions**: Enables the ability to undo sales and returns in the inventory (On-Site Tool). Default is `false` in code, but `true` after seeding.
-- **is_create_products_on_signup_enabled**: Enables automatic creation of starter products for new users. Default is `true`.
-- **is_e2e_auth_skip_email**: Skips SMTP delivery in E2E and stores auth verification codes for tests. Default is `false`.
+[MIT](./LICENSE)

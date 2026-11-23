@@ -1,6 +1,6 @@
 import { ArrowRight, Calendar, ShoppingBag } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
-import { HeroBikeDemo } from './demo/HeroBikeDemo';
+import { HeroSaleScene } from './demo/HeroSaleScene';
 import { useTranslation } from 'react-i18next';
 
 interface LandingHeroProps {
@@ -79,7 +79,7 @@ export function LandingHero({
           </div>
         </div>
 
-        <HeroBikeDemo />
+        <HeroSaleScene />
       </div>
     </section>
   );

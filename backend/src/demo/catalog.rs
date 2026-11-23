@@ -39,6 +39,8 @@ pub const IMAGES: &[(&str, &str)] = &[
     ("books", "photo-1512820790803-83ca734da794"),
     ("robots", "photo-1558060370-d644479cb6f7"),
     ("wooden_train", "photo-1596461404969-9ae70f2830c1"),
+    ("pram", "photo-1528121108018-743eef2e4a7a"),
+    ("car_seat", "photo-1619719287848-883c8f26efbc"),
     ("toys", "photo-1515488042361-ee00e0ddd4e4"),
     ("sofa", "photo-1555041469-a586c61ea9bc"),
     ("chair", "photo-1592078615290-033ee584e267"),
@@ -609,7 +611,7 @@ pub const KIDS: &[Item] = &[
             Cat::Other,
             "good",
             140.0,
-            None,
+            Some("pram"),
             t("Kinderwagen mit Babywanne", "Pram with carrycot"),
             t(
                 "Luftreifen, Regenverdeck und Wickeltasche dabei.",
@@ -638,7 +640,7 @@ pub const KIDS: &[Item] = &[
         Cat::Other,
         "good",
         35.0,
-        None,
+        Some("car_seat"),
         t("Autokindersitz 9–18 kg", "Child car seat 9–18 kg"),
         t(
             "Unfallfrei, Bezug gewaschen.",

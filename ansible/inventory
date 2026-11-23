@@ -2,5 +2,9 @@
 # Replace with your actual server IP or hostname
 your_server_ip ansible_user=root
 
+# Demo instance; the pipeline passes the address (repository variable DEMO_HOST)
+[demo]
+demo_server ansible_user=ubuntu
+
 [local]
 localhost ansible_connection=local

@@ -52,7 +52,7 @@ export function LandingCTA({ isAuthenticated, onOrganizerClick, onSellerClick }:
             components={{
               github: (
                 <a
-                  href="https://github.com/BazarPro/core"
+                  href="https://github.com/BazarPro/bazarpro"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold text-primary-foreground underline underline-offset-4 hover:no-underline"

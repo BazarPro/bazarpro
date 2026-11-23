@@ -4,12 +4,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BazarPro/core.git"
+    "url": "git+https://github.com/BazarPro/bazarpro.git"
   },
   "bugs": {
-    "url": "https://github.com/BazarPro/core/issues"
+    "url": "https://github.com/BazarPro/bazarpro/issues"
   },
-  "homepage": "https://github.com/BazarPro/core#readme",
+  "homepage": "https://github.com/BazarPro/bazarpro#readme",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -21,6 +21,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:coverage": "vitest run --coverage --coverage.reporter=text",
     "test:e2e": "playwright test",
+    "screenshots": "playwright test -c playwright.screenshots.config.ts",
     "test:all": "npm run test:coverage && npm run test:e2e",
     "preview": "vite preview",
     "prerender": "node scripts/prerender-public.js",

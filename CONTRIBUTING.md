@@ -10,7 +10,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](./
 
 ### Reporting Bugs
 
-- Check the [Issues](https://github.com/BazarPro/core/issues) to see if the bug has already been reported.
+- Check the [Issues](https://github.com/BazarPro/bazarpro/issues) to see if the bug has already been reported.
 - If not, create a new issue. Include a clear title, a description of the problem, and steps to reproduce the issue.
 
 ### Suggesting Enhancements
@@ -26,7 +26,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](./
 4. Ensure all tests pass (`npm run test:all`).
 5. Commit your changes following our [commit conventions](#commit-conventions).
 6. Push to your branch (`git push origin feature/my-feature`).
-7. Open a Pull Request against the `development` branch. `development` is the integration branch; `main` reflects production and only receives merges from `development` (see [pipeline.md](./pipeline.md#release-process)).
+7. Open a Pull Request against the `development` branch. `development` is the integration branch; `main` reflects production and only receives merges from `development` (see [docs/pipeline.md](./docs/pipeline.md#release-process)).
 
 ## Development Setup
 

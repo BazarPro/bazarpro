@@ -141,11 +141,11 @@
     "joinAsSeller": "Als Verkäufer mitmachen"
   },
   "hero": {
-    "titleStart": "Second‑Hand‑Basare",
+    "titleStart": "Second-Hand-Basare",
     "titleHighlight": "ohne",
     "titleEnd": "Zettelwirtschaft",
     "line1Start": "Verkäufer inserieren zu Hause",
-    "line1End": "und hängen einen QR‑Code dran.",
+    "line1End": "und hängen einen QR-Code dran.",
     "line2Start": "Beim Basar wird nur noch gescannt –",
     "line2End": "den Rest rechnet BazarPro."
   },
@@ -168,8 +168,10 @@
   "demo": {
     "checkout": "Kasse",
     "bike": "Hollandrad 28 Zoll",
+    "raincoat": "Regenjacke Gr. 110",
     "sell": "Verkaufen",
     "sold": "Verkauft",
+    "total": "Summe",
     "itemNumber": "Nr. {{number}}"
   },
   "process": {

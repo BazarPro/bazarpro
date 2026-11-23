@@ -22,8 +22,9 @@ concurrency:
 
 env:
   REGISTRY_URL: ghcr.io
-  # Constructs the image name based on the repository path (e.g., ghcr.io/user/repo)
-  REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+  # Fixed, not ghcr.io/${{ github.repository }}: the repository was renamed from core to
+  # bazarpro, and self-hosted instances pull ghcr.io/bazarpro/core (docker-compose.selfhost.yml)
+  REGISTRY_IMAGE: ghcr.io/bazarpro/core
   DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
 jobs:
@@ -507,6 +508,42 @@ jobs:
                 SUBDOMAIN=$SUBDOMAIN \
                 PR_ID=$PR_ID \
                 review_state=absent"
+
+  # The demo instance (docs/deployment.md#demo-instance) on its own server, after the
+  # production deploy. Skipped until the repository variable DEMO_HOST is set.
+  deploy-demo:
+    if: startsWith(github.ref, 'refs/tags/') && vars.DEMO_HOST != ''
+    needs: deploy
+    runs-on: ubuntu-latest
+    concurrency:
+      group: demo
+      cancel-in-progress: false
+    environment:
+      name: demo
+      url: https://${{ vars.DEMO_DOMAIN || 'demo.bazarpro.de' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ansible
+        run: pip install ansible
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEMO_SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/id_demo
+          chmod 600 ~/.ssh/id_demo
+          ssh-keyscan ${{ vars.DEMO_HOST }} >> ~/.ssh/known_hosts
+      - name: Deploy the demo
+        env:
+          DEMO_DOMAIN: ${{ vars.DEMO_DOMAIN || 'demo.bazarpro.de' }}
+          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          PLAUSIBLE_API_HOST: ${{ vars.VITE_PLAUSIBLE_API_HOST }}
+          # The admin of the demo shares the password of the review apps' Mailpit
+          DEMO_ADMIN_PASSWORD: ${{ secrets.REVIEW_MAIL_PASSWORD }}
+        run: |
+          ansible-playbook -i ansible/inventory ansible/site.yml --tags demo \
+            -e "ansible_host=${{ vars.DEMO_HOST }} \
+                ansible_ssh_private_key_file=~/.ssh/id_demo \
+                IMAGE_TAG=${GITHUB_REF#refs/tags/} \
+                REGISTRY_IMAGE=${{ env.REGISTRY_IMAGE }}"
 
   release:
     if: always() && startsWith(github.ref, 'refs/tags/') && needs.deploy.result == 'success'

@@ -931,3 +931,40 @@ async fn sign_ups_of_one_client_are_limited(db: PgPool) {
         .await;
     assert_eq!(other.body, json!({ "signingIn": false }));
 }
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn the_command_line_sets_a_password_and_signs_out(db: PgPool) {
+    use bazarpro_backend::auth::password_flows::set_password;
+    let app = TestApp::new(db.clone());
+    disable_starter_products(&db).await;
+    let session = app.sign_up("erika@example.org").await;
+
+    assert!(
+        set_password(&db, "erika@example.org", "kurz".into())
+            .await
+            .is_err()
+    );
+    assert!(
+        set_password(&db, "nobody@example.org", "geheim12345".into())
+            .await
+            .is_err()
+    );
+    set_password(&db, "Erika@Example.org", "geheim12345".into())
+        .await
+        .unwrap();
+
+    let me = app.get("/api/auth/session", Some(&session)).await;
+    assert_eq!(me.body, json!({ "userId": null }));
+    let old = app
+        .password(
+            json!({ "flow": "signIn", "email": "erika@example.org", "password": "geheim123" }),
+        )
+        .await;
+    assert_eq!(old.status, StatusCode::UNAUTHORIZED);
+    let new = app
+        .password(
+            json!({ "flow": "signIn", "email": "erika@example.org", "password": "geheim12345" }),
+        )
+        .await;
+    assert_eq!(new.body, json!({ "signingIn": true }));
+}
