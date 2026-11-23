@@ -471,6 +471,7 @@ pub fn tests_event(features: Value) -> Event {
         reminders_sent: None,
         moderation: None,
         organizer_id: uuid::Uuid::nil(),
+        leftovers_returned_at: None,
     }
 }
 

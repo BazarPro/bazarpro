@@ -140,6 +140,8 @@ export interface Docs {
         }
       | undefined;
     remindersSent?: { dayBefore?: number | undefined; pickup?: number | undefined } | undefined;
+    /** The nightly cron returned the items left over after the bazaar (#305) */
+    leftoversReturnedAt?: number | undefined;
     categories: Id<'categories'>[];
     title: string;
     description: string;
@@ -181,6 +183,8 @@ export interface Docs {
     discountPercent?: number | undefined;
     locationCategoryId?: Id<'eventLocationCategories'> | undefined;
     internalNote?: string | undefined;
+    /** Returned by the nightly cron after the bazaar, not by a person (#305) */
+    autoReturnedAt?: number | undefined;
     status: EventProductStatus;
     eventId: Id<'events'>;
     productId: Id<'products'>;
@@ -850,6 +854,8 @@ export interface Api {
         locationLabel: string | undefined;
         internalNote: string | undefined;
         sale: SaleInfo | undefined;
+        /** Returned by the nightly cron after the bazaar (#305) */
+        autoReturnedAt?: number | undefined;
         _id: Id<'products'>;
         _creationTime: number;
         moderation?: { hiddenAt: number; hiddenBy: Id<'users'>; reason: string } | undefined;
@@ -990,6 +996,15 @@ export interface Api {
       'mutation',
       { vendorId: Id<'users'>; eventId: Id<'events'> },
       { updatedCount: number }
+    >;
+    /**
+     * After the bazaar: returns the given items still available at once (#305), not those
+     * of sellers paid out. Sold, announced and rejected items stay.
+     */
+    returnLeftovers: FunctionReference<
+      'mutation',
+      { eventId: Id<'events'>; productIds: Id<'products'>[] },
+      { returnedCount: number; sellerCount: number }
     >;
     undoReturn: FunctionReference<
       'mutation',

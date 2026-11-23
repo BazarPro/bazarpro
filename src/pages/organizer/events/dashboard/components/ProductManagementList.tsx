@@ -12,11 +12,15 @@ import {
   Pencil,
   Trash2,
   PackageX,
+  MoonStar,
+  Filter,
+  List,
   type LucideProps,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Badge } from '../../../../../components/ui/badge';
 import { Button } from '../../../../../components/ui/button';
+import { ActionNotice } from '../../../../../components/ui/action-notice';
 import { StorageImage } from '../../../../../components/ui/StorageImage';
 import type { Id } from '../../../../../lib/api/types';
 import { discountedPrice } from '../../../../../shared/eventFeatures';
@@ -70,6 +74,9 @@ interface ProductManagementListProps {
   onUndoRejection: (product: ProductWithStatus) => void;
   /** Changes with the search, so the list starts on page 1 again */
   filterKey: string;
+  /** The "Rückgabe" tab shows only what the cron returned after the bazaar (#305) */
+  autoReturnedOnly: boolean;
+  onAutoReturnedOnlyChange: (only: boolean) => void;
 }
 
 const ITEMS_PER_PAGE = 30;
@@ -114,6 +121,8 @@ export function ProductManagementList({
   onDeleteWalkInProduct,
   onUndoRejection,
   filterKey,
+  autoReturnedOnly,
+  onAutoReturnedOnlyChange,
 }: ProductManagementListProps) {
   const { t } = useTranslation('organizer');
   const [currentPage, setCurrentPage] = useState(1);
@@ -121,7 +130,7 @@ export function ProductManagementList({
   // Reset pagination when the tab or the search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, filterKey]);
+  }, [activeTab, filterKey, autoReturnedOnly]);
 
   const countFor = (tab: ProductManagementTab) =>
     tab === 'all' ? products.length : products.filter((p) => p.status === tab).length;
@@ -129,6 +138,10 @@ export function ProductManagementList({
   const tabs = TABS.filter(
     (tab) => tab.value !== 'rejected' || activeTab === 'rejected' || countFor('rejected') > 0
   );
+  const autoReturnedCount = products.filter(
+    (p) => p.status === 'returned' && p.autoReturnedAt !== undefined
+  ).length;
+  const onlyAuto = autoReturnedOnly && autoReturnedCount > 0;
 
   return (
     <Tabs
@@ -160,7 +173,11 @@ export function ProductManagementList({
       </TabsList>
 
       {tabs.map((tab) => {
-        const filtered = products.filter((p) => tab.value === 'all' || p.status === tab.value);
+        const filtered = products.filter(
+          (p) =>
+            (tab.value === 'all' || p.status === tab.value) &&
+            !(tab.value === 'returned' && onlyAuto && p.autoReturnedAt === undefined)
+        );
         const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
         const paginated = filtered.slice(
           (currentPage - 1) * ITEMS_PER_PAGE,
@@ -169,6 +186,27 @@ export function ProductManagementList({
 
         return (
           <TabsContent key={tab.value} value={tab.value} className="mt-0 space-y-4">
+            {/* What the cron returned after the bazaar: which items, to clear up (#305) */}
+            {tab.value === 'returned' && autoReturnedCount > 0 && (
+              <ActionNotice
+                icon={MoonStar}
+                title={t('list.autoReturnedTitle', { count: autoReturnedCount })}
+                data-testid="auto-returned-notice"
+                action={
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    aria-pressed={onlyAuto}
+                    onClick={() => onAutoReturnedOnlyChange(!onlyAuto)}
+                  >
+                    {onlyAuto ? <List className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+                    {onlyAuto ? t('list.showAllReturned') : t('list.showAutoReturned')}
+                  </Button>
+                }
+              >
+                {t('list.autoReturnedText')}
+              </ActionNotice>
+            )}
             {filtered.length === 0 ? (
               <EmptyState title={t('list.empty')} />
             ) : (
@@ -296,6 +334,15 @@ function ProductRow({
             >
               {getEventProductStatusTitle(product.status)}
             </Badge>
+            {product.status === 'returned' && product.autoReturnedAt !== undefined && (
+              <Badge
+                variant="outline"
+                className="shrink-0 gap-1 text-muted-foreground"
+                title={t('list.autoReturnedHint')}
+              >
+                <MoonStar className="h-3 w-3" /> {t('list.autoReturnedBadge')}
+              </Badge>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <button

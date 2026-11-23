@@ -584,7 +584,18 @@
     "notHandedInYet_one": "Ein angemeldeter Artikel ist noch nicht abgegeben.",
     "notHandedInYet_other": "{{count}} angemeldete Artikel sind noch nicht abgegeben.",
     "notHandedInRejected_one": "{{count}} Artikel abgelehnt, der Verkäufer wird per E-Mail informiert",
-    "notHandedInRejected_other": "{{count}} Artikel abgelehnt, die Verkäufer werden per E-Mail informiert"
+    "notHandedInRejected_other": "{{count}} Artikel abgelehnt, die Verkäufer werden per E-Mail informiert",
+    "leftoverSellers_one": "{{count}} Verkäufer",
+    "leftoverSellers_other": "{{count}} Verkäufern",
+    "returnLeftovers": "Alle übrigen zurückgeben",
+    "returnLeftoversTitle_one": "{{count}} übrigen Artikel als zurückgegeben markieren?",
+    "returnLeftoversTitle_other": "{{count}} übrige Artikel als zurückgegeben markieren?",
+    "returnLeftoversText": "Alles, was noch als „Erhältlich“ gilt, geht zurück an {{sellers}}. Verkaufte und nie abgegebene Artikel bleiben, wie sie sind.",
+    "returnLeftoversPickup": "Mach das erst, wenn niemand mehr zur Abholung kommt. Abgerechnet wird dabei niemand.",
+    "returnLeftoversUndo": "Einzelne Rückgaben kannst du im Reiter „Rückgabe“ rückgängig machen.",
+    "returnLeftoversConfirm": "Zurückgeben",
+    "leftoversReturned_one": "{{count}} Artikel zurückgegeben",
+    "leftoversReturned_other": "{{count}} Artikel zurückgegeben"
   },
   "list": {
     "all": "Alle",
@@ -605,7 +616,14 @@
     "edit": "Bearbeiten",
     "delete": "Löschen",
     "rejected": "Abgelehnt",
-    "undoRejection": "Zurücknehmen"
+    "undoRejection": "Zurücknehmen",
+    "autoReturnedBadge": "automatisch",
+    "autoReturnedHint": "In der Nacht nach dem Basar automatisch zurückgegeben: Niemand hat die Abholung erfasst.",
+    "autoReturnedTitle_one": "{{count}} Artikel wurde nach dem Basar automatisch zurückgegeben.",
+    "autoReturnedTitle_other": "{{count}} Artikel wurden nach dem Basar automatisch zurückgegeben.",
+    "autoReturnedText": "Niemand hat ihre Abholung erfasst. Kläre mit den Verkäufern, ob sie abgeholt wurden.",
+    "showAutoReturned": "Nur diese anzeigen",
+    "showAllReturned": "Alle anzeigen"
   },
   "confirm": {
     "undoSaleTitle": "Verkauf wirklich stornieren?",
