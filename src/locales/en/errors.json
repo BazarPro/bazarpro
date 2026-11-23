@@ -301,5 +301,8 @@
   },
   "leftovers": {
     "notOver": "Remaining items can only be returned all at once after the bazaar."
+  },
+  "featureFlags": {
+    "unknown": "There is no such switch."
   }
 }

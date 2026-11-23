@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react';
 import { SearchInput } from '../../components/ui/search-input';
 import { PageHeader } from '../../components/ui/page-header';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
@@ -121,7 +122,9 @@ export function AdminUsersPage() {
               <TableHead>{t('users.statusColumn')}</TableHead>
               <TableHead>{t('users.registered')}</TableHead>
               <TableHead>{t('users.lastLogin')}</TableHead>
-              <TableHead className="text-right">{t('users.action')}</TableHead>
+              <TableHead className="w-0">
+                <span className="sr-only">{t('users.action')}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -139,42 +142,60 @@ export function AdminUsersPage() {
                 return (
                   <TableRow
                     key={u._id}
-                    // Status and button on their own line, however the dates wrap
-                    className="@max-4xl:after:order-1 @max-4xl:after:basis-full @max-4xl:after:content-['']"
+                    className="group cursor-pointer"
+                    onClick={() => openUser(u._id)}
                   >
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-2 font-medium">
-                        {u.name || t('users.unknown')}
-                        {u.systemRole === 'admin' && <Badge>{t('users.admin')}</Badge>}
+                    <TableCell data-inline className="@max-4xl:min-w-0 @max-4xl:flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          className="cursor-pointer text-left font-medium outline-none focus-visible:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openUser(u._id);
+                          }}
+                        >
+                          {u.name || t('users.unknown')}
+                        </button>
+                        {u.systemRole === 'admin' && (
+                          <Badge variant="info">{t('users.admin')}</Badge>
+                        )}
                         {u.isWalkIn && <WalkInBadge />}
+                        {status !== 'active' && (
+                          <Badge
+                            variant={status === 'banned' ? 'danger' : 'outline'}
+                            className="@4xl:hidden"
+                          >
+                            {statusLabel(status)}
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {u.email || u.phone || t('users.noContact')}
                       </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground @4xl:hidden">
+                        {t('users.registered')} {formatDateDEShort(u._creationTime)}
+                        {u.lastLoginAt &&
+                          ` · ${t('users.lastLogin')} ${formatDateDEShort(u.lastLoginAt)}`}
+                      </div>
                     </TableCell>
-                    <TableCell data-inline className="@max-4xl:order-2">
-                      <Badge
-                        variant={
-                          status === 'banned'
-                            ? 'destructive'
-                            : status === 'active'
-                              ? 'secondary'
-                              : 'outline'
-                        }
-                      >
-                        {statusLabel(status)}
-                      </Badge>
+                    <TableCell className="@max-4xl:hidden!">
+                      {status === 'active' ? (
+                        <span className="text-muted-foreground">{statusLabel(status)}</span>
+                      ) : (
+                        <Badge variant={status === 'banned' ? 'danger' : 'outline'}>
+                          {statusLabel(status)}
+                        </Badge>
+                      )}
                     </TableCell>
-                    <TableCell data-label={t('users.registered')}>
+                    <TableCell className="tabular-nums @max-4xl:hidden!">
                       {formatDateDEShort(u._creationTime)}
                     </TableCell>
-                    <TableCell data-label={t('users.lastLogin')}>
+                    <TableCell className="tabular-nums text-muted-foreground @max-4xl:hidden!">
                       {u.lastLoginAt ? formatDateDEShort(u.lastLoginAt) : '—'}
                     </TableCell>
-                    <TableCell data-inline className="text-right @max-4xl:order-2 @max-4xl:ml-auto">
-                      <Button variant="outline" size="sm" onClick={() => openUser(u._id)}>
-                        {t('users.details')}
-                      </Button>
+                    <TableCell data-inline className="w-0 @max-4xl:self-center">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                     </TableCell>
                   </TableRow>
                 );

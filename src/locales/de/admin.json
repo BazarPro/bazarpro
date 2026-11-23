@@ -232,6 +232,7 @@
     "contact": "Kontakt-E-Mail",
     "logo": "Logo",
     "removeLogo": "Logo entfernen",
+    "chooseLogo": "Bild wählen",
     "startPage": "Startseite",
     "startOverview": "Übersicht mit Name, Logo und allen Basaren",
     "startCurrent": "Direkt zum laufenden bzw. nächsten Basar",
@@ -347,5 +348,59 @@
     "deleteText": "Artikel behalten ihre Werte, sie werden nur nicht mehr angezeigt.",
     "inUse": "Wird noch von Kategorien verwendet.",
     "empty": "Noch keine Zusatzfelder"
+  },
+  "features": {
+    "title": "Funktionen",
+    "description": "Schalter für die ganze Plattform. Änderungen gelten sofort für alle.",
+    "groups": {
+      "access": "Zugang",
+      "bazaars": "Basare und Artikel",
+      "presentation": "Darstellung"
+    },
+    "default": "Standard",
+    "changed": "Geändert von {{name}} · {{date}}",
+    "changedAt": "Geändert · {{date}}",
+    "on": "An",
+    "off": "Aus",
+    "saved": "„{{name}}“ ist jetzt {{state}}.",
+    "loginOff": "Die Anmeldung ist ausgeschaltet. Niemand kann sich neu anmelden.",
+    "flags": {
+      "is_login_enabled": {
+        "title": "Anmeldung",
+        "text": "Nutzer melden sich mit E-Mail und Passwort oder Code an."
+      },
+      "is_registration_enabled": {
+        "title": "Registrierung",
+        "text": "Neue Nutzer legen selbst ein Konto an."
+      },
+      "is_event_creation_enabled": {
+        "title": "Basare anlegen",
+        "text": "Organisatoren legen neue Basare an. Bestehende Basare bleiben bearbeitbar."
+      },
+      "is_create_products_on_signup_enabled": {
+        "title": "Beispielartikel für neue Konten",
+        "text": "Neue Konten bekommen ein paar Artikel zum Ausprobieren."
+      },
+      "allow_undo_inventory_actions": {
+        "title": "Verkäufe rückgängig machen",
+        "text": "Das Team kann Verkäufe und Rückgaben in der Artikelliste zurücknehmen."
+      },
+      "is_demo_mode": {
+        "title": "Demo-Modus",
+        "text": "Zeigt einen Demo-Hinweis. Mit dem Code DEMO kommt jeder in geschützte Basare."
+      }
+    },
+    "confirm": {
+      "is_login_enabled": {
+        "title": "Anmeldung ausschalten?",
+        "text": "Danach kann sich niemand mehr anmelden, auch keine Admins. Wer schon angemeldet ist, bleibt angemeldet. Einschalten geht nur mit einer bestehenden Sitzung.",
+        "action": "Ausschalten"
+      },
+      "is_demo_mode": {
+        "title": "Demo-Modus einschalten?",
+        "text": "Mit dem Code DEMO kann dann jeder an Basaren mit Zugangscode teilnehmen. Nur für Demo- und Testinstanzen.",
+        "action": "Einschalten"
+      }
+    }
   }
 }

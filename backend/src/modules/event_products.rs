@@ -1261,7 +1261,7 @@ struct Success {
 /// Takes a returned item back in; needs the flag allow_undo_inventory_actions.
 async fn undo_return(ctx: &mut Ctx, args: RelationArgs) -> AppResult<Success> {
     ctx.require_user()?;
-    if !flags::get(ctx.conn(), "allow_undo_inventory_actions", false).await? {
+    if !flags::get(ctx.conn(), flags::UNDO_INVENTORY_ACTIONS, false).await? {
         return Err(AppError::forbidden("feature.disabled"));
     }
     let relation = team_relation(ctx, args.event_product_id.0).await?;

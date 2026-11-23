@@ -337,7 +337,7 @@ function CategoryRow({
     <div
       data-testid={`category-${category.label}`}
       className={cn(
-        'grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 md:grid-cols-[minmax(12rem,1.2fr)_2fr_auto_auto]',
+        'grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 px-4 py-3 md:grid-cols-[minmax(12rem,1.2fr)_2fr_9.5rem_6.75rem]',
         sub && 'bg-muted/30 pl-12'
       )}
     >
@@ -357,7 +357,14 @@ function CategoryRow({
             <span className="w-5" />
           ))}
         <div className="min-w-0">
-          <div className="truncate font-medium">{category.label}</div>
+          <button
+            type="button"
+            onClick={onEdit}
+            tabIndex={-1}
+            className="block max-w-full cursor-pointer truncate text-left font-medium hover:underline"
+          >
+            {category.label}
+          </button>
           <div className="truncate text-xs text-muted-foreground">
             {[
               category.translations.en,
@@ -368,37 +375,43 @@ function CategoryRow({
           </div>
         </div>
       </div>
-      <div className="col-span-2 row-start-2 md:col-span-1 md:row-start-auto">
+      <div
+        className={cn(
+          'col-span-2 row-start-2 md:col-span-1 md:row-start-auto',
+          !sub && 'pl-7 md:pl-0'
+        )}
+      >
         <FieldsOf
           category={category}
           parent={categories.find((other) => other._id === category.parentCategory)}
         />
       </div>
-      <div className="hidden whitespace-nowrap text-sm text-muted-foreground md:block">
+      <div className="hidden whitespace-nowrap text-right text-sm tabular-nums text-muted-foreground md:block">
         {t('categories.usageProducts', { count: category.productCount })} ·{' '}
         {t('categories.usageEvents', { count: category.eventCount })}
       </div>
-      <div className="col-start-2 row-start-1 flex justify-end gap-1 md:col-start-auto md:row-start-auto">
+      <div className="col-start-2 row-start-1 -mr-2 flex justify-end md:col-start-auto md:row-start-auto">
         {onAddSub && (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
+            className="text-muted-foreground"
             onClick={onAddSub}
             aria-label={t('categories.addSubTo', { name: category.label })}
-            title={t('categories.addSubTo', { name: category.label })}
+            title={t('categories.addSub')}
           >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">{t('categories.addSub')}</span>
+            <Plus />
           </Button>
         )}
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
+          className="text-muted-foreground"
           onClick={onEdit}
           aria-label={`${t('categories.editShort')}: ${category.label}`}
+          title={t('categories.editShort')}
         >
-          <Pencil className="h-3.5 w-3.5" />
-          <span className="hidden lg:inline">{t('categories.editShort')}</span>
+          <Pencil />
         </Button>
         {/* A disabled button shows no tooltip itself */}
         <span title={blocked}>
@@ -406,11 +419,12 @@ function CategoryRow({
             trigger={
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive"
                 disabled={!!blocked}
                 aria-label={`${t('categories.delete')}: ${category.label}`}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 />
               </Button>
             }
             title={t('categories.deleteTitle', { name: category.label })}
@@ -438,7 +452,7 @@ function CategoryTree({
       current.includes(id) ? current.filter((other) => other !== id) : [...current, id]
     );
   return (
-    <div className="divide-y rounded-lg border bg-card">
+    <div className="divide-y overflow-hidden rounded-xl border bg-card">
       {groupCategories(categories).map(({ category, children }) => (
         <div key={category._id} className="divide-y">
           <CategoryRow

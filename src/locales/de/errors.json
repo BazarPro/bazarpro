@@ -301,5 +301,8 @@
   },
   "leftovers": {
     "notOver": "Übrige Artikel können erst nach dem Basar gesammelt zurückgegeben werden."
+  },
+  "featureFlags": {
+    "unknown": "Diesen Schalter gibt es nicht."
   }
 }

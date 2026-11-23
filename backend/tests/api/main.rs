@@ -14,6 +14,7 @@ mod event_invitations;
 mod event_roles;
 mod event_seller;
 mod events;
+mod feature_flags;
 mod fee_groups;
 mod helper_permissions;
 mod import;

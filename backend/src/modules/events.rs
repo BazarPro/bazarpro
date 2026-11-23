@@ -1519,7 +1519,7 @@ struct CreateArgs {
 /// Creates an event with the creator as organizer. Public events on the platform wait for
 /// approval; in a self-hosted instance only admins create events, without approval.
 async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
-    if !flags::get(ctx.conn(), "is_event_creation_enabled", true).await? {
+    if !flags::get(ctx.conn(), flags::EVENT_CREATION_ENABLED, true).await? {
         return Err(AppError::forbidden("feature.eventCreationDisabled"));
     }
     let user = ctx.require_user()?;

@@ -232,6 +232,7 @@
     "contact": "Contact email",
     "logo": "Logo",
     "removeLogo": "Remove logo",
+    "chooseLogo": "Choose image",
     "startPage": "Home page",
     "startOverview": "Overview with name, logo and all bazaars",
     "startCurrent": "Straight to the running or next bazaar",
@@ -347,5 +348,59 @@
     "deleteText": "Items keep their values, they are just no longer shown.",
     "inUse": "Still used by categories.",
     "empty": "No extra fields yet"
+  },
+  "features": {
+    "title": "Features",
+    "description": "Switches for the whole platform. Changes apply to everyone at once.",
+    "groups": {
+      "access": "Access",
+      "bazaars": "Bazaars and items",
+      "presentation": "Presentation"
+    },
+    "default": "Default",
+    "changed": "Changed by {{name}} · {{date}}",
+    "changedAt": "Changed · {{date}}",
+    "on": "on",
+    "off": "off",
+    "saved": "“{{name}}” is now {{state}}.",
+    "loginOff": "Sign-in is switched off. Nobody can sign in anew.",
+    "flags": {
+      "is_login_enabled": {
+        "title": "Sign-in",
+        "text": "Users sign in with email and password or a code."
+      },
+      "is_registration_enabled": {
+        "title": "Registration",
+        "text": "New users create an account themselves."
+      },
+      "is_event_creation_enabled": {
+        "title": "Create bazaars",
+        "text": "Organizers create new bazaars. Existing bazaars can still be edited."
+      },
+      "is_create_products_on_signup_enabled": {
+        "title": "Sample items for new accounts",
+        "text": "New accounts get a few items to try things out."
+      },
+      "allow_undo_inventory_actions": {
+        "title": "Undo sales",
+        "text": "The team can take back sales and returns in the item list."
+      },
+      "is_demo_mode": {
+        "title": "Demo mode",
+        "text": "Shows a demo notice. With the code DEMO anyone gets into protected bazaars."
+      }
+    },
+    "confirm": {
+      "is_login_enabled": {
+        "title": "Switch off sign-in?",
+        "text": "Nobody can sign in afterwards, admins neither. Whoever is signed in stays signed in. Only an existing session can switch it on again.",
+        "action": "Switch off"
+      },
+      "is_demo_mode": {
+        "title": "Switch on demo mode?",
+        "text": "Anyone can then join bazaars with an access code using the code DEMO. Only for demo and test instances.",
+        "action": "Switch on"
+      }
+    }
   }
 }

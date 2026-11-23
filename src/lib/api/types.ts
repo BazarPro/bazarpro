@@ -2018,6 +2018,20 @@ export interface Api {
   };
   featureFlags: {
     get: FunctionReference<'query', { key?: string | undefined }, { [x: string]: boolean }>;
+    /** Admins: the flags of the admin area, in a fixed order */
+    listForAdmin: FunctionReference<
+      'query',
+      EmptyObject,
+      {
+        key: string;
+        value: boolean;
+        /** Never switched: the value is the default of the code */
+        isDefault: boolean;
+        updatedAt?: number;
+        updatedBy?: string | null;
+      }[]
+    >;
+    update: FunctionReference<'mutation', { key: string; value: boolean }, null>;
   };
   instance: {
     getConfig: FunctionReference<

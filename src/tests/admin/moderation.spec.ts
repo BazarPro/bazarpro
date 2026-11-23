@@ -22,7 +22,7 @@ test('admin manages a foreign event with organizer rights', async ({ page }, tes
 
   await page.goto('/admin/events');
   await page.getByPlaceholder('Titel, Ort oder Veranstalter').fill(showcase.title);
-  await page.getByRole('button', { name: 'Verwalten' }).click();
+  await page.getByRole('link', { name: showcase.title }).click();
   await expect(page.getByTestId('admin-event-banner')).toBeVisible();
 
   // Used to crash with "Not authorized" for admins
