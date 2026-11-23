@@ -69,6 +69,15 @@
     dest: '{{ demo_dir }}/scripts/reset-demo.sh'
     mode: '0755'
 
+# Read by scripts/reset-demo.sh after every reset; only root can read it
+- name: Store the password of the demo's admin
+  ansible.builtin.copy:
+    content: "{{ demo_admin_password }}\n"
+    dest: '{{ demo_dir }}/admin-password'
+    mode: '0600'
+  no_log: true
+  when: demo_admin_password | length > 0
+
 - name: Reset the demo every night at 3:00 UTC
   ansible.builtin.cron:
     name: reset bazarpro demo
@@ -82,6 +91,17 @@
     state: present
     pull: always
     remove_orphans: true
+
+# The demo data sign in admin@bazarpro.de with 123456; the deploy seeds a new database
+- name: Set the password of the demo's admin
+  ansible.builtin.shell: >-
+    docker compose exec -T backend bazarpro-backend password admin@bazarpro.de
+    < admin-password
+  args:
+    chdir: '{{ demo_dir }}'
+  no_log: true
+  changed_when: true
+  when: demo_admin_password | length > 0
 
 - name: Remove old images
   ansible.builtin.command: docker image prune --all --force

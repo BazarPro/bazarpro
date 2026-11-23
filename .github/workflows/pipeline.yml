@@ -536,6 +536,8 @@ jobs:
           DEMO_DOMAIN: ${{ vars.DEMO_DOMAIN || 'demo.bazarpro.de' }}
           ACME_EMAIL: ${{ vars.ACME_EMAIL }}
           PLAUSIBLE_API_HOST: ${{ vars.VITE_PLAUSIBLE_API_HOST }}
+          # The admin of the demo shares the password of the review apps' Mailpit
+          DEMO_ADMIN_PASSWORD: ${{ secrets.REVIEW_MAIL_PASSWORD }}
         run: |
           ansible-playbook -i ansible/inventory ansible/site.yml --tags demo \
             -e "ansible_host=${{ vars.DEMO_HOST }} \

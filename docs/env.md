@@ -58,6 +58,7 @@ Controls the deployment pipeline and server configuration.
 | `DEMO_DOMAIN` (variable)                        | No               | Domain of the demo, default `demo.bazarpro.de`.                                                                           |
 | `DEMO_SSH_PRIVATE_KEY`                          | With `DEMO_HOST` | Base64 encoded private key of the user `ubuntu` on the demo server.                                                       |
 | `ACME_EMAIL` (variable)                         | With `DEMO_HOST` | Contact of the demo's Let's Encrypt account.                                                                              |
+| `REVIEW_MAIL_PASSWORD`                          | No               | Password of the review apps' Mailpit inbox (user `review`); also the password of `admin@bazarpro.de` on the demo.         |
 
 ---
 

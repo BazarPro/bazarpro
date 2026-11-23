@@ -7,4 +7,8 @@ echo "$(date -Is) resetting the demo"
 docker compose down --volumes --remove-orphans
 # Waits for the seed before it starts the frontend (depends_on)
 docker compose up -d
+# The demo data sign in admin@bazarpro.de with 123456; the role stores another password
+if [ -s admin-password ]; then
+  docker compose exec -T backend bazarpro-backend password admin@bazarpro.de < admin-password
+fi
 echo "$(date -Is) demo reset done"

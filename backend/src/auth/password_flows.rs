@@ -620,3 +620,32 @@ pub async fn change_password(
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
+
+/// Sets the password of an account from the command line (`bazarpro-backend password
+/// <email>`), e.g. for an instance without SMTP or the admin of the demo instance. Signs
+/// the account out everywhere.
+pub async fn set_password(
+    db: &sqlx::PgPool,
+    email: &str,
+    new_password: String,
+) -> anyhow::Result<()> {
+    if !password::is_valid(&new_password) {
+        anyhow::bail!(
+            "the password needs at least {} characters",
+            password::MIN_LENGTH
+        );
+    }
+    let mut tx = db.begin().await?;
+    let Some(account) = find_account(&mut tx, email).await? else {
+        anyhow::bail!("no account with a password for {email}");
+    };
+    let secret = password::hash(new_password).await?;
+    sqlx::query("UPDATE auth_accounts SET secret = $2 WHERE id = $1")
+        .bind(account.id)
+        .bind(secret)
+        .execute(&mut *tx)
+        .await?;
+    session::delete_all_of_user(&mut tx, account.user_id).await?;
+    tx.commit().await?;
+    Ok(())
+}

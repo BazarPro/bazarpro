@@ -71,6 +71,8 @@
     demo_domain: "{{ lookup('env', 'DEMO_DOMAIN') | default('demo.bazarpro.de', true) }}"
     acme_email: "{{ lookup('env', 'ACME_EMAIL') }}"
     plausible_api_host: "{{ lookup('env', 'PLAUSIBLE_API_HOST') }}"
+    # Password of admin@bazarpro.de instead of the public 123456 of the demo data
+    demo_admin_password: "{{ lookup('env', 'DEMO_ADMIN_PASSWORD') }}"
     demo_dir: /opt/bazarpro-demo
 
   roles:

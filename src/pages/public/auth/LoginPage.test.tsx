@@ -169,7 +169,7 @@ describe('LoginPage', () => {
   it('fills in a demo account in demo mode', () => {
     state.flags = { is_demo_mode: true };
     renderAt();
-    fireEvent.click(screen.getByRole('button', { name: 'Verkäuferin' }));
+    fireEvent.click(screen.getByRole('button', { name: /Verkäuferin/ }));
     expect(screen.getByLabelText('E-Mail-Adresse')).toHaveValue('laura.zimmermann@example.org');
     expect(screen.getByLabelText('Passwort')).toHaveValue('123456');
 

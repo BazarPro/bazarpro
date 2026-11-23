@@ -1,4 +1,4 @@
-import { Store, Bike, ShoppingBag } from 'lucide-react';
+import { Bike, ChevronRight, ShoppingBag, Store } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -24,19 +24,26 @@ export function DemoAccounts({ onPick }: { onPick: (email: string, password: str
       <p className="mb-2 text-xs text-muted-foreground">
         {t('demo.hint', { password: DEMO_PASSWORD })}
       </p>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <ul className="space-y-1.5">
         {ACCOUNTS.map(({ key, email, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onPick(email, DEMO_PASSWORD)}
-            className="flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 text-left text-sm hover:border-primary hover:text-primary"
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            <span className="leading-tight">{t(`demo.${key}`)}</span>
-          </button>
+          <li key={key}>
+            <button
+              type="button"
+              onClick={() => onPick(email, DEMO_PASSWORD)}
+              className="group flex w-full items-center gap-3 rounded-md border bg-background px-3 py-2 text-left transition-colors hover:border-primary focus-visible:border-primary focus-visible:outline-none"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium leading-tight">{t(`demo.${key}`)}</span>
+                <span className="block truncate text-xs text-muted-foreground">{email}</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

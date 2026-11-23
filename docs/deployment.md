@@ -53,6 +53,9 @@ account. It runs on its own small server (AWS Lightsail, Ubuntu 24.04), role
   registration is switched off.
 - **Reset:** every night at 3:00 UTC `scripts/reset-demo.sh` removes database and uploads and
   starts again with fresh demo data (log: `/var/log/bazarpro-demo-reset.log`).
+- **Admin:** `admin@bazarpro.de` gets the password of the secret `REVIEW_MAIL_PASSWORD`
+  instead of the public `123456`, after every deploy and every reset
+  (`bazarpro-backend password <email>`, reads the password from stdin).
 - **Emails:** none. The demo has no `AUTH_SMTP_HOST`, so the backend only logs its emails.
 - **Uploads:** allowed (images up to 10 MB, as everywhere), removed by the nightly reset.
 - **Statistics:** Plausible on `PLAUSIBLE_API_HOST` with the site `demo.bazarpro.de`; add the
