@@ -274,7 +274,8 @@ test.describe('organizer tools', () => {
     await expectToast(page, 'Max Vorort wurde angelegt');
     await page.waitForURL('**/products?vendor=*');
 
-    await page.getByRole('button', { name: 'Artikel erfassen' }).click();
+    await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
+    await page.getByRole('menuitem', { name: 'Einzeln erfassen' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Titel *').fill(itemTitle);
     await dialog.getByRole('radio', { name: 'Gebraucht', exact: true }).click();

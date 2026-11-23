@@ -984,22 +984,26 @@ export function ProductManagementPage() {
                   {can('intake') && (
                     <div className="flex flex-col gap-2 sm:flex-row">
                       {selectedVendor.managedByEventId === eventId && !selectedVendor.paid && (
-                        <Button
-                          variant="outline"
-                          className="h-11 gap-2"
-                          onClick={() => setWalkInProductOpen(true)}
-                        >
-                          <Package className="h-4 w-4" /> {t('products.addItem')}
-                        </Button>
-                      )}
-                      {selectedVendor.managedByEventId === eventId && !selectedVendor.paid && (
-                        <Button
-                          variant="outline"
-                          className="h-11 gap-2"
-                          onClick={() => setWalkInImportOpen(true)}
-                        >
-                          <FileUp className="h-4 w-4" /> {t('walkIn.import.button')}
-                        </Button>
+                        // One item at a time or the whole list of a shop at once (#241)
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-11 gap-2">
+                              <Package className="h-4 w-4" /> {t('products.addItems')}
+                              <ChevronDown className="h-4 w-4 opacity-60" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="start"
+                            className="min-w-(--radix-dropdown-menu-trigger-width)"
+                          >
+                            <DropdownMenuItem onSelect={() => setWalkInProductOpen(true)}>
+                              <Package /> {t('products.addItem')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setWalkInImportOpen(true)}>
+                              <FileUp /> {t('walkIn.import.button')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                       {canReject && stats.announced > 0 && !selectedVendor.paid && (
                         <Button
