@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { FileUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { api } from '../../lib/api/functions';
@@ -29,9 +30,11 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { NativeSelect } from '../ui/native-select';
+import { CategoryPicker } from '../products/CategoryPicker';
+import { ConditionPicker } from '../products/ConditionPicker';
+import { isCategoryAllowed } from '../../shared/categoryTree';
 
 /** Shown problems; the rest is counted */
 const MAX_LISTED_PROBLEMS = 20;
@@ -68,17 +71,21 @@ export function WalkInImportDialog({
 }) {
   const { t } = useTranslation('organizer');
   const categories = useQuery(api.categories.getAllCategories);
+  // Only categories the bazaar takes, as in the form of a single item
+  const event = useQuery(api.events.getEvent, open ? { id: eventId } : 'skip');
   const importProducts = useMutation(api.walkInSellers.importWalkInProducts);
   const [table, setTable] = useState<CsvTable | null>(null);
   const [targets, setTargets] = useState<ImportTarget[]>([]);
   const [categoryId, setCategoryId] = useState('');
   const [condition, setCondition] = useState<ProductContitions>('new');
+  const [fileName, setFileName] = useState('');
   const [readError, setReadError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
 
   const reset = () => {
     setTable(null);
     setTargets([]);
+    setFileName('');
     setReadError(null);
   };
 
@@ -97,11 +104,6 @@ export function WalkInImportDialog({
       setReadError(t('walkIn.import.readFailed'));
     }
   };
-
-  const sortedCategories = useMemo(
-    () => [...(categories ?? [])].sort((a, b) => categoryName(a).localeCompare(categoryName(b))),
-    [categories]
-  );
 
   const rows = useMemo(() => {
     if (!table || !categories) return [];
@@ -174,12 +176,30 @@ export function WalkInImportDialog({
 
         <div className="space-y-2">
           <Label htmlFor="walk-in-import-file">{t('walkIn.import.file')}</Label>
-          <Input
-            id="walk-in-import-file"
-            type="file"
-            accept=".csv,.txt,text/csv"
-            onChange={(e) => void onFile(e.target.files?.[0])}
-          />
+          {/* A button like the other uploads; the browser's own field speaks its language */}
+          <div className="flex min-w-0 items-center gap-3">
+            <Button variant="outline" asChild>
+              <label className="cursor-pointer">
+                <FileUp className="size-4" />
+                {t(fileName ? 'walkIn.import.otherFile' : 'walkIn.import.chooseFile')}
+                <input
+                  id="walk-in-import-file"
+                  type="file"
+                  accept=".csv,.txt,text/csv"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    // After the reset in onFile, so the name stays
+                    void onFile(file);
+                    setFileName(file?.name ?? '');
+                    // The same file again after a fix in Excel
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </Button>
+            {fileName && <span className="truncate text-sm text-muted-foreground">{fileName}</span>}
+          </div>
           {readError && <p className="text-sm text-destructive">{readError}</p>}
         </div>
 
@@ -192,18 +212,26 @@ export function WalkInImportDialog({
                   <thead className="bg-muted/50 text-left">
                     <tr>
                       <th className="px-3 py-2 font-medium">{t('walkIn.import.column')}</th>
-                      <th className="px-3 py-2 font-medium">{t('walkIn.import.example')}</th>
+                      {/* On phones the example goes under the column name */}
+                      <th className="hidden px-3 py-2 font-medium sm:table-cell">
+                        {t('walkIn.import.example')}
+                      </th>
                       <th className="px-3 py-2 font-medium">{t('walkIn.import.meaning')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {table.header.map((name, column) => (
                       <tr key={column} className="border-t">
-                        <td className="px-3 py-2">{name || `#${column + 1}`}</td>
-                        <td className="px-3 py-2 text-muted-foreground">
+                        <td className="px-3 py-2">
+                          {name || `#${column + 1}`}
+                          <span className="block max-w-[10rem] truncate text-xs text-muted-foreground sm:hidden">
+                            {table.rows[0]?.[column] ?? ''}
+                          </span>
+                        </td>
+                        <td className="hidden px-3 py-2 text-muted-foreground sm:table-cell">
                           {table.rows[0]?.[column] ?? ''}
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="w-1/2 px-3 py-1 sm:w-auto">
                           <NativeSelect
                             aria-label={name}
                             value={targets[column]}
@@ -225,41 +253,41 @@ export function WalkInImportDialog({
 
             <section className="space-y-2">
               <h3 className="text-sm font-medium">{t('walkIn.import.defaults')}</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="walk-in-import-category">
                     {t('walkIn.import.defaultCategory')}
                   </Label>
-                  <NativeSelect
-                    id="walk-in-import-category"
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                  >
-                    <option value="">{t('walkIn.import.choose')}</option>
-                    {sortedCategories.map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {categoryName(c)}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  {categoryId && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => setCategoryId('')}
+                    >
+                      {t('walkIn.import.clearCategory')}
+                    </Button>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="walk-in-import-condition">
-                    {t('walkIn.import.defaultCondition')}
-                  </Label>
-                  <NativeSelect
-                    id="walk-in-import-condition"
-                    value={condition}
-                    onChange={(e) => setCondition(e.target.value as ProductContitions)}
-                  >
-                    {PRODUCT_CONDITIONS.map((c) => (
-                      <option key={c} value={c}>
-                        {CONDITION_OPTIONS[c].title}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </div>
+                <CategoryPicker
+                  id="walk-in-import-category"
+                  categories={categories ?? []}
+                  value={categoryId || undefined}
+                  isAllowed={(id) => isCategoryAllowed(id, event?.categories, categories)}
+                  placeholder={t('walkIn.import.choose')}
+                  onChange={setCategoryId}
+                />
               </div>
+              <fieldset className="space-y-2">
+                <legend className="mb-2 text-sm font-medium leading-none">
+                  {t('walkIn.import.defaultCondition')}
+                </legend>
+                <ConditionPicker
+                  value={condition}
+                  label={t('walkIn.import.defaultCondition')}
+                  onChange={setCondition}
+                />
+              </fieldset>
             </section>
 
             <section className="space-y-2">

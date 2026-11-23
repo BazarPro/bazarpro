@@ -3,13 +3,11 @@ import { useFormContext } from 'react-hook-form';
 import { Label } from '../../../../components/ui/label';
 import { Input } from '../../../../components/ui/input';
 import { Textarea } from '../../../../components/ui/text-area';
-import { CONDITION_OPTIONS } from '../../../../constants/records';
-import { PRODUCT_CONDITIONS } from '../../../../shared/constants';
 import { api } from '../../../../lib/api/functions';
 import { useQuery } from '../../../../lib/api/react';
-import { cn } from '../../../../lib/utils';
 import { MyProductCategoryFields, MyProductNegotiation } from './MyProductExtras';
 import { CategoryPicker } from '../../../../components/products/CategoryPicker';
+import { ConditionPicker } from '../../../../components/products/ConditionPicker';
 import { isCategoryAllowed } from '../../../../shared/categoryTree';
 import { categoryName } from '../../../../i18n/categories';
 import { useTranslation } from 'react-i18next';
@@ -149,35 +147,13 @@ export function MyProductBasicInfo({
 
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-medium leading-none">{t('form.condition')}</legend>
-        <div
-          className="grid grid-cols-2 gap-2 lg:grid-cols-4"
-          role="radiogroup"
-          aria-label={t('form.condition')}
-        >
-          {PRODUCT_CONDITIONS.map((value) => {
-            const checked = condition === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={checked}
-                title={CONDITION_OPTIONS[value].description}
-                onClick={() =>
-                  setValue('condition', value, { shouldValidate: true, shouldDirty: true })
-                }
-                className={cn(
-                  'min-h-9 rounded-md border px-3 py-1.5 text-left text-sm leading-snug transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                  checked
-                    ? 'border-primary bg-primary/10 font-medium text-primary dark:bg-primary/25 dark:text-foreground'
-                    : 'bg-background hover:bg-accent'
-                )}
-              >
-                {CONDITION_OPTIONS[value].title}
-              </button>
-            );
-          })}
-        </div>
+        <ConditionPicker
+          value={condition}
+          label={t('form.condition')}
+          onChange={(value) =>
+            setValue('condition', value, { shouldValidate: true, shouldDirty: true })
+          }
+        />
         {errors.condition && <FieldError>{errors.condition.message as string}</FieldError>}
       </fieldset>
 

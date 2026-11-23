@@ -57,12 +57,19 @@ describe('WalkInImportDialog', () => {
 
     // Without a category nothing is ready yet
     expect(await screen.findByText('0 Artikel bereit')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Kategorie'), { target: { value: 'shoes' } });
+    // Radix opens the menu on pointer down
+    fireEvent.pointerDown(screen.getByLabelText('Kategorie'), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Skischuhe' }));
     expect(screen.getByText('1 Artikel bereit')).toBeInTheDocument();
     expect(
       screen.getByText('Zeile 3: Titel fehlt oder ist kürzer als 3 Zeichen')
     ).toBeInTheDocument();
 
+    // The condition as tiles, like in the form of a single item
+    fireEvent.click(screen.getByRole('radio', { name: 'Gebraucht' }));
     fireEvent.click(screen.getByRole('button', { name: '1 Artikel importieren' }));
     await waitFor(() =>
       expect(importProducts).toHaveBeenCalledWith({
@@ -72,7 +79,7 @@ describe('WalkInImportDialog', () => {
           {
             title: 'Skisch. D Neu',
             description: 'Farbe: schwarz',
-            condition: 'new',
+            condition: 'good',
             productCategory: 'shoes',
             price: 145,
             attributes: { size: '39' },
