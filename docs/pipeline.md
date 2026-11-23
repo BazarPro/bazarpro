@@ -3,7 +3,7 @@
 This document provides a comprehensive overview of the BazarPro CI/CD pipeline, explaining the automated lifecycle of the application from code quality checks to production deployment.
 
 > [!IMPORTANT]
-> All sensitive information, environment variables, and secrets required for the pipeline and deployments are documented in [ENV.md](./ENV.md). Please refer to it before modifying or troubleshooting the pipeline.
+> All sensitive information, environment variables, and secrets required for the pipeline and deployments are documented in [env.md](./env.md). Please refer to it before modifying or troubleshooting the pipeline.
 
 ---
 
@@ -89,6 +89,14 @@ Provides a live URL for every Pull Request to facilitate manual testing and stak
   - Every mail of the review app (login codes, notifications, receipts) goes to its own [Mailpit](https://mailpit.axllent.org/) and never leaves the server. The inbox is at `https://review-<PR-ID>-mail.<DOMAIN>` (user `review`, password from the repository secret `REVIEW_MAIL_PASSWORD`; without the secret the inbox is not exposed).
 - **`cleanup-review`**: Runs when the PR is closed or merged and removes the review instance, including its database and files, from the server.
 
+### 7. `deploy-demo` (Demo Instance)
+
+- **`deploy-demo`**: (Tags only, after `deploy`) Updates [demo.bazarpro.de](https://demo.bazarpro.de) on its own server with the images of the tag (role `docker_demo`, see [deployment.md](./deployment.md#demo-instance)). Skipped while the repository variable `DEMO_HOST` is not set.
+
+### Screenshots (separate workflow)
+
+`.github/workflows/screenshots.yml` runs on every release tag (and by hand): it takes the README screenshots with `npm run screenshots` and opens a pull request into `development` when they changed ([development.md](./development.md#screenshots-of-the-readme)).
+
 ---
 
 ## Release Process
@@ -123,13 +131,14 @@ Ansible is the backbone of our infrastructure management, handling everything fr
 | Role                | Purpose                                                                                                                                                                                                                                                                                                                                                                                                   |
 | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`docker_deploy`** | Orchestrates the production environment. It manages the `proxy` network (Traefik), generates the production `.env` file from templates, dumps the database before the update and ensures all services (App, backend, Postgres, backup, Traefik) are running correctly. Stops containers of services removed from `docker-compose.yml`; restarts Traefik when `traefik.yml` changed (both roles write it). |
+| **`docker_demo`**   | Sets up the demo instance on its own server: Docker, swap, Traefik with HTTP challenge, the demo stack and its nightly reset.                                                                                                                                                                                                                                                                             |
 | **`docker_review`** | Dynamically creates and manages ephemeral Review Apps. It sets up isolated directories and Docker Compose projects (frontend, backend, Postgres, Mailpit) for each PR, ensuring they are routed correctly via Traefik.                                                                                                                                                                                    |
 
 ---
 
 ## Relevant Files
 
-- [`.github/workflows/pipeline.yml`](./.github/workflows/pipeline.yml) - The core pipeline definition.
-- [`ENV.md`](./ENV.md) - Documentation for all required variables and secrets.
-- [`ansible/`](./ansible/) - Contains all playbooks and roles for infrastructure management.
-- [`docker-compose.yml`](./docker-compose.yml) - Service definitions for production and infrastructure.
+- [`.github/workflows/pipeline.yml`](../.github/workflows/pipeline.yml) - The core pipeline definition.
+- [`env.md`](./env.md) - Documentation for all required variables and secrets.
+- [`ansible/`](../ansible/) - Contains all playbooks and roles for infrastructure management.
+- [`docker-compose.yml`](../docker-compose.yml) - Service definitions for production and infrastructure.

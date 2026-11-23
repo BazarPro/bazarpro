@@ -83,7 +83,7 @@ export function Footer() {
               {!isSingle && (
                 <li>
                   <a
-                    href="https://github.com/BazarPro/core"
+                    href="https://github.com/BazarPro/bazarpro"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-primary"

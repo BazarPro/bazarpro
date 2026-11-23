@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { EmailVerificationForm } from './components/EmailVerificationForm';
 import { ForgotPasswordForm } from './components/ForgotPasswordForm';
 import { OAuthButtons } from './components/OAuthButtons';
+import { DemoAccounts } from './components/DemoAccounts';
 import { AuthPage } from './components/AuthPage';
 import { apiErrorCode } from '../../../lib/errors';
 import { toast } from 'sonner';
@@ -45,7 +46,7 @@ export function LoginPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { isLoading } = useAuthState();
-  const { isLoginEnabled, isLoading: isFlagsLoading } = useFeatureFlags();
+  const { isLoginEnabled, isDemoMode, isLoading: isFlagsLoading } = useFeatureFlags();
   const redirectAfterLogin = useRedirectAfterLogin();
   const returnTo = safeRedirectPath(searchParams.get('redirect'));
   const resendRemainingSeconds =
@@ -300,6 +301,14 @@ export function LoginPage() {
 
       {!verificationEmail && !showForgotPassword ? (
         <>
+          {isDemoMode && isLoginEnabled && (
+            <DemoAccounts
+              onPick={(demoEmail, demoPassword) => {
+                setEmail(demoEmail);
+                setPassword(demoPassword);
+              }}
+            />
+          )}
           <div className="mb-3 sm:mb-6">
             <OAuthButtons returnTo={returnTo} disabled={!isLoginEnabled || isSubmitting} />
           </div>

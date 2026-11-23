@@ -1,0 +1,75 @@
+# Fresh screenshots of the README (docs/screenshots/) after every release, as a pull
+# request into development: they never land unreviewed, and a failed run does not block
+# the release. Also by hand (Actions → Screenshots → Run workflow).
+name: Screenshots
+
+# On the release tag: the GitHub release itself is made with the GITHUB_TOKEN, and its
+# events start no other workflows
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    # Pinned like the E2E tests: Playwright has no browser builds for ubuntu-latest yet
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      SCREENSHOTS_DATABASE_URL: postgres://bazarpro:bazarpro@127.0.0.1:5432/bazarpro_screenshots_test
+    steps:
+      - name: Start Postgres
+        run: >-
+          (docker run -d --name postgres -p 5432:5432
+          -e POSTGRES_USER=bazarpro -e POSTGRES_PASSWORD=bazarpro -e POSTGRES_DB=bazarpro_screenshots_test
+          postgres:17-alpine -c fsync=off > /tmp/postgres.log 2>&1 &)
+      # development, the target of the pull request; right after a release it holds the
+      # released code
+      - uses: actions/checkout@v4
+        with:
+          ref: development
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+      - name: Build the backend
+        run: cargo build --manifest-path backend/Cargo.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Wait for Postgres
+        run: >-
+          timeout 120 bash -c 'until docker exec postgres pg_isready -h 127.0.0.1 -U bazarpro;
+          do sleep 1; done' || (cat /tmp/postgres.log; exit 1)
+      - run: npm run screenshots
+      - name: Pull request with the new screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'manual run' }}
+        run: |
+          if git diff --quiet -- docs/screenshots; then
+            echo "The screenshots did not change."
+            exit 0
+          fi
+          BRANCH="chore/screenshots-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add docs/screenshots
+          git commit -m "docs: screenshots of $VERSION"
+          git push origin "$BRANCH"
+          # Needs "Allow GitHub Actions to create and approve pull requests" (Settings →
+          # Actions → General); without it the branch stays for a pull request by hand
+          gh pr create --base development --head "$BRANCH" \
+            --title "docs: screenshots of $VERSION" \
+            --body "New screenshots of the README from \`npm run screenshots\` ($VERSION). Please look at the pictures before merging." \
+          || echo "::warning::Could not open the pull request; open it by hand: https://github.com/$GITHUB_REPOSITORY/compare/development...$BRANCH"

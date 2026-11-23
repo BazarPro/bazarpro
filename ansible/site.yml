@@ -57,3 +57,21 @@
 
   roles:
     - docker_review
+
+# Demo instance (demo.bazarpro.de) on its own server, updated with every release and reset
+# every night. Public images, so no registry login.
+- name: Deploy Demo Instance
+  hosts: demo
+  become: true
+  gather_facts: true
+  tags: [demo]
+  vars:
+    ci_registry_image: "{{ REGISTRY_IMAGE | default(lookup('env', 'REGISTRY_IMAGE') | default('ghcr.io/bazarpro/core', true), true) }}"
+    image_tag: "{{ IMAGE_TAG | default(lookup('env', 'IMAGE_TAG') | default('latest', true), true) }}"
+    demo_domain: "{{ lookup('env', 'DEMO_DOMAIN') | default('demo.bazarpro.de', true) }}"
+    acme_email: "{{ lookup('env', 'ACME_EMAIL') }}"
+    plausible_api_host: "{{ lookup('env', 'PLAUSIBLE_API_HOST') }}"
+    demo_dir: /opt/bazarpro-demo
+
+  roles:
+    - docker_demo

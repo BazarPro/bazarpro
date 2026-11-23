@@ -3,7 +3,7 @@
   ansible.builtin.assert:
     that:
       - postgres_password | length > 0
-    fail_msg: Set the repository secret POSTGRES_PASSWORD before deploying (see ENV.md).
+    fail_msg: Set the repository secret POSTGRES_PASSWORD before deploying (see docs/env.md).
 
 - name: Ensure remote backup directory exists
   ansible.builtin.file:
