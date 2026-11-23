@@ -36,6 +36,7 @@ import { cn } from '../../lib/utils';
 import type { CategoryField } from '../../shared/categoryFields';
 import { groupCategories } from '../../shared/categoryTree';
 import { AdminCategoryFields } from './AdminCategoryFields';
+import { AdminServices } from './AdminServices';
 
 type AdminCategory = FunctionReturnType<typeof api.categories.listForAdmin>[number];
 /** Value of the parent select for a main category */
@@ -484,7 +485,7 @@ function CategoryTree({
   );
 }
 
-/** The product categories and the extra fields their items have. */
+/** The product categories, the extra fields their items have and the bazaars' services. */
 export function AdminCategoriesPage() {
   const { t } = useTranslation('admin');
   const categories = useQuery(api.categories.listForAdmin, {});
@@ -500,6 +501,7 @@ export function AdminCategoriesPage() {
           <TabsList>
             <TabsTrigger value="categories">{t('categories.tabCategories')}</TabsTrigger>
             <TabsTrigger value="fields">{t('categories.tabFields')}</TabsTrigger>
+            <TabsTrigger value="services">{t('categories.tabServices')}</TabsTrigger>
           </TabsList>
           {tab === 'categories' && (
             <Button onClick={() => setEditing({})}>
@@ -524,6 +526,9 @@ export function AdminCategoriesPage() {
         </TabsContent>
         <TabsContent value="fields">
           <AdminCategoryFields />
+        </TabsContent>
+        <TabsContent value="services">
+          <AdminServices />
         </TabsContent>
       </Tabs>
 

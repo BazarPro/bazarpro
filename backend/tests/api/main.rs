@@ -36,6 +36,7 @@ mod reminders;
 mod retention;
 mod sale_snapshots;
 mod seed;
+mod services;
 mod site_pages;
 mod storage;
 mod users;

@@ -82,19 +82,6 @@ export const EVENT_VISIBILITY = ['public', 'logged-in', 'approved'] as const;
 export type EventVisibility = (typeof EVENT_VISIBILITY)[number];
 
 /**
- * Available services that can be offered at events.
- */
-export const EVENT_SERVICES = [
-  'Parkplatz',
-  'Skiservice',
-  'Fahrradcodierung',
-  'Gastronomie',
-  'Imbiss',
-  'Getränke',
-] as const;
-export type EventServices = (typeof EVENT_SERVICES)[number];
-
-/**
  * Lifecycle of an online price offer. `redeemed`: the accepted offer was used at the
  * cash desk and the item sold at its price.
  */

@@ -45,14 +45,6 @@ pub const TIME_BOUNDARIES_JOB: &str = "events.touchTimeBoundaries";
 /// covers its minute. A boundary seen twice only costs one more refetch.
 const TIME_BOUNDARY_WINDOW: Duration = Duration::minutes(2);
 const MAX_SELLER_NOTE: usize = 2000;
-const SERVICES: [&str; 6] = [
-    "Parkplatz",
-    "Skiservice",
-    "Fahrradcodierung",
-    "Gastronomie",
-    "Imbiss",
-    "Getränke",
-];
 const VISIBILITIES: [&str; 3] = ["public", "logged-in", "approved"];
 const LABEL_FORMATS: [&str; 2] = ["standard", "small"];
 const LABEL_MARKS: [&str; 2] = ["universal", "none"];
@@ -1438,8 +1430,8 @@ fn money(value: f64, field: &str) -> AppResult<Decimal> {
         .ok_or_else(|| invalid(field))
 }
 
-fn check_lists(services: &[String], visibility: &str) -> AppResult<()> {
-    if let Some(service) = services.iter().find(|s| !SERVICES.contains(&s.as_str())) {
+async fn check_lists(ctx: &mut Ctx, services: &[String], visibility: &str) -> AppResult<()> {
+    if let Some(service) = super::services::check(ctx.conn(), services).await? {
         return Err(invalid(&format!("services: {service}")));
     }
     if !VISIBILITIES.contains(&visibility) {
@@ -1527,7 +1519,7 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
     if single && !is_platform_admin(ctx.conn(), Some(user)).await? {
         return Err(AppError::forbidden("auth.adminOnlyEvents"));
     }
-    check_lists(&args.services, &args.visibility)?;
+    check_lists(ctx, &args.services, &args.visibility).await?;
     check_access_code(&args.visibility, args.access_code.as_deref())?;
     check_files(
         ctx,
@@ -1552,7 +1544,7 @@ async fn create_event(ctx: &mut Ctx, args: CreateArgs) -> AppResult<Uuid> {
            end_date, contact_info, services, visibility, is_approved, approval_status, access_code,
            vendor_limit, commission, features, dropoff_start, dropoff_end, pickup_start, pickup_end,
            logistics_note, organizer_id, street, postal_code, city, country, region_map_image_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::event_service[], $10::event_visibility, $11,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::text[], $10::event_visibility, $11,
            $12::approval_status, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
            $26, $27)
          RETURNING id",
@@ -1641,7 +1633,7 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
         return Err(AppError::forbidden("auth.forbidden"));
     }
     let clear_vendor_limit = args.clear_vendor_limit == Some(true);
-    check_lists(&args.services, &args.visibility)?;
+    check_lists(ctx, &args.services, &args.visibility).await?;
     // Without a code in the arguments the stored one stays
     let event_code = args.access_code.as_deref().or(event.access_code.as_deref());
     check_access_code(&args.visibility, event_code)?;
@@ -1748,7 +1740,7 @@ async fn edit_event(ctx: &mut Ctx, args: EditArgs) -> AppResult<()> {
            cover_image_id = CASE WHEN $4 THEN NULL ELSE COALESCE($5, cover_image_id) END,
            map_image_id = CASE WHEN $6 THEN NULL ELSE COALESCE($7, map_image_id) END,
            location = $8, start_date = $9, end_date = $10, contact_info = $11, commission = $12,
-           services = $13::event_service[], visibility = $14::event_visibility,
+           services = $13::text[], visibility = $14::event_visibility,
            access_code = CASE WHEN $15 THEN $16 ELSE access_code END,
            vendor_limit = CASE WHEN $17 THEN $18 ELSE vendor_limit END,
            features = $19,

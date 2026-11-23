@@ -65,7 +65,14 @@
     "todo": "To do",
     "platform": "Platform",
     "productsCountedAt": "As of {{time}} · counted hourly",
-    "productsCounted": "Counted hourly"
+    "productsCounted": "Counted hourly",
+    "flags": {
+      "is_login_enabled": "Sign-in is off",
+      "is_registration_enabled": "Registration is off",
+      "is_event_creation_enabled": "New bazaars are off",
+      "is_demo_mode": "Demo mode is on"
+    },
+    "flagsLink": "View features"
   },
   "reports": {
     "error": "Error",
@@ -277,10 +284,11 @@
     "replaceWithTemplate": "Replace the current text with the template?"
   },
   "categories": {
-    "title": "Categories",
-    "subtitle": "What bazaars and items choose from: main categories group, items go into the sub-categories.",
+    "title": "Categories & services",
+    "subtitle": "What bazaars choose from: categories with their extra fields, and the services a bazaar offers.",
     "tabCategories": "Categories",
     "tabFields": "Extra fields",
+    "tabServices": "Services",
     "add": "Add category",
     "addSub": "Sub-category",
     "addSubTo": "Add a sub-category to “{{name}}”",
@@ -348,6 +356,32 @@
     "deleteText": "Items keep their values, they are just no longer shown.",
     "inUse": "Still used by categories.",
     "empty": "No extra fields yet"
+  },
+  "services": {
+    "intro": "What bazaars offer on top, such as parking or drinks. Organizers choose from them for their bazaar.",
+    "add": "Add service",
+    "new": "New service",
+    "edit": "Edit service",
+    "name": "Name",
+    "nameEn": "English name",
+    "nameEnHint": "Optional. Otherwise English-speaking visitors see the German name.",
+    "renameHint_one": "{{count}} bazaar offers this service and gets the new name.",
+    "renameHint_other": "{{count}} bazaars offer this service and get the new name.",
+    "active_one": "{{count}} upcoming bazaar",
+    "active_other": "{{count}} upcoming bazaars",
+    "past_one": "{{count}} past",
+    "past_other": "{{count}} past",
+    "unused": "Not used",
+    "up": "Move up: {{name}}",
+    "down": "Move down: {{name}}",
+    "saved": "Service saved",
+    "deleted": "Service deleted",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteText": "Organizers can no longer choose it.",
+    "deletePast_one": "Organizers can no longer choose it. {{count}} past bazaar loses it.",
+    "deletePast_other": "Organizers can no longer choose it. {{count}} past bazaars lose it.",
+    "inUse": "Still offered by upcoming bazaars.",
+    "empty": "No services yet"
   },
   "features": {
     "title": "Features",

@@ -4,12 +4,11 @@ import { useFormContext } from 'react-hook-form';
 import { Label } from '../../../../components/ui/label';
 import { Badge } from '../../../../components/ui/badge';
 import { Checkbox } from '../../../../components/ui/checkbox';
-import { EVENT_SERVICES } from '../../../../shared/constants';
 import type { Doc } from '../../../../lib/api/types';
 import { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { serviceLabel } from '../../../../i18n/services';
+import { useServiceLabel, useServices } from '../../../../i18n/services';
 import { categoryName } from '../../../../i18n/categories';
 import {
   compactSelection,
@@ -157,6 +156,8 @@ export function EditEventCategories({ categoryList }: EventCategoriesProbs) {
   } = useFormContext();
 
   const services: string[] = watch('services') || [];
+  const available = useServices();
+  const serviceLabel = useServiceLabel();
 
   useEffect(() => {
     register('categories');
@@ -178,7 +179,7 @@ export function EditEventCategories({ categoryList }: EventCategoriesProbs) {
       <div className="space-y-2">
         <Label>{t('categories.services')}</Label>
         <div className="flex flex-wrap gap-2 mb-2">
-          {EVENT_SERVICES.map((svc) => (
+          {(available ?? []).map(({ name: svc }) => (
             <Badge
               key={svc}
               variant={services.includes(svc) ? 'default' : 'outline'}

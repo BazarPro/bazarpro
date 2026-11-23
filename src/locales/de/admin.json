@@ -65,7 +65,14 @@
     "todo": "Zu erledigen",
     "platform": "Plattform",
     "productsCountedAt": "Stand {{time}} Uhr · stündlich gezählt",
-    "productsCounted": "Wird stündlich gezählt"
+    "productsCounted": "Wird stündlich gezählt",
+    "flags": {
+      "is_login_enabled": "Anmeldung ist ausgeschaltet",
+      "is_registration_enabled": "Registrierung ist ausgeschaltet",
+      "is_event_creation_enabled": "Neue Basare sind ausgeschaltet",
+      "is_demo_mode": "Demo-Modus ist an"
+    },
+    "flagsLink": "Funktionen ansehen"
   },
   "reports": {
     "error": "Fehler",
@@ -277,10 +284,11 @@
     "replaceWithTemplate": "Den aktuellen Text durch die Vorlage ersetzen?"
   },
   "categories": {
-    "title": "Kategorien",
-    "subtitle": "Woraus Basare und Artikel wählen: Hauptkategorien gruppieren, Artikel kommen in die Unterkategorien.",
+    "title": "Kategorien & Services",
+    "subtitle": "Woraus Basare wählen: Kategorien mit ihren Zusatzfeldern und die Services, die ein Basar anbietet.",
     "tabCategories": "Kategorien",
     "tabFields": "Zusatzfelder",
+    "tabServices": "Services",
     "add": "Kategorie hinzufügen",
     "addSub": "Unterkategorie",
     "addSubTo": "Unterkategorie zu „{{name}}“ hinzufügen",
@@ -348,6 +356,32 @@
     "deleteText": "Artikel behalten ihre Werte, sie werden nur nicht mehr angezeigt.",
     "inUse": "Wird noch von Kategorien verwendet.",
     "empty": "Noch keine Zusatzfelder"
+  },
+  "services": {
+    "intro": "Was Basare zusätzlich anbieten, etwa Parkplätze oder Getränke. Veranstalter wählen daraus beim Basar.",
+    "add": "Service hinzufügen",
+    "new": "Neuer Service",
+    "edit": "Service bearbeiten",
+    "name": "Name",
+    "nameEn": "Englischer Name",
+    "nameEnHint": "Optional. Sonst sehen englischsprachige Besucher den deutschen Namen.",
+    "renameHint_one": "{{count}} Basar bietet diesen Service an und bekommt den neuen Namen.",
+    "renameHint_other": "{{count}} Basare bieten diesen Service an und bekommen den neuen Namen.",
+    "active_one": "{{count}} kommender Basar",
+    "active_other": "{{count}} kommende Basare",
+    "past_one": "{{count}} vergangener",
+    "past_other": "{{count}} vergangene",
+    "unused": "Nicht verwendet",
+    "up": "Nach oben: {{name}}",
+    "down": "Nach unten: {{name}}",
+    "saved": "Service gespeichert",
+    "deleted": "Service gelöscht",
+    "deleteTitle": "„{{name}}“ löschen?",
+    "deleteText": "Veranstalter können ihn nicht mehr wählen.",
+    "deletePast_one": "Veranstalter können ihn nicht mehr wählen. {{count}} vergangener Basar verliert ihn.",
+    "deletePast_other": "Veranstalter können ihn nicht mehr wählen. {{count}} vergangene Basare verlieren ihn.",
+    "inUse": "Wird noch von kommenden Basaren angeboten.",
+    "empty": "Noch keine Services"
   },
   "features": {
     "title": "Funktionen",

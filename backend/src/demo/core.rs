@@ -717,7 +717,7 @@ async fn insert_event(seeder: &Seeder, ctx: &mut Ctx, spec: EventSpec<'_>) -> Ap
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO events (title, description, location, start_date, end_date, contact_info,
            services, visibility, commission, organizer_id, cover_image_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::event_service[], 'public', $8, $9, $10) RETURNING id",
+         VALUES ($1, $2, $3, $4, $5, $6, $7::text[], 'public', $8, $9, $10) RETURNING id",
     )
     .bind(spec.title)
     .bind(spec.description)

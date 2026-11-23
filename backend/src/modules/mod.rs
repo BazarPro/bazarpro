@@ -35,6 +35,7 @@ pub mod sales;
 pub mod seed;
 pub mod seller_numbers;
 pub mod seller_records;
+pub mod services;
 pub mod settlement;
 pub mod site_pages;
 pub mod users;
@@ -73,6 +74,7 @@ pub fn register_all() -> Registry {
     seed::register(&mut registry);
     seller_numbers::register(&mut registry);
     seller_records::register(&mut registry);
+    services::register(&mut registry);
     settlement::register(&mut registry);
     site_pages::register(&mut registry);
     users::register(&mut registry);

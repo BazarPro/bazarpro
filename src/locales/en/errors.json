@@ -142,7 +142,8 @@
     "question": "Question not found.",
     "report": "Report not found.",
     "user": "User not found.",
-    "categoryField": "Extra field not found."
+    "categoryField": "Extra field not found.",
+    "service": "Service not found."
   },
   "offline": {
     "failed": "The action could not be replayed. Please do it by hand.",
@@ -304,5 +305,10 @@
   },
   "featureFlags": {
     "unknown": "There is no such switch."
+  },
+  "services": {
+    "inUse": "{{count}} upcoming or running bazaars still offer this service. It can be deleted once they are over.",
+    "duplicate": "A service with this name already exists.",
+    "nameLength": "The name must be 1 to {{max}} characters long."
   }
 }

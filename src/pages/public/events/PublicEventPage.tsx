@@ -46,7 +46,7 @@ import { SellerBroadcasts } from '../../../components/broadcasts/SellerBroadcast
 import { MyRejections } from '../../../components/participation/MyRejections';
 import { useTranslation } from 'react-i18next';
 import { eventCategoryNames } from '../../../i18n/categories';
-import { serviceLabel } from '../../../i18n/services';
+import { useServiceLabel } from '../../../i18n/services';
 import { useNowPassing } from '../../../hooks/useNowPassing';
 import { registrationTimes } from '../../../shared/eventFeatures';
 import { describeRegistration } from '../../../components/participation/registrationText';
@@ -69,6 +69,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
   const navigate = useNavigate();
   const { brand, isSingle } = useInstanceConfig();
   const { t } = useTranslation(['events', 'common']);
+  const serviceLabel = useServiceLabel();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 

@@ -29,10 +29,8 @@ import {
 } from '../../../shared/eventFeatures';
 import {
   COUNTRIES,
-  EVENT_SERVICES,
   EVENT_VISIBILITY,
   POSTAL_CODE_PATTERNS,
-  type EventServices,
   type EventVisibility,
 } from '../../../shared/constants';
 import { useFeatureFlags } from '../../../hooks/useFeatureFlags';
@@ -151,7 +149,7 @@ const buildEventSchema = (
           zodMessage('form.invalidEnd', 'organizer')
         ),
       categories: z.array(z.string()).min(1, zodMessage('form.categoryRequired', 'organizer')),
-      services: z.array(z.enum(EVENT_SERVICES)),
+      services: z.array(z.string()),
       contactInfo: z.string().min(1, zodMessage('form.contactRequired', 'organizer')),
       commission: z.number().min(0).max(100),
       visibility: z.enum(EVENT_VISIBILITY),
@@ -978,7 +976,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       startDate: event ? formatForDateTimeLocal(event.startDate) : '',
       endDate: event ? formatForDateTimeLocal(event.endDate) : '',
       categories: event ? event.categories : [],
-      services: event ? (event.services as EventServices[]) : [EVENT_SERVICES[0]],
+      services: event ? event.services : [],
       contactInfo: event ? event.contactInfo : '',
       commission: event ? event.commission : 15,
       visibility: event ? (event.visibility as EventVisibility) : EVENT_VISIBILITY[0],
@@ -1055,7 +1053,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       startDate: formatForDateTimeLocal(event.startDate),
       endDate: formatForDateTimeLocal(event.endDate),
       categories: event.categories,
-      services: event.services as EventServices[],
+      services: event.services,
       contactInfo: event.contactInfo,
       commission: event.commission,
       visibility: event.visibility as EventVisibility,
@@ -1081,7 +1079,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
         startDate: '',
         endDate: '',
         categories: template.categories,
-        services: template.services as EventServices[],
+        services: template.services,
         contactInfo: template.contactInfo,
         commission: template.commission,
         visibility: template.visibility as EventVisibility,
@@ -1392,7 +1390,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
           commission: number;
           visibility: EventVisibility;
           categories: Id<'categories'>[];
-          services: EventServices[];
+          services: string[];
           accessCode?: string;
           vendorLimit?: number;
           clearVendorLimit?: boolean;

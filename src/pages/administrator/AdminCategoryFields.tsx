@@ -24,7 +24,7 @@ import { getUserFacingErrorMessage } from '../../lib/errors';
 type AdminField = FunctionReturnType<typeof api.categories.listFieldsForAdmin>[number];
 
 /** A German and an English input side by side. */
-function TextPair({
+export function TextPair({
   id,
   label,
   labelEn,

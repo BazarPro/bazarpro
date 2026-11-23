@@ -142,7 +142,8 @@
     "question": "Frage nicht gefunden.",
     "report": "Meldung nicht gefunden.",
     "user": "Nutzer nicht gefunden.",
-    "categoryField": "Zusatzfeld nicht gefunden."
+    "categoryField": "Zusatzfeld nicht gefunden.",
+    "service": "Service nicht gefunden."
   },
   "offline": {
     "failed": "Die Aktion ließ sich nicht nachholen. Bitte von Hand erledigen.",
@@ -304,5 +305,10 @@
   },
   "featureFlags": {
     "unknown": "Diesen Schalter gibt es nicht."
+  },
+  "services": {
+    "inUse": "Diesen Service bieten noch {{count}} kommende oder laufende Basare an. Er kann gelöscht werden, wenn sie vorbei sind.",
+    "duplicate": "Einen Service mit diesem Namen gibt es schon.",
+    "nameLength": "Der Name darf 1 bis {{max}} Zeichen lang sein."
   }
 }

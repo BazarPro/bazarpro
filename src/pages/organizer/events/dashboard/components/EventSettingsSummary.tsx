@@ -9,7 +9,7 @@ import { formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
 import { Badge } from '../../../../../components/ui/badge';
 import { dateLocale } from '../../../../../i18n/format';
 import { useTranslation } from 'react-i18next';
-import { serviceLabel } from '../../../../../i18n/services';
+import { useServiceLabel } from '../../../../../i18n/services';
 import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
 import { eventCategoryNames } from '../../../../../i18n/categories';
@@ -62,6 +62,7 @@ function formatRange(start: number, end?: number) {
 /** Read-only overview of the current event settings. */
 export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
   const { t } = useTranslation('organizer');
+  const serviceLabel = useServiceLabel();
   const requirable = useRequirableFields();
   const categoryList = useQuery(api.categories.getAllCategories);
   const timeFormat = new Intl.DateTimeFormat(dateLocale(), {
