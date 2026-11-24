@@ -15,5 +15,7 @@ export async function approveEventByTitle(page: Page, eventTitle: string) {
     await expect(page.getByText('Event wurde freigegeben')).toBeVisible();
   }
 
-  await expect(row.getByText('Freigegeben')).toBeVisible();
+  // An approved event shows no approval status any more
+  await expect(row.getByText('Freigabe ausstehend')).toBeHidden();
+  await expect(row.getByRole('button', { name: 'Freigeben' })).toBeHidden();
 }

@@ -1,8 +1,9 @@
-import { MoreHorizontal } from 'lucide-react';
+import { Check, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 import { ReasonDialog } from '../../components/moderation/ReasonDialog';
@@ -10,7 +11,7 @@ import { SearchInput } from '../../components/ui/search-input';
 import { PageHeader } from '../../components/ui/page-header';
 import { useMutation, useQuery } from '../../lib/api/react';
 import { api } from '../../lib/api/functions';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import {
   Table,
@@ -22,7 +23,7 @@ import {
 } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { formatDateRangeDE } from '../../lib/utils';
+import { dateLocale } from '../../i18n/format';
 import type { Doc, Id } from '../../lib/api/types';
 import { toast } from 'sonner';
 import {
@@ -119,20 +120,21 @@ export function AdminEventsPage() {
     }
   };
 
+  /** Only what differs from a public, approved bazaar */
   const renderStatus = (event: AdminEvent) => {
     if (event.moderation) {
-      return <Badge variant="destructive">{t('events.statusBlocked')}</Badge>;
+      return <Badge variant="danger">{t('events.statusBlocked')}</Badge>;
     }
     if (event.visibility !== 'public') {
       return <Badge variant="outline">{t('events.statusPrivate')}</Badge>;
     }
-    if (event.approvalStatus === 'approved') {
-      return <Badge variant="secondary">{t('events.statusApproved')}</Badge>;
-    }
     if (event.approvalStatus === 'rejected') {
-      return <Badge variant="destructive">{t('events.statusRejected')}</Badge>;
+      return <Badge variant="danger">{t('events.statusRejected')}</Badge>;
     }
-    return <Badge variant="outline">{t('events.statusPending')}</Badge>;
+    if (event.approvalStatus !== 'approved') {
+      return <Badge variant="warning">{t('events.statusPending')}</Badge>;
+    }
+    return null;
   };
 
   return (
@@ -171,102 +173,113 @@ export function AdminEventsPage() {
               <TableHead>{t('events.date')}</TableHead>
               <TableHead>{t('events.organizer')}</TableHead>
               <TableHead>{t('events.status')}</TableHead>
-              <TableHead className="text-right">{t('events.action')}</TableHead>
+              <TableHead className="w-0">
+                <span className="sr-only">{t('events.action')}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {eventsLoading ? (
               <TableRowsSkeleton columns={5} />
             ) : filtered.length ? (
-              pageItems.map((event) => (
-                <TableRow key={event._id}>
-                  <TableCell className="whitespace-normal @4xl:min-w-[10rem]">
-                    <div className="font-medium">{event.title}</div>
-                    <div className="text-xs text-muted-foreground">{formatEventPlace(event)}</div>
-                    {event.moderation && (
-                      <div className="text-xs text-destructive">
-                        {t('events.blockedReason', { reason: event.moderation.reason })}
+              pageItems.map((event) => {
+                const pending = event.visibility === 'public' && event.approvalStatus === 'pending';
+                const manage = `/events/view/${event._id}`;
+                return (
+                  <TableRow key={event._id}>
+                    <TableCell className="whitespace-normal @4xl:min-w-[12rem]">
+                      <Link to={manage} className="font-medium hover:underline">
+                        {event.title}
+                      </Link>
+                      <div className="text-xs text-muted-foreground">{formatEventPlace(event)}</div>
+                      {event.moderation && (
+                        <div className="text-xs text-destructive">
+                          {t('events.blockedReason', { reason: event.moderation.reason })}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell data-inline className="@4xl:whitespace-nowrap">
+                      <EventDates start={event.startDate} end={event.endDate} />
+                    </TableCell>
+                    <TableCell data-inline className="whitespace-normal">
+                      <div>{event.organizerName || t('events.unknown')}</div>
+                      <div className="max-w-[13rem] truncate text-xs text-muted-foreground @max-4xl:hidden">
+                        {event.organizerEmail || '—'}
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="whitespace-normal @4xl:min-w-[7rem]">
-                    {formatDateRangeDE(event.startDate, event.endDate)}
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    <div className="font-medium">{event.organizerName || t('events.unknown')}</div>
-                    <div className="text-xs text-muted-foreground break-all">
-                      {event.organizerEmail || '—'}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      <EventPhaseBadge event={event} />
-                      {renderStatus(event)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right @4xl:min-w-[16.5rem]">
-                    <div className="flex flex-wrap justify-end gap-1 @max-4xl:justify-start">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/events/view/${event._id}`)}
-                      >
-                        {t('events.manage')}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label={t('events.more')}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {event.visibility === 'public' && (
-                            <DropdownMenuItem
-                              onSelect={() => navigate(`/public-events/${event._id}`)}
-                            >
-                              {t('events.view')}
-                            </DropdownMenuItem>
-                          )}
-                          {event.moderation ? (
-                            <DropdownMenuItem onSelect={() => handleRestore(event._id)}>
-                              {t('events.unblock')}
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onSelect={() =>
-                                setRequest({ kind: 'hideEvent', id: event._id, label: event.title })
-                              }
-                            >
-                              {t('events.block')}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      {event.visibility === 'public' && event.approvalStatus === 'pending' && (
-                        <>
+                    </TableCell>
+                    <TableCell data-inline>
+                      <div className="flex flex-wrap gap-1">
+                        <EventPhaseBadge event={event} />
+                        {renderStatus(event)}
+                      </div>
+                    </TableCell>
+                    <TableCell
+                      data-inline
+                      className="text-right @max-4xl:ml-auto @max-4xl:self-end"
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        {pending && (
                           <Button
-                            variant="secondary"
+                            variant="outline"
                             size="sm"
                             disabled={processingEventId === event._id}
                             onClick={() => handleApprove(event._id)}
                           >
+                            <Check />
                             {t('events.approve')}
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={processingEventId === event._id}
-                            onClick={() => setRejectEventId(event._id)}
-                          >
-                            {t('events.reject')}
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label={t('events.more')}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => navigate(manage)}>
+                              {t('events.manage')}
+                            </DropdownMenuItem>
+                            {event.visibility === 'public' && (
+                              <DropdownMenuItem
+                                onSelect={() => navigate(`/public-events/${event._id}`)}
+                              >
+                                {t('events.view')}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {pending && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onSelect={() => setRejectEventId(event._id)}
+                              >
+                                {t('events.reject')}
+                              </DropdownMenuItem>
+                            )}
+                            {event.moderation ? (
+                              <DropdownMenuItem onSelect={() => handleRestore(event._id)}>
+                                {t('events.unblock')}
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onSelect={() =>
+                                  setRequest({
+                                    kind: 'hideEvent',
+                                    id: event._id,
+                                    label: event.title,
+                                  })
+                                }
+                              >
+                                {t('events.block')}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="text-muted-foreground text-center py-6">
@@ -299,5 +312,34 @@ export function AdminEventsPage() {
 
       <ModerationActionDialog request={request} onClose={() => setRequest(null)} />
     </div>
+  );
+}
+
+/** "23.11.2026" with the times below, or "23.11. – 30.11.2026" for several days. */
+function EventDates({ start, end }: { start: number; end: number }) {
+  const from = new Date(start);
+  const to = new Date(end);
+  const day = (date: Date, year = true) =>
+    date.toLocaleDateString(dateLocale(), {
+      day: '2-digit',
+      month: '2-digit',
+      ...(year ? { year: 'numeric' } : {}),
+    });
+  const time = (date: Date) =>
+    date.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });
+  if (from.toDateString() === to.toDateString()) {
+    return (
+      <div className="tabular-nums">
+        <span>{day(from)}</span>
+        <span className="text-xs text-muted-foreground @max-4xl:ml-2 @4xl:block">
+          {time(from)} – {time(to)}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <span className="tabular-nums">
+      {day(from, from.getFullYear() !== to.getFullYear())} – {day(to)}
+    </span>
   );
 }

@@ -191,7 +191,7 @@ async fn access_code_matches(
     if !closed && required == code.filter(|code| !code.is_empty()) {
         return Ok(true);
     }
-    Ok(code == Some("DEMO") && flags::get(ctx.conn(), "is_demo_mode", false).await?)
+    Ok(code == Some("DEMO") && flags::get(ctx.conn(), flags::DEMO_MODE, false).await?)
 }
 
 /// `access_code_matches` with the failed attempts of the user limited like sign-ins, so

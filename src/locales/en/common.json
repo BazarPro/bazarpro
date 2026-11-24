@@ -57,6 +57,7 @@
     "messages": "Contact requests",
     "log": "Log",
     "legalPages": "Legal texts",
+    "features": "Features",
     "switchRole": "Switch area",
     "organizer": "Organize",
     "participant": "Sell",
@@ -68,7 +69,7 @@
       "approvals": "{{count}} bazaars awaiting approval",
       "messages": "{{count}} open contact requests"
     },
-    "categories": "Categories",
+    "categories": "Categories & services",
     "allBazaars": "All bazaars",
     "sales": "Sales"
   },

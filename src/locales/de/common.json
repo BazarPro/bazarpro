@@ -57,6 +57,7 @@
     "messages": "Kontaktanfragen",
     "log": "Protokoll",
     "legalPages": "Rechtstexte",
+    "features": "Funktionen",
     "switchRole": "Bereich wechseln",
     "organizer": "Organisieren",
     "participant": "Verkaufen",
@@ -68,7 +69,7 @@
       "approvals": "{{count}} Basare warten auf Freigabe",
       "messages": "{{count}} offene Kontaktanfragen"
     },
-    "categories": "Kategorien",
+    "categories": "Kategorien & Services",
     "allBazaars": "Alle Basare",
     "sales": "Verkäufe"
   },

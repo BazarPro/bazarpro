@@ -2,13 +2,13 @@ import { PageHeader } from '../../components/ui/page-header';
 import { useEffect, useMemo, useState } from 'react';
 import { useApiClient, useMutation, useQuery } from '../../lib/api/react';
 import { toast } from 'sonner';
-import { BarChart3, ImageIcon, Trash2 } from 'lucide-react';
+import { BarChart3, ImageIcon, Trash2, Upload } from 'lucide-react';
 import { api } from '../../lib/api/functions';
 import type { Id } from '../../lib/api/types';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Switch } from '../../components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { getUserFacingErrorMessage } from '../../lib/errors';
 import { normalizeImageForUpload } from '../../lib/imageProcessing';
@@ -133,28 +133,34 @@ export function AdminSettingsPage() {
                 <ImageIcon className="h-8 w-8 text-muted-foreground" />
               )}
             </div>
-            <div className="flex flex-col gap-2">
-              <Input
+            <div className="flex flex-wrap items-center gap-2">
+              <input
                 id="instance-logo"
                 type="file"
+                className="sr-only"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(e) => {
                   setLogoFile(e.target.files?.[0] ?? null);
                   setRemoveLogo(false);
                 }}
               />
+              <Button type="button" variant="outline" size="sm" asChild>
+                <label htmlFor="instance-logo" className="cursor-pointer">
+                  <Upload /> {t('settings.chooseLogo')}
+                </label>
+              </Button>
               {previewUrl && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="w-fit gap-1 text-muted-foreground"
+                  className="text-muted-foreground"
                   onClick={() => {
                     setLogoFile(null);
                     setRemoveLogo(true);
                   }}
                 >
-                  <Trash2 className="h-3.5 w-3.5" /> {t('settings.removeLogo')}
+                  <Trash2 /> {t('settings.removeLogo')}
                 </Button>
               )}
             </div>
@@ -207,8 +213,8 @@ export function AdminSettingsPage() {
               }}
             />
           </p>
-          <div className="flex items-center gap-2">
-            <Checkbox
+          <div className="flex items-center gap-3">
+            <Switch
               id="plausible-enabled"
               checked={plausibleEnabled}
               onCheckedChange={(checked) => setPlausibleEnabled(!!checked)}

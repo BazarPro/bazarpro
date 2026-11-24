@@ -110,6 +110,10 @@ const AdminCategoriesPage = lazyPage(
   () => import('./pages/administrator/AdminCategoriesPage'),
   'AdminCategoriesPage'
 );
+const AdminFeaturesPage = lazyPage(
+  () => import('./pages/administrator/AdminFeaturesPage'),
+  'AdminFeaturesPage'
+);
 const AdminLogPage = lazyPage(() => import('./pages/administrator/AdminLogPage'), 'AdminLogPage');
 const AdminSettingsPage = lazyPage(
   () => import('./pages/administrator/AdminSettingsPage'),
@@ -373,6 +377,7 @@ function App() {
                           <Route path="/admin/messages" element={<AdminMessagesPage />} />
                           <Route path="/admin/log" element={<AdminLogPage />} />
                           <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                          <Route path="/admin/features" element={<AdminFeaturesPage />} />
                           <Route path="/admin/pages" element={<AdminLegalPagesPage />} />
                         </Route>
                       </Route>

@@ -8,7 +8,7 @@
 
 import type { CategoryField, DescribedAttribute } from '../../shared/categoryFields';
 import type { FeeGroup } from '../../shared/feeGroups';
-import type { EventProductStatus, EventServices, HelperPermission } from '../../shared/constants';
+import type { EventProductStatus, HelperPermission } from '../../shared/constants';
 
 export type TableName =
   | '_storage'
@@ -36,6 +36,9 @@ export type TableName =
 export type Id<T extends TableName> = string & { __tableName: T };
 
 export type Doc<T extends keyof Docs> = Docs[T];
+
+/** A service a bazaar may offer (#256); events store `name`. */
+export type EventService = { name: string; nameEn?: string };
 
 /** Names of a category in other languages; `label` counts where one is missing. */
 export type CategoryTranslations = { en?: string | undefined };
@@ -154,7 +157,7 @@ export interface Docs {
     startDate: number;
     endDate: number;
     contactInfo: string;
-    services: EventServices[];
+    services: string[];
     visibility: 'public' | 'logged-in' | 'approved';
     commission: number;
     organizerId: Id<'users'>;
@@ -1284,7 +1287,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1361,7 +1364,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1440,7 +1443,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1519,7 +1522,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1608,7 +1611,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1690,7 +1693,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1767,7 +1770,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -1980,7 +1983,7 @@ export interface Api {
         startDate: number;
         endDate: number;
         contactInfo: string;
-        services: EventServices[];
+        services: string[];
         visibility: 'public' | 'logged-in' | 'approved';
         commission: number;
         organizerId: Id<'users'>;
@@ -2018,6 +2021,34 @@ export interface Api {
   };
   featureFlags: {
     get: FunctionReference<'query', { key?: string | undefined }, { [x: string]: boolean }>;
+    /** Admins: the flags of the admin area, in a fixed order */
+    listForAdmin: FunctionReference<
+      'query',
+      EmptyObject,
+      {
+        key: string;
+        value: boolean;
+        /** Never switched: the value is the default of the code */
+        isDefault: boolean;
+        updatedAt?: number;
+        updatedBy?: string | null;
+      }[]
+    >;
+    update: FunctionReference<'mutation', { key: string; value: boolean }, null>;
+  };
+  services: {
+    /** The services organizers pick from, in the admins' order */
+    list: FunctionReference<'query', EmptyObject, EventService[]>;
+    /** Admins: with the bazaars that offer them; upcoming ones block deleting */
+    listForAdmin: FunctionReference<
+      'query',
+      EmptyObject,
+      (EventService & { activeEvents: number; pastEvents: number })[]
+    >;
+    /** Admins: adds a service, or renames `original`; its bazaars keep it */
+    save: FunctionReference<'mutation', { original?: string; name: string; nameEn?: string }, null>;
+    move: FunctionReference<'mutation', { name: string; up: boolean }, null>;
+    delete: FunctionReference<'mutation', { name: string }, null>;
   };
   instance: {
     getConfig: FunctionReference<

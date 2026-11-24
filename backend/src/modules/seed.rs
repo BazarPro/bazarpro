@@ -243,7 +243,8 @@ async fn toggle_feature_flag(ctx: &mut Ctx, args: KeyArgs) -> AppResult<()> {
 }
 
 /// Empties all tables of a test database. Only with ALLOW_REMOVE_ALL_DATA=true, so it
-/// cannot happen on a production instance by mistake. Uploaded files stay in the store.
+/// cannot happen on a production instance by mistake. Uploaded files stay in the store;
+/// the default services come back.
 async fn remove_all_data(ctx: &mut Ctx, _: NoArgs) -> AppResult<&'static str> {
     if std::env::var("ALLOW_REMOVE_ALL_DATA").as_deref() != Ok("true") {
         return Err(AppError::forbidden("REMOVE_ALL_DATA_NOT_ALLOWED"));
@@ -261,6 +262,9 @@ async fn remove_all_data(ctx: &mut Ctx, _: NoArgs) -> AppResult<&'static str> {
     sqlx::query(sqlx::AssertSqlSafe(format!("TRUNCATE {list} CASCADE")))
         .execute(ctx.conn())
         .await?;
+    // Like the categories, a fresh instance has its services from the start
+    super::services::insert_defaults(ctx.conn()).await?;
+    ctx.touch(Topic::Table("event_services"));
     Ok("All data removed.")
 }
 

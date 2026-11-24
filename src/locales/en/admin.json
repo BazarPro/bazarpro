@@ -65,7 +65,14 @@
     "todo": "To do",
     "platform": "Platform",
     "productsCountedAt": "As of {{time}} · counted hourly",
-    "productsCounted": "Counted hourly"
+    "productsCounted": "Counted hourly",
+    "flags": {
+      "is_login_enabled": "Sign-in is off",
+      "is_registration_enabled": "Registration is off",
+      "is_event_creation_enabled": "New bazaars are off",
+      "is_demo_mode": "Demo mode is on"
+    },
+    "flagsLink": "View features"
   },
   "reports": {
     "error": "Error",
@@ -232,6 +239,7 @@
     "contact": "Contact email",
     "logo": "Logo",
     "removeLogo": "Remove logo",
+    "chooseLogo": "Choose image",
     "startPage": "Home page",
     "startOverview": "Overview with name, logo and all bazaars",
     "startCurrent": "Straight to the running or next bazaar",
@@ -276,10 +284,11 @@
     "replaceWithTemplate": "Replace the current text with the template?"
   },
   "categories": {
-    "title": "Categories",
-    "subtitle": "What bazaars and items choose from: main categories group, items go into the sub-categories.",
+    "title": "Categories & services",
+    "subtitle": "What bazaars choose from: categories with their extra fields, and the services a bazaar offers.",
     "tabCategories": "Categories",
     "tabFields": "Extra fields",
+    "tabServices": "Services",
     "add": "Add category",
     "addSub": "Sub-category",
     "addSubTo": "Add a sub-category to “{{name}}”",
@@ -347,5 +356,85 @@
     "deleteText": "Items keep their values, they are just no longer shown.",
     "inUse": "Still used by categories.",
     "empty": "No extra fields yet"
+  },
+  "services": {
+    "intro": "What bazaars offer on top, such as parking or drinks. Organizers choose from them for their bazaar.",
+    "add": "Add service",
+    "new": "New service",
+    "edit": "Edit service",
+    "name": "Name",
+    "nameEn": "English name",
+    "nameEnHint": "Optional. Otherwise English-speaking visitors see the German name.",
+    "renameHint_one": "{{count}} bazaar offers this service and gets the new name.",
+    "renameHint_other": "{{count}} bazaars offer this service and get the new name.",
+    "active_one": "{{count}} upcoming bazaar",
+    "active_other": "{{count}} upcoming bazaars",
+    "past_one": "{{count}} past",
+    "past_other": "{{count}} past",
+    "unused": "Not used",
+    "up": "Move up: {{name}}",
+    "down": "Move down: {{name}}",
+    "saved": "Service saved",
+    "deleted": "Service deleted",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteText": "Organizers can no longer choose it.",
+    "deletePast_one": "Organizers can no longer choose it. {{count}} past bazaar loses it.",
+    "deletePast_other": "Organizers can no longer choose it. {{count}} past bazaars lose it.",
+    "inUse": "Still offered by upcoming bazaars.",
+    "empty": "No services yet"
+  },
+  "features": {
+    "title": "Features",
+    "description": "Switches for the whole platform. Changes apply to everyone at once.",
+    "groups": {
+      "access": "Access",
+      "bazaars": "Bazaars and items",
+      "presentation": "Presentation"
+    },
+    "default": "Default",
+    "changed": "Changed by {{name}} · {{date}}",
+    "changedAt": "Changed · {{date}}",
+    "on": "on",
+    "off": "off",
+    "saved": "“{{name}}” is now {{state}}.",
+    "loginOff": "Sign-in is switched off. Nobody can sign in anew.",
+    "flags": {
+      "is_login_enabled": {
+        "title": "Sign-in",
+        "text": "Users sign in with email and password or a code."
+      },
+      "is_registration_enabled": {
+        "title": "Registration",
+        "text": "New users create an account themselves."
+      },
+      "is_event_creation_enabled": {
+        "title": "Create bazaars",
+        "text": "Organizers create new bazaars. Existing bazaars can still be edited."
+      },
+      "is_create_products_on_signup_enabled": {
+        "title": "Sample items for new accounts",
+        "text": "New accounts get a few items to try things out."
+      },
+      "allow_undo_inventory_actions": {
+        "title": "Undo sales",
+        "text": "The team can take back sales and returns in the item list."
+      },
+      "is_demo_mode": {
+        "title": "Demo mode",
+        "text": "Shows a demo notice. With the code DEMO anyone gets into protected bazaars."
+      }
+    },
+    "confirm": {
+      "is_login_enabled": {
+        "title": "Switch off sign-in?",
+        "text": "Nobody can sign in afterwards, admins neither. Whoever is signed in stays signed in. Only an existing session can switch it on again.",
+        "action": "Switch off"
+      },
+      "is_demo_mode": {
+        "title": "Switch on demo mode?",
+        "text": "Anyone can then join bazaars with an access code using the code DEMO. Only for demo and test instances.",
+        "action": "Switch on"
+      }
+    }
   }
 }

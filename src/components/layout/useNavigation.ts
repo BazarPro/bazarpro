@@ -17,6 +17,7 @@ import {
   Settings,
   ShoppingCart,
   Tags,
+  ToggleRight,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -161,6 +162,7 @@ export function useNavigation({
     { icon: ScrollText, label: t('menu.log'), page: '/admin/log' },
     { icon: Tags, label: t('menu.categories'), page: '/admin/categories' },
     { icon: Scale, label: t('menu.legalPages'), page: '/admin/pages' },
+    { icon: ToggleRight, label: t('menu.features'), page: '/admin/features' },
     { icon: Settings, label: t('menu.settings'), page: '/admin/settings' },
   ];
 

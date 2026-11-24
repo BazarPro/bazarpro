@@ -20,6 +20,14 @@ import { FilterTabs } from './components/AdminShared';
 import { useTranslation } from 'react-i18next';
 import { ListSkeleton, Loading } from '../../components/ui/loading';
 
+/** What the reported target gets, when it is still there and not restricted yet. */
+const RESTRICT = {
+  product: { kind: 'hideProduct', label: 'reports.hideProduct' },
+  event: { kind: 'hideEvent', label: 'reports.hideEvent' },
+  question: { kind: 'deleteQuestion', label: 'reports.deleteQuestion' },
+  user: { kind: 'banUser', label: 'reports.banUser' },
+} as const;
+
 export function AdminReportsPage() {
   const { t } = useTranslation('admin');
   const [status, setStatus] = useState<ReportStatus>('open');
@@ -77,12 +85,12 @@ export function AdminReportsPage() {
                       <Badge variant="outline">{REPORT_TARGET_LABELS[report.targetType]}</Badge>
                       <Badge variant="secondary">{REPORT_REASON_LABELS[report.reason]}</Badge>
                       {report.reportCount > 1 && (
-                        <Badge variant="destructive">
+                        <Badge variant="warning">
                           {t('reports.count', { count: report.reportCount })}
                         </Badge>
                       )}
                       {target.isRestricted && target.exists && (
-                        <Badge variant="destructive">{t('reports.restricted')}</Badge>
+                        <Badge variant="danger">{t('reports.restricted')}</Badge>
                       )}
                     </div>
                     <p className="break-words text-lg font-semibold">
@@ -130,77 +138,26 @@ export function AdminReportsPage() {
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {target.exists && !target.isRestricted && (
-                      <>
-                        {report.targetType === 'product' && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              setRequest({
-                                kind: 'hideProduct',
-                                id: report.targetId as Id<'products'>,
-                                label,
-                                reportId: report._id,
-                              })
-                            }
-                          >
-                            {t('reports.hideProduct')}
-                          </Button>
-                        )}
-                        {report.targetType === 'event' && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              setRequest({
-                                kind: 'hideEvent',
-                                id: report.targetId as Id<'events'>,
-                                label,
-                                reportId: report._id,
-                              })
-                            }
-                          >
-                            {t('reports.hideEvent')}
-                          </Button>
-                        )}
-                        {report.targetType === 'question' && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              setRequest({
-                                kind: 'deleteQuestion',
-                                id: report.targetId as Id<'productQuestions'>,
-                                label,
-                                reportId: report._id,
-                              })
-                            }
-                          >
-                            {t('reports.deleteQuestion')}
-                          </Button>
-                        )}
-                        {report.targetType === 'user' && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              setRequest({
-                                kind: 'banUser',
-                                id: report.targetId as Id<'users'>,
-                                label,
-                                reportId: report._id,
-                              })
-                            }
-                          >
-                            {t('reports.banUser')}
-                          </Button>
-                        )}
-                      </>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() =>
+                          setRequest({
+                            kind: RESTRICT[report.targetType].kind,
+                            id: report.targetId,
+                            label,
+                            reportId: report._id,
+                          } as ModerationRequest)
+                        }
+                      >
+                        {t(RESTRICT[report.targetType].label)}
+                      </Button>
                     )}
                     {target.exists && target.isRestricted && (
                       <>
                         <Button
-                          variant="secondary"
+                          variant="outline"
                           size="sm"
                           onClick={() =>
                             attempt(
@@ -238,7 +195,7 @@ export function AdminReportsPage() {
                     )}
                     {!target.exists && (
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
                         onClick={() =>
                           attempt(

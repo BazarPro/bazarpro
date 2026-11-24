@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FormProvider, useForm } from 'react-hook-form';
 import type { Doc } from '../../../../lib/api/types';
+import { getFunctionName } from '../../../../lib/api/functions';
+import { useQuery } from '../../../../lib/api/react';
 import { EditEventCategories } from './EditEventCategories';
+
+vi.mock('../../../../lib/api/react', () => ({ useQuery: vi.fn() }));
 
 const category = (id: string, label: string, parentCategory?: string) =>
   ({ _id: id, label, parentCategory, translations: {} }) as unknown as Doc<'categories'>;
@@ -14,9 +18,11 @@ const list = [
 ];
 
 let chosen: string[] = [];
+let services: string[] = [];
 function Form({ categories = [] as string[] }) {
-  const methods = useForm({ defaultValues: { categories, services: [] } });
+  const methods = useForm({ defaultValues: { categories, services: [] as string[] } });
   chosen = methods.watch('categories');
+  services = methods.watch('services');
   return (
     <FormProvider {...methods}>
       <EditEventCategories categoryList={list} />
@@ -25,6 +31,11 @@ function Form({ categories = [] as string[] }) {
 }
 
 beforeEach(() => {
+  // The admins' list of services (#256)
+  vi.mocked(useQuery).mockImplementation(((fn: unknown) =>
+    getFunctionName(fn) === 'services.list'
+      ? [{ name: 'Parkplatz', nameEn: 'Parking' }, { name: 'Hüpfburg' }]
+      : undefined) as never);
   // jsdom has no ResizeObserver; the checkbox uses it
   vi.stubGlobal(
     'ResizeObserver',
@@ -75,5 +86,13 @@ describe('EditEventCategories', () => {
     expect(chosen).toEqual(['bikes', 'misc']);
     fireEvent.click(screen.getByRole('button', { name: 'Keine' }));
     expect(chosen).toEqual([]);
+  });
+
+  it('offers the services of the admins’ list', () => {
+    render(<Form />);
+    fireEvent.click(screen.getByText('Hüpfburg'));
+    expect(services).toEqual(['Hüpfburg']);
+    fireEvent.click(screen.getByText('Parkplatz'));
+    expect(services).toEqual(['Hüpfburg', 'Parkplatz']);
   });
 });

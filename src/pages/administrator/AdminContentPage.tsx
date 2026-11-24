@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '../../lib/api/react';
 import { toast } from 'sonner';
-import { Package, X } from 'lucide-react';
+import { Eye, EyeOff, Package, Trash2, X } from 'lucide-react';
 import { api } from '../../lib/api/functions';
 import type { Id } from '../../lib/api/types';
 import { Badge } from '../../components/ui/badge';
@@ -153,7 +153,7 @@ function ProductList({
         {result.items.map((product) => (
           <li
             key={product._id}
-            className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+            className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4"
             data-testid="admin-content-product"
           >
             <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -162,10 +162,10 @@ function ProductList({
                   src={product.imageUrl}
                   alt=""
                   loading="lazy"
-                  className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                  className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover sm:h-16 sm:w-16"
                 />
               ) : (
-                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-muted sm:h-16 sm:w-16">
                   <Package className="h-6 w-6 text-muted-foreground" />
                 </span>
               )}
@@ -176,13 +176,23 @@ function ProductList({
                 >
                   {product.title}
                 </Link>
-                <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
-                <p className="text-xs text-muted-foreground">
-                  {product.price.toFixed(2).replace('.', ',')} € ·{' '}
-                  <Link to={`/admin/users?user=${product.vendorId}`} className="underline">
+                <p className="line-clamp-1 text-sm text-muted-foreground sm:line-clamp-2">
+                  {product.description}
+                </p>
+                <p className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground tabular-nums">
+                    {product.price.toFixed(2).replace('.', ',')} €
+                  </span>
+                  {product.sold && (
+                    <Badge variant="secondary" className="ml-1">
+                      {t('content.sold')}
+                    </Badge>
+                  )}
+                  <span>·</span>
+                  <Link to={`/admin/users?user=${product.vendorId}`} className="hover:underline">
                     {product.vendorName}
-                  </Link>{' '}
-                  · {formatDateTime(product._creationTime)}
+                  </Link>
+                  <span className="max-sm:hidden">· {formatDateTime(product._creationTime)}</span>
                 </p>
                 {product.moderation && (
                   <p className="mt-1 text-xs text-destructive">
@@ -191,8 +201,7 @@ function ProductList({
                 )}
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {product.sold && <Badge variant="secondary">{t('content.sold')}</Badge>}
+            <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
               {product.moderation ? (
                 <Button
                   variant="outline"
@@ -208,18 +217,20 @@ function ProductList({
                     }
                   }}
                 >
-                  {t('content.showAgain')}
+                  <Eye />
+                  <span className="max-sm:sr-only">{t('content.showAgain')}</span>
                 </Button>
               ) : (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="text-muted-foreground hover:text-destructive"
                   onClick={() =>
                     onRequest({ kind: 'hideProduct', id: product._id, label: product.title })
                   }
                 >
-                  {t('content.hide')}
+                  <EyeOff />
+                  <span className="max-sm:sr-only">{t('content.hide')}</span>
                 </Button>
               )}
             </div>
@@ -261,7 +272,7 @@ function QuestionList({
         {result.items.map((question) => (
           <li
             key={question._id}
-            className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start"
+            className="flex items-start gap-3 p-3 sm:p-4"
             data-testid="admin-content-question"
           >
             <div className="min-w-0 flex-1 space-y-1">
@@ -281,14 +292,15 @@ function QuestionList({
               )}
             </div>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="shrink-0 text-destructive hover:text-destructive"
+              className="shrink-0 text-muted-foreground hover:text-destructive"
               onClick={() =>
                 onRequest({ kind: 'deleteQuestion', id: question._id, label: question.question })
               }
             >
-              {t('content.delete')}
+              <Trash2 />
+              <span className="max-sm:sr-only">{t('content.delete')}</span>
             </Button>
           </li>
         ))}

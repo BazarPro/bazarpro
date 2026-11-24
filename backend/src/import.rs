@@ -582,7 +582,7 @@ async fn events(
                    sale_fee_fixed, sale_fee_percentage, features, dropoff_start, dropoff_end,
                    pickup_start, pickup_end, logistics_note, reminder_day_before_sent_for,
                    reminder_pickup_sent_for, hidden_at, hidden_by, hidden_reason, organizer_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::event_service[],
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::text[],
                    $13::event_visibility, $14, $15::approval_status, $16, $17, $18, $19, $20, $21, $22,
                    $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)",
             )

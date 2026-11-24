@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/page-header';
+import { Alert, AlertDescription } from '../../components/ui/alert';
 import { StatTile } from '../../components/ui/stat-tile';
 import { useQuery } from '../../lib/api/react';
 import {
@@ -8,6 +10,7 @@ import {
   Inbox,
   Package,
   Scale,
+  TriangleAlert,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -26,6 +29,14 @@ interface Tile {
   urgent?: boolean;
 }
 
+/** Flags with the value that should not go unnoticed. */
+const UNUSUAL = {
+  is_login_enabled: false,
+  is_registration_enabled: false,
+  is_event_creation_enabled: false,
+  is_demo_mode: true,
+} as const;
+
 export function AdminOverviewPage() {
   const { t } = useTranslation('admin');
   const overview = useQuery(api.moderation.getOverview, {});
@@ -34,6 +45,12 @@ export function AdminOverviewPage() {
   const incompleteLegalPages = legalPages?.filter(
     (page) => page.hasPlaceholders || (runtimeConfig.mode === 'single' && !page.version)
   ).length;
+
+  const flags = useQuery(api.featureFlags.listForAdmin, {});
+  // Switches that lock people out or change what everybody sees: worth a reminder here
+  const unusual = (flags ?? []).filter(
+    (flag) => UNUSUAL[flag.key as keyof typeof UNUSUAL] === flag.value
+  );
 
   const isSingle = runtimeConfig.mode === 'single';
   const todo: Tile[] = [
@@ -131,6 +148,22 @@ export function AdminOverviewPage() {
   return (
     <div className="space-y-8">
       <PageHeader title={t('overview.title')} />
+
+      {unusual.length > 0 && (
+        <Alert variant="warning">
+          <TriangleAlert />
+          <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>
+              {unusual
+                .map((flag) => t(`overview.flags.${flag.key as keyof typeof UNUSUAL}`))
+                .join(' · ')}
+            </span>
+            <Link to="/admin/features" className="font-medium underline underline-offset-4">
+              {t('overview.flagsLink')}
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('overview.todo')}</h2>

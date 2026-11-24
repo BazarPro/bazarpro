@@ -13,7 +13,7 @@ export function EventPhaseBadge({ event }: { event: EventPeriod }) {
   const phase = eventPhase(event, now);
   return (
     <Badge
-      variant={phase === 'running' ? 'default' : phase === 'ended' ? 'secondary' : 'outline'}
+      variant={phase === 'running' ? 'success' : phase === 'ended' ? 'secondary' : 'outline'}
       data-testid="event-phase"
       data-phase={phase}
     >

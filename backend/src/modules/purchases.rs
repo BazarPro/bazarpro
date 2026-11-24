@@ -1279,7 +1279,7 @@ struct Success {
 /// redeemed offer accepted again, the offers the sale closed valid again.
 async fn undo_sale(ctx: &mut Ctx, args: UndoArgs) -> AppResult<Success> {
     ctx.require_user()?;
-    if !flags::get(ctx.conn(), "allow_undo_inventory_actions", false).await? {
+    if !flags::get(ctx.conn(), flags::UNDO_INVENTORY_ACTIONS, false).await? {
         return Err(AppError::forbidden("feature.disabled"));
     }
     let relation = relation_by_id(ctx.conn(), args.event_product_id.0)

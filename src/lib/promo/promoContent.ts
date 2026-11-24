@@ -118,7 +118,9 @@ function blockTexts(event: PromoEvent): Record<PromoBlockId, BlockText> {
       : (event.description.split(/(?<=[.!?])\s/)[0] ?? ''),
   ];
   if (food.length > 0) {
-    offerLines.push(t('offer.food', { services: food.map(serviceLabel).join(', ') }));
+    offerLines.push(
+      t('offer.food', { services: food.map((service) => serviceLabel(service)).join(', ') })
+    );
   }
   if (event.services.includes('Skiservice')) offerLines.push(t('offer.skiService'));
   if (event.services.includes('Fahrradcodierung')) offerLines.push(t('offer.bikeCoding'));

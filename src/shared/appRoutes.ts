@@ -51,6 +51,7 @@ export const APP_ROUTES = [
   '/admin/messages',
   '/admin/log',
   '/admin/settings',
+  '/admin/features',
   '/admin/pages',
 ];
 
