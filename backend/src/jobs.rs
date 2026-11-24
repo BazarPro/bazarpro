@@ -4,6 +4,11 @@
 //! a mutation that rolls back schedules nothing. Every instance with `RUN_WORKERS` runs a
 //! worker; Postgres row locks make sure each job and each cron slot runs only once.
 //!
+//! Each instance runs `JOB_WORKERS` jobs at the same time, at most a quarter of
+//! `DATABASE_MAX_CONNECTIONS`, so batch jobs never take the mutation permits of the cash desk.
+//! Urgent kinds (codes that expire) go first, and one more worker runs only them, so they
+//! never wait behind a mass mailing, a slow mail server or the nightly retention run (#271).
+//!
 //! A running job holds a lease: its worker renews `locked_until` while the handler runs.
 //! Only a job whose worker stopped renewing (crashed instance) is taken over by another
 //! worker, so a long job does not run twice (#142).
@@ -14,6 +19,7 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use croner::Cron;
+use futures::FutureExt;
 use futures::future::BoxFuture;
 use serde::Serialize;
 use sqlx::{PgConnection, PgPool};
@@ -23,6 +29,11 @@ use crate::AppState;
 
 const IDLE_POLL: Duration = Duration::from_secs(1);
 const CRON_TICK: Duration = Duration::from_secs(20);
+
+/// How long a running job may still take after the shutdown signal. A job that is not done
+/// by then is stopped and unlocked, so another instance runs it right away instead of after
+/// the lease. Shorter than the shutdown limit in main.rs, so the unlock gets through.
+pub const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
 
 /// How long a job stays locked without renewal, and how often its worker renews the lock.
 #[derive(Clone, Copy, Debug)]
@@ -45,12 +56,33 @@ pub type Handler = fn(AppState, serde_json::Value) -> BoxFuture<'static, anyhow:
 #[derive(Clone, Default)]
 pub struct Registry {
     handlers: HashMap<&'static str, Handler>,
+    /// Run before all other due jobs and by a worker of their own
+    urgent: Vec<&'static str>,
 }
 
 impl Registry {
     pub fn register(mut self, kind: &'static str, handler: Handler) -> Self {
         self.handlers.insert(kind, handler);
         self
+    }
+
+    /// Registers a kind that must not wait, e.g. a mail with a code that expires.
+    pub fn register_urgent(mut self, kind: &'static str, handler: Handler) -> Self {
+        self.urgent.push(kind);
+        self.register(kind, handler)
+    }
+
+    /// Only the urgent kinds, for the worker that keeps them from waiting.
+    fn urgent_only(&self) -> Self {
+        Self {
+            handlers: self
+                .handlers
+                .iter()
+                .filter(|(kind, _)| self.urgent.contains(kind))
+                .map(|(kind, handler)| (*kind, *handler))
+                .collect(),
+            urgent: self.urgent.clone(),
+        }
     }
 
     pub fn contains(&self, kind: &str) -> bool {
@@ -121,9 +153,14 @@ struct ClaimedJob {
     max_attempts: i32,
 }
 
-/// Takes the next due job of a kind this instance can run. Other kinds wait, e.g. for the
-/// newer instances during a rolling update.
-async fn claim(pool: &PgPool, kinds: &[&str], lease: Lease) -> sqlx::Result<Option<ClaimedJob>> {
+/// Takes the next due job of a kind this instance can run, urgent kinds first. Other kinds
+/// wait, e.g. for the newer instances during a rolling update.
+async fn claim(
+    pool: &PgPool,
+    kinds: &[&str],
+    urgent: &[&str],
+    lease: Lease,
+) -> sqlx::Result<Option<ClaimedJob>> {
     let owner = Uuid::new_v4();
     let row: Option<(Uuid, String, serde_json::Value, i32, i32)> = sqlx::query_as(
         "UPDATE jobs SET locked_until = now() + $1, locked_by = $3, attempts = attempts + 1
@@ -131,7 +168,7 @@ async fn claim(pool: &PgPool, kinds: &[&str], lease: Lease) -> sqlx::Result<Opti
            SELECT id FROM jobs
            WHERE run_at <= now() AND (locked_until IS NULL OR locked_until < now())
              AND kind = ANY($2) AND attempts < max_attempts
-           ORDER BY run_at
+           ORDER BY kind = ANY($4) DESC, run_at
            FOR UPDATE SKIP LOCKED
            LIMIT 1
          )
@@ -140,6 +177,7 @@ async fn claim(pool: &PgPool, kinds: &[&str], lease: Lease) -> sqlx::Result<Opti
     .bind(lease.timeout)
     .bind(kinds)
     .bind(owner)
+    .bind(urgent)
     .fetch_optional(pool)
     .await?;
     Ok(
@@ -170,15 +208,19 @@ enum Outcome {
     Done(anyhow::Result<()>),
     /// Another worker took the job over; it finishes the job
     Lost,
+    /// Stopped at shutdown before it was done; it is unlocked for another instance
+    Interrupted,
 }
 
 /// Runs the handler and renews the lock until it is done. Stops the handler when the lock
-/// was lost, so the job does not run twice at the same time.
+/// was lost, so the job does not run twice at the same time, or when it is still running
+/// `SHUTDOWN_GRACE` after `stop` turned true.
 async fn run_leased(
     state: &AppState,
     registry: &Registry,
     job: &ClaimedJob,
     lease: Lease,
+    mut stop: tokio::sync::watch::Receiver<bool>,
 ) -> Outcome {
     let Some(handler) = registry.handlers.get(job.kind.as_str()) else {
         return Outcome::Done(Err(anyhow::anyhow!("no handler for job kind {}", job.kind)));
@@ -190,7 +232,16 @@ async fn run_leased(
         lease.renew_every,
     );
     renewal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let mut deadline = stop
+        .borrow()
+        .then(|| tokio::time::Instant::now() + SHUTDOWN_GRACE);
     loop {
+        let shutdown = async {
+            match deadline {
+                Some(deadline) => tokio::time::sleep_until(deadline).await,
+                None => std::future::pending().await,
+            }
+        };
         tokio::select! {
             result = &mut running.0 => return Outcome::Done(match result {
                 Ok(result) => result,
@@ -203,6 +254,13 @@ async fn run_leased(
                 // Try again on the next tick; the lock lasts several renewals
                 Err(err) => tracing::warn!(job = %job.id, kind = job.kind, error = ?err, "renewing job lock"),
             },
+            // A dropped sender means stop as well
+            changed = stop.changed(), if deadline.is_none() => {
+                if changed.is_err() || *stop.borrow() {
+                    deadline = Some(tokio::time::Instant::now() + SHUTDOWN_GRACE);
+                }
+            }
+            () = shutdown => return Outcome::Interrupted,
         }
     }
 }
@@ -235,13 +293,35 @@ pub async fn run_next_with(
     registry: &Registry,
     lease: Lease,
 ) -> anyhow::Result<bool> {
+    let (_never, stop) = tokio::sync::watch::channel(false);
+    run_next_until(state, registry, lease, stop).await
+}
+
+async fn run_next_until(
+    state: &AppState,
+    registry: &Registry,
+    lease: Lease,
+    stop: tokio::sync::watch::Receiver<bool>,
+) -> anyhow::Result<bool> {
     let kinds: Vec<&str> = registry.handlers.keys().copied().collect();
-    let Some(job) = claim(&state.db, &kinds, lease).await? else {
+    let Some(job) = claim(&state.db, &kinds, &registry.urgent, lease).await? else {
         return Ok(false);
     };
-    match run_leased(state, registry, &job, lease).await {
+    match run_leased(state, registry, &job, lease, stop).await {
         Outcome::Lost => {
             tracing::error!(job = %job.id, kind = job.kind, "job lock lost, stopped; another worker runs it");
+        }
+        Outcome::Interrupted => {
+            tracing::warn!(job = %job.id, kind = job.kind, "job not done at shutdown, unlocked for another instance");
+            // Not counted as an attempt: the job did not fail
+            sqlx::query(
+                "UPDATE jobs SET locked_until = NULL, locked_by = NULL, attempts = attempts - 1
+                 WHERE id = $1 AND locked_by = $2",
+            )
+            .bind(job.id)
+            .bind(job.owner)
+            .execute(&state.db)
+            .await?;
         }
         Outcome::Done(Ok(())) => {
             sqlx::query("DELETE FROM jobs WHERE id = $1 AND locked_by = $2")
@@ -273,15 +353,44 @@ pub async fn run_next_with(
     Ok(true)
 }
 
-/// Runs jobs until `stop` turns true. A running job is finished first, so a shutdown does
-/// not leave it locked until its lease runs out (#269).
+/// How many workers run jobs of all kinds. Batch jobs (retention, reminders, …) each hold a
+/// mutation permit and a connection while they run; at most a quarter of the connections,
+/// so at least half of the mutation permits stay free for the cash desk and the website.
+pub fn general_workers(config: &crate::Config) -> usize {
+    let limit = (config.database_max_connections as usize / 4).max(1);
+    config.job_workers.clamp(1, limit)
+}
+
+/// Runs jobs until `stop` turns true: `general_workers` workers for all kinds and one for
+/// the urgent kinds. Running jobs get `SHUTDOWN_GRACE` to finish; the others are unlocked,
+/// so a shutdown does not leave them locked until their lease runs out (#269).
 pub async fn run_worker(
     state: AppState,
     registry: Registry,
-    mut stop: tokio::sync::watch::Receiver<bool>,
+    stop: tokio::sync::watch::Receiver<bool>,
 ) {
+    let count = general_workers(&state.config);
+    if count < state.config.job_workers {
+        tracing::warn!(
+            job_workers = state.config.job_workers,
+            running = count,
+            "JOB_WORKERS limited to a quarter of DATABASE_MAX_CONNECTIONS"
+        );
+    }
+    let mut workers = Vec::new();
+    if !registry.urgent.is_empty() {
+        workers.push(work(state.clone(), registry.urgent_only(), stop.clone()).boxed());
+    }
+    for _ in 0..count {
+        workers.push(work(state.clone(), registry.clone(), stop.clone()).boxed());
+    }
+    // In this task, so a panic outside a handler ends the worker and `supervise` sees it
+    futures::future::join_all(workers).await;
+}
+
+async fn work(state: AppState, registry: Registry, mut stop: tokio::sync::watch::Receiver<bool>) {
     while !*stop.borrow() {
-        let idle = match run_next(&state, &registry).await {
+        let idle = match run_next_until(&state, &registry, Lease::DEFAULT, stop.clone()).await {
             Ok(ran) => !ran,
             Err(err) => {
                 tracing::error!(error = ?err, "job worker");

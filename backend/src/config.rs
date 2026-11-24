@@ -14,6 +14,8 @@ pub struct Config {
     pub listen_addr: SocketAddr,
     /// Max. connections per instance; several instances share the Postgres limit.
     pub database_max_connections: u32,
+    /// Jobs run at the same time per instance, plus one worker for urgent jobs (#271)
+    pub job_workers: usize,
     /// Set to false on instances that should only serve HTTP.
     pub run_workers: bool,
     /// Address of the app, e.g. https://bazarpro.de; the API is served below /api.
@@ -176,6 +178,9 @@ impl Config {
             database_max_connections: env_or("DATABASE_MAX_CONNECTIONS", "10")
                 .parse()
                 .context("DATABASE_MAX_CONNECTIONS is not a number")?,
+            job_workers: env_or("JOB_WORKERS", "2")
+                .parse()
+                .context("JOB_WORKERS is not a number")?,
             run_workers: env_or("RUN_WORKERS", "true") != "false",
             site_url: env_or("SITE_URL", "http://localhost:5173")
                 .trim_end_matches('/')
@@ -221,7 +226,9 @@ impl Config {
         Self {
             database_url: database_url.to_owned(),
             listen_addr: "127.0.0.1:0".parse().unwrap(),
-            database_max_connections: 5,
+            // Enough for both job workers, see jobs::general_workers
+            database_max_connections: 8,
+            job_workers: 2,
             run_workers: false,
             site_url: "https://bazarpro.test".to_owned(),
             app_origins: DEFAULT_APP_ORIGINS.split(',').map(str::to_owned).collect(),

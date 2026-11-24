@@ -76,7 +76,7 @@ pub fn app(state: AppState) -> Router {
 /// The job kinds and their handlers.
 pub fn job_registry() -> jobs::Registry {
     jobs::Registry::default()
-        .register(mail::VERIFICATION_JOB, mail::send_verification)
+        .register_urgent(mail::VERIFICATION_JOB, mail::send_verification)
         .register(mail::NOTIFICATION_JOB, mail::send_notification)
         .register(storage::CLEANUP_JOB, storage::cleanup_orphaned_uploads)
         .register(storage::DELETE_JOB, storage::delete_if_unreferenced)

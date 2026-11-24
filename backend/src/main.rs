@@ -138,18 +138,20 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app(state))
         .with_graceful_shutdown(shutdown_signal())
         .await?;
-    // Let the running job finish, within Docker's grace period of 10 seconds
+    // Let the running jobs finish within jobs::SHUTDOWN_GRACE; the workers unlock the
+    // others. All within Docker's grace period of 10 seconds
     let _ = stop.send(true);
     if let Some(worker) = worker
         && tokio::time::timeout(WORKER_SHUTDOWN, worker).await.is_err()
     {
-        tracing::warn!("running job not finished, its lock expires later");
+        tracing::warn!("running jobs not unlocked, their locks expire later");
     }
     tracing::info!("stopped");
     Ok(())
 }
 
 const WORKER_SHUTDOWN: std::time::Duration = std::time::Duration::from_secs(7);
+const _: () = assert!(jobs::SHUTDOWN_GRACE.as_secs() < WORKER_SHUTDOWN.as_secs());
 
 /// The background tasks run forever. If one ends anyway (a panic outside a job handler),
 /// the instance would serve requests without sending mails or running crons; exit so
