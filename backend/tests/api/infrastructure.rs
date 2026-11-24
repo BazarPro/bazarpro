@@ -656,3 +656,57 @@ async fn a_started_event_reaches_open_pages_without_a_change(db: PgPool) {
         .unwrap();
     assert_eq!(notification.payload(), format!("event:{event},events"));
 }
+
+static STUCK_STARTS: AtomicUsize = AtomicUsize::new(0);
+
+/// A mail to a mail server that does not answer
+fn stuck(
+    _: AppState,
+    _: serde_json::Value,
+) -> futures::future::BoxFuture<'static, anyhow::Result<()>> {
+    async {
+        STUCK_STARTS.fetch_add(1, Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_secs(300)).await;
+        Ok(())
+    }
+    .boxed()
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_job_not_done_at_shutdown_is_unlocked(db: PgPool) {
+    let registry = jobs::Registry::default().register("test.stuck", stuck);
+    let mut conn = db.acquire().await.unwrap();
+    jobs::enqueue(&mut conn, "test.stuck", &(), Utc::now())
+        .await
+        .unwrap();
+    let (stop, stopping) = tokio::sync::watch::channel(false);
+    let worker = tokio::spawn(jobs::run_worker(state(db.clone()), registry, stopping));
+    wait_for(&STUCK_STARTS, 1, Duration::from_secs(5)).await;
+
+    stop.send(true).unwrap();
+    tokio::time::timeout(jobs::SHUTDOWN_GRACE + Duration::from_secs(2), worker)
+        .await
+        .expect("worker did not stop")
+        .unwrap();
+    // Another instance can run it right away, and the interruption does not count
+    let (locked, attempts): (bool, i32) =
+        sqlx::query_as("SELECT locked_until IS NOT NULL, attempts FROM jobs")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    assert!(!locked);
+    assert_eq!(attempts, 0);
+}
+
+#[test]
+fn job_workers_leave_most_connections_to_requests() {
+    let mut config = Config::for_tests("");
+    config.database_max_connections = 10;
+    config.job_workers = 8;
+    assert_eq!(jobs::general_workers(&config), 2);
+    config.job_workers = 0;
+    assert_eq!(jobs::general_workers(&config), 1);
+    config.database_max_connections = 40;
+    config.job_workers = 3;
+    assert_eq!(jobs::general_workers(&config), 3);
+}
