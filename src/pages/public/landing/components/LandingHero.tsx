@@ -21,7 +21,6 @@ export function LandingHero({
   return (
     <section className="relative isolate flex items-center overflow-hidden lg:min-h-[min(calc(100svh-4rem),44rem)]">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-40 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-tag/15 blur-3xl lg:left-1/4" />
         <div className="absolute inset-0 bg-[radial-gradient(var(--border)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
       </div>
 

@@ -341,7 +341,7 @@ export function Header() {
       </header>
       {/* Only above the landing page: next to the sidebar it would push the page down */}
       {isLandingPage && isDemoMode && (
-        <div className="bg-yellow-500/15 text-yellow-900 dark:text-yellow-200 px-4 py-2 text-center flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 border-b border-foreground/10 bg-tag px-4 py-2 text-center font-medium text-tag-foreground">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span className="text-sm">{t('header.demoMode')}</span>
         </div>

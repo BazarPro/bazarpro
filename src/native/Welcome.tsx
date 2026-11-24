@@ -74,7 +74,7 @@ export function Welcome({ server }: { server: string }) {
   return (
     <div className="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {isDemoMode && (
-        <div className="flex items-center justify-center gap-2 bg-yellow-500 px-4 py-2 text-center text-sm font-medium text-yellow-950">
+        <div className="flex items-center justify-center gap-2 bg-tag px-4 py-2 text-center text-sm font-medium text-tag-foreground">
           <AlertTriangle className="h-5 w-5 shrink-0" />
           <span>{t('header.demoMode')}</span>
         </div>
