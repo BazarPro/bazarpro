@@ -44,8 +44,8 @@ export function HeroSaleScene({
   const motion = (name: string) => (still ? undefined : name);
   return (
     <div aria-hidden="true" className={cn('relative mx-auto w-full max-w-2xl', className)}>
-      {/* A calm petrol ground with the dots of the page, no haze */}
-      <div className="absolute inset-x-2 bottom-4 top-8 -z-10 rounded-[2.5rem] bg-primary/[0.07] bg-[radial-gradient(color-mix(in_oklab,var(--primary)_22%,transparent)_1.5px,transparent_1.5px)] [background-size:18px_18px] dark:bg-primary/10" />
+      {/* A calm petrol ground; the dots are the page's own, no second grid */}
+      <div className="absolute inset-x-2 bottom-4 top-8 -z-10 rounded-[2.5rem] bg-primary/[0.07] dark:bg-primary/10" />
 
       <div className="flex items-center gap-3 sm:gap-5">
         <div className="@container relative aspect-[6/5] min-w-0 flex-1">

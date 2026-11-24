@@ -74,51 +74,63 @@ export function CashReconciliationPage() {
             </p>
           </div>
 
-          <div
-            className={`grid gap-3 sm:items-center ${
-              collecting ? 'sm:grid-cols-[1fr_auto_1fr_auto_1fr]' : 'sm:grid-cols-[1fr_auto_1fr]'
-            }`}
-          >
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">{t('cash.pending')}</p>
-              <p className="text-xl font-semibold tabular-nums">
+          {/* How the sum comes about, read like a receipt: line by line down to the total */}
+          <dl className="max-w-2xl divide-y rounded-xl border bg-card text-sm tabular-nums">
+            <div className="flex items-baseline justify-between gap-4 px-4 py-3">
+              <dt>{t('cash.pending')}</dt>
+              <dd className="whitespace-nowrap text-base font-semibold">
                 {formatPrice(summary.totalPendingPayout)} €
-              </p>
+              </dd>
             </div>
-            <span className="text-center text-xl text-muted-foreground">+</span>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-baseline justify-between gap-4 px-4 py-3">
+              <dt>
+                <span aria-hidden="true" className="mr-1 text-muted-foreground">
+                  +
+                </span>
                 {summary.totalIntakeFees > 0 ? t('cash.commissionAndFees') : t('cash.commission')}
-              </p>
-              <p className="text-xl font-semibold tabular-nums">
+                {summary.totalIntakeFees > 0 && (
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {t('cash.split', {
+                      commission: formatPrice(summary.totalCommission),
+                      fees: formatPrice(summary.totalIntakeFees),
+                    })}
+                  </span>
+                )}
+                {capCredits > 0 && (
+                  <span className="mt-0.5 block text-xs text-success-soft-foreground">
+                    {t('cash.capSplit', { amount: formatPrice(capCredits) })}
+                  </span>
+                )}
+              </dt>
+              <dd className="whitespace-nowrap text-base font-semibold">
                 {formatPrice(summary.totalCommission + summary.totalIntakeFees - capCredits)} €
-              </p>
-              {summary.totalIntakeFees > 0 && (
-                <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  {t('cash.split', {
-                    commission: formatPrice(summary.totalCommission),
-                    fees: formatPrice(summary.totalIntakeFees),
-                  })}
-                </p>
-              )}
-              {capCredits > 0 && (
-                <p className="mt-1 text-xs text-success-soft-foreground tabular-nums">
-                  {t('cash.capSplit', { amount: formatPrice(capCredits) })}
-                </p>
-              )}
+              </dd>
             </div>
             {collecting && (
-              <>
-                <span className="text-center text-xl text-muted-foreground">−</span>
-                <div className="rounded-xl border border-tag/60 bg-warning-soft p-4">
-                  <p className="text-sm text-muted-foreground">{t('cash.feesToCollect')}</p>
-                  <p className="text-xl font-semibold tabular-nums">
-                    {formatPrice(summary.totalFeesToCollect)} €
-                  </p>
-                </div>
-              </>
+              <div className="flex items-baseline justify-between gap-4 bg-warning-soft px-4 py-3 text-warning-soft-foreground">
+                <dt>
+                  <span aria-hidden="true" className="mr-1">
+                    −
+                  </span>
+                  {t('cash.feesToCollect')}
+                </dt>
+                <dd className="whitespace-nowrap text-base font-semibold">
+                  {formatPrice(summary.totalFeesToCollect)} €
+                </dd>
+              </div>
             )}
-          </div>
+            <div className="flex items-baseline justify-between gap-4 px-4 py-3 font-semibold">
+              <dt>
+                <span aria-hidden="true" className="mr-1 text-muted-foreground">
+                  =
+                </span>
+                {t('cash.shouldBe')}
+              </dt>
+              <dd className="whitespace-nowrap text-base">
+                {formatPrice(summary.cashInHandSoll)} €
+              </dd>
+            </div>
+          </dl>
           {/* The one thing to do here: pay the sellers still waiting */}
           {!allPaid && !nothingToSettle && summary.vendorsTotalCount > 0 && (
             <Button asChild size="lg" className="max-sm:w-full">

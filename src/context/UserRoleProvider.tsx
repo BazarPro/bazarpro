@@ -52,8 +52,7 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
       pathname.startsWith('/my-sales') ||
       pathname.startsWith('/browse-events') ||
       pathname.startsWith('/products/new') ||
-      pathname.startsWith('/products/edit') ||
-      pathname.startsWith('/account')
+      pathname.startsWith('/products/edit')
     ) {
       return 'participant';
     }
@@ -62,6 +61,7 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
       return 'administrator';
     }
 
+    // The account belongs to every role: the menu stays where the user came from
     return null;
   };
 

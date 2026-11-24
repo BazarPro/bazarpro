@@ -1,6 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Copy, KeyRound, Link2, Lock, LockOpen, Settings2, Users } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  KeyRound,
+  Link2,
+  Lock,
+  LockOpen,
+  Settings2,
+  Users,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import type { Doc } from '../../lib/api/types';
@@ -108,6 +118,8 @@ export function RegistrationPanel({
   const setRegistrationOpen = useMutation(api.events.setRegistrationOpen);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Phones: one line first, the details on a tap; the list of sellers comes sooner
+  const [expanded, setExpanded] = useState(false);
   const now = useNowPassing([...registrationTimes(event), event.endDate]);
   if (event.endDate < now) return null;
 
@@ -176,7 +188,44 @@ export function RegistrationPanel({
       className="overflow-hidden rounded-xl border bg-card shadow-xs"
       data-testid="registration-panel"
     >
-      <div className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm sm:hidden"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((open) => !open)}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'h-2.5 w-2.5 shrink-0 rounded-full',
+            tone === 'open' && 'bg-success',
+            tone === 'full' && 'bg-tag',
+            tone === 'waiting' && 'bg-primary',
+            tone === 'closed' && 'bg-muted-foreground/50'
+          )}
+        />
+        <span className="min-w-0 flex-1 truncate">
+          <span className="font-semibold">{statusText}</span>
+          <span className="text-muted-foreground">
+            {' · '}
+            {limit !== undefined
+              ? t('registrationPanel.summarySpots', { taken, limit })
+              : t('registrationPanel.summarySellers', { count: taken })}
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden
+          className={cn('h-4 w-4 shrink-0 transition-transform', expanded && 'rotate-180')}
+        />
+      </button>
+      <div
+        data-testid="registration-details"
+        className={cn(
+          'grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0',
+          !expanded && 'max-sm:hidden',
+          'max-sm:border-t'
+        )}
+      >
         <Section
           icon={
             state.open ? <LockOpen className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />
@@ -193,7 +242,7 @@ export function RegistrationPanel({
                   'relative inline-flex h-2.5 w-2.5 rounded-full',
                   tone === 'open' && 'bg-success',
                   tone === 'full' && 'bg-tag',
-                  tone === 'waiting' && 'bg-sky-500',
+                  tone === 'waiting' && 'bg-primary',
                   tone === 'closed' && 'bg-muted-foreground/50'
                 )}
               />

@@ -434,7 +434,8 @@ export function ItemsPreview({ type }: { type?: EventType }) {
   const limit = given(features.maxItemsPerSeller);
   const total = given(features.maxItemsTotal);
   const small = features.labelFormat === 'small';
-  const showPrice = !!features.priceOnLabel && !features.discounts;
+  // With discounts the starting price is printed, the desk takes them off (#327)
+  const showPrice = !!features.priceOnLabel;
   const mark = resolveEventFeatures({ features: features as StoredEventFeatures }).labelMark;
 
   return (

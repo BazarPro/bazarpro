@@ -73,7 +73,7 @@ export function OfflineNotice({
       >
         <Icon className="h-4 w-4" />
         {badge && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-tag px-1 text-[0.625rem] font-semibold leading-none text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-tag px-1 text-[0.625rem] font-semibold leading-none text-tag-foreground">
             <span aria-hidden>{badge.count}</span>
             <span className="sr-only">{badge.label}</span>
           </span>

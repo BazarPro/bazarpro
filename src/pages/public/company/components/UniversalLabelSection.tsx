@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { SortMarkBadge } from '../../../../components/sellers/SortMarkBadge';
 import { QrCode } from '../../../../components/ui/QrCode';
 import { docsUrl } from '../../../../lib/links';
+import { formatPrice } from '../../../../lib/utils';
 import { SectionHeading } from './MarketingHero';
+
+/** Prices as on the labels of a kids' bazaar, without the euro sign */
+const EXAMPLE_PRICES = [4, 8, 6];
 
 /** Any code gives a realistic mark. */
 const EXAMPLE_SORT_CODE = 66_647;
@@ -18,6 +22,9 @@ const STEPS: { icon: LucideIcon; id: 'sort' | 'reuse' | 'print' }[] = [
 export function UniversalLabelSection() {
   const { t, i18n } = useTranslation('company');
   const items = t('featuresPage.universalLabel.exampleItems', {
+    returnObjects: true,
+  }) as string[];
+  const sizes = t('featuresPage.universalLabel.exampleSizes', {
     returnObjects: true,
   }) as string[];
 
@@ -36,7 +43,8 @@ export function UniversalLabelSection() {
             aria-label={t('featuresPage.universalLabel.example')}
             className="mx-auto grid w-full max-w-sm gap-3"
           >
-            {items.map((title) => (
+            {/* As printed: QR code, sorting mark, title, size and price (#328) */}
+            {items.map((title, index) => (
               <div
                 key={title}
                 className="flex items-center gap-3 rounded-md bg-white p-2 text-zinc-900 shadow-md ring-1 ring-black/10"
@@ -45,6 +53,14 @@ export function UniversalLabelSection() {
                 <div className="min-w-0 flex-1">
                   <SortMarkBadge code={EXAMPLE_SORT_CODE} className="h-10" />
                   <p className="mt-1 truncate text-sm">{title}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  {sizes[index] && (
+                    <p className="text-sm font-bold leading-tight">{sizes[index]}</p>
+                  )}
+                  <p className="text-xl font-extrabold tabular-nums leading-tight">
+                    {formatPrice(EXAMPLE_PRICES[index] ?? 5)}
+                  </p>
                 </div>
               </div>
             ))}

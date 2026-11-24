@@ -172,8 +172,8 @@
     "labelMarkUniversalHint": "Helpers first sort by the large digit into ten piles, then by letters and number into the basket. The mark stays with the seller, so the labels also fit other bazaars with universal labels.",
     "labelMarkNoneHint": "Labels can be reused. To sort items back, the team has to scan every one.",
     "priceOnLabel": "Print the price on the label",
-    "priceOnLabelText": "Helps at a cash desk without scanner. The printed price is fixed – so it is not printed when discounts are on.",
-    "priceOnLabelDiscounts": "Discounts are switched on, so no price appears on the labels.",
+    "priceOnLabelText": "Buyers see the price at once, without scanning. With discounts the label shows the starting price, the cash desk takes the discount off.",
+    "priceOnLabelDiscounts": "Discounts are on: the label shows the starting price, the cash desk takes the discount off. Best announce it with a sign.",
     "payOnSite": "Payment still happens on site at the cash desk.",
     "maxItemsLocked": "Sellers registered with this limit: you can only raise it.",
     "maxItemsLater": "Once the first seller has registered, you can only raise it.",
@@ -1499,7 +1499,10 @@
     "codeNeeded": "Sellers need this code to register",
     "copyCode": "Copy code",
     "copyFailed": "Copying failed",
-    "edit": "Change"
+    "edit": "Change",
+    "summarySpots": "{{taken}}/{{limit}} places",
+    "summarySellers_one": "{{count}} seller",
+    "summarySellers_other": "{{count}} sellers"
   },
   "feeGroups": {
     "title": "Fee groups (optional)",

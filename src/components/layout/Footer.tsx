@@ -117,7 +117,9 @@ export function Footer() {
         </div>
         <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
           <LanguageSelect className="mb-4" />
-          <LanguageVersionLinks className="-mt-2 mb-4" />
+          {/* The same choice as plain links, for search engines and screen readers only:
+              shown as well, English would be offered twice */}
+          <LanguageVersionLinks className="sr-only" />
           {isSingle ? (
             <p>
               © {currentYear} {brand} · {t('footer.poweredBy')}{' '}

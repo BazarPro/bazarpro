@@ -30,12 +30,13 @@ export function LandingHero({
           <h1 className="text-[clamp(1.75rem,8vw,2.25rem)] font-extrabold leading-[1.05] tracking-tight sm:text-5xl">
             <span className="whitespace-nowrap">{t('hero.titleStart')}</span>
             <br />
-            {/* A stroke of the tag-yellow marker behind the highlighted words */}
+            {/* A tag-yellow stroke under the highlighted words: below the letters, so they stay
+                readable on the light and the dark ground */}
             <span className="relative isolate inline-block">
               {t('hero.titleHighlight')}
               <span
                 aria-hidden="true"
-                className="absolute -inset-x-1 bottom-[0.06em] -z-10 h-[0.32em] -rotate-1 rounded-sm bg-tag"
+                className="absolute -inset-x-1 -bottom-[0.06em] -z-10 h-[0.2em] -rotate-1 rounded-full bg-tag"
               />
             </span>{' '}
             {t('hero.titleEnd')}

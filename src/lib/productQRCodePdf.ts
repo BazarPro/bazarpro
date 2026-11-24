@@ -28,7 +28,7 @@ export interface LabelData {
   /** The seller's lasting code for sorting the items back; none on QR-only labels */
   sortCode?: number;
   size?: string;
-  /** Only when the bazaar prints prices (and has no discounts) */
+  /** Only when the bazaar prints prices; with discounts the starting price */
   price?: number;
 }
 
@@ -176,7 +176,8 @@ function drawSmall(doc: jsPDF, label: LabelData, cell: Cell): void {
   const size = label.size;
   const price = label.price !== undefined ? labelPrice(label.price) : undefined;
   const sizePt = 13;
-  const pricePt = 9;
+  // Big enough to read in the crowd at a kids' bazaar (#327)
+  const pricePt = 11;
   const gap = 2;
   const widthAt = (text: string, pt: number) => {
     doc.setFontSize(pt);

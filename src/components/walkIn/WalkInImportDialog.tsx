@@ -295,7 +295,7 @@ export function WalkInImportDialog({
                 {t('walkIn.import.ready', { count: items.length })}
               </p>
               {problems.length > 0 && (
-                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <div className="rounded-md border border-destructive/40 bg-danger-soft p-3 text-sm text-danger-soft-foreground">
                   <p className="font-medium">
                     {t('walkIn.import.skipped', { count: problems.length })}
                   </p>

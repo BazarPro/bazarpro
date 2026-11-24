@@ -35,9 +35,24 @@ describe('registration on the sellers page', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30');
   });
 
+  it('sums up in one line on phones and opens the details on a tap', () => {
+    renderPanel({ vendorLimit: 60, sellerCount: 13 });
+    const summary = screen.getByRole('button', { expanded: false });
+    expect(summary).toHaveTextContent('13/60 Plätze');
+    fireEvent.click(summary);
+    expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument();
+  });
+
+  it('counts the sellers in the summary when there is no limit', () => {
+    renderPanel({ sellerCount: 1 });
+    expect(screen.getByRole('button', { expanded: false })).toHaveTextContent('1 Verkäufer');
+  });
+
   it('says when all places are taken', () => {
     renderPanel({ vendorLimit: 50, sellerCount: 50 });
-    expect(screen.getByText('Voll belegt')).toBeVisible();
+    expect(
+      within(screen.getByTestId('registration-details')).getByText('Voll belegt')
+    ).toBeVisible();
     expect(screen.getByText('Alle Plätze belegt')).toBeVisible();
   });
 
@@ -76,7 +91,7 @@ describe('registration on the sellers page', () => {
 
   it('lets the organizer close and open the registration', async () => {
     renderPanel({ features: { registrationEndsAt: Date.now() + HOUR } });
-    expect(screen.getByText('Offen')).toBeVisible();
+    expect(within(screen.getByTestId('registration-details')).getByText('Offen')).toBeVisible();
     expect(screen.getByText(/^Bis /)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Anmeldung schließen' }));
     await waitFor(() => expect(setRegistrationOpen).toHaveBeenCalledWith({ eventId, open: false }));
@@ -84,7 +99,9 @@ describe('registration on the sellers page', () => {
 
   it('offers to open a closed registration, not to helpers', () => {
     renderPanel({ features: { registrationOpen: false } });
-    expect(screen.getByText('Geschlossen')).toBeVisible();
+    expect(
+      within(screen.getByTestId('registration-details')).getByText('Geschlossen')
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Anmeldung öffnen' })).toBeVisible();
 
     renderPanel({ features: { registrationOpen: false } }, false);

@@ -8,9 +8,11 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-card text-card-foreground',
+        // Every notice the same way: a tinted ground, its own text colour, a line in the colour
+        default:
+          'border-primary/25 bg-primary/[0.06] text-foreground [&>svg]:text-primary dark:bg-primary/10',
         destructive:
-          'text-destructive bg-card dark:text-destructive-foreground [&>svg]:text-current *:data-[slot=alert-description]:text-destructive dark:*:data-[slot=alert-description]:text-destructive-foreground',
+          'text-danger-soft-foreground border-destructive/40 bg-danger-soft [&>svg]:text-current *:data-[slot=alert-description]:text-danger-soft-foreground',
         success:
           'text-success-soft-foreground border-success/40 bg-success-soft [&>svg]:text-current *:data-[slot=alert-description]:text-success-soft-foreground',
         warning:

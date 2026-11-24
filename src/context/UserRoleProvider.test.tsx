@@ -45,6 +45,12 @@ describe('switching the role', () => {
     expect(screen.getByTestId('probe')).toHaveTextContent('administrator /');
   });
 
+  it('keeps the role on the account page, which belongs to every role', () => {
+    localStorage.setItem('userRole', 'organizer');
+    renderAt('/account');
+    expect(screen.getByTestId('probe')).toHaveTextContent('organizer /account');
+  });
+
   it('remembers the overview as the last page of the current role', () => {
     localStorage.setItem('userRole', 'organizer');
     renderAt('/');

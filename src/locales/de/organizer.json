@@ -172,8 +172,8 @@
     "labelMarkUniversalHint": "Helfer sortieren erst nach der großen Ziffer auf zehn Haufen, dann nach Buchstaben und Zahl in den Korb. Das Zeichen bleibt beim Verkäufer, die Etiketten passen also auch bei anderen Basaren mit Universal-Etiketten.",
     "labelMarkNoneHint": "Die Etiketten lassen sich wiederverwenden. Zum Zurücksortieren muss das Team aber jeden Artikel scannen.",
     "priceOnLabel": "Preis aufs Etikett drucken",
-    "priceOnLabelText": "Hilft an der Kasse ohne Scanner. Der Preis auf dem Etikett ist fest – bei Rabatten wird er deshalb nicht gedruckt.",
-    "priceOnLabelDiscounts": "Rabatte sind eingeschaltet, deshalb erscheint kein Preis auf den Etiketten.",
+    "priceOnLabelText": "Käufer sehen den Preis sofort, ohne zu scannen. Bei Rabatten steht der Ausgangspreis auf dem Etikett, die Kasse zieht den Rabatt ab.",
+    "priceOnLabelDiscounts": "Rabatte sind eingeschaltet: Auf dem Etikett steht der Ausgangspreis, die Kasse zieht den Rabatt ab. Kündigt ihn am besten mit einem Schild an.",
     "payOnSite": "Bezahlt wird weiterhin vor Ort an der Kasse.",
     "maxItemsLocked": "Verkäufer haben sich mit diesem Limit angemeldet: Du kannst es nur noch erhöhen.",
     "maxItemsLater": "Sobald sich der erste Verkäufer angemeldet hat, kannst du es nur noch erhöhen.",
@@ -1499,7 +1499,10 @@
     "codeNeeded": "Verkäufer brauchen diesen Code zum Anmelden",
     "copyCode": "Code kopieren",
     "copyFailed": "Kopieren nicht möglich",
-    "edit": "Ändern"
+    "edit": "Ändern",
+    "summarySpots": "{{taken}}/{{limit}} Plätze",
+    "summarySellers_one": "{{count}} Verkäufer",
+    "summarySellers_other": "{{count}} Verkäufer"
   },
   "feeGroups": {
     "title": "Gebührengruppen (optional)",

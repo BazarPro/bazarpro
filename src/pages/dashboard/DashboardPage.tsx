@@ -447,7 +447,7 @@ function ApprovalNote({ event }: { event: Doc<'events'> }) {
   const approval = eventApproval(event);
   if (approval === 'rejected' && event.rejectionReason) {
     return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+      <div className="rounded-md border border-destructive/40 bg-danger-soft px-3 py-2 text-danger-soft-foreground">
         <div className="text-xs font-medium uppercase tracking-wide text-destructive">
           {t('myEvents.rejected', { ns: 'organizer' })}
         </div>
