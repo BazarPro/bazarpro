@@ -271,13 +271,27 @@
       "intakeText_one": "{{count}} item registered",
       "intakeText_other": "{{count}} items registered",
       "sale": "Sell at the cash desk",
-      "saleText": "{{sold}} of {{total}} sold · €{{revenue}} revenue",
+      "saleText": "{{sold}} of {{total}} sold · {{revenue}} € revenue",
       "settle": "Settle and pay out",
       "settleText": "{{settled}} of {{total}} sellers settled",
       "promote": "Promote",
       "promoteText": "Create posters, flyers and social media pictures",
       "promoteDone": "Promo material made – adjust and share any time"
-    }
+    },
+    "next": {
+      "eyebrow": "Your next step",
+      "promote": "Create promo material",
+      "sellers": "Invite sellers",
+      "intake": "Open intake",
+      "sale": "Open cash desk",
+      "settle": "Open settlement",
+      "allDone": "All done – thanks for organizing!",
+      "alsoOpen": "Also still open",
+      "now": "Due now",
+      "position": "Step {{position}} of {{total}}"
+    },
+    "soldOf": "{{sold}} of {{total}} sold",
+    "sellersTile": "Sellers"
   },
   "settingsPage": {
     "deleted": "Bazaar deleted",

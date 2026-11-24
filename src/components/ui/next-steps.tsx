@@ -30,8 +30,8 @@ export function NextSteps({ title, steps }: { title: ReactNode; steps: NextStep[
               <span
                 className={cn(
                   'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground',
-                  step.done && 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-                  step.current && 'bg-primary text-primary-foreground'
+                  step.done && 'bg-success-soft text-success-soft-foreground',
+                  step.current && 'bg-tag text-tag-foreground ring-2 ring-foreground'
                 )}
               >
                 <Icon className="h-4 w-4" />

@@ -181,7 +181,7 @@ export function EditEventBasicInfo({
       >
         {t('basic.description')}
       </LabelWithInfo>
-      <div className="overflow-hidden rounded-md border border-input bg-input-background shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+      <div className="overflow-hidden rounded-md border border-input bg-input-background shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring">
         <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-1.5 py-1">
           {toolbar.map(({ type, label, icon: Icon }) => (
             <Button

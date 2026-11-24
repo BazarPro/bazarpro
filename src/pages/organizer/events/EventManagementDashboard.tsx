@@ -1,17 +1,31 @@
 import type { ProductWithStatus } from './dashboard/components/inventoryTypes';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { OfflineReadyCard } from './dashboard/components/OfflineReadyCard';
-import { NextSteps, type NextStep } from '../../../components/ui/next-steps';
-import { Banknote, Eye, Megaphone, PackageCheck, ShoppingCart, Users, XCircle } from 'lucide-react';
+import { type NextStep } from '../../../components/ui/next-steps';
+import { BazaarRoadmap, NextStepCard } from '../../../components/ui/bazaar-roadmap';
+import { StatTile } from '../../../components/ui/stat-tile';
+import { ImageWithFallback } from '../../../components/ui/image-with-fallback';
+import { EventPhaseBadge } from '../../../components/events/EventPhaseBadge';
+import {
+  Banknote,
+  Calendar,
+  ChevronRight,
+  Eye,
+  MapPin,
+  Megaphone,
+  PackageCheck,
+  ShoppingCart,
+  Users,
+  XCircle,
+} from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import { EventHero } from '../../../components/EventHero';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '../../../lib/api/react';
 import { useEventAccess } from '../../../hooks/useEventAccess';
 import { eventApproval } from '../../../lib/eventApproval';
 import { api } from '../../../lib/api/functions';
 import type { Id } from '../../../lib/api/types';
-import { formatPriceDE } from '../../../lib/utils';
+import { formatDateRangeDE, formatPriceDE } from '../../../lib/utils';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/alert';
 import { toast } from 'sonner';
@@ -139,6 +153,23 @@ export function EventManagementDashboard() {
     },
   ];
 
+  // One step at most is due now; the card shows it with its button
+  const current = steps.find((step) => step.current);
+  // Steps before the current one that are still open: easy to forget once the bazaar runs
+  const currentIndex = current ? steps.indexOf(current) : steps.length;
+  // Promotion is past its use once the bazaar runs: no reproach for it then
+  const leftBehind = steps.filter(
+    (step, index) =>
+      index < currentIndex && !step.done && step.to && !(hasStarted && step.id === 'promote')
+  );
+  const nextAction: Record<string, string> = {
+    promote: t('dashboard.next.promote'),
+    sellers: t('dashboard.next.sellers'),
+    intake: t('dashboard.next.intake'),
+    sale: t('dashboard.next.sale'),
+    settle: t('dashboard.next.settle'),
+  };
+
   const approval = eventApproval(event);
   const isPendingApproval = approval === 'pending';
   const isRejected = approval === 'rejected';
@@ -210,30 +241,116 @@ export function EventManagementDashboard() {
           </Alert>
         )}
 
-        <EventHero
-          title={event.title}
-          coverImage={event.coverImage}
-          startDate={event.startDate}
-          endDate={event.endDate}
-          location={formatEventPlace(event)}
-          maxHeightClassName="h-[320px] sm:h-[220px] w-full max-h-none min-h-0 aspect-auto"
-          publicEventButton={
-            <Button
-              variant="secondary"
-              onClick={() =>
-                navigate(`/public-events/${eventId}`, {
-                  state: { from: `${location.pathname}${location.search}` },
-                })
-              }
-              className="bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm w-full sm:w-auto"
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              {t('dashboard.publicView')}
-            </Button>
-          }
-        />
+        {/* Which bazaar and where it stands: compact, the next step is what counts here */}
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <ImageWithFallback
+              alt=""
+              storageId={event.coverImage}
+              className="size-16 shrink-0 rounded-xl object-cover sm:size-20"
+            />
+            <div className="min-w-0 space-y-1.5">
+              <EventPhaseBadge event={event} />
+              <h1 className="text-2xl font-extrabold leading-tight text-balance sm:text-3xl">
+                {event.title}
+              </h1>
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="size-4 shrink-0" />
+                  {formatDateRangeDE(event.startDate, event.endDate)}
+                </span>
+                <span className="flex min-w-0 items-start gap-1.5 sm:items-center">
+                  <MapPin className="size-4 shrink-0" />
+                  {/* Phones wrap the full address; wide screens keep it on one line */}
+                  <span className="sm:truncate">{formatEventPlace(event)}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 self-start sm:self-center"
+            onClick={() =>
+              navigate(`/public-events/${eventId}`, {
+                state: { from: `${location.pathname}${location.search}` },
+              })
+            }
+          >
+            <Eye className="h-4 w-4" />
+            {t('dashboard.publicView')}
+          </Button>
+        </header>
 
-        <NextSteps title={t('dashboard.steps.title')} steps={steps} />
+        <section className="mb-6 rounded-xl border bg-card px-2 pb-3 pt-4 shadow-xs sm:px-4">
+          <BazaarRoadmap
+            steps={steps}
+            label={t('dashboard.steps.title')}
+            nowLabel={t('dashboard.next.now')}
+            positionLabel={(position, total) => t('dashboard.next.position', { position, total })}
+          />
+        </section>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
+          <NextStepCard
+            step={current}
+            eyebrow={t('dashboard.next.eyebrow')}
+            action={current ? nextAction[current.id] : null}
+            doneText={t('dashboard.next.allDone')}
+          >
+            {leftBehind.length > 0 && (
+              <div className="border-t border-dashed pt-4">
+                <h3 className="mb-1 font-sans text-sm font-semibold text-muted-foreground">
+                  {t('dashboard.next.alsoOpen')}
+                </h3>
+                <ul>
+                  {leftBehind.map((step) => (
+                    <li key={step.id}>
+                      <Link
+                        to={step.to!}
+                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/60"
+                      >
+                        <step.icon className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1">
+                          <span className="font-medium">{step.title}</span>
+                          {step.text && (
+                            <span className="block text-sm text-muted-foreground">{step.text}</span>
+                          )}
+                        </span>
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </NextStepCard>
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <StatTile
+              icon={Users}
+              label={t('dashboard.sellersTile')}
+              value={vendors.length}
+              to={`${base}/sellers`}
+            />
+            <StatTile
+              icon={PackageCheck}
+              label={t('dashboard.products')}
+              value={products.length}
+              hint={
+                waiting > 0 ? t('dashboard.steps.intakeWaiting', { count: waiting }) : undefined
+              }
+              urgent={waiting > 0}
+              to={`${base}/products`}
+            />
+            <StatTile
+              icon={Banknote}
+              label={t('dashboard.revenue')}
+              value={`${formatPriceDE(totalRevenue)} €`}
+              hint={t('dashboard.soldOf', { sold, total: products.length })}
+              to={`${base}/products?tab=sold`}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
