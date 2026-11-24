@@ -442,6 +442,117 @@ async fn a_stopped_worker_finishes_its_job_first(db: PgPool) {
     assert_eq!(job_count(&db).await, 0);
 }
 
+static ORDER: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+
+fn record_mass(
+    _: AppState,
+    _: serde_json::Value,
+) -> futures::future::BoxFuture<'static, anyhow::Result<()>> {
+    async {
+        ORDER.lock().unwrap().push("mass");
+        Ok(())
+    }
+    .boxed()
+}
+
+fn record_code(
+    _: AppState,
+    _: serde_json::Value,
+) -> futures::future::BoxFuture<'static, anyhow::Result<()>> {
+    async {
+        ORDER.lock().unwrap().push("code");
+        Ok(())
+    }
+    .boxed()
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn urgent_jobs_run_before_older_jobs(db: PgPool) {
+    let registry = jobs::Registry::default()
+        .register("test.mass", record_mass)
+        .register_urgent("test.code", record_code);
+    let mut conn = db.acquire().await.unwrap();
+    let earlier = Utc::now() - chrono::Duration::minutes(5);
+    let mass: Vec<((), _)> = (0..3).map(|_| ((), earlier)).collect();
+    jobs::enqueue_many(&mut conn, "test.mass", &mass)
+        .await
+        .unwrap();
+    jobs::enqueue(&mut conn, "test.code", &(), Utc::now())
+        .await
+        .unwrap();
+
+    let state = state(db.clone());
+    while jobs::run_next(&state, &registry).await.unwrap() {}
+
+    assert_eq!(*ORDER.lock().unwrap(), ["code", "mass", "mass", "mass"]);
+}
+
+static MASS_STARTS: AtomicUsize = AtomicUsize::new(0);
+static CODES_SENT: AtomicUsize = AtomicUsize::new(0);
+
+/// A reminder mail to a slow mail server
+fn slow_mass(
+    _: AppState,
+    _: serde_json::Value,
+) -> futures::future::BoxFuture<'static, anyhow::Result<()>> {
+    async {
+        MASS_STARTS.fetch_add(1, Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        Ok(())
+    }
+    .boxed()
+}
+
+fn send_code(
+    _: AppState,
+    _: serde_json::Value,
+) -> futures::future::BoxFuture<'static, anyhow::Result<()>> {
+    async {
+        CODES_SENT.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+    .boxed()
+}
+
+async fn wait_for(counter: &AtomicUsize, count: usize, within: Duration) {
+    tokio::time::timeout(within, async {
+        while counter.load(Ordering::SeqCst) < count {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap_or_else(|_| {
+        panic!(
+            "{count} expected, {} after {within:?}",
+            counter.load(Ordering::SeqCst)
+        )
+    });
+}
+
+#[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
+async fn a_code_does_not_wait_behind_200_reminder_mails(db: PgPool) {
+    let registry = jobs::Registry::default()
+        .register("test.reminder", slow_mass)
+        .register_urgent("test.code", send_code);
+    let mut conn = db.acquire().await.unwrap();
+    let reminders: Vec<((), _)> = (0..200).map(|_| ((), Utc::now())).collect();
+    jobs::enqueue_many(&mut conn, "test.reminder", &reminders)
+        .await
+        .unwrap();
+    let (_stop, stopping) = tokio::sync::watch::channel(false);
+    let worker = tokio::spawn(jobs::run_worker(state(db.clone()), registry, stopping));
+
+    // Both workers of the test config send reminders at the same time
+    wait_for(&MASS_STARTS, 2, Duration::from_secs(5)).await;
+    jobs::enqueue(&mut conn, "test.code", &(), Utc::now())
+        .await
+        .unwrap();
+
+    wait_for(&CODES_SENT, 1, Duration::from_secs(3)).await;
+    assert_eq!(MASS_STARTS.load(Ordering::SeqCst), 2);
+    worker.abort();
+}
+
 #[sqlx::test(migrator = "bazarpro_backend::MIGRATOR")]
 async fn jobs_of_unknown_kinds_wait_untouched(db: PgPool) {
     let registry = jobs::Registry::default().register("test.count", count_run);

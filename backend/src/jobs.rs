@@ -4,6 +4,10 @@
 //! a mutation that rolls back schedules nothing. Every instance with `RUN_WORKERS` runs a
 //! worker; Postgres row locks make sure each job and each cron slot runs only once.
 //!
+//! Each instance runs `JOB_WORKERS` jobs at the same time. Urgent kinds (codes that expire)
+//! go first, and one more worker runs only them, so they never wait behind a mass mailing,
+//! a slow mail server or the nightly retention run (#271).
+//!
 //! A running job holds a lease: its worker renews `locked_until` while the handler runs.
 //! Only a job whose worker stopped renewing (crashed instance) is taken over by another
 //! worker, so a long job does not run twice (#142).
@@ -14,6 +18,7 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use croner::Cron;
+use futures::FutureExt;
 use futures::future::BoxFuture;
 use serde::Serialize;
 use sqlx::{PgConnection, PgPool};
@@ -45,12 +50,33 @@ pub type Handler = fn(AppState, serde_json::Value) -> BoxFuture<'static, anyhow:
 #[derive(Clone, Default)]
 pub struct Registry {
     handlers: HashMap<&'static str, Handler>,
+    /// Run before all other due jobs and by a worker of their own
+    urgent: Vec<&'static str>,
 }
 
 impl Registry {
     pub fn register(mut self, kind: &'static str, handler: Handler) -> Self {
         self.handlers.insert(kind, handler);
         self
+    }
+
+    /// Registers a kind that must not wait, e.g. a mail with a code that expires.
+    pub fn register_urgent(mut self, kind: &'static str, handler: Handler) -> Self {
+        self.urgent.push(kind);
+        self.register(kind, handler)
+    }
+
+    /// Only the urgent kinds, for the worker that keeps them from waiting.
+    fn urgent_only(&self) -> Self {
+        Self {
+            handlers: self
+                .handlers
+                .iter()
+                .filter(|(kind, _)| self.urgent.contains(kind))
+                .map(|(kind, handler)| (*kind, *handler))
+                .collect(),
+            urgent: self.urgent.clone(),
+        }
     }
 
     pub fn contains(&self, kind: &str) -> bool {
@@ -121,9 +147,14 @@ struct ClaimedJob {
     max_attempts: i32,
 }
 
-/// Takes the next due job of a kind this instance can run. Other kinds wait, e.g. for the
-/// newer instances during a rolling update.
-async fn claim(pool: &PgPool, kinds: &[&str], lease: Lease) -> sqlx::Result<Option<ClaimedJob>> {
+/// Takes the next due job of a kind this instance can run, urgent kinds first. Other kinds
+/// wait, e.g. for the newer instances during a rolling update.
+async fn claim(
+    pool: &PgPool,
+    kinds: &[&str],
+    urgent: &[&str],
+    lease: Lease,
+) -> sqlx::Result<Option<ClaimedJob>> {
     let owner = Uuid::new_v4();
     let row: Option<(Uuid, String, serde_json::Value, i32, i32)> = sqlx::query_as(
         "UPDATE jobs SET locked_until = now() + $1, locked_by = $3, attempts = attempts + 1
@@ -131,7 +162,7 @@ async fn claim(pool: &PgPool, kinds: &[&str], lease: Lease) -> sqlx::Result<Opti
            SELECT id FROM jobs
            WHERE run_at <= now() AND (locked_until IS NULL OR locked_until < now())
              AND kind = ANY($2) AND attempts < max_attempts
-           ORDER BY run_at
+           ORDER BY kind = ANY($4) DESC, run_at
            FOR UPDATE SKIP LOCKED
            LIMIT 1
          )
@@ -140,6 +171,7 @@ async fn claim(pool: &PgPool, kinds: &[&str], lease: Lease) -> sqlx::Result<Opti
     .bind(lease.timeout)
     .bind(kinds)
     .bind(owner)
+    .bind(urgent)
     .fetch_optional(pool)
     .await?;
     Ok(
@@ -236,7 +268,7 @@ pub async fn run_next_with(
     lease: Lease,
 ) -> anyhow::Result<bool> {
     let kinds: Vec<&str> = registry.handlers.keys().copied().collect();
-    let Some(job) = claim(&state.db, &kinds, lease).await? else {
+    let Some(job) = claim(&state.db, &kinds, &registry.urgent, lease).await? else {
         return Ok(false);
     };
     match run_leased(state, registry, &job, lease).await {
@@ -273,13 +305,26 @@ pub async fn run_next_with(
     Ok(true)
 }
 
-/// Runs jobs until `stop` turns true. A running job is finished first, so a shutdown does
-/// not leave it locked until its lease runs out (#269).
+/// Runs jobs until `stop` turns true: `JOB_WORKERS` workers for all kinds and one for the
+/// urgent kinds. Running jobs are finished first, so a shutdown does not leave them locked
+/// until their lease runs out (#269).
 pub async fn run_worker(
     state: AppState,
     registry: Registry,
-    mut stop: tokio::sync::watch::Receiver<bool>,
+    stop: tokio::sync::watch::Receiver<bool>,
 ) {
+    let mut workers = Vec::new();
+    if !registry.urgent.is_empty() {
+        workers.push(work(state.clone(), registry.urgent_only(), stop.clone()).boxed());
+    }
+    for _ in 0..state.config.job_workers.max(1) {
+        workers.push(work(state.clone(), registry.clone(), stop.clone()).boxed());
+    }
+    // In this task, so a panic outside a handler ends the worker and `supervise` sees it
+    futures::future::join_all(workers).await;
+}
+
+async fn work(state: AppState, registry: Registry, mut stop: tokio::sync::watch::Receiver<bool>) {
     while !*stop.borrow() {
         let idle = match run_next(&state, &registry).await {
             Ok(ran) => !ran,
