@@ -1,5 +1,5 @@
 import { PageHeader } from '../../../../components/ui/page-header';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApiClient, useMutation, useQuery } from '../../../../lib/api/react';
 import { isNetworkError } from '../../../../lib/offlineMode';
@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Download,
   Keyboard,
+  Mail,
   ShoppingCart,
   StickyNote,
   Trash2,
@@ -41,6 +42,7 @@ import {
   getCheckoutCameraEnabled,
   getCheckoutSoundEnabled,
   loadCachedCart,
+  parseAmount,
   playScanBeep,
   productIdFromCode,
   saveCachedCart,
@@ -145,6 +147,10 @@ function CashDesk() {
   const [resolved, setResolved] = useState<Record<string, ResolvedLine | undefined>>({});
   const [manualCode, setManualCode] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
+  // The receipt field stays folded away until the buyer asks for one
+  const [emailOpen, setEmailOpen] = useState(false);
+  // What the buyer handed over, only to work out the change
+  const [given, setGiven] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSale, setLastSale] = useState<{
     count: number;
@@ -252,6 +258,7 @@ function CashDesk() {
   const clearCart = () => {
     setCart([]);
     setResolved({});
+    setGiven('');
     if (eventId) clearCachedCart(eventId);
   };
 
@@ -285,11 +292,32 @@ function CashDesk() {
   const emailValid = buyerEmail.trim() === '' || EMAIL_PATTERN.test(buyerEmail.trim());
   const saleKey = `${cart.map((entry) => entry.productId).join()}:${total}`;
   const moneyReceived = paidFor === saleKey;
+  // What the buyer pays at this desk, and the change for what they handed over
+  const due = directSale ? taken : total;
+  const givenAmount = parseAmount(given);
+  const givenInvalid = given.trim() !== '' && givenAmount === null;
+  const change = givenAmount === null ? null : Math.round((givenAmount - due) * 100) / 100;
+  const changeText =
+    change === null || !allReady
+      ? ''
+      : change < 0
+        ? t('checkout.missing', { amount: formatPriceDE(-change) })
+        : t('checkout.change', { amount: formatPriceDE(change) });
+  // Read out once the typing pauses, not at every key
+  const [announcedChange, setAnnouncedChange] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setAnnouncedChange(changeText), 400);
+    return () => clearTimeout(timer);
+  }, [changeText]);
+  // The step the desk is at: scan, take the money, complete
+  const step = cart.length === 0 ? 1 : moneyReceived ? 3 : 2;
 
   const nextBuyer = () => {
     setCart([]);
     setResolved({});
     setBuyerEmail('');
+    setEmailOpen(false);
+    setGiven('');
     if (eventId) clearCachedCart(eventId);
     codeInput.current?.focus();
   };
@@ -415,9 +443,11 @@ function CashDesk() {
 
       {/* grid-cols-1: an implicit column would grow with the widest line on a phone */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
-        <section className="space-y-4 rounded-xl border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold">{t('checkout.scanner')}</span>
+        <section className="space-y-4 self-start rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between gap-2">
+            <StepHeading step={1} active={step === 1}>
+              {t('checkout.steps.scan')}
+            </StepHeading>
             <Button
               type="button"
               variant="ghost"
@@ -474,9 +504,10 @@ function CashDesk() {
           </form>
         </section>
 
-        <section className="space-y-4">
+        {/* A column of flex items: on phones the receipt button moves above the sum bar */}
+        <section className="flex flex-col gap-4">
           {lastSale && cart.length === 0 && (
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-success/30 bg-success-soft p-4 text-success-soft-foreground">
               <CheckCircle2 className="h-5 w-5 shrink-0" />
               <p className="min-w-0 flex-1 basis-48">
                 <Trans
@@ -513,42 +544,44 @@ function CashDesk() {
               <p>{t('checkout.empty')}</p>
             </div>
           ) : (
-            <ul className="divide-y rounded-xl border bg-card">
-              {cart.map((entry) => (
-                <CartLine
-                  key={entry.productId}
-                  eventId={eventId as Id<'events'>}
-                  entry={entry}
-                  offline={offline.offline}
-                  snapshot={offline.snapshot}
-                  directSale={directSale}
-                  commissionPercent={commissionPercent}
-                  commission={commissionOfLine.get(entry.productId)}
-                  onChange={(change) => updateEntry(entry.productId, change)}
-                  onRemove={() => removeEntry(entry.productId)}
-                  onResolved={onResolved}
-                />
-              ))}
-            </ul>
+            <>
+              <h2 className="flex items-center gap-2 text-base font-bold">
+                <ShoppingCart className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                {t('checkout.steps.cart')}
+                <span className="ml-auto font-sans text-sm font-normal text-muted-foreground">
+                  {t('checkout.items', { count: cart.length })}
+                </span>
+              </h2>
+              <ul className="divide-y rounded-xl border bg-card">
+                {cart.map((entry) => (
+                  <CartLine
+                    key={entry.productId}
+                    eventId={eventId as Id<'events'>}
+                    entry={entry}
+                    offline={offline.offline}
+                    snapshot={offline.snapshot}
+                    directSale={directSale}
+                    commissionPercent={commissionPercent}
+                    commission={commissionOfLine.get(entry.productId)}
+                    onChange={(change) => updateEntry(entry.productId, change)}
+                    onRemove={() => removeEntry(entry.productId)}
+                    onResolved={onResolved}
+                  />
+                ))}
+              </ul>
+            </>
           )}
 
           {cart.length > 0 && (
             <>
-              <div className="space-y-1 rounded-xl border bg-card p-4">
-                <Label htmlFor="checkout-email">{t('checkout.email')}</Label>
-                <Input
-                  id="checkout-email"
-                  type="email"
-                  value={buyerEmail}
-                  onChange={(e) => setBuyerEmail(e.target.value)}
-                  placeholder={t('checkout.emailPlaceholder')}
-                />
-                {!emailValid && (
-                  <p className="text-xs text-destructive">{t('checkout.emailInvalid')}</p>
-                )}
-              </div>
               {/* Sum and the way to finish stay in reach, however long the cart is */}
-              <StickyActionBar className="lg:static lg:mx-0 lg:rounded-xl lg:border lg:bg-card lg:p-4 lg:backdrop-blur-none">
+              <StickyActionBar className="gap-2 max-lg:order-last lg:bottom-4 lg:mx-0 lg:gap-3 lg:rounded-xl lg:border lg:bg-card lg:p-4 lg:shadow-lg lg:backdrop-blur-none">
+                {/* On phones the bar stays small: the steps show there by the button numbers */}
+                <div className="hidden w-full lg:block">
+                  <StepHeading step={2} active={step === 2}>
+                    {t('checkout.steps.money')}
+                  </StepHeading>
+                </div>
                 {directSale && (
                   <div className="flex w-full items-baseline justify-between text-sm text-muted-foreground">
                     <span>{t('checkout.direct.paidToSeller')}</span>
@@ -571,13 +604,67 @@ function CashDesk() {
                           })
                       : t('checkout.sum', { count: cart.length })}
                   </span>
-                  <span className="text-2xl font-bold tabular-nums">{formatPriceDE(taken)} €</span>
+                  <span className="font-display text-2xl font-extrabold tabular-nums lg:text-4xl">
+                    {formatPriceDE(taken)} €
+                  </span>
+                </div>
+                <div className="flex w-full items-center gap-2 sm:gap-3">
+                  <Label htmlFor="checkout-given" className="min-w-0 text-sm text-muted-foreground">
+                    {t('checkout.given')}
+                  </Label>
+                  <div className="relative shrink-0">
+                    <Input
+                      id="checkout-given"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className="h-10 w-24 pr-7 text-right tabular-nums sm:w-28"
+                      value={given}
+                      onChange={(e) => setGiven(e.target.value)}
+                      aria-invalid={givenInvalid || undefined}
+                      aria-describedby={givenInvalid ? 'checkout-given-hint' : undefined}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+                    >
+                      €
+                    </span>
+                  </div>
+                  {givenInvalid && (
+                    <span id="checkout-given-hint" className="ml-auto text-sm text-destructive">
+                      {t('checkout.givenInvalid')}
+                    </span>
+                  )}
+                  {/* Read out as it changes: the change is what the helper hands back */}
+                  <span className="ml-auto shrink-0 empty:hidden">
+                    {change !== null && allReady && (
+                      <span
+                        aria-hidden="true"
+                        data-testid="checkout-change"
+                        className={cn(
+                          'block whitespace-nowrap rounded-lg px-2.5 py-1.5 font-display text-base font-extrabold tabular-nums sm:px-3 sm:text-lg',
+                          change < 0
+                            ? 'bg-danger-soft text-danger-soft-foreground'
+                            : 'bg-tag-soft text-tag-soft-foreground'
+                        )}
+                      >
+                        {changeText}
+                      </span>
+                    )}
+                  </span>
+                  <span aria-live="polite" className="sr-only">
+                    {announcedChange}
+                  </span>
                 </div>
                 {/* A sale is only one tap away otherwise; a changed cart asks again */}
                 <Label
                   htmlFor="checkout-money-received"
-                  className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border bg-card px-3 py-2 text-base font-medium"
+                  className={cn(
+                    'flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border bg-card px-3 py-2 text-base font-semibold',
+                    moneyReceived && 'border-success bg-success-soft text-success-soft-foreground'
+                  )}
                 >
+                  <StepNumber step={2} active={step === 2} className="lg:hidden" />
                   <Checkbox
                     id="checkout-money-received"
                     checked={moneyReceived}
@@ -593,10 +680,11 @@ function CashDesk() {
                   <Button
                     loading={isSubmitting}
                     size="lg"
-                    className="h-auto min-h-10 min-w-0 flex-1 whitespace-normal"
+                    className="h-auto min-h-12 min-w-0 flex-1 whitespace-normal text-base"
                     disabled={!allReady || !emailValid || !moneyReceived || isSubmitting}
                     onClick={submit}
                   >
+                    {!isSubmitting && <StepNumber step={3} active={step === 3} onPrimary />}
                     {isSubmitting ? t('checkout.selling') : t('checkout.complete')}
                   </Button>
                   <Button size="lg" variant="outline" onClick={clearCart} disabled={isSubmitting}>
@@ -610,11 +698,92 @@ function CashDesk() {
                   </p>
                 )}
               </StickyActionBar>
+              {emailOpen || buyerEmail ? (
+                <div className="space-y-1 rounded-xl border bg-card p-4">
+                  <Label htmlFor="checkout-email">{t('checkout.email')}</Label>
+                  <Input
+                    id="checkout-email"
+                    type="email"
+                    autoFocus={emailOpen}
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                    placeholder={t('checkout.emailPlaceholder')}
+                  />
+                  {!emailValid && (
+                    <p className="text-xs text-destructive">{t('checkout.emailInvalid')}</p>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setEmailOpen(true)}
+                >
+                  <Mail className="h-4 w-4" /> {t('checkout.addEmail')}
+                </Button>
+              )}
             </>
           )}
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * The number of a desk step. The step due now is tag yellow with a dark ring, so it
+ * stands out by more than its colour; on a filled button it sits on a light disc.
+ */
+function StepNumber({
+  step,
+  active,
+  onPrimary = false,
+  className,
+}: {
+  step: number;
+  active: boolean;
+  onPrimary?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'flex size-7 shrink-0 items-center justify-center rounded-full font-display text-sm font-extrabold',
+        active
+          ? 'bg-tag text-tag-foreground ring-2 ring-foreground ring-offset-1 ring-offset-transparent'
+          : onPrimary
+            ? 'border-2 border-primary-foreground/70 text-primary-foreground'
+            : 'border-2 border-input text-muted-foreground',
+        className
+      )}
+    >
+      {step}
+    </span>
+  );
+}
+
+/** A numbered step of the desk; the step due now is marked, also for screen readers. */
+function StepHeading({
+  step,
+  active,
+  children,
+}: {
+  step: number;
+  active: boolean;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation('organizer');
+  return (
+    <h2
+      className="flex items-center gap-2.5 text-base font-bold"
+      aria-current={active ? 'step' : undefined}
+    >
+      <StepNumber step={step} active={active} />
+      {children}
+      {active && <span className="sr-only">{t('checkout.steps.now')}</span>}
+    </h2>
   );
 }
 
@@ -626,7 +795,7 @@ function DirectCommission({ full, taken = full }: { full: number; taken?: number
     <span
       className={cn(
         'whitespace-nowrap text-xs tabular-nums',
-        capped ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'
+        capped ? 'text-success-soft-foreground' : 'text-muted-foreground'
       )}
       data-testid="checkout-commission"
     >
@@ -811,7 +980,7 @@ function CartLine({
         </div>
 
         {item?.internalNote && (
-          <p className="flex items-start gap-1 text-sm text-amber-700 dark:text-amber-300">
+          <p className="flex items-start gap-1 text-sm text-warning-soft-foreground">
             <StickyNote className="mt-0.5 h-4 w-4 shrink-0" />
             <span className="min-w-0 break-words">{item.internalNote}</span>
           </p>

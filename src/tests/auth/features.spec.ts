@@ -138,6 +138,7 @@ test.describe('price offers', () => {
     await expect(page.getByRole('button', { name: 'Verkauf abschließen' })).toBeDisabled();
 
     await price.fill('355');
+    await page.getByRole('button', { name: 'Beleg per E-Mail' }).click();
     await page.getByLabel(/E-Mail/).fill('kaeufer@example.com');
     await page.getByLabel('355,00 € erhalten').check();
     await page.getByRole('button', { name: 'Verkauf abschließen' }).click();

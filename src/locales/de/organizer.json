@@ -897,7 +897,20 @@
       "capReached": "Gebühren-Deckel erreicht, keine Provision",
       "sumMixed_one": "Provision ({{count}} Artikel)",
       "sumMixed_other": "Provision ({{count}} Artikel)"
-    }
+    },
+    "steps": {
+      "scan": "Etiketten scannen",
+      "cart": "Warenkorb",
+      "money": "Geld annehmen",
+      "now": "(jetzt dran)"
+    },
+    "items_one": "{{count}} Artikel",
+    "items_other": "{{count}} Artikel",
+    "given": "Gegeben",
+    "change": "Rückgeld {{amount}} €",
+    "missing": "Es fehlen {{amount}} €",
+    "addEmail": "Beleg per E-Mail",
+    "givenInvalid": "Betrag wie 20 oder 20,50"
   },
   "proof": {
     "cardTitle": "Nachweis der angebotenen Artikel",

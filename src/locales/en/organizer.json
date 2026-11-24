@@ -897,7 +897,20 @@
       "capReached": "Fee cap reached, no commission",
       "sumMixed_one": "Commission ({{count}} item)",
       "sumMixed_other": "Commission ({{count}} items)"
-    }
+    },
+    "steps": {
+      "scan": "Scan the labels",
+      "cart": "Cart",
+      "money": "Take the money",
+      "now": "(now)"
+    },
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items",
+    "given": "Given",
+    "change": "Change {{amount}} €",
+    "missing": "{{amount}} € short",
+    "addEmail": "Receipt by email",
+    "givenInvalid": "An amount like 20 or 20.50"
   },
   "proof": {
     "cardTitle": "Record of offered items",

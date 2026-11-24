@@ -230,6 +230,44 @@ describe('CheckoutPage', () => {
     expect(localStorage.getItem('bazarpro:checkout:cart:evt1')).toBeNull();
   });
 
+  it('works out the change for what the buyer handed over', async () => {
+    renderPage();
+    scan('jack');
+    scan('hose');
+    await waitFor(() => expect(screen.getByText('15,00 € erhalten')).toBeInTheDocument());
+    expect(screen.queryByTestId('checkout-change')).not.toBeInTheDocument();
+
+    const given = screen.getByLabelText('Gegeben');
+    fireEvent.change(given, { target: { value: '20' } });
+    expect(screen.getByTestId('checkout-change')).toHaveTextContent('Rückgeld 5,00 €');
+    fireEvent.change(given, { target: { value: '12,50' } });
+    expect(screen.getByTestId('checkout-change')).toHaveTextContent('Es fehlen 2,50 €');
+    fireEvent.change(given, { target: { value: 'zwanzig' } });
+    expect(screen.getByText('Betrag wie 20 oder 20,50')).toBeInTheDocument();
+    expect(screen.queryByTestId('checkout-change')).not.toBeInTheDocument();
+    // Only a help: the money is still ticked by hand
+    expect(received()).not.toBeChecked();
+    expect(finish()).toBeDisabled();
+  });
+
+  it('folds the receipt email away until it is asked for', async () => {
+    renderPage();
+    scan('jack');
+    expect(screen.queryByLabelText('Beleg per E-Mail (optional)')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Beleg per E-Mail' }));
+    fireEvent.change(screen.getByLabelText('Beleg per E-Mail (optional)'), {
+      target: { value: 'kaeufer@example.org' },
+    });
+    await waitFor(() => expect(received()).toBeEnabled());
+    fireEvent.click(received());
+    fireEvent.click(finish());
+    await waitFor(() =>
+      expect(sellProducts).toHaveBeenCalledWith(
+        expect.objectContaining({ buyerEmail: 'kaeufer@example.org' })
+      )
+    );
+  });
+
   it('links scanned products to their product page', () => {
     renderPage();
     scan('jack');
