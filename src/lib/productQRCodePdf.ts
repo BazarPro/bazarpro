@@ -291,5 +291,17 @@ export async function downloadLabelsPdf(
   // Items of bazaars with different sheets: the large labels
   const format = formats.size === 1 ? [...formats][0] : 'standard';
   await savePdf(buildLabelsPdf(labels, format, startAt), 'BazarPro-Etiketten.pdf');
+  // "Label missing" goes away for these items; the PDF is there even if this fails
+  const printed = labels.map((label) => label.productId);
+  try {
+    for (let i = 0; i < printed.length; i += LABELS_PER_REQUEST) {
+      await client.mutation(api.labels.markPrinted, {
+        productIds: printed.slice(i, i + LABELS_PER_REQUEST),
+        eventId,
+      });
+    }
+  } catch {
+    // An older backend without the mark, or offline: only the hint stays
+  }
   return labels.length;
 }

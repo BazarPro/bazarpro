@@ -22,7 +22,8 @@
     "newMessages_one": "{{count}} new message from the organizer",
     "newMessages_other": "{{count}} new messages from the organizer",
     "excluded": "Excluded",
-    "excludedSince": "Excluded since {{date}}"
+    "excludedSince": "Excluded since {{date}}",
+    "findNew": "Find a new bazaar"
   },
   "filters": {
     "search": "Search bazaars…",

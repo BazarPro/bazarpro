@@ -41,7 +41,7 @@ export interface MyProductHandlers {
 }
 
 const STATUS_TONE: Record<EventProductStatus, string> = {
-  announced: 'bg-sky-500',
+  announced: 'bg-primary',
   available: 'bg-success',
   sold: 'bg-muted-foreground',
   returned: 'bg-tag',
@@ -83,6 +83,14 @@ export function MyProductFacts({
           {STATUS_OPTIONS[knownStatus].title}
         </span>
       )}
+      {/* Before the intake the label still has to be printed and attached */}
+      {!product.sold &&
+        product.labelPrintedAt === undefined &&
+        (knownStatus === null || knownStatus === 'announced') && (
+          <span className="whitespace-nowrap rounded-full bg-warning-soft px-1.5 py-px font-semibold text-warning-soft-foreground">
+            {t('card.labelMissing')}
+          </span>
+        )}
       {unassigned && (
         <span className="whitespace-nowrap rounded-full border border-dashed px-1.5 py-px">
           {t('card.noBazaar')}

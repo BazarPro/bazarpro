@@ -38,6 +38,8 @@ export interface MyProductCardProduct {
   price: number;
   productCategory: Id<'categories'>;
   sold: boolean;
+  /** When its label was last printed; none: "label missing" */
+  labelPrintedAt?: number;
   isLocked: boolean;
   /** Locked products become deletable once their bazaar is over */
   canDelete?: boolean;

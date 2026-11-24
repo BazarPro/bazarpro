@@ -603,8 +603,8 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
             <>
               {/* Sum and the way to finish stay in reach, however long the cart is */}
               <StickyActionBar className="gap-2 max-lg:order-last lg:bottom-4 lg:mx-0 lg:gap-3 lg:rounded-xl lg:border lg:bg-card lg:p-4 lg:shadow-lg lg:backdrop-blur-none">
-                {/* On phones the bar stays small: the steps show there by the button numbers */}
-                <div className="hidden w-full lg:block">
+                {/* Step 2 names itself on phones too: where the money part begins */}
+                <div className="w-full">
                   <StepHeading step={2} active={step === 2}>
                     {t('checkout.steps.money')}
                   </StepHeading>
@@ -691,7 +691,6 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
                     moneyReceived && 'border-success bg-success-soft text-success-soft-foreground'
                   )}
                 >
-                  <StepNumber step={2} active={step === 2} className="lg:hidden" />
                   <Checkbox
                     id="checkout-money-received"
                     checked={moneyReceived}

@@ -46,7 +46,10 @@
     "marketFull": "Basar voll",
     "placesOver_one": "{{count}} Artikel zu viel für die freien Plätze",
     "placesOver_other": "{{count}} Artikel zu viel für die freien Plätze",
-    "noPlaceLeft": "Auf dem Basar ist kein Platz mehr frei."
+    "noPlaceLeft": "Auf dem Basar ist kein Platz mehr frei.",
+    "labelsMissing_one": "{{count}} Artikel hat noch kein gedrucktes Etikett.",
+    "labelsMissing_other": "{{count}} Artikel haben noch kein gedrucktes Etikett.",
+    "printMissing": "Fehlende Etiketten drucken"
   },
   "header": {
     "title": "Meine Artikel",
@@ -85,7 +88,8 @@
     "acceptsOffers": "Preisvorschläge",
     "more": "Weitere Aktionen für „{{title}}“",
     "duplicate": "Ähnlichen Artikel anlegen",
-    "size": "Gr. {{size}}"
+    "size": "Gr. {{size}}",
+    "labelMissing": "Etikett fehlt"
   },
   "discount": {
     "button": "Rabatt",
@@ -196,7 +200,8 @@
     "minPrice": "Min. Preis",
     "maxPrice": "Max. Preis",
     "sortBy": "Sortieren nach:",
-    "newest": "Neueste zuerst"
+    "newest": "Neueste zuerst",
+    "labelMissing": "Etikett fehlt"
   },
   "complete": {
     "title": "Artikel ergänzen ({{step}} von {{total}})",

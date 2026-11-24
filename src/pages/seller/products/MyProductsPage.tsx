@@ -14,7 +14,7 @@ import { ProductFilters } from '../../../components/products/ProductFilters';
 import { Button } from '../../../components/ui/button';
 import { downloadPrivateInvoiceForProduct } from '../../../lib/privateInvoice';
 import type { InvoiceCopy } from '../../../lib/saleBreakdown';
-import { filterAndSortProducts } from '../../../hooks/useMyProductsFilters';
+import { filterAndSortProducts, labelMissing } from '../../../hooks/useMyProductsFilters';
 import { BulkEventAssignmentDialog } from './components/BulkEventAssignmentDialog';
 import {
   CompleteProductsDialog,
@@ -37,7 +37,7 @@ import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '../../../lib/errors';
 import { findProductsToComplete, type ProductToComplete } from '../../../lib/productCompletion';
 import { uploadImages } from '../../../lib/uploadImages';
-import { AlertTriangle, FileDown, Tag, Trash2 } from 'lucide-react';
+import { AlertTriangle, FileDown, Printer, Tag, Trash2 } from 'lucide-react';
 import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
 import { Trans, useTranslation } from 'react-i18next';
 import { ListSkeleton, Loading } from '../../../components/ui/loading';
@@ -98,6 +98,7 @@ export function MyProductsPage() {
   const [bulkSelectedEvents, setBulkSelectedEvents] = useState<string[]>([]);
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [bulkLabelsOpen, setBulkLabelsOpen] = useState(false);
+  const [missingLabelsOpen, setMissingLabelsOpen] = useState(false);
   const [isBulkSelectionEnabled, setIsBulkSelectionEnabled] = useState(false);
   const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false);
   // Items that lack e.g. a photo for the target events, and the save that waits for them
@@ -469,6 +470,15 @@ export function MyProductsPage() {
     : [];
 
   const hiddenSoldCount = products ? products.filter((p) => p.sold).length : 0;
+  // Items for a bazaar whose label was never printed, or changed since
+  const withoutLabel = (products ?? [])
+    .filter(
+      (p) =>
+        labelMissing(p) &&
+        (p.eventIds?.length ?? 0) > 0 &&
+        (effectiveFilterEvent === 'all' || p.eventIds?.includes(effectiveFilterEvent))
+    )
+    .map((p) => p._id);
   const filteredProducts = products
     ? filterAndSortProducts(visibleProducts, {
         searchTerm,
@@ -815,6 +825,23 @@ export function MyProductsPage() {
               </EmptyState>
             ) : (
               <>
+                {/* The one thing to do before the bazaar: print what has no label yet */}
+                {!isEventSelectionMode && withoutLabel.length > 0 && (
+                  <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-tag/60 bg-warning-soft p-3 text-warning-soft-foreground">
+                    <Printer className="h-5 w-5 shrink-0" />
+                    <p className="min-w-0 flex-1 text-sm font-medium">
+                      {t('myProducts.labelsMissing', { count: withoutLabel.length })}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setMissingLabelsOpen(true)}
+                      className="max-sm:w-full"
+                    >
+                      {t('myProducts.printMissing')}
+                    </Button>
+                  </div>
+                )}
                 {!isEventSelectionMode && filterStatus === 'available' && hiddenSoldCount > 0 && (
                   <p className="text-sm text-muted-foreground mb-4">
                     {t('myProducts.soldHidden', { count: hiddenSoldCount })}{' '}
@@ -867,6 +894,13 @@ export function MyProductsPage() {
           </>
         )}
       </div>
+
+      <LabelPrintDialog
+        open={missingLabelsOpen}
+        onOpenChange={setMissingLabelsOpen}
+        selection={withoutLabel}
+        eventId={filterEvent === 'all' ? undefined : filterEvent}
+      />
 
       <LabelPrintDialog
         open={bulkLabelsOpen}

@@ -169,6 +169,8 @@ export interface Docs {
     attributes?: Record<string, string> | undefined;
     acceptsOffers?: boolean | undefined;
     minimumPrice?: number | undefined;
+    /** When its label was last printed; none: "label missing" */
+    labelPrintedAt?: number | undefined;
     updatedAt: number;
     title: string;
     vendorId: Id<'users'>;
@@ -421,6 +423,7 @@ export type ProductWithEvents = {
   attributes?: Record<string, string> | undefined;
   acceptsOffers?: boolean | undefined;
   minimumPrice?: number | undefined;
+  labelPrintedAt?: number | undefined;
   updatedAt: number;
   title: string;
   vendorId: Id<'users'>;
@@ -2100,6 +2103,11 @@ export interface Api {
     >;
     getEventLabelIds: FunctionReference<'query', { eventId: Id<'events'> }, Id<'products'>[]>;
     getSortMarkClashes: FunctionReference<'query', { eventIds: Id<'events'>[] }, Id<'events'>[]>;
+    markPrinted: FunctionReference<
+      'mutation',
+      { eventId?: Id<'events'> | undefined; productIds: Id<'products'>[] },
+      null
+    >;
     getLabelData: FunctionReference<
       'query',
       { eventId?: Id<'events'> | undefined; productIds: Id<'products'>[] },

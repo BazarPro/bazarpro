@@ -63,6 +63,8 @@ export function ResponsiveSidebar({ children }: ResponsiveSidebarProps) {
   const isFocusPage = FOCUS_PAGES.has(currentPage.replace(/\/+$/, ''));
   // The full-screen cash desk: nothing but the desk
   const isDesk = isFullscreenDesk(currentPage);
+  // Item form: on phones its save bar is the only way on, no tab bar below it
+  const isItemForm = /^\/products\/(new|edit\/[^/]+)\/?$/.test(currentPage);
   const showFixedSidebar = !isMarketingPage && !isFocusPage && !isDesk;
   const canOpenMobileSidebar = isDesktop ? true : shouldShowMobileSidebar;
 
@@ -114,6 +116,7 @@ export function ResponsiveSidebar({ children }: ResponsiveSidebarProps) {
     // Room for the phone's tab bar, also for sticky buttons (StickyActionBar)
     user &&
       fixedSidebarOpen &&
+      !isItemForm &&
       'max-lg:pb-24 max-lg:[--bottom-inset:calc(3.5rem+env(safe-area-inset-bottom))] max-lg:[--tab-bar-bulge:1.25rem]'
   );
 
@@ -157,7 +160,7 @@ export function ResponsiveSidebar({ children }: ResponsiveSidebarProps) {
       {/* Main Content */}
 
       <main className={mainClassName}>{children}</main>
-      {fixedSidebarOpen && (
+      {fixedSidebarOpen && !isItemForm && (
         <BottomNav
           role={role}
           isAdmin={user.systemRole === 'admin'}

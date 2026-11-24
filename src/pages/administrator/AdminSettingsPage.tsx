@@ -6,6 +6,7 @@ import { BarChart3, ImageIcon, Trash2, Upload } from 'lucide-react';
 import { api } from '../../lib/api/functions';
 import type { Id } from '../../lib/api/types';
 import { Button } from '../../components/ui/button';
+import { StickyActionBar } from '../../components/ui/sticky-action-bar';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
@@ -270,11 +271,13 @@ export function AdminSettingsPage() {
             components={{ code: <code />, b: <b /> }}
           />
         </div>
-
+      </div>
+      {/* Long form: saving stays in reach at the lower edge, like the other forms */}
+      <StickyActionBar className="max-w-4xl md:mx-0 md:px-0 lg:mx-0 lg:px-0">
         <Button loading={isSaving} onClick={save} disabled={isSaving}>
           {isSaving ? t('settings.saving') : t('settings.save')}
         </Button>
-      </div>
+      </StickyActionBar>
     </div>
   );
 }

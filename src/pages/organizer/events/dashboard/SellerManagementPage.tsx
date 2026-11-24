@@ -188,16 +188,24 @@ export function SellerManagementPage() {
       <PageHeader
         title={t('sellers.title')}
         actions={
-          <div className="flex flex-wrap gap-2 *:flex-1 sm:*:flex-none">
+          // Phones: one line, the main action wide, the others as icons
+          <div className="flex gap-2 sm:flex-wrap">
             {canBroadcast && (
-              <Button variant="outline" className="gap-2" onClick={() => openBroadcast('all')}>
-                <Megaphone className="h-4 w-4" /> {t('sellers.broadcast')}
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => openBroadcast('all')}
+                aria-label={t('sellers.broadcast')}
+              >
+                <Megaphone className="h-4 w-4" />
+                <span className="max-sm:sr-only">{t('sellers.broadcast')}</span>
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Printer className="h-4 w-4" /> {t('sellers.print')}
+                <Button variant="outline" className="gap-2" aria-label={t('sellers.print')}>
+                  <Printer className="h-4 w-4" />
+                  <span className="max-sm:sr-only">{t('sellers.print')}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -223,7 +231,7 @@ export function SellerManagementPage() {
             </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="gap-2">
+                <Button className="gap-2 max-sm:flex-1">
                   <Plus className="h-4 w-4" /> {t('sellers.add')}
                 </Button>
               </DropdownMenuTrigger>
@@ -269,7 +277,8 @@ export function SellerManagementPage() {
           onValueChange={(v) => setActiveFilter(v as SellerFilter)}
           className="w-full sm:w-auto"
         >
-          <TabsList className="grid h-auto w-full grid-cols-3 sm:grid-cols-5">
+          {/* Phones: one row to swipe, a fade at the edge says so */}
+          <TabsList className="flex h-auto w-full justify-start overflow-x-auto [mask-image:linear-gradient(90deg,#000_85%,transparent)] *:shrink-0 sm:grid sm:grid-cols-5 sm:[mask-image:none]">
             <TabsTrigger value="all">{t('sellers.all')}</TabsTrigger>
             <TabsTrigger value="open">{t('sellers.open')}</TabsTrigger>
             <TabsTrigger value="paid">{t('sellers.paid')}</TabsTrigger>

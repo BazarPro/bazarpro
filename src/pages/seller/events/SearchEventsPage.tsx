@@ -14,6 +14,7 @@ import {
   Check,
   Package,
   LogOut,
+  Search,
   Megaphone,
   Clock,
   Users,
@@ -220,8 +221,9 @@ function EventCard({
         </div>
 
         <div className="relative z-10 flex gap-2 mt-auto">
+          {/* Registered: the bazaar's page is the way on; joining is the action otherwise */}
           <Button
-            variant="outline"
+            variant={isRegistered && !exclusion ? 'default' : 'outline'}
             className="flex-1"
             onClick={() =>
               navigate(`/public-events/${event._id}`, {
@@ -240,11 +242,11 @@ function EventCard({
               trigger={
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive"
+                  className="gap-2 text-muted-foreground hover:text-destructive"
                   aria-label={t('search.leaveLabel')}
                 >
                   <LogOut className="h-4 w-4" />
+                  {t('search.leave')}
                 </Button>
               }
               title={t('search.leaveTitle')}
@@ -344,7 +346,30 @@ export function SearchEventsPage() {
   return (
     <div>
       <div className="page-wide">
-        <PageHeader title={t('search.title')} className="mb-8" />
+        <PageHeader
+          title={t('search.title')}
+          className="mb-8"
+          actions={
+            myEvents.length > 0 && (
+              // With own bazaars on top, finding a new one is one tap away
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  const heading = document.getElementById('new-events-heading');
+                  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                  heading?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' });
+                  heading?.parentElement
+                    ?.querySelector<HTMLInputElement>('input')
+                    ?.focus({ preventScroll: true });
+                }}
+              >
+                <Search className="h-4 w-4" />
+                {t('search.findNew')}
+              </Button>
+            )
+          }
+        />
 
         <div data-onboarding-id="events-search-main" className="space-y-10">
           {isLoading ? (
