@@ -32,13 +32,13 @@ export function truncateText(text: string, maxLength: number = 20): string {
 }
 
 /**
- * Formatiert eine Zahl als Preis im deutschen Format (Komma als Dezimaltrennzeichen)
- * @param price - Der Preis als Zahl
- * @param decimals - Anzahl der Dezimalstellen (Standard: 2)
- * @returns Formatierter Preis-String im deutschen Format (z.B. "12,34")
+ * An amount in the format of the app's language, without the currency: "12,34" in
+ * German, "12.34" in English. The euro sign follows in the texts ("12,34 €", "12.34 €"),
+ * the same in both languages.
  */
-export function formatPriceDE(price: number, decimals: number = 2): string {
-  return price.toFixed(decimals).replace('.', ',');
+export function formatPrice(price: number, decimals: number = 2): string {
+  const text = price.toFixed(decimals);
+  return dateLocale().startsWith('de') ? text.replace('.', ',') : text;
 }
 
 /**

@@ -268,6 +268,26 @@ describe('CheckoutPage', () => {
     );
   });
 
+  it('opens the full-screen desk and leaves it again', () => {
+    render(
+      <MemoryRouter initialEntries={['/events/view/evt1/checkout']}>
+        <Routes>
+          <Route path="/events/view/:eventId/checkout" element={<CheckoutPage />} />
+          <Route
+            path="/events/view/:eventId/checkout/fullscreen"
+            element={<CheckoutPage fullscreen />}
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Vollbild-Kasse' }));
+    // Its own bar: online state and the way back, no page title
+    expect(screen.getByText('Online')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Kasse verlassen' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Kasse' })).toBeInTheDocument();
+  });
+
   it('links scanned products to their product page', () => {
     renderPage();
     scan('jack');

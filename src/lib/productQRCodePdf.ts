@@ -5,7 +5,7 @@ import type { Id } from './api/types';
 import type { LabelFormat } from '../shared/constants';
 import { drawLabelQr, labelUrl } from './qrCode';
 import { drawSortMark } from './sortMarkPdf';
-import { formatPriceDE } from './utils';
+import { formatPrice } from './utils';
 import { savePdf } from './saveFile';
 
 /** Layout in mm on A4 (210 x 297 mm) */
@@ -34,7 +34,7 @@ export interface LabelData {
 
 /** "5,00"; prices from 1000 € on are whole euros and go without cents ("1200"). */
 export function labelPrice(price: number): string {
-  return formatPriceDE(price, price >= 1000 ? 0 : 2);
+  return formatPrice(price, price >= 1000 ? 0 : 2);
 }
 
 /** "Gr. 104 · 5,00 €" – whatever is known about the item. */

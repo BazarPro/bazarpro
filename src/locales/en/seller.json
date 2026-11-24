@@ -80,7 +80,7 @@
     "deleteText": "The item is deleted with its images. If it was sold, the sale stays in the bazaar's settlement.",
     "qrCode": "QR code",
     "noBazaar": "No bazaar",
-    "minimum": "Neg. from €{{price}}",
+    "minimum": "Neg. from {{price}} €",
     "minimumHint": "Minimum price for the cash desk – buyers do not see it",
     "acceptsOffers": "Offers",
     "more": "More actions for “{{title}}”",
@@ -103,7 +103,7 @@
     "conditionRequired": "Condition is required",
     "categoryRequired": "Category is required",
     "priceNegative": "The price cannot be negative",
-    "priceTooHigh": "Price at most €999.99, whole euros up to €9999",
+    "priceTooHigh": "Price at most 999.99 €, whole euros up to 9999 €",
     "minimumNegative": "The minimum price cannot be negative",
     "minimumAbovePrice": "The minimum price must be below the price",
     "imageRequired": "At least one picture is required",
@@ -158,7 +158,7 @@
     "essentials": "Essentials",
     "details": "More details",
     "detailsHint": "Description, condition, negotiating",
-    "priceHint": "€0 means: free.",
+    "priceHint": "0 € means: free.",
     "priceRequired": "Please enter a price"
   },
   "discountDialog": {

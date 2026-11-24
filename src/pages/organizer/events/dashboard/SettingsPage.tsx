@@ -35,7 +35,7 @@ export function SettingsPage() {
 
   if (event === null) {
     return (
-      <div className="container mx-auto">
+      <div className="page-narrow">
         <h1 className="text-4xl mb-2">{t('dashboard.notFound')}</h1>
       </div>
     );
@@ -107,7 +107,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-3xl space-y-6">
+    <div className="page-narrow space-y-6">
       <PageHeader title={t('settingsPage.title')} />
       {event.endDate < Date.now() && (
         <p className="text-sm text-muted-foreground">{t('settingsPage.ended')}</p>

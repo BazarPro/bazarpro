@@ -11,7 +11,7 @@ import { SellerNumberBadge } from '../../../../components/sellers/SellerNumberBa
 import { FeeGroupBadge } from '../../../../components/sellers/FeeGroupBadge';
 import { useAssignMissingSellerNumbers } from '../../../../hooks/useAssignMissingSellerNumbers';
 import { useQuery } from '../../../../lib/api/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../../lib/api/functions';
 import type { Id } from '../../../../lib/api/types';
 import { Badge } from '../../../../components/ui/badge';
@@ -36,7 +36,7 @@ import {
   Plus,
   Printer,
 } from 'lucide-react';
-import { formatPriceDE } from '../../../../lib/utils';
+import { formatPrice } from '../../../../lib/utils';
 import type { VendorWithCalculations } from '../../../../lib/api/types';
 import { Tabs, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
 import { Button } from '../../../../components/ui/button';
@@ -77,7 +77,11 @@ export function SellerManagementPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState<SellerFilter>('all');
+  // The settlement opens this page on the sellers still to be paid
+  const location = useLocation();
+  const [activeFilter, setActiveFilter] = useState<SellerFilter>(
+    () => (location.state as { filter?: SellerFilter } | null)?.filter ?? 'all'
+  );
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
@@ -180,7 +184,7 @@ export function SellerManagementPage() {
   if (!canManage) return <div className="p-8 text-center">{t('sellers.noAccess')}</div>;
 
   return (
-    <div className="container mx-auto space-y-6 pb-20">
+    <div className="page-wide space-y-6 pb-20">
       <PageHeader
         title={t('sellers.title')}
         actions={
@@ -254,10 +258,7 @@ export function SellerManagementPage() {
       {event && <RegistrationPanel event={event} canSwitch={canBroadcast} />}
 
       {clashingCodes.size > 0 && (
-        <p
-          role="alert"
-          className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
-        >
+        <p role="alert" className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm">
           {t('sellers.sortClash', { count: clashingCodes.size })}
         </p>
       )}
@@ -276,7 +277,7 @@ export function SellerManagementPage() {
             <TabsTrigger value="withoutItems" className="gap-1.5">
               {t('sellers.withoutItems')}
               {withoutItems > 0 && (
-                <span className="rounded-full bg-amber-500/20 px-1.5 text-[11px] font-semibold tabular-nums text-amber-800 dark:text-amber-200">
+                <span className="rounded-full bg-warning-soft px-1.5 text-[11px] font-semibold tabular-nums text-warning-soft-foreground">
                   {withoutItems}
                 </span>
               )}
@@ -326,7 +327,7 @@ export function SellerManagementPage() {
       )}
 
       {pendingGroups > 0 && (
-        <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+        <p className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm">
           {t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
         </p>
       )}
@@ -406,7 +407,7 @@ export function SellerManagementPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="font-medium tabular-nums">
-                          {formatPriceDE(v.totalRevenue)} €
+                          {formatPrice(v.totalRevenue)} €
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -481,7 +482,7 @@ export function SellerManagementPage() {
                     <div>
                       <div className="text-xs text-muted-foreground">{t('sellers.revenue')}</div>
                       <div className="text-base font-semibold tabular-nums">
-                        {formatPriceDE(v.totalRevenue)} €
+                        {formatPrice(v.totalRevenue)} €
                       </div>
                     </div>
                     <div className="text-right">

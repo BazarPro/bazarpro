@@ -49,7 +49,7 @@ export function BulkEventAssignmentDialog({
             hideDisclaimer={true}
             description={t('bulkEvents.choose', { count: selectedCount })}
           />
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50/70 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/60">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-warning-soft text-warning-soft-foreground border border-tag/60">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <p className="text-sm">{t('bulkEvents.warning')}</p>
           </div>

@@ -617,9 +617,12 @@ export function MyProductsPage() {
   const currentDiscount = (productId: Id<'products'>) =>
     discountMap.get(productId) ?? productsById.get(productId)?.discountPercent ?? 0;
 
-  // Until the seller picks a layout, it follows the photos of the items
+  // Until the seller picks a layout, it follows the photos of the items; on phones the
+  // compact list, so more than one item fits on the screen
+  const onPhone =
+    typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 639px)').matches;
   const viewMode: ProductViewMode =
-    chosenView ?? autoViewMode((products ?? []).filter((p) => !p.sold));
+    chosenView ?? (onPhone ? 'list' : autoViewMode((products ?? []).filter((p) => !p.sold)));
   const changeView = (mode: ProductViewMode) => {
     setChosenView(mode);
     saveViewMode('myProducts', mode);
@@ -627,13 +630,13 @@ export function MyProductsPage() {
 
   return (
     <div className="">
-      <div className="container mx-auto">
+      <div className="page-wide">
         {clashingEvents.length > 0 && (
           <p
             role="alert"
-            className="mb-4 flex gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
+            className="mb-4 flex gap-2 rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm"
           >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-soft-foreground" />
             {t('labels.clashAt', { bazaars: clashingEvents.map((e) => e.title).join(', ') })}
           </p>
         )}

@@ -382,7 +382,7 @@ export function ProductForm() {
   };
 
   if ((isEditing && product === undefined) || (copyFrom && copySource === undefined)) {
-    return <PageSkeleton variant="form" className="max-w-2xl" />;
+    return <PageSkeleton variant="form" />;
   }
   if (isEditing && product === null) {
     return <div>{t('form.notFound')}</div>;
@@ -413,9 +413,9 @@ export function ProductForm() {
 
   return (
     <div>
-      <div className="container mx-auto">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-6 max-w-5xl mx-auto">
+      <div>
+        <div className="page-narrow">
+          <div className="flex items-center justify-between mb-6">
             <BackButton variant="ghost" title={t('actions.cancel', { ns: 'common' })} />
           </div>
           <PageHeader
@@ -464,7 +464,7 @@ export function ProductForm() {
                 <MyProductSelectEvents />
               </div>
 
-              <StickyActionBar>
+              <StickyActionBar className="md:mx-0 md:px-0 lg:mx-0 lg:px-0">
                 <Button type="submit" size="lg" className="flex-1" disabled={disabled}>
                   {isEditing ? t('form.saveChanges') : t('form.create')}
                 </Button>

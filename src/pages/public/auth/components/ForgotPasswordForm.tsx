@@ -194,7 +194,7 @@ export function ForgotPasswordForm() {
               />
               <p
                 id="new-password-hint"
-                className={`text-xs ${newPassword && !isPasswordValid ? 'text-destructive dark:text-red-400 font-medium' : 'text-muted-foreground'}`}
+                className={`text-xs ${newPassword && !isPasswordValid ? 'text-destructive  font-medium' : 'text-muted-foreground'}`}
               >
                 {t('register.passwordHint')}
               </p>

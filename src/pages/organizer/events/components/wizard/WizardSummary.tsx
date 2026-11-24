@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { VISIBILITY_OPTIONS } from '../../../../../constants/records';
 import type { EventVisibility } from '../../../../../shared/constants';
-import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
+import { cn, formatDateRangeDE, formatPrice } from '../../../../../lib/utils';
 import { localTime } from '../../../../../lib/eventDates';
 import type { FeeGroup } from '../../../../../shared/feeGroups';
 import {
@@ -168,13 +168,11 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
   const fees = [
     [
       t('wizard.summary.commission', { percent: commission }),
-      intakeFee ? t('wizard.summary.intakeFee', { fee: formatPriceDE(intakeFee) }) : undefined,
+      intakeFee ? t('wizard.summary.intakeFee', { fee: formatPrice(intakeFee) }) : undefined,
     ]
       .filter(Boolean)
       .join(' '),
-    maxFees !== undefined
-      ? t('wizard.summary.maxFees', { fee: formatPriceDE(maxFees) })
-      : undefined,
+    maxFees !== undefined ? t('wizard.summary.maxFees', { fee: formatPrice(maxFees) }) : undefined,
     // "Vereinsmitglieder: 5 %"
     ...(features.feeGroups ?? [])
       .filter((group) => group.label.trim())
@@ -234,7 +232,7 @@ export function WizardSummary({ onEdit }: { onEdit: (step: SummaryStep) => void 
   return (
     <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex items-start gap-2">
-        <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+        <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-success-soft-foreground" />
         <div>
           <h3 className="font-semibold">{t('wizard.summary.ready')}</h3>
           <p className="text-sm text-muted-foreground">{t('wizard.summary.readyText')}</p>

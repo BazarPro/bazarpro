@@ -5,7 +5,7 @@ import { Check, Minus } from 'lucide-react';
 import type { Doc } from '../../../../../lib/api/types';
 import { resolveEventFeatures } from '../../../../../shared/eventFeatures';
 import { VISIBILITY_OPTIONS } from '../../../../../constants/records';
-import { formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
+import { formatDateRangeDE, formatPrice } from '../../../../../lib/utils';
 import { Badge } from '../../../../../components/ui/badge';
 import { dateLocale } from '../../../../../i18n/format';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +35,7 @@ function Feature({ on, title, detail }: { on: boolean; title: string; detail?: s
     <li className="flex items-start gap-2">
       {on ? (
         <Check
-          className="h-4 w-4 mt-0.5 text-green-600 shrink-0"
+          className="h-4 w-4 mt-0.5 text-success-soft-foreground shrink-0"
           aria-label={t('summary.active')}
         />
       ) : (
@@ -191,13 +191,13 @@ export function EventSettingsSummary({ event }: { event: EventWithLabels }) {
           {features.intakeFee !== undefined && (
             <Feature
               on={true}
-              title={t('summary.intakeFee', { amount: formatPriceDE(features.intakeFee) })}
+              title={t('summary.intakeFee', { amount: formatPrice(features.intakeFee) })}
             />
           )}
           {features.maxFeesPerSeller !== undefined && (
             <Feature
               on={true}
-              title={t('summary.maxFees', { amount: formatPriceDE(features.maxFeesPerSeller) })}
+              title={t('summary.maxFees', { amount: formatPrice(features.maxFeesPerSeller) })}
             />
           )}
           {(features.feeGroups?.length ?? 0) > 0 && (

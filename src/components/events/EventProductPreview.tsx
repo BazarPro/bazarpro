@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { api } from '../../lib/api/functions';
 import type { Id } from '../../lib/api/types';
 import { usePublicQuery } from '../../hooks/usePublicQuery';
-import { cn, formatPriceDE } from '../../lib/utils';
+import { cn, formatPrice } from '../../lib/utils';
 import { discountedPrice } from '../../shared/eventFeatures';
 import { matchesPublicStatusFilter } from '../../lib/eventProductStatus';
 import { ScrollRow } from '../ui/scroll-row';
@@ -100,10 +100,10 @@ export function EventProductPreview({ eventId, isRunning = false }: EventProduct
                       {product.title}
                     </p>
                     <p className="mt-0.5 text-lg font-bold">
-                      {formatPriceDE(price)} €
+                      {formatPrice(price)} €
                       {discount > 0 && !product.sold && (
                         <span className="ml-1.5 text-xs font-normal line-through opacity-75">
-                          {formatPriceDE(product.price)} €
+                          {formatPrice(product.price)} €
                         </span>
                       )}
                     </p>

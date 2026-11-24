@@ -8,7 +8,7 @@ import type { Id } from '../../lib/api/types';
 import { categoryName } from '../../i18n/categories';
 import { CONDITION_OPTIONS } from '../../constants/records';
 import { PRODUCT_CONDITIONS, type ProductContitions } from '../../shared/constants';
-import { formatPriceDE } from '../../lib/utils';
+import { formatPrice } from '../../lib/utils';
 import { getUserFacingErrorMessage } from '../../lib/errors';
 import {
   buildImportRows,
@@ -352,7 +352,7 @@ export function WalkInImportDialog({
                             </td>
                             <td className="px-3 py-1.5">{item.attributes?.size ?? ''}</td>
                             <td className="px-3 py-1.5 text-right tabular-nums">
-                              {formatPriceDE(item.price)} €
+                              {formatPrice(item.price)} €
                             </td>
                           </tr>
                         );

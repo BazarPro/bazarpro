@@ -38,7 +38,7 @@ import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '../../../lib/errors';
-import { formatDateTimeDE, formatPriceDE } from '../../../lib/utils';
+import { formatDateTimeDE, formatPrice } from '../../../lib/utils';
 import { selectEvent } from '../../../lib/selectedEvent';
 import {
   clearEventDraft,
@@ -345,7 +345,7 @@ const buildEventSchema = (
           code: 'custom',
           message: i18n.t('form.registeredMaxIntakeFee', {
             ns: 'organizer',
-            fee: formatPriceDE(terms.intakeFee),
+            fee: formatPrice(terms.intakeFee),
           }),
           path: ['features', 'intakeFee'],
         });
@@ -356,7 +356,7 @@ const buildEventSchema = (
           code: 'custom',
           message: i18n.t('form.registeredMaxFeeCap', {
             ns: 'organizer',
-            fee: formatPriceDE(terms.maxFeesPerSeller ?? 0),
+            fee: formatPrice(terms.maxFeesPerSeller ?? 0),
           }),
           path: ['features', 'maxFeesPerSeller'],
         });
@@ -393,7 +393,7 @@ const buildEventSchema = (
           'intakeFee',
           given(now.intakeFee) ?? 0,
           before.intakeFee ?? 0,
-          `${formatPriceDE(before.intakeFee ?? 0)} €`
+          `${formatPrice(before.intakeFee ?? 0)} €`
         );
         const capBefore = before.maxFeesPerSeller ?? terms.maxFeesPerSeller;
         if (capBefore !== undefined) {
@@ -401,7 +401,7 @@ const buildEventSchema = (
             'maxFeesPerSeller',
             given(now.maxFeesPerSeller) ?? given(data.features.maxFeesPerSeller) ?? Infinity,
             capBefore,
-            `${formatPriceDE(capBefore)} €`
+            `${formatPrice(capBefore)} €`
           );
         }
         const itemsBefore = before.maxItemsPerSeller ?? terms.maxItemsPerSeller;
@@ -753,6 +753,70 @@ function stepKey<T extends string>(id: T, directSale: boolean | undefined) {
 
 /** The sections of the edit page, in the order of the wizard's steps. */
 const EDIT_SECTIONS = ['basics', 'sale', 'items', 'fees', 'registration', 'logistics'] as const;
+
+/**
+ * The jump bar of the settings: as wide as the form, stays on top while scrolling and
+ * marks the part in view. On phones it scrolls sideways, a fade at the edge says so.
+ */
+function SectionJumpBar({
+  label,
+  sections,
+}: {
+  label: string;
+  sections: { id: string; label: string }[];
+}) {
+  const [active, setActive] = useState(sections[0]?.id);
+  // The ids as one string: the list is built anew on every render
+  const ids = sections.map((section) => section.id).join(' ');
+  useEffect(() => {
+    const elements = ids
+      .split(' ')
+      .map((id) => document.getElementById(`section-${id}`))
+      .filter((element): element is HTMLElement => !!element);
+    if (elements.length === 0 || typeof IntersectionObserver === 'undefined') return;
+    // The part whose top passed the bar last is the one being read
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActive(visible[0].target.id.replace('section-', ''));
+      },
+      { rootMargin: '-140px 0px -55% 0px' }
+    );
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [ids]);
+
+  return (
+    <nav
+      aria-label={label}
+      className="sticky top-[77px] z-20 overflow-hidden rounded-xl border bg-card/95 shadow-sm backdrop-blur"
+    >
+      <div className="flex gap-1 overflow-x-auto p-1.5 [mask-image:linear-gradient(90deg,#000_88%,transparent)] sm:[mask-image:none]">
+        {sections.map((section) => (
+          <Button
+            key={section.id}
+            type="button"
+            variant={active === section.id ? 'soft' : 'ghost'}
+            size="sm"
+            className="shrink-0"
+            aria-current={active === section.id ? 'location' : undefined}
+            onClick={() => {
+              setActive(section.id);
+              const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+              document
+                .getElementById(`section-${section.id}`)
+                ?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' });
+            }}
+          >
+            {section.label}
+          </Button>
+        ))}
+      </div>
+    </nav>
+  );
+}
 /** "details" exists only in the wizard; the edit page keeps them with the basics */
 type EventSectionId = (typeof EDIT_SECTIONS)[number] | 'details';
 
@@ -1502,13 +1566,14 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     return <div>{t('form.notFound')}</div>;
   }
   if ((isEditing && event === undefined) || !categories || isAuthLoading || creatingDraft) {
-    return <PageSkeleton variant="form" className="max-w-3xl" />;
+    return <PageSkeleton variant="form" />;
   }
 
   return (
     <div>
-      <div className="container mx-auto">
-        <div className={isEditing ? 'max-w-3xl mx-auto' : 'max-w-6xl mx-auto'}>
+      <div>
+        {/* Editing is a form; creating shows the preview beside it */}
+        <div className={isEditing ? 'page-narrow' : 'page-wide'}>
           {isEditing && <PageHeader title={t('settingsPage.title')} className="mb-6" />}
 
           {!isEventCreationEnabled && !isEditing && (
@@ -1534,27 +1599,13 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                   </Alert>
                 )}
                 {/* Long page: its parts are one tap away, in the order of the wizard */}
-                <nav
-                  aria-label={t('settingsPage.title')}
-                  className="sticky top-[69px] z-20 -mx-4 flex gap-1 overflow-x-auto border-b bg-background/95 px-4 py-2 backdrop-blur md:-mx-6 md:px-6 lg:-mx-8 lg:px-8"
-                >
-                  {EDIT_SECTIONS.map((id) => (
-                    <Button
-                      key={id}
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() =>
-                        document
-                          .getElementById(`section-${id}`)
-                          ?.scrollIntoView({ behavior: 'smooth' })
-                      }
-                    >
-                      {t(`wizard.short.${stepKey(id, directSale)}`)}
-                    </Button>
-                  ))}
-                </nav>
+                <SectionJumpBar
+                  label={t('settingsPage.title')}
+                  sections={EDIT_SECTIONS.map((id) => ({
+                    id,
+                    label: t(`wizard.short.${stepKey(id, directSale)}`),
+                  }))}
+                />
                 {EDIT_SECTIONS.map((id) => (
                   <section key={id} id={`section-${id}`} className="scroll-mt-32 space-y-4">
                     <div>
@@ -1579,7 +1630,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                   </section>
                 ))}
 
-                <StickyActionBar>
+                <StickyActionBar className="md:mx-0 md:px-0 lg:mx-0 lg:px-0">
                   <Button type="submit" className="flex-1 sm:flex-none" disabled={isSubmitting}>
                     {t('form.save')}
                   </Button>
@@ -1729,7 +1780,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                 </div>
 
                 <div aria-hidden className="flex-1" />
-                <StickyActionBar>
+                <StickyActionBar className="md:mx-0 md:px-0 lg:mx-0 lg:px-0">
                   {step > 0 && (
                     <Button
                       type="button"

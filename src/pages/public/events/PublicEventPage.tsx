@@ -267,7 +267,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
                     : ''}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 self-start whitespace-nowrap rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-800 sm:self-auto dark:bg-green-900 dark:text-green-200">
+                <span className="inline-flex items-center gap-1.5 self-start whitespace-nowrap rounded-full bg-success-soft px-3 py-1.5 text-sm font-medium text-success-soft-foreground sm:self-auto">
                   <Check className="h-4 w-4" />
                   {isPast ? t('page.soldHere') : t('page.sellingHere')}
                   {sellerNumber

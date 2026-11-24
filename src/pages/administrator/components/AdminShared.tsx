@@ -13,7 +13,12 @@ export function AdminGuard() {
   if (!user || user.systemRole !== 'admin') {
     return <Navigate to="/" replace />;
   }
-  return <Outlet />;
+  // The admin pages are lists and tables: the wide width of the app
+  return (
+    <div className="page-wide">
+      <Outlet />
+    </div>
+  );
 }
 
 /** Pill-style filter tabs used across the admin pages. */

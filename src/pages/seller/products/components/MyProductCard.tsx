@@ -252,7 +252,7 @@ export function MyProductCard({
           images={product.images}
           imageSrc={product.imageSrc}
           dimmed={product.sold}
-          className="aspect-[16/10]"
+          className="aspect-[2/1] sm:aspect-[16/10]"
         />
         {product.sold && <SoldStamp />}
         {checkbox && <div className="absolute left-3 top-3">{checkbox}</div>}

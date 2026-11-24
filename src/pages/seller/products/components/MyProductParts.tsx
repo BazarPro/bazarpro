@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../../components/ui/dropdown-menu';
 import { getDiscountButtonState } from '../../../../lib/discountRules';
-import { cn, formatPriceDE } from '../../../../lib/utils';
+import { cn, formatPrice } from '../../../../lib/utils';
 import { STATUS_OPTIONS } from '../../../../constants/records';
 import type { EventProductStatus } from '../../../../shared/constants';
 import type { InvoiceCopy } from '../../../../lib/saleBreakdown';
@@ -42,9 +42,9 @@ export interface MyProductHandlers {
 
 const STATUS_TONE: Record<EventProductStatus, string> = {
   announced: 'bg-sky-500',
-  available: 'bg-emerald-500',
+  available: 'bg-success',
   sold: 'bg-muted-foreground',
-  returned: 'bg-amber-500',
+  returned: 'bg-tag',
   rejected: 'bg-destructive',
 };
 
@@ -93,7 +93,7 @@ export function MyProductFacts({
           className="whitespace-nowrap rounded-full bg-muted px-1.5 py-px font-medium text-foreground/80"
           title={t('card.minimumHint')}
         >
-          {t('card.minimum', { price: formatPriceDE(product.minimumPrice) })}
+          {t('card.minimum', { price: formatPrice(product.minimumPrice) })}
         </span>
       )}
       {!product.sold && product.acceptsOffers && (
@@ -125,7 +125,10 @@ export function MyProductAlerts({
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
       {product.moderation && (
-        <span className={cn(chip, 'bg-destructive text-destructive-foreground')} title={product.moderation.reason}>
+        <span
+          className={cn(chip, 'bg-destructive text-destructive-foreground')}
+          title={product.moderation.reason}
+        >
           <EyeOff className="h-3 w-3" />
           {t('card.hiddenByModeration')}
         </span>
@@ -137,9 +140,7 @@ export function MyProductAlerts({
         </span>
       )}
       {!!product.unansweredQuestionCount && (
-        <span
-          className={cn(chip, 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100')}
-        >
+        <span className={cn(chip, 'bg-warning-soft text-warning-soft-foreground')}>
           <MessageCircle className="h-3 w-3" />
           {t('card.questions', { count: product.unansweredQuestionCount })}
         </span>

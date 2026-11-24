@@ -51,7 +51,7 @@ import {
   formGroupAdvantages,
 } from '../../../../../lib/sellerFees';
 import type { FeeGroup } from '../../../../../shared/feeGroups';
-import { cn, formatDateRangeDE, formatPriceDE } from '../../../../../lib/utils';
+import { cn, formatDateRangeDE, formatPrice } from '../../../../../lib/utils';
 import { categoryFieldText } from '../../../../../i18n/categoryFields';
 import { useRequirableFields } from '../../../../../hooks/useCategoryFields';
 import { formatEventPlace } from '../../../../../shared/eventJsonLd';
@@ -310,15 +310,15 @@ export function SalePreview({ type }: { type?: EventType }) {
             {features.discounts ? (
               <>
                 <span className="text-lg font-extrabold tabular-nums text-destructive">
-                  {formatPriceDE(discounted)} €
+                  {formatPrice(discounted)} €
                 </span>
                 <span className="text-[0.65rem] text-muted-foreground line-through">
-                  {formatPriceDE(item.price)} €
+                  {formatPrice(item.price)} €
                 </span>
               </>
             ) : (
               <span className="text-lg font-extrabold tabular-nums">
-                {formatPriceDE(item.price)} €
+                {formatPrice(item.price)} €
               </span>
             )}
             {features.minimumPrice && (
@@ -342,7 +342,7 @@ export function SalePreview({ type }: { type?: EventType }) {
               <p className="text-[0.6rem] font-semibold">{t('wizard.preview.offerTitle')}</p>
               <div className="flex gap-1">
                 <span className="flex-1 rounded border bg-background px-1.5 py-0.5 text-[0.6rem] tabular-nums">
-                  {formatPriceDE(offer)} €
+                  {formatPrice(offer)} €
                 </span>
                 <span className="flex items-center gap-0.5 rounded bg-primary px-1.5 text-[0.55rem] font-bold text-primary-foreground">
                   <Send className="h-2.5 w-2.5" /> {t('wizard.preview.offerSend')}
@@ -408,7 +408,7 @@ function LabelPreview({
             {title}
           </p>
           <p className={cn('font-bold tabular-nums', small ? 'text-[0.6rem]' : 'mt-0.5 text-xs')}>
-            {price !== undefined && `${formatPriceDE(price)} €`}
+            {price !== undefined && `${formatPrice(price)} €`}
           </p>
         </div>
       </div>
@@ -495,7 +495,7 @@ export function ItemsPreview({ type }: { type?: EventType }) {
                 <div className="p-2">
                   <p className="line-clamp-1 text-[0.65rem] font-semibold">{items[index].title}</p>
                   <p className="text-xs font-bold tabular-nums">
-                    {formatPriceDE(items[index].price)} €
+                    {formatPrice(items[index].price)} €
                   </p>
                 </div>
               </div>
@@ -538,48 +538,46 @@ export function FeesPreview({ type }: { type?: EventType }) {
     <PreviewCanvas caption={t('wizard.preview.sellerView')}>
       <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
         <p className="text-sm font-semibold">
-          {t('wizard.preview.feeItem', { price: `${formatPriceDE(price)} €` })}
+          {t('wizard.preview.feeItem', { price: `${formatPrice(price)} €` })}
         </p>
         <div className="flex h-8 overflow-hidden rounded-lg text-[0.65rem] font-bold text-white">
           <div
-            className="flex items-center justify-center bg-emerald-600 transition-all duration-500"
+            className="flex items-center justify-center bg-success transition-all duration-500"
             style={{ width: `${sellerShare}%` }}
           >
-            {sellerShare > 25 && `${formatPriceDE(sellerGets)} €`}
+            {sellerShare > 25 && `${formatPrice(sellerGets)} €`}
           </div>
           {kept > 0 && (
             <div className="flex flex-1 items-center justify-center bg-primary transition-all duration-500">
-              {100 - sellerShare > 12 && `${formatPriceDE(kept)} €`}
+              {100 - sellerShare > 12 && `${formatPrice(kept)} €`}
             </div>
           )}
         </div>
         <dl className="space-y-1 text-xs">
           <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-600" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-success" />
             <dt className="flex-1">{t('wizard.preview.sellerGets')}</dt>
-            <dd className="font-semibold tabular-nums">{formatPriceDE(sellerGets)} €</dd>
+            <dd className="font-semibold tabular-nums">{formatPrice(sellerGets)} €</dd>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
             <dt className="flex-1">{t('wizard.preview.bazaarKeeps')}</dt>
-            <dd className="font-semibold tabular-nums">{formatPriceDE(kept)} €</dd>
+            <dd className="font-semibold tabular-nums">{formatPrice(kept)} €</dd>
           </div>
         </dl>
         {intakeFee > 0 && (
           <p className="text-xs text-muted-foreground animate-in fade-in duration-300">
-            {t('wizard.preview.intakePerItem', { fee: `${formatPriceDE(intakeFee)} €` })}
+            {t('wizard.preview.intakePerItem', { fee: `${formatPrice(intakeFee)} €` })}
           </p>
         )}
         {cap !== undefined && (
-          <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 animate-in fade-in duration-300 dark:text-emerald-400">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-success-soft-foreground animate-in fade-in duration-300">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-            {t('wizard.preview.feeCap', { fee: `${formatPriceDE(cap)} €` })}
+            {t('wizard.preview.feeCap', { fee: `${formatPrice(cap)} €` })}
           </p>
         )}
         {kept === 0 && intakeFee === 0 && (
-          <p className="text-xs text-emerald-700 dark:text-emerald-400">
-            {t('wizard.preview.free')}
-          </p>
+          <p className="text-xs text-success-soft-foreground">{t('wizard.preview.free')}</p>
         )}
         {/* Own fees for groups of sellers (#302) */}
         {(values.features?.feeGroups ?? [])
@@ -904,9 +902,9 @@ export function EventPagePreview({
     <div className="overflow-hidden rounded-2xl border bg-background shadow-xl">
       <div className="flex items-center gap-2 border-b bg-muted/60 px-3 py-2">
         <span className="flex gap-1" aria-hidden>
-          <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
+          <span className="h-2.5 w-2.5 rounded-full bg-tag" />
+          <span className="h-2.5 w-2.5 rounded-full bg-success" />
         </span>
         <span className="flex-1 truncate rounded-md bg-background px-2 py-0.5 text-center text-[0.65rem] text-muted-foreground">
           {t('wizard.preview.browserUrl')}
@@ -961,7 +959,7 @@ export function EventPagePreview({
                             discount && 'text-destructive'
                           )}
                         >
-                          {formatPriceDE(price)} €
+                          {formatPrice(price)} €
                           {features.minimumPrice && !discount && (
                             <span className="ml-1 text-[0.6rem] font-semibold text-primary">
                               VB

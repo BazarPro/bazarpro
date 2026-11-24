@@ -165,7 +165,7 @@ function ConditionLine({
       <Icon
         className={cn(
           'mt-0.5 h-4 w-4 shrink-0',
-          icon ? 'text-muted-foreground' : allowed && 'text-green-600'
+          icon ? 'text-muted-foreground' : allowed && 'text-success-soft-foreground'
         )}
       />
       <div className="min-w-0">

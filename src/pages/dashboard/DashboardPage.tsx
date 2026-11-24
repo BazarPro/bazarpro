@@ -32,7 +32,7 @@ import { useFeatureFlags } from '../../hooks/useFeatureFlags';
 import { useInstanceConfig } from '../../hooks/useInstanceConfig';
 import { useMarkNoticesSeen } from '../../hooks/useMarkNoticesSeen';
 import { selectedOrCurrent, useSelectedEventId } from '../../lib/selectedEvent';
-import { cn, formatDateRangeDE, formatDateTimeDE, formatPriceDE } from '../../lib/utils';
+import { cn, formatDateRangeDE, formatDateTimeDE, formatPrice } from '../../lib/utils';
 import { AdminOverviewPage } from '../administrator/AdminOverviewPage';
 import { formatEventPlace } from '../../shared/eventJsonLd';
 import { EventApprovalBadge } from '../../components/events/EventApprovalBadge';
@@ -60,7 +60,7 @@ export function DashboardPage() {
       : role;
 
   if (!user) {
-    return <PageSkeleton className="max-w-5xl" />;
+    return <PageSkeleton />;
   }
 
   return (
@@ -69,7 +69,7 @@ export function DashboardPage() {
       {shown === 'administrator' ? (
         <AdminOverviewPage />
       ) : (
-        <div className="container mx-auto max-w-5xl space-y-8">
+        <div className="page-wide space-y-8">
           <Greeting name={user.firstName || user.name} />
           {shown === 'organizer' ? (
             <OrganizerOverview canCreate={access?.canCreateEvents ?? false} />
@@ -90,7 +90,7 @@ function Greeting({ name }: { name?: string }) {
       <PageHeader title={name ? t('greeting', { name }) : t('greetingAnonymous')} />
       {/* The banner of the landing page would push the page under the sidebar */}
       {isDemoMode && (
-        <p className="flex items-center gap-2 rounded-lg bg-yellow-500/15 text-yellow-900 dark:text-yellow-200 px-3 py-2 text-sm">
+        <p className="flex items-center gap-2 rounded-lg bg-warning-soft text-warning-soft-foreground  px-3 py-2 text-sm">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           {t('header.demoMode', { ns: 'common' })}
         </p>
@@ -480,8 +480,8 @@ function salesSummary(sales: SalesGroups, t: TFunction<'dashboard'>): string {
   if (sold === 0) return t('seller.noSales');
   const payout = (sales ?? []).reduce((sum, group) => sum + group.totals.payout, 0);
   // Fees above the takings: the seller owes the difference, not a payout below zero
-  if (payout < 0) return t('seller.salesFees', { count: sold, fees: formatPriceDE(-payout) });
-  return t('seller.sales', { count: sold, payout: formatPriceDE(payout) });
+  if (payout < 0) return t('seller.salesFees', { count: sold, fees: formatPrice(-payout) });
+  return t('seller.sales', { count: sold, payout: formatPrice(payout) });
 }
 
 /** The next bazaar with its cover picture, full title, date and place. */

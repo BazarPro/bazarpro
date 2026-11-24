@@ -523,7 +523,9 @@
     "feesOpen": "Annahmegebühr noch zu kassieren",
     "sellersToCollect": "Diese Verkäufer haben weniger verkauft, als die Annahmegebühr kostet, und zahlen bei der Abrechnung:",
     "sellerNumber": "Nr. {{number}}",
-    "capSplit": "− {{amount}} € zurück durch den Gebühren-Deckel"
+    "capSplit": "− {{amount}} € zurück durch den Gebühren-Deckel",
+    "settleNow_one": "Verkäufer abrechnen ({{count}} offen)",
+    "settleNow_other": "Verkäufer abrechnen ({{count}} offen)"
   },
   "products": {
     "sellerFound": "Teilnehmer {{name}} gefunden",
@@ -924,7 +926,11 @@
     "change": "Rückgeld {{amount}} €",
     "missing": "Es fehlen {{amount}} €",
     "addEmail": "Beleg per E-Mail",
-    "givenInvalid": "Betrag wie 20 oder 20,50"
+    "givenInvalid": "Betrag wie 20 oder 20,50",
+    "fullscreen": "Vollbild-Kasse",
+    "leave": "Kasse verlassen",
+    "online": "Online",
+    "offlineShort": "Offline"
   },
   "proof": {
     "cardTitle": "Nachweis der angebotenen Artikel",

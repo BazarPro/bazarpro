@@ -17,7 +17,7 @@ import { fieldMaxLength } from '../../../../shared/categoryFields';
 import type { Id } from '../../../../lib/api/types';
 import type { ProductToComplete } from '../../../../lib/productCompletion';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
-import { formatPriceDE } from '../../../../lib/utils';
+import { formatPrice } from '../../../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
 /** What the seller added to one item: photos and values of required fields. */
@@ -112,7 +112,7 @@ export function CompleteProductsDialog({
           <div className="rounded-lg border p-3">
             <div className="font-semibold">{current.product.title}</div>
             <div className="text-sm text-muted-foreground">
-              {formatPriceDE(current.product.price)} € ·{' '}
+              {formatPrice(current.product.price)} € ·{' '}
               {t('complete.missingList', { missing: missingLabels.join(', ') })}
             </div>
           </div>

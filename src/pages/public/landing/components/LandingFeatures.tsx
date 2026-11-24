@@ -54,8 +54,8 @@ const groups: FeatureGroup[] = [
   {
     icon: ShoppingBag,
     id: 'seller',
-    accent: 'text-amber-700 dark:text-amber-300',
-    iconBox: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    accent: 'text-warning-soft-foreground',
+    iconBox: 'bg-warning-soft text-warning-soft-foreground',
     features: [
       { icon: Camera, id: 'camera' },
       { icon: Layers, id: 'layers' },
@@ -90,8 +90,8 @@ const groups: FeatureGroup[] = [
   {
     icon: Search,
     id: 'visitor',
-    accent: 'text-emerald-700 dark:text-emerald-300',
-    iconBox: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    accent: 'text-success-soft-foreground',
+    iconBox: 'bg-success-soft text-success-soft-foreground',
     features: [
       { icon: Search, id: 'search' },
       { icon: ClipboardCheck, id: 'clipboardCheck' },

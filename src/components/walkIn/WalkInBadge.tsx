@@ -9,7 +9,7 @@ export function WalkInBadge({ className }: { className?: string }) {
     <Badge
       variant="outline"
       className={cn(
-        'shrink-0 gap-1 border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+        'shrink-0 gap-1 border-tag/60 bg-warning-soft text-warning-soft-foreground',
         className
       )}
       title={i18n.t('walkIn.badgeTitle', { ns: 'organizer' })}

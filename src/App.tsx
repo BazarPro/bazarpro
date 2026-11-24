@@ -139,6 +139,10 @@ const CheckoutPage = lazyPage(
   () => import('./pages/organizer/events/dashboard/CheckoutPage'),
   'CheckoutPage'
 );
+const FullscreenCheckoutPage = lazyPage(
+  () => import('./pages/organizer/events/dashboard/CheckoutPage'),
+  'FullscreenCheckoutPage'
+);
 
 function PublicEventWrapper() {
   const { eventId } = useParams();
@@ -359,6 +363,10 @@ function App() {
                           element={<ProductManagementPage />}
                         />
                         <Route path="/events/view/:eventId/checkout" element={<CheckoutPage />} />
+                        <Route
+                          path="/events/view/:eventId/checkout/fullscreen"
+                          element={<FullscreenCheckoutPage />}
+                        />
                         <Route
                           path="/events/view/:eventId/cash"
                           element={<CashReconciliationPage />}

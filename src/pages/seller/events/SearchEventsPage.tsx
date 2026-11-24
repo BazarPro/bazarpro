@@ -99,7 +99,7 @@ function EventCard({
         exclusion && 'border-destructive/40'
       )}
     >
-      <div className="aspect-video overflow-hidden relative">
+      <div className="aspect-[2/1] overflow-hidden relative sm:aspect-video">
         <ImageWithFallback
           storageId={event.coverImage}
           alt={event.title}
@@ -343,7 +343,7 @@ export function SearchEventsPage() {
 
   return (
     <div>
-      <div className="container mx-auto">
+      <div className="page-wide">
         <PageHeader title={t('search.title')} className="mb-8" />
 
         <div data-onboarding-id="events-search-main" className="space-y-10">

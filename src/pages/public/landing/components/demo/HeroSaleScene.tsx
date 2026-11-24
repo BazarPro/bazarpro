@@ -1,6 +1,6 @@
 import { CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '../../../../../lib/utils';
+import { cn, formatPrice } from '../../../../../lib/utils';
 import {
   AppBar,
   BikePhoto,
@@ -19,7 +19,7 @@ function ScanLine({ className }: { className: string }) {
   return (
     <span
       className={cn(
-        'pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-red-500 shadow-[0_0_8px_2px_rgba(239,68,68,0.7)]',
+        'pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-destructive shadow-[0_0_8px_2px_color-mix(in_oklab,var(--destructive)_70%,transparent)]',
         className
       )}
       style={{ ['--landing-scan-distance' as string]: `calc(${TAG_WIDTH} - 0.6rem)` }}
@@ -44,7 +44,8 @@ export function HeroSaleScene({
   const motion = (name: string) => (still ? undefined : name);
   return (
     <div aria-hidden="true" className={cn('relative mx-auto w-full max-w-2xl', className)}>
-      <div className="absolute inset-x-8 bottom-6 top-10 -z-10 rounded-full bg-primary/15 blur-3xl dark:bg-primary/25" />
+      {/* A calm petrol ground with the dots of the page, no haze */}
+      <div className="absolute inset-x-2 bottom-4 top-8 -z-10 rounded-[2.5rem] bg-primary/[0.07] bg-[radial-gradient(color-mix(in_oklab,var(--primary)_22%,transparent)_1.5px,transparent_1.5px)] [background-size:18px_18px] dark:bg-primary/10" />
 
       <div className="flex items-center gap-3 sm:gap-5">
         <div className="@container relative aspect-[6/5] min-w-0 flex-1">
@@ -88,7 +89,7 @@ export function HeroSaleScene({
                 <p className="truncate text-[0.55rem] text-muted-foreground">
                   {t('demo.raincoat')}
                 </p>
-                <p className="text-xs font-bold tabular-nums">8,00 €</p>
+                <p className="text-xs font-bold tabular-nums">{formatPrice(8)} €</p>
               </div>
             </div>
             <div
@@ -102,7 +103,7 @@ export function HeroSaleScene({
               </div>
               <div className="min-w-0">
                 <p className="truncate text-[0.55rem] text-muted-foreground">{t('demo.bike')}</p>
-                <p className="text-xs font-bold tabular-nums">45,00 €</p>
+                <p className="text-xs font-bold tabular-nums">{formatPrice(45)} €</p>
               </div>
             </div>
             <div
@@ -112,7 +113,7 @@ export function HeroSaleScene({
               )}
             >
               <span className="text-[0.55rem] text-muted-foreground">{t('demo.total')}</span>
-              <span className="text-sm font-extrabold tabular-nums">53,00 €</span>
+              <span className="text-sm font-extrabold tabular-nums">{formatPrice(53)} €</span>
             </div>
             <div className="relative mt-auto">
               <div className="rounded-lg bg-primary py-1.5 text-center text-[0.65rem] font-bold text-primary-foreground">
@@ -120,7 +121,7 @@ export function HeroSaleScene({
               </div>
               <div
                 className={cn(
-                  'absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-emerald-600 text-[0.65rem] font-bold text-white',
+                  'absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-success text-[0.65rem] font-bold text-white',
                   motion('landing-hero-sold')
                 )}
               >

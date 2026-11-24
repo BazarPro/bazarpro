@@ -26,7 +26,7 @@ import type { Id } from '../../../../../lib/api/types';
 import { discountedPrice } from '../../../../../shared/eventFeatures';
 import type { InventoryActionType } from '../../../../../hooks/useInventoryActions';
 import type { ProductWithStatus } from './inventoryTypes';
-import { cn, formatPriceDE } from '../../../../../lib/utils';
+import { cn, formatPrice } from '../../../../../lib/utils';
 import { getEventProductStatusTitle } from '../../../../../lib/eventProductStatus';
 import { priceSourceLabel } from '../../../../../lib/saleBreakdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../../components/ui/tabs';
@@ -373,7 +373,7 @@ function ProductRow({
               </>
             )}
             {product.internalNote && (
-              <span className="flex min-w-0 items-center gap-1 text-amber-700 dark:text-amber-300">
+              <span className="flex min-w-0 items-center gap-1 text-warning-soft-foreground">
                 <StickyNote className="h-3 w-3 shrink-0" />
                 <span className="truncate">{product.internalNote}</span>
               </span>
@@ -391,10 +391,10 @@ function ProductRow({
         <div className="text-right tabular-nums">
           {product.sale ? (
             <>
-              <div className="font-semibold">{formatPriceDE(product.sale.totalAmount)} €</div>
+              <div className="font-semibold">{formatPrice(product.sale.totalAmount)} €</div>
               {product.sale.totalAmount < product.sale.listPrice - 0.005 && (
                 <div className="text-xs text-muted-foreground">
-                  <span className="line-through">{formatPriceDE(product.sale.listPrice)} €</span>{' '}
+                  <span className="line-through">{formatPrice(product.sale.listPrice)} €</span>{' '}
                   {priceSourceLabel(product.sale)}
                 </div>
               )}
@@ -402,15 +402,15 @@ function ProductRow({
           ) : product.discountPercent ? (
             <>
               <div className="font-semibold text-destructive">
-                {formatPriceDE(discountedPrice(product.price, product.discountPercent))} €
+                {formatPrice(discountedPrice(product.price, product.discountPercent))} €
               </div>
               <div className="text-xs text-muted-foreground">
-                <span className="line-through">{formatPriceDE(product.price)} €</span> −
+                <span className="line-through">{formatPrice(product.price)} €</span> −
                 {product.discountPercent}%
               </div>
             </>
           ) : (
-            <div className="font-semibold">{formatPriceDE(product.price)} €</div>
+            <div className="font-semibold">{formatPrice(product.price)} €</div>
           )}
         </div>
 

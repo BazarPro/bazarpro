@@ -25,7 +25,7 @@ import { useEventAccess } from '../../../hooks/useEventAccess';
 import { eventApproval } from '../../../lib/eventApproval';
 import { api } from '../../../lib/api/functions';
 import type { Id } from '../../../lib/api/types';
-import { formatDateRangeDE, formatPriceDE } from '../../../lib/utils';
+import { formatDateRangeDE, formatPrice } from '../../../lib/utils';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/alert';
 import { toast } from 'sonner';
@@ -72,7 +72,7 @@ export function EventManagementDashboard() {
   if (event === null) {
     return (
       <div>
-        <div className="container mx-auto">
+        <div className="page-wide">
           <h1 className="text-4xl mb-2">{t('dashboard.notFound')}</h1>
         </div>
       </div>
@@ -136,7 +136,7 @@ export function EventManagementDashboard() {
       text: t('dashboard.steps.saleText', {
         sold,
         total: products.length,
-        revenue: formatPriceDE(totalRevenue),
+        revenue: formatPrice(totalRevenue),
       }),
       to: `${base}/checkout`,
       done: hasEnded,
@@ -190,7 +190,7 @@ export function EventManagementDashboard() {
 
   return (
     <div>
-      <div className="container mx-auto">
+      <div className="page-wide">
         <AdminEventBanner event={event} />
         {event.moderation && (
           <div className="mb-6">
@@ -345,7 +345,7 @@ export function EventManagementDashboard() {
             <StatTile
               icon={Banknote}
               label={t('dashboard.revenue')}
-              value={`${formatPriceDE(totalRevenue)} €`}
+              value={`${formatPrice(totalRevenue)} €`}
               hint={t('dashboard.soldOf', { sold, total: products.length })}
               to={`${base}/products?tab=sold`}
             />

@@ -7,7 +7,7 @@ import { Input } from '../../../../components/ui/input';
 import { NativeSelect } from '../../../../components/ui/native-select';
 import { FieldError } from '../../../../components/ui/field-error';
 import { InfoTip, LabelWithInfo } from '../../../../components/ui/info-tip';
-import { cn, formatPriceDE } from '../../../../lib/utils';
+import { cn, formatPrice } from '../../../../lib/utils';
 import { feeGroupAdvantages, type FeeLock } from '../../../../lib/sellerFees';
 import {
   MAX_FEE_GROUPS,
@@ -299,7 +299,7 @@ export function EditEventFeeGroups({
                           max={10_000}
                           placeholder={
                             given(eventCap)
-                              ? t('feeGroups.likeBazaar', { value: `${formatPriceDE(eventCap)} €` })
+                              ? t('feeGroups.likeBazaar', { value: `${formatPrice(eventCap)} €` })
                               : t('features.noCap')
                           }
                           readOnly={running}

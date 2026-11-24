@@ -112,7 +112,7 @@ export function ContactPage() {
                   {isSubmitted ? (
                     <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
                       <div className="flex justify-center">
-                        <CheckCircle2 className="h-16 w-16 text-green-500" />
+                        <CheckCircle2 className="h-16 w-16 text-success-soft-foreground" />
                       </div>
                       <h2 className="text-2xl font-bold">{t('contact.thanks')}</h2>
                       <p className="text-muted-foreground">{t('contact.sent')}</p>

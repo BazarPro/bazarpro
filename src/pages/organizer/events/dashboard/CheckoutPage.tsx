@@ -1,6 +1,7 @@
 import { PageHeader } from '../../../../components/ui/page-header';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { BrandMark } from '../../../../components/layout/BrandMark';
 import { useApiClient, useMutation, useQuery } from '../../../../lib/api/react';
 import { isNetworkError } from '../../../../lib/offlineMode';
 import { toast } from 'sonner';
@@ -12,6 +13,8 @@ import {
   Download,
   Keyboard,
   Mail,
+  Maximize2,
+  Minimize2,
   ShoppingCart,
   StickyNote,
   Trash2,
@@ -29,7 +32,7 @@ import { Label } from '../../../../components/ui/label';
 import { ImageWithFallback } from '../../../../components/ui/image-with-fallback';
 import { QRCodeScanner } from '../../../../components/ui/QRCodeScanner';
 import { getUserFacingErrorMessage } from '../../../../lib/errors';
-import { cn, formatPriceDE } from '../../../../lib/utils';
+import { cn, formatPrice } from '../../../../lib/utils';
 import { Trans, useTranslation } from 'react-i18next';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useEventAccess } from '../../../../hooks/useEventAccess';
@@ -99,12 +102,17 @@ export type ResolvedLine =
   | { ok: false; problem: string };
 
 /** The cash desk, for whom the organizer lets sell (helper permission "sale"). */
-export function CheckoutPage() {
+export function CheckoutPage({ fullscreen = false }: { fullscreen?: boolean }) {
   const { eventId } = useParams<{ eventId: string }>();
   const { isLoading, can } = useEventAccess(eventId as Id<'events'>);
   if (isLoading) return <PageSkeleton />;
   if (!can('sale')) return <NoCashDesk eventId={eventId} />;
-  return <CashDesk />;
+  return <CashDesk fullscreen={fullscreen} />;
+}
+
+/** The cash desk in full screen, for a tablet or laptop at the bazaar. */
+export function FullscreenCheckoutPage() {
+  return <CheckoutPage fullscreen />;
 }
 
 /**
@@ -117,7 +125,7 @@ function NoCashDesk({ eventId }: { eventId: string | undefined }) {
   const { t: tErrors } = useTranslation('errors');
   const offline = useOfflineCheckout(eventId);
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="page-wide space-y-6">
       {offline.pending > 0 && (
         <OfflineQueueRefused
           message={offline.refusedWith ?? tErrors('helper.sale')}
@@ -136,9 +144,10 @@ function NoCashDesk({ eventId }: { eventId: string | undefined }) {
  * changed discount shows up right away. Without internet the app sells from its copy of
  * the items and books the sales later (lib/offlineCheckout.ts).
  */
-function CashDesk() {
+function CashDesk({ fullscreen }: { fullscreen: boolean }) {
   const { t } = useTranslation('organizer');
   const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
   const sellProducts = useMutation(api.purchases.sellProducts);
   const client = useApiClient();
   const [cart, setCart] = useState<CartEntry[]>(() => (eventId ? loadCachedCart(eventId) : []));
@@ -301,8 +310,8 @@ function CashDesk() {
     change === null || !allReady
       ? ''
       : change < 0
-        ? t('checkout.missing', { amount: formatPriceDE(-change) })
-        : t('checkout.change', { amount: formatPriceDE(change) });
+        ? t('checkout.missing', { amount: formatPrice(-change) })
+        : t('checkout.change', { amount: formatPrice(change) });
   // Read out once the typing pauses, not at every key
   const [announcedChange, setAnnouncedChange] = useState('');
   useEffect(() => {
@@ -428,10 +437,8 @@ function CashDesk() {
 
   if (!eventId) return null;
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <PageHeader title={t('checkout.title')} />
-
+  const desk = (
+    <>
       <OfflineCheckoutBanner {...offline} />
       {offline.refusedWith && offline.pending > 0 && (
         <OfflineQueueRefused
@@ -442,7 +449,14 @@ function CashDesk() {
       )}
 
       {/* grid-cols-1: an implicit column would grow with the widest line on a phone */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-6',
+          fullscreen
+            ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'
+            : 'lg:grid-cols-[minmax(0,320px)_1fr]'
+        )}
+      >
         <section className="space-y-4 self-start rounded-xl border bg-card p-4">
           <div className="flex items-center justify-between gap-2">
             <StepHeading step={1} active={step === 1}>
@@ -469,16 +483,29 @@ function CashDesk() {
               )}
             </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2"
-            aria-pressed={cameraOn}
-            onClick={toggleCamera}
-          >
-            {cameraOn ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
-            {cameraOn ? t('checkout.cameraOff') : t('checkout.cameraOn')}
-          </Button>
+          {fullscreen && !cameraOn ? (
+            // Full screen: the scanner is the big thing on the left, one tap turns it on
+            <button
+              type="button"
+              aria-pressed={false}
+              onClick={toggleCamera}
+              className="flex aspect-[2/1] w-full flex-col sm:aspect-[4/3] items-center justify-center gap-3 rounded-xl border-2 border-dashed border-input bg-muted/40 text-muted-foreground transition-colors hover:border-primary hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+            >
+              <Camera className="size-10" />
+              <span className="font-semibold">{t('checkout.cameraOn')}</span>
+            </button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              aria-pressed={cameraOn}
+              onClick={toggleCamera}
+            >
+              {cameraOn ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
+              {cameraOn ? t('checkout.cameraOff') : t('checkout.cameraOn')}
+            </Button>
+          )}
           {/* With items in the cart it takes less room on phones: the cart comes next */}
           {cameraOn && <QRCodeScanner onScanSuccess={addCode} compact={cart.length > 0} />}
           <form
@@ -522,7 +549,7 @@ function CashDesk() {
                   }
                   ns="organizer"
                   count={lastSale.count}
-                  values={{ total: formatPriceDE(lastSale.total) }}
+                  values={{ total: formatPrice(lastSale.total) }}
                   components={{ b: <b /> }}
                 />
               </p>
@@ -585,7 +612,7 @@ function CashDesk() {
                 {directSale && (
                   <div className="flex w-full items-baseline justify-between text-sm text-muted-foreground">
                     <span>{t('checkout.direct.paidToSeller')}</span>
-                    <span className="tabular-nums">{formatPriceDE(total)} €</span>
+                    <span className="tabular-nums">{formatPrice(total)} €</span>
                   </div>
                 )}
                 <div className="flex w-full items-baseline justify-between">
@@ -605,7 +632,7 @@ function CashDesk() {
                       : t('checkout.sum', { count: cart.length })}
                   </span>
                   <span className="font-display text-2xl font-extrabold tabular-nums lg:text-4xl">
-                    {formatPriceDE(taken)} €
+                    {formatPrice(taken)} €
                   </span>
                 </div>
                 <div className="flex w-full items-center gap-2 sm:gap-3">
@@ -673,8 +700,8 @@ function CashDesk() {
                     className="size-5"
                   />
                   {directSale
-                    ? t('checkout.direct.received', { total: formatPriceDE(taken) })
-                    : t('checkout.received', { total: formatPriceDE(total) })}
+                    ? t('checkout.direct.received', { total: formatPrice(taken) })
+                    : t('checkout.received', { total: formatPrice(total) })}
                 </Label>
                 <div className="flex w-full gap-2">
                   <Button
@@ -727,7 +754,77 @@ function CashDesk() {
           )}
         </section>
       </div>
+    </>
+  );
+
+  if (fullscreen) {
+    return (
+      <div className="flex min-h-svh flex-col">
+        <DeskBar
+          eventTitle={event?.title}
+          offline={offline.offline}
+          onLeave={() => navigate(`/events/view/${eventId}/checkout`)}
+        />
+        <div className="mx-auto w-full max-w-[96rem] flex-1 space-y-6 p-4 lg:p-6">{desk}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="page-wide space-y-6">
+      <PageHeader
+        title={t('checkout.title')}
+        actions={
+          <Button asChild variant="outline" className="max-sm:hidden">
+            <Link to={`/events/view/${eventId}/checkout/fullscreen`}>
+              <Maximize2 className="h-4 w-4" />
+              {t('checkout.fullscreen')}
+            </Link>
+          </Button>
+        }
+      />
+      {desk}
     </div>
+  );
+}
+
+/**
+ * The bar of the full-screen desk: which bazaar, whether the desk is online, and the
+ * way back. Dark petrol in both themes, so the desk reads as its own place.
+ */
+function DeskBar({
+  eventTitle,
+  offline,
+  onLeave,
+}: {
+  eventTitle: string | undefined;
+  offline: boolean;
+  onLeave: () => void;
+}) {
+  const { t } = useTranslation('organizer');
+  return (
+    <header className="flex items-center gap-3 bg-[#08363a] px-4 py-2.5 text-white sm:gap-4 sm:px-6">
+      <BrandMark onDark className="h-7 w-7" />
+      <p className="min-w-0 flex-1 truncate text-sm">
+        <span className="font-bold">{t('checkout.title')}</span>
+        {eventTitle && <span className="text-white/75"> · {eventTitle}</span>}
+      </p>
+      <span className="flex shrink-0 items-center gap-2 text-sm text-white/85">
+        <span
+          aria-hidden="true"
+          className={cn('size-2 rounded-full', offline ? 'bg-tag' : 'bg-[#7ed67a]')}
+        />
+        {offline ? t('checkout.offlineShort') : t('checkout.online')}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onLeave}
+        className="shrink-0 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white dark:bg-white/10"
+      >
+        <Minimize2 className="h-4 w-4" />
+        <span className="max-sm:sr-only">{t('checkout.leave')}</span>
+      </Button>
+    </header>
   );
 }
 
@@ -754,7 +851,8 @@ function StepNumber({
         active
           ? 'bg-tag text-tag-foreground ring-2 ring-foreground ring-offset-1 ring-offset-transparent'
           : onPrimary
-            ? 'border-2 border-primary-foreground/70 text-primary-foreground'
+            ? // follows the button: light on petrol, muted while it is off
+              'border-2 border-current'
             : 'border-2 border-input text-muted-foreground',
         className
       )}
@@ -802,7 +900,7 @@ function DirectCommission({ full, taken = full }: { full: number; taken?: number
       {capped && taken === 0
         ? t('checkout.direct.capReached')
         : t(capped ? 'checkout.direct.commissionCapped' : 'checkout.direct.commission', {
-            amount: formatPriceDE(taken),
+            amount: formatPrice(taken),
           })}
     </span>
   );
@@ -881,8 +979,8 @@ function CartLine({
         return {
           ok: false,
           problem: t('checkout.problem.priceRange', {
-            min: formatPriceDE(min),
-            max: formatPriceDE(item.listPrice),
+            min: formatPrice(min),
+            max: formatPrice(item.listPrice),
           }),
         };
       }
@@ -958,7 +1056,7 @@ function CartLine({
             {line?.ok && (
               <span className="flex flex-col items-end">
                 <span className="whitespace-nowrap font-semibold tabular-nums">
-                  {formatPriceDE(line.price)} €
+                  {formatPrice(line.price)} €
                 </span>
                 {directSale && (
                   <DirectCommission
@@ -988,7 +1086,7 @@ function CartLine({
 
         {item?.discountPercent ? (
           <p className="text-xs text-muted-foreground">
-            <span className="line-through">{formatPriceDE(item.price)} €</span> −
+            <span className="line-through">{formatPrice(item.price)} €</span> −
             {item.discountPercent} %
           </p>
         ) : null}
@@ -1002,13 +1100,13 @@ function CartLine({
               onChange={(e) => onChange({ choice: e.target.value as PriceChoice })}
             >
               <option value="list">
-                {t('checkout.labelPrice', { price: formatPriceDE(item.listPrice) })}
+                {t('checkout.labelPrice', { price: formatPrice(item.listPrice) })}
               </option>
               {offers?.map((offer) => (
                 <option key={offer._id} value={offer._id}>
                   {t('checkout.offer', {
                     name: offer.buyerName,
-                    price: formatPriceDE(Math.min(offer.amount, item.listPrice)),
+                    price: formatPrice(Math.min(offer.amount, item.listPrice)),
                   })}
                 </option>
               ))}
@@ -1017,7 +1115,7 @@ function CartLine({
               ) : (
                 item.minimumPrice !== undefined && (
                   <option value="negotiated">
-                    {t('checkout.negotiated', { min: formatPriceDE(item.minimumPrice) })}
+                    {t('checkout.negotiated', { min: formatPrice(item.minimumPrice) })}
                   </option>
                 )
               )}

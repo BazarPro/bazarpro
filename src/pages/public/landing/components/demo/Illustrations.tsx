@@ -1,4 +1,4 @@
-import { ShoppingBag } from 'lucide-react';
+import { BrandMark } from '../../../../../components/layout/BrandMark';
 import { QrCode } from '../../../../../components/ui/QrCode';
 import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '../../../../../lib/utils';
@@ -158,14 +158,16 @@ interface HangTagProps {
 export function HangTag({ itemNumber, className, overlay, style }: HangTagProps) {
   return (
     <div className={cn('flex w-[3.6rem] flex-col items-center', className)} style={style}>
-      <span className="h-3 w-px bg-foreground/60" />
-      <div className="relative w-full rounded-md bg-white p-1 text-zinc-900 shadow-lg ring-1 ring-black/10">
-        <span className="absolute left-1/2 top-0.5 h-1 w-1 -translate-x-1/2 rounded-full bg-zinc-300" />
-        <div className="relative mt-1 overflow-hidden rounded-sm">
+      {/* The string in tag yellow, like the one of the logo */}
+      <span className="h-3 w-0.5 rounded-full bg-tag" />
+      {/* A price tag: corners cut off at the top, a punched hole, the number on a yellow strip */}
+      <div className="relative w-full overflow-hidden rounded-b-md bg-white text-zinc-900 shadow-lg [clip-path:polygon(22%_0,78%_0,100%_16%,100%_100%,0_100%,0_16%)]">
+        <span className="absolute left-1/2 top-1 h-1 w-1 -translate-x-1/2 rounded-full bg-zinc-300 shadow-inner" />
+        <div className="relative mx-1 mt-2.5 overflow-hidden rounded-sm">
           <QrCode value="https://bazarpro.de" className="h-auto w-full" />
           {overlay}
         </div>
-        <p className="mt-0.5 whitespace-nowrap text-center text-[0.5rem] font-bold tabular-nums leading-none text-zinc-600">
+        <p className="mt-1 whitespace-nowrap bg-tag py-0.5 text-center text-[0.5rem] font-bold tabular-nums leading-none text-tag-foreground">
           {itemNumber}
         </p>
       </div>
@@ -232,7 +234,7 @@ export function PhoneFrame({
 export function AppBar({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-1.5 border-b px-3 py-1.5">
-      <ShoppingBag className="h-3 w-3 shrink-0 text-primary" />
+      <BrandMark compact className="h-3 w-3" />
       <span className="truncate text-[0.6rem] font-bold">{title}</span>
     </div>
   );

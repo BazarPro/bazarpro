@@ -294,9 +294,7 @@ export function RegisterPage() {
                 data-testid="register-emailfield"
               />
               {errors.email && (
-                <p className="text-destructive dark:text-red-400 text-xs font-medium">
-                  {errors.email.message}
-                </p>
+                <p className="text-destructive  text-xs font-medium">{errors.email.message}</p>
               )}
             </div>
 
@@ -313,7 +311,7 @@ export function RegisterPage() {
               />
               <p
                 id="password-hint"
-                className={`text-xs ${errors.password ? 'text-destructive dark:text-red-400 font-medium' : 'text-muted-foreground'}`}
+                className={`text-xs ${errors.password ? 'text-destructive  font-medium' : 'text-muted-foreground'}`}
               >
                 {errors.password?.message ?? t('register.passwordHint')}
               </p>

@@ -88,7 +88,7 @@ export function AdminSettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader title={t('settings.title')} />
-        <Loading className="max-w-xl">
+        <Loading className="max-w-4xl">
           <FormSkeleton fields={3} />
         </Loading>
       </div>
@@ -99,7 +99,7 @@ export function AdminSettingsPage() {
     <div className="space-y-6">
       <PageHeader title={t('settings.title')} />
 
-      <div className="max-w-xl space-y-6 rounded-xl border bg-card p-6">
+      <div className="max-w-4xl space-y-6 rounded-xl border bg-card p-6">
         <div className="space-y-2">
           <Label htmlFor="instance-name">{t('settings.name')}</Label>
           <Input

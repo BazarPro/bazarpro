@@ -1,6 +1,7 @@
 import { Sheet, SheetContent } from '../ui/sheet';
 import { Sidebar as AppSidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
+import { isFullscreenDesk } from '../../lib/fullscreenDesk';
 import { useSidebar } from '../../context/SidebarContext';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { useQuery } from '../../lib/api/react';
@@ -60,7 +61,9 @@ export function ResponsiveSidebar({ children }: ResponsiveSidebarProps) {
     isLandingPage || MARKETING_PAGES.some((path) => currentPage.startsWith(path));
   // Creating a bazaar is one task from start to end: nothing else on the screen
   const isFocusPage = FOCUS_PAGES.has(currentPage.replace(/\/+$/, ''));
-  const showFixedSidebar = !isMarketingPage && !isFocusPage;
+  // The full-screen cash desk: nothing but the desk
+  const isDesk = isFullscreenDesk(currentPage);
+  const showFixedSidebar = !isMarketingPage && !isFocusPage && !isDesk;
   const canOpenMobileSidebar = isDesktop ? true : shouldShowMobileSidebar;
 
   useEffect(() => {
@@ -105,7 +108,9 @@ export function ResponsiveSidebar({ children }: ResponsiveSidebarProps) {
   const mainClassName = cn(
     isFullBleed
       ? 'flex-1 min-w-0'
-      : 'flex-1 min-w-0 min-h-[calc(100svh-69px)] p-4 pb-12 md:p-6 md:pb-24 lg:p-8 bg-muted/30',
+      : isDesk
+        ? 'flex-1 min-w-0 bg-background'
+        : 'flex-1 min-w-0 min-h-[calc(100svh-69px)] p-4 pb-12 md:p-6 md:pb-24 lg:p-8 bg-muted/30',
     // Room for the phone's tab bar, also for sticky buttons (StickyActionBar)
     user &&
       fixedSidebarOpen &&

@@ -282,3 +282,38 @@ html {
     opacity: 1;
   }
 }
+
+/*
+ * The two widths of the app's pages, so every page lines up with the others:
+ * wide for overviews, lists and tables, narrow for forms, settings and the account.
+ */
+@utility page-wide {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 72rem;
+}
+
+@utility page-narrow {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 56rem;
+}
+
+/* Toasts (sonner, richColors) in the colours of the design, light and dark */
+html [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--popover);
+  --normal-text: var(--popover-foreground);
+  --normal-border: var(--border);
+  --success-bg: var(--success-soft);
+  --success-text: var(--success-soft-foreground);
+  --success-border: color-mix(in oklab, var(--success) 35%, transparent);
+  --info-bg: var(--card);
+  --info-text: var(--foreground);
+  --info-border: var(--border);
+  --warning-bg: var(--warning-soft);
+  --warning-text: var(--warning-soft-foreground);
+  --warning-border: color-mix(in oklab, var(--tag) 60%, transparent);
+  --error-bg: var(--danger-soft);
+  --error-text: var(--danger-soft-foreground);
+  --error-border: color-mix(in oklab, var(--destructive) 40%, transparent);
+}

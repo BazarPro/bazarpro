@@ -8,9 +8,12 @@ import { cn } from '../../lib/utils';
 export function BrandMark({
   className,
   compact = false,
+  onDark = false,
 }: {
   className?: string;
   compact?: boolean;
+  /** On a dark ground in both themes: the yellow tag with the white string */
+  onDark?: boolean;
 }) {
   if (compact) {
     return (
@@ -31,13 +34,13 @@ export function BrandMark({
       className={cn('h-8 w-8 shrink-0', className)}
     >
       <path
-        className="fill-primary dark:fill-tag"
+        className={onDark ? 'fill-tag' : 'fill-primary dark:fill-tag'}
         fillRule="evenodd"
         transform="rotate(-12 21 21)"
         d="M16 6h17a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H16l-9.2-12.1a3.2 3.2 0 0 1 0-3.8ZM12.6 17.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4ZM19 12.5h7.2a4.1 4.1 0 0 1 3 6.9 4.4 4.4 0 0 1-2.7 8.1H19Zm3 2.6v3.7h3.8a1.85 1.85 0 0 0 0-3.7Zm0 6.2v3.6h4.4a1.8 1.8 0 0 0 0-3.6Z"
       />
       <path
-        className="stroke-tag dark:stroke-white"
+        className={onDark ? 'stroke-white' : 'stroke-tag dark:stroke-white'}
         d="M12.8 22.7C7.6 19.6 4.4 12.4 7.6 4.4"
         strokeWidth="2.6"
         strokeLinecap="round"

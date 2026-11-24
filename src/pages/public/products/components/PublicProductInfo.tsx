@@ -1,5 +1,5 @@
 import { Badge } from '../../../../components/ui/badge';
-import { cn, formatPriceDE } from '../../../../lib/utils';
+import { cn, formatPrice } from '../../../../lib/utils';
 import { CONDITION_OPTIONS } from '../../../../constants/records';
 import { useTranslation } from 'react-i18next';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
@@ -47,11 +47,9 @@ export function PublicProductSummary({
         {discountedPrice ? (
           <>
             <span className="text-3xl sm:text-4xl font-bold text-destructive">
-              {formatPriceDE(discountedPrice)} €
+              {formatPrice(discountedPrice)} €
             </span>
-            <span className="pb-1 text-muted-foreground line-through">
-              {formatPriceDE(price)} €
-            </span>
+            <span className="pb-1 text-muted-foreground line-through">{formatPrice(price)} €</span>
             <Badge variant="destructive" className="mb-1.5">
               {t('info.discount', { percent: discountPercent })}
             </Badge>
@@ -60,10 +58,10 @@ export function PublicProductSummary({
           <span
             className={cn(
               'text-3xl sm:text-4xl font-bold',
-              price === 0 && 'text-emerald-700 dark:text-emerald-400'
+              price === 0 && 'text-success-soft-foreground'
             )}
           >
-            {price === 0 ? t('price.free', { ns: 'seller' }) : `${formatPriceDE(price)} €`}
+            {price === 0 ? t('price.free', { ns: 'seller' }) : `${formatPrice(price)} €`}
           </span>
         )}
         {negotiable && !sold && (

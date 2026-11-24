@@ -54,14 +54,14 @@ function PlacesMeter({
         aria-label={label}
       >
         <div
-          className={cn('h-full rounded-full transition-all', full ? 'bg-amber-500' : 'bg-primary')}
+          className={cn('h-full rounded-full transition-all', full ? 'bg-tag' : 'bg-primary')}
           style={{ width: `${Math.min(100, (taken / limit) * 100)}%` }}
         />
       </div>
       <p
         className={cn(
           'text-sm',
-          full ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-muted-foreground'
+          full ? 'font-medium text-warning-soft-foreground' : 'text-muted-foreground'
         )}
       >
         {full ? fullText : leftText}
@@ -186,13 +186,13 @@ export function RegistrationPanel({
           <div className="flex items-center gap-2">
             <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
               {tone === 'open' && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-60 motion-reduce:hidden" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60 motion-reduce:hidden" />
               )}
               <span
                 className={cn(
                   'relative inline-flex h-2.5 w-2.5 rounded-full',
-                  tone === 'open' && 'bg-green-500',
-                  tone === 'full' && 'bg-amber-500',
+                  tone === 'open' && 'bg-success',
+                  tone === 'full' && 'bg-tag',
                   tone === 'waiting' && 'bg-sky-500',
                   tone === 'closed' && 'bg-muted-foreground/50'
                 )}
@@ -290,7 +290,7 @@ export function RegistrationPanel({
                 onClick={() => void copyCode()}
               >
                 {copied ? (
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4 text-success-soft-foreground" />
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}

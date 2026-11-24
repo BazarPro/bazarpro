@@ -41,11 +41,11 @@ const ROLE_STYLES: Record<
 > = {
   seller: {
     icon: ShoppingBag,
-    badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    active: 'bg-amber-500 text-white',
-    ring: 'border-amber-500/50',
-    text: 'text-amber-700 dark:text-amber-300',
-    bar: 'bg-amber-500/80',
+    badge: 'bg-warning-soft text-warning-soft-foreground',
+    active: 'bg-tag text-white',
+    ring: 'border-tag/60',
+    text: 'text-warning-soft-foreground',
+    bar: 'bg-warning-soft',
   },
   organizer: {
     icon: Calendar,

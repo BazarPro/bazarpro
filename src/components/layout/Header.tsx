@@ -19,6 +19,7 @@ import { api } from '../../lib/api/functions';
 import { useFeatureFlags } from '../../hooks/useFeatureFlags';
 import { useSidebar } from '../../context/SidebarContext';
 import { BrandLogo } from './BrandLogo';
+import { isFullscreenDesk } from '../../lib/fullscreenDesk';
 import { useTheme } from '../ui/theme-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { docsUrl } from '../../lib/links';
@@ -176,6 +177,9 @@ export function Header() {
   const isLandingPage = currentPage === '/' && !user;
   const fullWidth = !isLandingPage && !['/login', '/register'].includes(currentPage);
   const hideAuthButtons = currentPage === '/login' || currentPage === '/register';
+
+  // The full-screen cash desk brings its own bar
+  if (isFullscreenDesk(currentPage)) return null;
 
   return (
     <>

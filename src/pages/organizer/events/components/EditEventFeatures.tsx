@@ -555,7 +555,7 @@ export function EditEventFeatures({
             description={t('features.priceOnLabelText')}
           />
           {priceOnLabel && discounts && (
-            <p className="text-sm text-amber-700 dark:text-amber-400">
+            <p className="text-sm text-warning-soft-foreground">
               {t('features.priceOnLabelDiscounts')}
             </p>
           )}

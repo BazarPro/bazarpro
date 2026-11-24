@@ -1,4 +1,4 @@
-import { formatPriceDE } from './utils';
+import { formatPrice } from './utils';
 import { feeCapCredit } from '../shared/feeCap';
 import { compareFees, eventFees, groupFees, type FeeGroup } from '../shared/feeGroups';
 import { resolveEventFeatures, type StoredEventFeatures } from '../shared/eventFeatures';
@@ -80,7 +80,7 @@ function exampleFees(
   };
 }
 
-const euro = (amount: number) => `${formatPriceDE(amount)} €`;
+const euro = (amount: number) => `${formatPrice(amount)} €`;
 
 /**
  * What sellers pay, in plain words, with a worked example in one sentence that fits the
@@ -98,11 +98,11 @@ export function describeSellerFees(event: SellerConditionsEvent): {
     lines.push(text('commissionLine', { percent: formatPercent(commission) }));
   }
   if (intakeFee > 0) {
-    lines.push(text('intakeFeeLine', { fee: formatPriceDE(intakeFee) }));
+    lines.push(text('intakeFeeLine', { fee: formatPrice(intakeFee) }));
   }
   if (lines.length === 0) return { lines, example: null };
   if (maxFeesPerSeller !== undefined) {
-    lines.push(text('feeCapLine', { fee: formatPriceDE(maxFeesPerSeller) }));
+    lines.push(text('feeCapLine', { fee: formatPrice(maxFeesPerSeller) }));
   }
 
   const kind = feeExampleFor(event.features?.eventType);
@@ -165,14 +165,14 @@ export function feeGroupAdvantages(event: SellerConditionsEvent, group: FeeGroup
       ? fees.intakeFee
         ? base.intakeFee
           ? text('groupIntakeFeeInstead', {
-              fee: formatPriceDE(fees.intakeFee),
-              base: formatPriceDE(base.intakeFee),
+              fee: formatPrice(fees.intakeFee),
+              base: formatPrice(base.intakeFee),
             })
-          : text('groupIntakeFee', { fee: formatPriceDE(fees.intakeFee) })
+          : text('groupIntakeFee', { fee: formatPrice(fees.intakeFee) })
         : text('groupNoIntakeFee')
       : undefined,
     fees.maxFeesPerSeller !== undefined && fees.maxFeesPerSeller !== base.maxFeesPerSeller
-      ? text('groupCap', { fee: formatPriceDE(fees.maxFeesPerSeller) })
+      ? text('groupCap', { fee: formatPrice(fees.maxFeesPerSeller) })
       : undefined,
     fees.maxItemsPerSeller !== undefined && fees.maxItemsPerSeller !== base.maxItemsPerSeller
       ? text('groupItems', { count: fees.maxItemsPerSeller })
@@ -359,7 +359,7 @@ export function describeSellerSchedule(event: SellerConditionsEvent) {
 
 export function formatSignedEuro(amount: number) {
   const sign = amount < 0 ? '−' : amount > 0 ? '+' : '';
-  return `${sign}${formatPriceDE(Math.abs(amount))} €`;
+  return `${sign}${formatPrice(Math.abs(amount))} €`;
 }
 
 function formatPercent(value: number) {
