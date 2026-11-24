@@ -36,13 +36,20 @@ export function LandingPage() {
         isAuthenticated={!!isAuthenticated}
         onOrganizerClick={goToOrganizer}
         onSellerClick={goToSeller}
+        onFindClick={() => {
+          // The focus moves along, so keyboard and screen reader users land there too
+          const section = document.getElementById('events-section');
+          const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          section?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' });
+          section?.focus({ preventScroll: true });
+        }}
       />
 
       <LandingProcess />
 
       <LandingKinds />
 
-      <div id="events-section" className="scroll-mt-16">
+      <div id="events-section" tabIndex={-1} className="scroll-mt-16 outline-none">
         <LandingEventsSection
           events={publicEvents}
           includePast={includePast}

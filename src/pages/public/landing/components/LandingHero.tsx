@@ -1,5 +1,5 @@
-import { ArrowRight, Calendar, ShoppingBag } from 'lucide-react';
-import { Button } from '../../../../components/ui/button';
+import { ArrowRight, Calendar, Search, Tag, type LucideIcon } from 'lucide-react';
+import { cn } from '../../../../lib/utils';
 import { HeroSaleScene } from './demo/HeroSaleScene';
 import { useTranslation } from 'react-i18next';
 
@@ -7,12 +7,15 @@ interface LandingHeroProps {
   isAuthenticated: boolean;
   onOrganizerClick: () => void;
   onSellerClick: () => void;
+  /** "I am looking for a bazaar": to the list of bazaars further down */
+  onFindClick: () => void;
 }
 
 export function LandingHero({
   isAuthenticated,
   onOrganizerClick,
   onSellerClick,
+  onFindClick,
 }: LandingHeroProps) {
   const { t } = useTranslation('landing');
   return (
@@ -48,30 +51,103 @@ export function LandingHero({
             </span>
           </p>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
-            <Button
-              size="lg"
-              className="group h-12 px-6 text-base font-semibold"
+          {/* One way in per intention, so nobody has to guess which button is theirs */}
+          <div
+            role="group"
+            aria-labelledby="landing-intent"
+            className="mx-auto max-w-xl space-y-2.5 text-left lg:mx-0"
+          >
+            <p
+              id="landing-intent"
+              className="text-center font-display text-sm font-semibold text-muted-foreground lg:text-left"
+            >
+              {t('intent.ask')}
+            </p>
+            <IntentCard
+              icon={Calendar}
+              title={isAuthenticated ? t('actions.myEvents') : t('intent.organize')}
+              text={isAuthenticated ? t('intent.organizeSignedIn') : t('intent.organizeText')}
               onClick={onOrganizerClick}
-            >
-              <Calendar className="mr-2 h-5 w-5" />
-              {isAuthenticated ? t('actions.myEvents') : t('actions.organize')}
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12 bg-background/80 px-6 text-base font-semibold"
+              primary
+            />
+            <IntentCard
+              icon={Tag}
+              title={isAuthenticated ? t('actions.myProducts') : t('intent.sell')}
+              text={isAuthenticated ? t('intent.sellSignedIn') : t('intent.sellText')}
               onClick={onSellerClick}
-            >
-              <ShoppingBag className="mr-2 h-5 w-5" />
-              {isAuthenticated ? t('actions.myProducts') : t('actions.joinAsSeller')}
-            </Button>
+            />
+            <IntentCard
+              icon={Search}
+              title={t('intent.find')}
+              text={t('intent.findText')}
+              onClick={onFindClick}
+            />
           </div>
         </div>
 
         <HeroSaleScene />
       </div>
     </section>
+  );
+}
+
+/** A way in: what the visitor wants to do, in their words, with one line on what follows. */
+function IntentCard({
+  icon: Icon,
+  title,
+  text,
+  onClick,
+  primary = false,
+}: {
+  icon: LucideIcon;
+  title: string;
+  text: string;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group flex w-full items-center gap-4 rounded-2xl border p-3 pr-4 text-left transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        primary
+          ? // Dark theme: a petrol tint, a full light block would glare
+            'border-primary bg-primary text-primary-foreground shadow-[0_3px_0_var(--primary-shade)] hover:bg-primary/90 dark:border-primary/70 dark:bg-primary/20 dark:text-foreground dark:shadow-none dark:hover:bg-primary/30'
+          : 'bg-card hover:bg-accent'
+      )}
+    >
+      <span
+        className={cn(
+          'flex size-11 shrink-0 items-center justify-center rounded-xl',
+          primary
+            ? 'bg-primary-foreground/15 dark:bg-primary/25 dark:text-primary'
+            : 'bg-tag-soft text-tag-soft-foreground'
+        )}
+      >
+        <Icon className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold sm:text-[1.0625rem]">{title}</span>
+        <span
+          className={cn(
+            'block text-sm',
+            primary
+              ? 'text-primary-foreground/85 dark:text-muted-foreground'
+              : 'text-muted-foreground'
+          )}
+        >
+          {text}
+        </span>
+      </span>
+      <span
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5',
+          primary ? 'bg-tag text-tag-foreground' : 'bg-muted'
+        )}
+      >
+        <ArrowRight className="size-4" />
+      </span>
+    </button>
   );
 }
