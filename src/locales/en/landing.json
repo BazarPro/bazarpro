@@ -249,5 +249,16 @@
     "title": "A template for every bazaar",
     "text": "Kids' consignment sale, ski swap or bike swap: the template sets tags, discounts and haggling to match. Try it without an account.",
     "start": "Start with this template"
+  },
+  "intent": {
+    "ask": "What would you like to do?",
+    "organize": "I'm organizing a bazaar",
+    "organizeText": "Free, ready in minutes",
+    "organizeSignedIn": "Manage your bazaars",
+    "sell": "I want to sell something",
+    "sellText": "Print labels at home",
+    "sellSignedIn": "Items and labels",
+    "find": "I'm looking for a bazaar",
+    "findText": "See dates and items"
   }
 }

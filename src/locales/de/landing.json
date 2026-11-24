@@ -249,5 +249,16 @@
     "title": "Für jeden Basar die passende Vorlage",
     "text": "Kinderbasar, Kleiderbasar, Skibasar oder Fahrradbörse: Die Vorlage stellt Etiketten, Rabatte und Verhandeln passend ein. Ausprobieren geht ohne Konto.",
     "start": "Mit dieser Vorlage starten"
+  },
+  "intent": {
+    "ask": "Was hast du vor?",
+    "organize": "Ich organisiere einen Basar",
+    "organizeText": "Kostenlos, schnell startklar",
+    "organizeSignedIn": "Deine Basare verwalten",
+    "sell": "Ich möchte etwas verkaufen",
+    "sellText": "Etiketten zu Hause drucken",
+    "sellSignedIn": "Artikel und Etiketten",
+    "find": "Ich suche einen Basar",
+    "findText": "Termine und Artikel ansehen"
   }
 }
