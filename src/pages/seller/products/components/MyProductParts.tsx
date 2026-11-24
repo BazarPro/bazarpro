@@ -125,7 +125,7 @@ export function MyProductAlerts({
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
       {product.moderation && (
-        <span className={cn(chip, 'bg-destructive text-white')} title={product.moderation.reason}>
+        <span className={cn(chip, 'bg-destructive text-destructive-foreground')} title={product.moderation.reason}>
           <EyeOff className="h-3 w-3" />
           {t('card.hiddenByModeration')}
         </span>

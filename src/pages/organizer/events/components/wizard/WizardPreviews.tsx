@@ -296,7 +296,7 @@ export function SalePreview({ type }: { type?: EventType }) {
             {features.discounts && (
               <span
                 key={percent}
-                className="absolute right-1.5 top-1.5 rounded-md bg-destructive px-1.5 py-0.5 text-[0.65rem] font-bold text-white animate-in zoom-in-50 duration-300"
+                className="absolute right-1.5 top-1.5 rounded-md bg-destructive px-1.5 py-0.5 text-[0.65rem] font-bold text-destructive-foreground animate-in zoom-in-50 duration-300"
               >
                 {t('wizard.preview.discount', { percent })}
               </span>
@@ -948,7 +948,7 @@ export function EventPagePreview({
                           className="aspect-[4/3]"
                         />
                         {discount && (
-                          <span className="absolute right-1.5 top-1.5 rounded bg-destructive px-1 text-[0.6rem] font-bold text-white">
+                          <span className="absolute right-1.5 top-1.5 rounded bg-destructive px-1 text-[0.6rem] font-bold text-destructive-foreground">
                             {t('wizard.preview.discount', { percent })}
                           </span>
                         )}

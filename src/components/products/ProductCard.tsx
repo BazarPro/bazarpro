@@ -83,7 +83,7 @@ export function ProductCard({ product, categoryLabel, layout = 'grid' }: Product
           </div>
         )}
         {discount > 0 && (
-          <span className="absolute right-3 top-3 rounded-full bg-destructive px-2.5 py-0.5 text-xs font-semibold text-white shadow">
+          <span className="absolute right-3 top-3 rounded-full bg-destructive px-2.5 py-0.5 text-xs font-semibold text-destructive-foreground shadow">
             −{discount} %
           </span>
         )}

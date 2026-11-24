@@ -1,5 +1,5 @@
-import { ShoppingBag } from 'lucide-react';
 import { useInstanceConfig } from '../../hooks/useInstanceConfig';
+import { BrandMark } from './BrandMark';
 
 /** Logo and name: BazarPro, or the association on a self-hosted instance. */
 export function BrandLogo() {
@@ -8,14 +8,25 @@ export function BrandLogo() {
     return (
       <>
         <img src={logoUrl} alt="" className="h-7 w-auto max-w-[3rem] object-contain" />
-        <span className="text-xl truncate">{brand}</span>
+        <span className="font-display text-xl font-bold tracking-tight truncate">{brand}</span>
       </>
     );
   }
+  // "BazarPro" gets its two-tone word mark; another brand name is set in one colour
+  const pro = brand.endsWith('Pro') ? brand.length - 3 : -1;
   return (
     <>
-      <ShoppingBag className="h-6 w-6 text-primary" />
-      <span className="text-xl truncate">{brand}</span>
+      <BrandMark />
+      <span className="font-display text-[1.375rem] font-extrabold tracking-tight truncate">
+        {pro > 0 ? (
+          <>
+            {brand.slice(0, pro)}
+            <span className="text-primary dark:text-tag">Pro</span>
+          </>
+        ) : (
+          brand
+        )}
+      </span>
     </>
   );
 }

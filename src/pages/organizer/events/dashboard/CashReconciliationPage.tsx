@@ -63,7 +63,7 @@ export function CashReconciliationPage() {
 
       {can('sale') && <SaleConflictsCard eventId={eventId as Id<'events'>} />}
 
-      <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
+      <Card className="border-2 border-primary">
         <CardContent className="space-y-6 pt-6">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{t('cash.shouldBe')}</p>

@@ -57,8 +57,12 @@ export function Sidebar({
     return (
       <Button
         key={item.page}
-        variant={isActivePage(item, currentPage, allItems) ? 'soft' : 'ghost'}
-        className="w-full justify-start"
+        variant={isActivePage(item, currentPage, allItems) ? 'default' : 'ghost'}
+        className={cn(
+          'w-full justify-start shadow-none',
+          isActivePage(item, currentPage, allItems) &&
+            'dark:bg-primary/20 dark:text-foreground dark:hover:bg-primary/30'
+        )}
         onClick={() => {
           navigate(item.page);
           close();
@@ -154,7 +158,7 @@ function PendingBadge({ count, kind }: { count: number; kind: BadgeKind }) {
   const label = t(`menu.badge.${kind}`, { count });
   return (
     <span
-      className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-white"
+      className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground"
       aria-label={label}
       title={label}
     >
