@@ -21,7 +21,8 @@ import { api } from '../../lib/api/functions';
 import type { Doc, FunctionReturnType } from '../../lib/api/types';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { NextSteps, type NextStep } from '../../components/ui/next-steps';
+import { type NextStep } from '../../components/ui/next-steps';
+import { BazaarRoadmap, NextStepCard } from '../../components/ui/bazaar-roadmap';
 import { Card, CardContent } from '../../components/ui/card';
 import { StorageImage } from '../../components/ui/StorageImage';
 import { ListSkeleton, Loading, PageSkeleton } from '../../components/ui/loading';
@@ -176,9 +177,33 @@ function SellerOverview() {
   ];
   const current = next ? steps.find((step) => !step.done) : steps[0];
   if (current) current.current = true;
+  // The one button of the card: what the step due now asks for
+  const nextAction: Record<string, string> = {
+    register: t('steps.action.register'),
+    products: count > 0 ? t('steps.action.moreProducts') : t('steps.action.products'),
+    labels: t('steps.action.labels'),
+    payout: t('steps.action.payout'),
+  };
 
   return (
     <>
+      {/* What to do first, the bazaar it is about below */}
+      <div className="mb-8 space-y-4">
+        <section className="rounded-xl border bg-card px-2 pb-3 pt-4 shadow-xs sm:px-4">
+          <BazaarRoadmap
+            steps={steps}
+            label={t('steps.title')}
+            nowLabel={t('steps.now')}
+            positionLabel={(position, total) => t('steps.position', { position, total })}
+          />
+        </section>
+        <NextStepCard
+          step={current}
+          eyebrow={next ? `${t('steps.next')} · ${next.title}` : t('steps.next')}
+          action={current ? nextAction[current.id] : null}
+          doneText={t('steps.allDone')}
+        />
+      </div>
       {next && (
         <BazaarHero
           event={next}
@@ -200,7 +225,6 @@ function SellerOverview() {
           }
         />
       )}
-      <NextSteps title={t('steps.title')} steps={steps} />
     </>
   );
 }
@@ -455,6 +479,8 @@ function salesSummary(sales: SalesGroups, t: TFunction<'dashboard'>): string {
   const sold = (sales ?? []).reduce((sum, group) => sum + group.items.length, 0);
   if (sold === 0) return t('seller.noSales');
   const payout = (sales ?? []).reduce((sum, group) => sum + group.totals.payout, 0);
+  // Fees above the takings: the seller owes the difference, not a payout below zero
+  if (payout < 0) return t('seller.salesFees', { count: sold, fees: formatPriceDE(-payout) });
   return t('seller.sales', { count: sold, payout: formatPriceDE(payout) });
 }
 

@@ -115,8 +115,21 @@ describe('DashboardPage', () => {
   it('points new sellers to the bazaars', () => {
     seller({ 'events.getMyRegisteredEvents': [], 'purchases.getMySales': [] });
     renderAt(<DashboardPage />);
-    expect(screen.getByText('Du bist noch für keinen Basar angemeldet.')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('next-step')).getByText('Du bist noch für keinen Basar angemeldet.')
+    ).toBeInTheDocument();
     expect(screen.getByText('Noch nichts verkauft')).toBeInTheDocument();
+  });
+
+  it('names fees above the takings as fees due, not as a payout below zero', () => {
+    seller({
+      'purchases.getMySales': [
+        { event: kita, paid: false, sellerNumber: 17, items: [{}], totals: { payout: -2.5 } },
+      ],
+    });
+    renderAt(<DashboardPage />);
+    expect(screen.getAllByText('1 verkauft · 2,50 € Gebühren offen').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/-2,50/)).toBeNull();
   });
 
   const organizer = (events: Record<string, unknown>[], roles: unknown[] = []) => {
@@ -221,8 +234,12 @@ describe('DashboardPage', () => {
       ],
     });
     renderAt(<DashboardPage />);
-    expect(screen.getByText('Etiketten drucken und zum Aufbau mitbringen')).toBeInTheDocument();
-    expect(screen.getByText(/^Aufbau ab /)).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('next-step')).getByText(
+        'Etiketten drucken und zum Aufbau mitbringen'
+      )
+    ).toBeInTheDocument();
+    expect(within(screen.getByTestId('next-step')).getByText(/^Aufbau ab /)).toBeInTheDocument();
     expect(screen.queryByText(/^Abgabe ab /)).toBeNull();
   });
 
@@ -318,7 +335,9 @@ describe('DashboardPage', () => {
     >);
     renderAt(<DashboardPage />);
     expect(
-      screen.getByText('Du bist noch nicht für den aktuellen Basar angemeldet.')
+      within(screen.getByTestId('next-step')).getByText(
+        'Du bist noch nicht für den aktuellen Basar angemeldet.'
+      )
     ).toBeInTheDocument();
     // No marketing pages there
     expect(screen.queryByText('Mehr über BazarPro')).toBeNull();

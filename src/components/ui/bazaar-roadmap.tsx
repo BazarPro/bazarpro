@@ -1,5 +1,5 @@
 import { ArrowRight, Check, PartyPopper } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
@@ -17,6 +17,7 @@ export function BazaarRoadmap({
   positionLabel,
 }: {
   steps: NextStep[];
+  /** Heading above the stops, also the name of the navigation */
   label: string;
   /** Under the step due now, e.g. "Jetzt dran" */
   nowLabel: string;
@@ -26,8 +27,12 @@ export function BazaarRoadmap({
   const currentIndex = steps.findIndex((step) => step.current);
   const current = steps[currentIndex];
   const width = 100 / steps.length;
+  const headingId = useId();
   return (
-    <nav aria-label={label}>
+    <nav aria-labelledby={headingId}>
+      <h2 id={headingId} className="mb-3 px-2 text-base font-bold">
+        {label}
+      </h2>
       <ol
         className="relative grid"
         style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
@@ -79,7 +84,12 @@ export function BazaarRoadmap({
                   </span>
                 )}
                 {/* The figures stand in the card below; here only for screen readers */}
-                {step.text && <span className="sr-only"> – {step.text}</span>}
+                {step.text && (
+                  <>
+                    <span className="sr-only">: </span>
+                    <span className="sr-only">{step.text}</span>
+                  </>
+                )}
               </span>
             </>
           );
@@ -135,7 +145,10 @@ export function NextStepCard({
   children?: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border-2 border-primary bg-card shadow-sm">
+    <section
+      data-testid="next-step"
+      className="overflow-hidden rounded-xl border-2 border-primary bg-card shadow-sm"
+    >
       <div className="flex items-center gap-2.5 bg-tag px-5 py-2.5 text-tag-foreground sm:px-6">
         <span aria-hidden="true" className="size-2.5 rounded-full bg-card shadow-inner" />
         <span className="font-display text-sm font-bold">{eyebrow}</span>
