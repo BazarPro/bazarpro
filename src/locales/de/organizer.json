@@ -277,7 +277,21 @@
       "promote": "Werbung machen",
       "promoteText": "Plakate, Flyer und Bilder für Social Media erstellen",
       "promoteDone": "Werbematerial erstellt – jederzeit anpassen und teilen"
-    }
+    },
+    "next": {
+      "eyebrow": "Dein nächster Schritt",
+      "promote": "Werbung erstellen",
+      "sellers": "Verkäufer einladen",
+      "intake": "Annahme öffnen",
+      "sale": "Kasse öffnen",
+      "settle": "Abrechnung öffnen",
+      "allDone": "Alles erledigt – danke fürs Organisieren!",
+      "alsoOpen": "Außerdem noch offen",
+      "now": "Jetzt dran",
+      "position": "Schritt {{position}} von {{total}}"
+    },
+    "soldOf": "{{sold}} von {{total}} verkauft",
+    "sellersTile": "Verkäufer"
   },
   "settingsPage": {
     "deleted": "Basar gelöscht",
