@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { Doc } from './api/types';
-import { distanceKm, locate, searchBazaars, suggestPlaces, type Places } from './bazaarSearch';
+import type { Doc, Id } from './api/types';
+import {
+  distanceKm,
+  eventPosition,
+  loadPlaces,
+  locate,
+  meetsCondition,
+  searchBazaars,
+  suggestPlaces,
+  type Places,
+} from './bazaarSearch';
 import places from '../assets/postal-centroids.json';
 
 const PLACES = places as unknown as Places;
@@ -95,5 +104,109 @@ describe('bazaar search', () => {
     expect(search([later, sooner], '89075', { radius: undefined }).map((f) => f.event._id)).toEqual(
       ['later', 'sooner']
     );
+  });
+
+  it('loads the places once, lazily', async () => {
+    const loaded = await loadPlaces();
+    expect(loaded.DE.codes).toBeDefined();
+    expect(await loadPlaces()).toBe(loaded);
+  });
+
+  it('knows nothing of empty, too short or unknown queries', () => {
+    expect(locate(PLACES, '   ')).toBeUndefined();
+    expect(locate(PLACES, '00000')).toBeUndefined();
+    expect(locate(PLACES, '890')?.country).toBe('DE');
+    expect(locate({}, 'Ulm')).toBeUndefined();
+    expect(suggestPlaces(PLACES, 'U')).toEqual([]);
+    expect(suggestPlaces(PLACES, '89')).toEqual([]);
+    expect(suggestPlaces(PLACES, 'Neu', 3)).toHaveLength(3);
+    expect(suggestPlaces({}, 'Neu')).toEqual([]);
+  });
+
+  it('places a bazaar by its postal code, else by its town', () => {
+    expect(eventPosition(PLACES, { postalCode: '89073' })).toBeDefined();
+    expect(eventPosition(PLACES, { postalCode: '6900', country: 'at' })).toBeDefined();
+    expect(eventPosition(PLACES, { postalCode: '1', city: 'Ulm' })).toEqual(
+      locate(PLACES, 'Ulm')!.position
+    );
+    expect(eventPosition(PLACES, { postalCode: '00000', country: 'XX' })).toBeUndefined();
+    expect(eventPosition(PLACES, { city: 'Atlantis' })).toBeUndefined();
+    expect(eventPosition(PLACES, {})).toBeUndefined();
+  });
+
+  it('checks each condition', () => {
+    const open = bazaar('open', { features: { registrationOpen: true } });
+    expect(meetsCondition(open, 'registrationOpen', NOW)).toBe(true);
+    expect(meetsCondition({ ...open, accessCode: 'x' }, 'registrationOpen', NOW)).toBe(false);
+    expect(
+      meetsCondition({ ...open, vendorLimit: 2, sellerCount: 2 }, 'registrationOpen', NOW)
+    ).toBe(false);
+    expect(
+      meetsCondition(
+        bazaar('closed', { features: { registrationOpen: false } }),
+        'registrationOpen',
+        NOW
+      )
+    ).toBe(false);
+    expect(
+      meetsCondition(
+        bazaar('over', {
+          features: { registrationOpen: true },
+          startDate: NOW - 2 * DAY,
+          endDate: NOW - DAY,
+        }),
+        'registrationOpen',
+        NOW
+      )
+    ).toBe(false);
+
+    expect(meetsCondition(bazaar('free'), 'noIntakeFee', NOW)).toBe(true);
+    expect(meetsCondition(bazaar('fee', { features: { intakeFee: 2 } }), 'noIntakeFee', NOW)).toBe(
+      false
+    );
+    expect(meetsCondition(bazaar('fee0', { features: { intakeFee: 0 } }), 'noIntakeFee', NOW)).toBe(
+      true
+    );
+
+    const catalog = bazaar('catalog', { features: { publicCatalog: true, priceOffers: true } });
+    const hidden = bazaar('hidden', { features: { publicCatalog: false, priceOffers: true } });
+    expect(meetsCondition(catalog, 'onlineCatalog', NOW)).toBe(true);
+    expect(meetsCondition(hidden, 'onlineCatalog', NOW)).toBe(false);
+    expect(meetsCondition(catalog, 'priceOffers', NOW)).toBe(true);
+    expect(meetsCondition(hidden, 'priceOffers', NOW)).toBe(false);
+  });
+
+  it('filters by the next four weeks and by categories, newest past first', () => {
+    const soon = bazaar('soon', { categories: ['toys-lego' as Id<'categories'>] });
+    const later = bazaar('later', { startDate: NOW + 60 * DAY, endDate: NOW + 61 * DAY });
+    const filters = (when: string, categories: string[] = []) => ({
+      filters: { when, conditions: [], categories },
+      categories: [{ _id: 'toys-lego', parentCategory: 'toys' }],
+    });
+    expect(search([soon, later], '', filters('month')).map((f) => f.event._id)).toEqual(['soon']);
+    expect(
+      search([soon, later], '', filters('upcoming', ['toys'])).map((f) => f.event._id)
+    ).toEqual(['soon']);
+    expect(search([soon, later], '', filters('upcoming', ['books']))).toEqual([]);
+
+    const old = bazaar('old', { startDate: NOW - 30 * DAY, endDate: NOW - 29 * DAY });
+    const recent = bazaar('recent', { startDate: NOW - 3 * DAY, endDate: NOW - 2 * DAY });
+    expect(search([old, recent], '', filters('past')).map((f) => f.event._id)).toEqual([
+      'recent',
+      'old',
+    ]);
+  });
+
+  it('sorts equally far bazaars by date for any distance', () => {
+    const a = bazaar('a', {
+      postalCode: '89073',
+      startDate: NOW + 9 * DAY,
+      endDate: NOW + 9 * DAY,
+    });
+    const b = bazaar('b', { postalCode: '89073' });
+    expect(search([a, b], '89075', { radius: undefined }).map((f) => f.event._id)).toEqual([
+      'b',
+      'a',
+    ]);
   });
 });
