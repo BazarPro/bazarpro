@@ -17,6 +17,13 @@ import { resolvePlausible } from '../../lib/analyticsConfig';
 import { selfHostUrl } from '../../lib/links';
 import { runtimeConfig } from '../../lib/runtimeConfig';
 import { Trans, useTranslation } from 'react-i18next';
+import { cn } from '../../lib/utils';
+import {
+  applyColorTheme,
+  COLOR_THEME_SWATCH,
+  COLOR_THEMES,
+  type ColorTheme,
+} from '../../lib/colorTheme';
 import { FormSkeleton, Loading } from '../../components/ui/loading';
 
 /** Name, contact address and logo of this instance. */
@@ -32,6 +39,7 @@ export function AdminSettingsPage() {
   const [removeLogo, setRemoveLogo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [startPage, setStartPage] = useState<'overview' | 'currentEvent'>('overview');
+  const [colorTheme, setColorTheme] = useState<ColorTheme>('blue');
   const [plausibleEnabled, setPlausibleEnabled] = useState(false);
   const [plausibleDomain, setPlausibleDomain] = useState('');
   const [plausibleApiHost, setPlausibleApiHost] = useState('');
@@ -41,6 +49,7 @@ export function AdminSettingsPage() {
     setName(config.name ?? '');
     setContactEmail(config.contactEmail ?? '');
     setStartPage(config.startPage);
+    setColorTheme(config.colorTheme ?? 'blue');
     // Off unless switched on here or configured on the web server
     setPlausibleEnabled(resolvePlausible(config.plausible) !== null);
     setPlausibleDomain(config.plausible.domain ?? '');
@@ -69,6 +78,7 @@ export function AdminSettingsPage() {
         contactEmail,
         logo,
         startPage,
+        colorTheme,
         plausible: {
           enabled: plausibleEnabled,
           domain: plausibleDomain,
@@ -167,6 +177,12 @@ export function AdminSettingsPage() {
             </div>
           </div>
         </div>
+
+        <ColorThemePicker
+          value={colorTheme}
+          saved={config.colorTheme ?? 'blue'}
+          onChange={setColorTheme}
+        />
 
         {config.mode === 'single' && (
           <div className="space-y-2">
@@ -278,6 +294,54 @@ export function AdminSettingsPage() {
           {isSaving ? t('settings.saving') : t('settings.save')}
         </Button>
       </StickyActionBar>
+    </div>
+  );
+}
+
+/**
+ * The colour scheme: one swatch per scheme, the page shows the choice at once. Left
+ * without saving, the saved scheme comes back.
+ */
+function ColorThemePicker({
+  value,
+  saved,
+  onChange,
+}: {
+  value: ColorTheme;
+  saved: ColorTheme;
+  onChange: (theme: ColorTheme) => void;
+}) {
+  const { t } = useTranslation('admin');
+  useEffect(() => {
+    applyColorTheme(value);
+  }, [value]);
+  useEffect(() => () => applyColorTheme(saved), [saved]);
+  return (
+    <div className="space-y-2">
+      <Label id="color-theme-label">{t('settings.colorTheme')}</Label>
+      <div role="radiogroup" aria-labelledby="color-theme-label" className="flex flex-wrap gap-2">
+        {COLOR_THEMES.map((theme) => (
+          <button
+            key={theme}
+            type="button"
+            role="radio"
+            aria-checked={value === theme}
+            onClick={() => onChange(theme)}
+            className={cn(
+              'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              value === theme && 'border-foreground ring-1 ring-foreground'
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className="size-4 rounded-full"
+              style={{ backgroundColor: COLOR_THEME_SWATCH[theme] }}
+            />
+            {t(`settings.colorThemes.${theme}`)}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{t('settings.colorThemeHint')}</p>
     </div>
   );
 }

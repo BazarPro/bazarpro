@@ -32,7 +32,10 @@ test.describe('event creation and co-organizer flow', () => {
     // A new event opens right away and becomes the chosen one in the overview
     await page.waitForURL(/\/events\/view\/[^/]+/);
     const eventId = extractEventId(page.url());
+    // The overview leads organizers straight to the chosen bazaar; all bazaars are on /my-events
     await page.goto('/');
+    await page.waitForURL(`**/events/view/${eventId}`);
+    await page.goto('/my-events');
     await expect(
       page.getByTestId('current-event').getByRole('heading', { name: eventTitle })
     ).toBeVisible();

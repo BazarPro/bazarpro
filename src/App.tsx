@@ -14,6 +14,8 @@ import {
 import { LoginPage } from './pages/public/auth/LoginPage';
 import { ThemeProvider } from './components/ui/theme-provider';
 import { Toaster } from 'sonner';
+import { applyColorTheme } from './lib/colorTheme';
+import { useInstanceConfig } from './hooks/useInstanceConfig';
 import { RegisterPage } from './pages/public/auth/RegisterPage';
 import { PublicProduct } from './pages/public/products/PublicProduct';
 import { ShortProductLink } from './pages/public/products/ShortProductLink';
@@ -58,6 +60,7 @@ const MyProductsPage = lazyPage(
   () => import('./pages/seller/products/MyProductsPage'),
   'MyProductsPage'
 );
+const AllBazaarsPage = lazyPage(() => import('./pages/dashboard/DashboardPage'), 'AllBazaarsPage');
 const MySalesPage = lazyPage(() => import('./pages/seller/sales/MySalesPage'), 'MySalesPage');
 const ProductForm = lazyPage(() => import('./pages/seller/products/ProductForm'), 'ProductForm');
 const EventManagementDashboard = lazyPage(
@@ -159,6 +162,15 @@ function PublicEventWrapper() {
 function EditEventRedirect() {
   const { eventId } = useParams();
   return <Navigate to={`/events/view/${eventId}/settings`} replace />;
+}
+
+/** The colour scheme an admin chose, on every page (src/lib/colorTheme.ts) */
+function ColorThemeSync() {
+  const { colorTheme } = useInstanceConfig();
+  useEffect(() => {
+    if (colorTheme) applyColorTheme(colorTheme);
+  }, [colorTheme]);
+  return null;
 }
 
 function AppToaster() {
@@ -270,6 +282,7 @@ function App() {
   return (
     <ThemeProvider>
       <AppToaster />
+      <ColorThemeSync />
       <AccountLocaleSync />
       <PreloadSignedInPages />
       <OwnCheckInKeySync />
@@ -367,8 +380,8 @@ function App() {
                         <Route path="/products/edit/:productId" element={<ProductForm />} />
                         <Route path="/account" element={<AccountPage />} />
 
-                        {/* Old address: the organizer's events are in their overview now */}
-                        <Route path="/my-events" element={<Navigate to="/" replace />} />
+                        {/* All bazaars of an organizer; `/` opens the chosen one directly */}
+                        <Route path="/my-events" element={<AllBazaarsPage />} />
                         {/* Old address: editing is part of the settings now */}
                         <Route path="/events/edit/:eventId" element={<EditEventRedirect />} />
                         <Route

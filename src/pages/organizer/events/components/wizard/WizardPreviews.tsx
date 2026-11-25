@@ -296,7 +296,7 @@ export function SalePreview({ type }: { type?: EventType }) {
             {features.discounts && (
               <span
                 key={percent}
-                className="absolute right-1.5 top-1.5 rounded-md bg-destructive px-1.5 py-0.5 text-[0.65rem] font-bold text-destructive-foreground animate-in zoom-in-50 duration-300"
+                className="absolute right-1.5 top-1.5 rounded-md bg-tag px-1.5 py-0.5 text-[0.65rem] font-bold text-tag-foreground animate-in zoom-in-50 duration-300"
               >
                 {t('wizard.preview.discount', { percent })}
               </span>
@@ -309,7 +309,7 @@ export function SalePreview({ type }: { type?: EventType }) {
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {features.discounts ? (
               <>
-                <span className="text-lg font-extrabold tabular-nums text-destructive">
+                <span className="text-lg font-extrabold tabular-nums">
                   {formatPrice(discounted)} €
                 </span>
                 <span className="text-[0.65rem] text-muted-foreground line-through">
@@ -541,15 +541,16 @@ export function FeesPreview({ type }: { type?: EventType }) {
         <p className="text-sm font-semibold">
           {t('wizard.preview.feeItem', { price: `${formatPrice(price)} €` })}
         </p>
-        <div className="flex h-8 overflow-hidden rounded-lg text-[0.65rem] font-bold text-white">
+        {/* Text in the colour that reads on each part, also in the dark theme */}
+        <div className="flex h-8 overflow-hidden rounded-lg text-xs font-bold">
           <div
-            className="flex items-center justify-center bg-success transition-all duration-500"
+            className="flex items-center justify-center bg-success text-white transition-all duration-500 dark:text-background"
             style={{ width: `${sellerShare}%` }}
           >
             {sellerShare > 25 && `${formatPrice(sellerGets)} €`}
           </div>
           {kept > 0 && (
-            <div className="flex flex-1 items-center justify-center bg-primary transition-all duration-500">
+            <div className="flex flex-1 items-center justify-center bg-primary text-primary-foreground transition-all duration-500">
               {100 - sellerShare > 12 && `${formatPrice(kept)} €`}
             </div>
           )}
@@ -947,19 +948,14 @@ export function EventPagePreview({
                           className="aspect-[4/3]"
                         />
                         {discount && (
-                          <span className="absolute right-1.5 top-1.5 rounded bg-destructive px-1 text-[0.6rem] font-bold text-destructive-foreground">
+                          <span className="absolute right-1.5 top-1.5 rounded bg-tag px-1 text-[0.6rem] font-bold text-tag-foreground">
                             {t('wizard.preview.discount', { percent })}
                           </span>
                         )}
                       </div>
                       <div className="space-y-0.5 p-2">
                         <p className="line-clamp-1 text-xs font-semibold">{item.title}</p>
-                        <p
-                          className={cn(
-                            'whitespace-nowrap text-sm font-bold tabular-nums',
-                            discount && 'text-destructive'
-                          )}
-                        >
+                        <p className="whitespace-nowrap text-sm font-bold tabular-nums">
                           {formatPrice(price)} €
                           {features.minimumPrice && !discount && (
                             <span className="ml-1 text-[0.6rem] font-semibold text-primary">

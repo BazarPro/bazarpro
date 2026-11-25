@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -88,11 +88,14 @@ function Fact({
   open?: boolean;
   children: ReactNode;
 }) {
+  // The name says what the button does; the value is read after it
+  const valueId = useId();
   return (
     <button
       type="button"
       onClick={onEdit}
       aria-label={editLabel}
+      aria-describedby={valueId}
       className="group flex min-w-0 items-start gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -104,6 +107,7 @@ function Fact({
           <Pencil className="ml-auto h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
         </span>
         <span
+          id={valueId}
           className={cn(
             'mt-0.5 line-clamp-2 block text-sm font-medium',
             open && 'italic text-muted-foreground'

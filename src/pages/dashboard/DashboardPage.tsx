@@ -1,7 +1,7 @@
 import { EmptyState } from '../../components/ui/empty-state';
 import { PageHeader } from '../../components/ui/page-header';
 import { useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
@@ -63,21 +63,42 @@ export function DashboardPage() {
     return <PageSkeleton />;
   }
 
+  // Organizers go straight to the bazaar they work on; all bazaars are on /my-events
+  if (shown === 'organizer') return <OrganizerHome />;
+
+  // The fade on a new page or role comes from the page frame (ResponsiveSidebar)
+  return shown === 'administrator' ? (
+    <AdminOverviewPage />
+  ) : (
+    <div className="page-wide space-y-8">
+      <Greeting name={user.firstName || user.name} />
+      <SellerOverview />
+    </div>
+  );
+}
+
+/**
+ * `/` for organizers: the overview of the chosen (or most current) bazaar. Only without
+ * any bazaar the list with the button for a new one stays.
+ */
+function OrganizerHome() {
+  const events = useQuery(api.events.getMyEvents, { includePast: true });
+  const selectedId = useSelectedEventId();
+  if (events === undefined) return <PageSkeleton />;
+  const selected = selectedOrCurrent(events, selectedId);
+  if (selected) return <Navigate to={`/events/view/${selected._id}`} replace />;
+  return <AllBazaarsPage />;
+}
+
+/** `/my-events`: every bazaar of the organizer, the drafts and a new one. */
+export function AllBazaarsPage() {
+  const access = useQuery(api.instance.getMyAccess, {});
+  const user = useQuery(api.users.viewer);
+  if (!user) return <PageSkeleton />;
   return (
-    // The key restarts the fade when the role changes
-    <div key={shown} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-      {shown === 'administrator' ? (
-        <AdminOverviewPage />
-      ) : (
-        <div className="page-wide space-y-8">
-          <Greeting name={user.firstName || user.name} />
-          {shown === 'organizer' ? (
-            <OrganizerOverview canCreate={access?.canCreateEvents ?? false} />
-          ) : (
-            <SellerOverview />
-          )}
-        </div>
-      )}
+    <div className="page-wide space-y-8">
+      <Greeting name={user.firstName || user.name} />
+      <OrganizerOverview canCreate={access?.canCreateEvents ?? false} />
     </div>
   );
 }

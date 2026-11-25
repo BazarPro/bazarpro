@@ -2066,6 +2066,8 @@ export interface Api {
         contactEmail: string | undefined;
         logoUrl: string | null;
         startPage: 'overview' | 'currentEvent';
+        /** Colour scheme for actions, chosen by an admin (src/lib/colorTheme.ts) */
+        colorTheme: 'blue' | 'petrol' | 'green' | 'violet' | 'orange' | 'red';
         plausible: {
           enabled: boolean | undefined;
           domain: string | undefined;
@@ -2080,6 +2082,7 @@ export interface Api {
         contactEmail?: string | undefined;
         logo?: Id<'_storage'> | null | undefined;
         startPage?: 'overview' | 'currentEvent' | undefined;
+        colorTheme?: 'blue' | 'petrol' | 'green' | 'violet' | 'orange' | 'red' | undefined;
         plausible?: { enabled: boolean; domain: string; apiHost: string } | undefined;
       },
       null

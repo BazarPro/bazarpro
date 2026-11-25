@@ -222,8 +222,9 @@
     "from": "From",
     "until": "Until",
     "untilDay": "Until day",
-    "clear": "Clear",
-    "noteHint": "Goes into the email the evening before, e.g. where the entrance is."
+    "noteHint": "Goes into the email the evening before, e.g. where the entrance is.",
+    "enable": "{{label}}: set times",
+    "off": "No times – sellers get nothing about it in the mail."
   },
   "myEvents": {
     "rejected": "Rejected",

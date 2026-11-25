@@ -98,11 +98,18 @@ function FeatureToggle({
         >
           <Icon className="h-4 w-4" />
         </span>
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          <Label htmlFor={id} className={disabled ? 'font-medium' : 'cursor-pointer font-medium'}>
+        {/* Inline: a title in two lines keeps its (i) right after the last word */}
+        <div className="min-w-0 flex-1 leading-snug">
+          <Label
+            htmlFor={id}
+            className={cn(
+              'inline leading-snug',
+              disabled ? 'font-medium' : 'cursor-pointer font-medium'
+            )}
+          >
             {title}
-          </Label>
-          <InfoTip>{description}</InfoTip>
+          </Label>{' '}
+          <InfoTip className="-my-1">{description}</InfoTip>
         </div>
         <Controller
           name={`features.${name}`}
@@ -198,7 +205,7 @@ function RequiredFieldsPicker() {
           render={({ field }) => {
             const value = (field.value as string[] | undefined) ?? [];
             return (
-              <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
                 {fields.map((categoryField) => {
                   const id = `required-${categoryField.key}`;
                   return (
@@ -578,18 +585,21 @@ export function EditEventFeatures({
       {show('registration') && (
         <>
           {basic && (
-            <FeatureToggle
-              name="registrationOpen"
-              title={t('features.registrationOpen')}
-              description={t('features.registrationOpenText')}
-            >
-              <RegistrationWindowFields />
-            </FeatureToggle>
-          )}
-          {basic && !registrationOpen && (
-            <p className="-mt-2 pl-11 text-xs text-muted-foreground">
-              {t('features.registrationClosedHint')}
-            </p>
+            // The hint belongs to its switch: one row, no line between them
+            <div className="space-y-2">
+              <FeatureToggle
+                name="registrationOpen"
+                title={t('features.registrationOpen')}
+                description={t('features.registrationOpenText')}
+              >
+                <RegistrationWindowFields />
+              </FeatureToggle>
+              {!registrationOpen && (
+                <p className="pl-11 text-xs text-muted-foreground">
+                  {t('features.registrationClosedHint')}
+                </p>
+              )}
+            </div>
           )}
 
           {expert && (

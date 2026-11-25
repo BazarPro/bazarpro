@@ -257,7 +257,17 @@
     "modePlatform": "Plattform",
     "saving": "Wird gespeichert…",
     "save": "Speichern",
-    "logoUploadFailed": "Das Logo konnte nicht hochgeladen werden."
+    "logoUploadFailed": "Das Logo konnte nicht hochgeladen werden.",
+    "colorTheme": "Farbschema",
+    "colorThemeHint": "Die Farbe für Buttons, Links und Markierungen – für alle Besucher. Die Seite zeigt die Wahl sofort, gespeichert wird mit „Speichern“.",
+    "colorThemes": {
+      "blue": "Blau",
+      "petrol": "Petrol",
+      "green": "Grün",
+      "violet": "Violett",
+      "orange": "Orange",
+      "red": "Rot"
+    }
   },
   "legal": {
     "saved": "{{title}} gespeichert (Version {{version}})",

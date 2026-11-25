@@ -9,6 +9,21 @@ const LAST_PATH_KEY: Record<UserRole, string> = {
   administrator: 'lastPath.administrator',
 };
 
+/** Pages with an entry in the side menu of a role (src/components/layout/useNavigation.ts) */
+const MENU_PAGES: Record<UserRole, RegExp[]> = {
+  participant: [/^\/$/, /^\/my-products$/, /^\/my-sales$/, /^\/browse-events$/],
+  organizer: [
+    /^\/my-events$/,
+    /^\/events\/view\/[^/]+(\/(sellers|products|checkout|cash|promo|settings))?$/,
+  ],
+  administrator: [/^\/$/, /^\/admin\/[a-z-]+$/],
+};
+
+function isMenuPage(role: UserRole, path: string) {
+  const clean = path.replace(/\/+$/, '') || '/';
+  return MENU_PAGES[role].some((pattern) => pattern.test(clean));
+}
+
 export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,27 +92,32 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [location.pathname, role]);
 
-  // The last page of each role, where switching back to it leads; the overview (`/`)
-  // belongs to every role, so it is remembered for the current one
+  // The last page of each role that has an entry in the side menu, where switching back
+  // to it leads; the overview (`/`) belongs to every role, so it counts for the current one
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const pageRole = location.pathname === '/' ? role : getRoleFromPath(location.pathname);
-    if (!pageRole) return;
-    const currentPath = `${location.pathname}${location.search}`;
-    localStorage.setItem(LAST_PATH_KEY[pageRole], currentPath);
+    const path = splitLocalePrefix(location.pathname).path;
+    const pageRole = path === '/' ? role : getRoleFromPath(path);
+    if (!pageRole || !isMenuPage(pageRole, path)) return;
+    try {
+      localStorage.setItem(LAST_PATH_KEY[pageRole], `${path}${location.search}`);
+    } catch {
+      // Private mode: switching leads to the overview then
+    }
   }, [location.pathname, location.search, role]);
 
-  /**
-   * On the overview the page stays and shows the new role; elsewhere it goes to the last
-   * page of the new role, the first time to its overview.
-   */
+  /** Goes on where the new role was left, the first time to its overview. */
   const changeRole = (newRole: UserRole) => {
     setRoleState(newRole);
     localStorage.setItem('userRole', newRole);
-    if (location.pathname === '/') return;
-    const lastPath =
-      typeof window !== 'undefined' ? localStorage.getItem(LAST_PATH_KEY[newRole]) : null;
-    navigate(lastPath ?? '/');
+    let lastPath: string | null = null;
+    try {
+      lastPath = localStorage.getItem(LAST_PATH_KEY[newRole]);
+    } catch {
+      lastPath = null;
+    }
+    const target = lastPath && isMenuPage(newRole, lastPath.split('?')[0]) ? lastPath : '/';
+    if (target !== `${location.pathname}${location.search}`) navigate(target);
   };
 
   const setRoleOnly = (newRole: UserRole) => {

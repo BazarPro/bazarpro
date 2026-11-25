@@ -5,7 +5,7 @@ import { useAuthState, useQuery } from '../../lib/api/react';
 import { getFunctionName } from '../../lib/api/functions';
 import type { FunctionReference } from '../../lib/api/types';
 import { useInstanceConfig } from '../../hooks/useInstanceConfig';
-import { DashboardPage } from './DashboardPage';
+import { AllBazaarsPage, DashboardPage } from './DashboardPage';
 import { HomePage } from './HomePage';
 import { resetSelectedEvent, selectEvent } from '../../lib/selectedEvent';
 
@@ -151,13 +151,19 @@ describe('DashboardPage', () => {
     ...extra,
   });
 
+  it('opens the chosen bazaar right away when organizers come to the overview', () => {
+    organizer([event('o2', 'Fahrradbörse Ulm', 12), event('o1', kita.title, 3)]);
+    renderAt(<DashboardPage />);
+    expect(screen.getByTestId('where')).toHaveTextContent('/events/view/o1');
+  });
+
   it('shows organizers their most current event, the others to choose from, the past folded', () => {
     organizer([
       event('o2', 'Fahrradbörse Ulm', 12, { approvalStatus: 'pending' }),
       { ...event('o1', kita.title, 3), coverImage: undefined },
       event('o0', 'Frühjahrsbasar', -60),
     ]);
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const current = screen.getByTestId('current-event');
     expect(within(current).getByRole('heading', { name: kita.title })).toBeInTheDocument();
     expect(within(current).getByText('Freigegeben')).toBeInTheDocument();
@@ -178,7 +184,7 @@ describe('DashboardPage', () => {
 
   it('opens the selected bazaar from anywhere on its card (#299)', () => {
     organizer([event('o1', kita.title, 3)]);
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const current = screen.getByTestId('current-event');
     fireEvent.click(within(current).getByRole('link', { name: kita.title }));
     expect(screen.getByTestId('where')).toHaveTextContent('/events/view/o1');
@@ -186,7 +192,7 @@ describe('DashboardPage', () => {
 
   it('opens another event from the overview', () => {
     organizer([event('o1', kita.title, 3), event('o2', 'Fahrradbörse Ulm', 12)]);
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const later = screen.getByRole('heading', { name: 'Weitere Basare' }).closest('section')!;
     fireEvent.click(within(later).getByRole('button', { name: 'Öffnen' }));
     expect(screen.getByTestId('where')).toHaveTextContent('/events/view/o2');
@@ -195,7 +201,7 @@ describe('DashboardPage', () => {
   it('keeps an event chosen before, e.g. by opening its page', () => {
     selectEvent('o0');
     organizer([event('o1', kita.title, 3), event('o0', 'Frühjahrsbasar', -60)]);
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const current = screen.getByTestId('current-event');
     expect(within(current).getByRole('heading', { name: 'Frühjahrsbasar' })).toBeInTheDocument();
     // The chosen one is "selected", its state comes from start and end (#299)
@@ -212,7 +218,7 @@ describe('DashboardPage', () => {
       // Started long ago, over since yesterday: never "running" again
       event('over', 'Vorbei', -1),
     ]);
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const current = screen.getByTestId('current-event');
     expect(within(current).getByText('Läuft gerade')).toBeInTheDocument();
     const later = screen.getByRole('heading', { name: 'Weitere Basare' }).closest('section')!;
@@ -248,7 +254,7 @@ describe('DashboardPage', () => {
       [event('o1', kita.title, 3, { approvalStatus: 'rejected', rejectionReason: 'Kein Basar' })],
       [{ eventId: 'o1', roles: ['coorganizer'] }]
     );
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const current = screen.getByTestId('current-event');
     expect(within(current).getAllByText('Abgelehnt')).toHaveLength(2);
     expect(within(current).getByText('Kein Basar')).toBeInTheDocument();
@@ -261,7 +267,7 @@ describe('DashboardPage', () => {
         event(`o${i}`, `Basar ${i}`, i + 1, { visibility: 'logged-in' })
       )
     );
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const later = screen.getByRole('heading', { name: 'Weitere Basare' }).closest('section')!;
     expect(within(later).getAllByRole('listitem')).toHaveLength(3);
     fireEvent.click(within(later).getByRole('button', { name: 'Alle 5 anzeigen' }));
@@ -272,7 +278,7 @@ describe('DashboardPage', () => {
 
   it('invites organizers without events to create one', () => {
     organizer([]);
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     expect(screen.getByText('Keine Basare gefunden')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Neuer Basar' }));
     expect(screen.getByTestId('where')).toHaveTextContent('/events/new');
@@ -284,7 +290,7 @@ describe('DashboardPage', () => {
       draft: { values: { title: 'Herbstbasar' }, step: 2 },
       updatedAt: now,
     };
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     const draft = screen.getByTestId('event-draft');
     expect(within(draft).getByText('Herbstbasar')).toBeInTheDocument();
     expect(within(draft).getByText('Entwurf')).toBeInTheDocument();
@@ -295,7 +301,7 @@ describe('DashboardPage', () => {
   it('shows a draft without title to organizers without events', () => {
     organizer([]);
     results['events.getMyEventDraft'] = { draft: { values: { title: ' ' } }, updatedAt: now };
-    renderAt(<DashboardPage />);
+    renderAt(<AllBazaarsPage />);
     expect(screen.getByText('Basar ohne Titel')).toBeInTheDocument();
     expect(screen.queryByText('Keine Basare gefunden')).toBeNull();
   });

@@ -18,6 +18,10 @@ interface ResponsiveSidebarProps {
   children: React.ReactNode;
 }
 
+/** The way a page comes in: a short fade from slightly below, none with reduced motion */
+const PAGE_FADE =
+  'animate-in fade-in-0 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none';
+
 const FULL_BLEED_PAGES = new Set(['/features', '/pricing', '/about']);
 const FOCUS_PAGES = new Set(['/events/new']);
 const MARKETING_PAGES = [
@@ -159,7 +163,13 @@ export function ResponsiveSidebar({ children }: ResponsiveSidebarProps) {
 
       {/* Main Content */}
 
-      <main className={mainClassName}>{children}</main>
+      <main className={mainClassName}>
+        {/* Every page and every role fades in the same way; the key restarts it */}
+        {/* Not at the full-screen desk: a sale must not wait for an animation */}
+        <div key={`${currentPage}|${role}`} className={isDesk ? undefined : PAGE_FADE}>
+          {children}
+        </div>
+      </main>
       {fixedSidebarOpen && !isItemForm && (
         <BottomNav
           role={role}
@@ -170,6 +180,10 @@ export function ResponsiveSidebar({ children }: ResponsiveSidebarProps) {
       )}
     </div>
   ) : (
-    <main className={mainClassName}>{children}</main>
+    <main className={mainClassName}>
+      <div key={currentPage} className={PAGE_FADE}>
+        {children}
+      </div>
+    </main>
   );
 }

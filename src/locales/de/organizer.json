@@ -222,8 +222,9 @@
     "from": "Von",
     "until": "Bis",
     "untilDay": "Bis Tag",
-    "clear": "Leeren",
-    "noteHint": "Steht in der Mail am Vorabend, z. B. wo der Eingang ist."
+    "noteHint": "Steht in der Mail am Vorabend, z. B. wo der Eingang ist.",
+    "enable": "{{label}}: Zeiten angeben",
+    "off": "Keine Zeiten – Verkäufer bekommen dazu nichts in der Mail."
   },
   "myEvents": {
     "rejected": "Abgelehnt",

@@ -257,7 +257,17 @@
     "modePlatform": "Platform",
     "saving": "Saving…",
     "save": "Save",
-    "logoUploadFailed": "The logo could not be uploaded."
+    "logoUploadFailed": "The logo could not be uploaded.",
+    "colorTheme": "Colour scheme",
+    "colorThemeHint": "The colour of buttons, links and highlights – for every visitor. The page shows the choice right away; \"Save\" keeps it.",
+    "colorThemes": {
+      "blue": "Blue",
+      "petrol": "Petrol",
+      "green": "Green",
+      "violet": "Violet",
+      "orange": "Orange",
+      "red": "Red"
+    }
   },
   "legal": {
     "saved": "{{title}} saved (version {{version}})",

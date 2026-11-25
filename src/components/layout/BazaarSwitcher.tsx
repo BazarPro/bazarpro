@@ -109,7 +109,7 @@ export function BazaarSwitcher({
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => go('/')}>
+        <DropdownMenuItem onSelect={() => go('/my-events')}>
           <LayoutGrid className="size-4" />
           {t('menu.allBazaars')}
           {badge > 0 && (

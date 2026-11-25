@@ -4,40 +4,41 @@
 
 :root {
   /*
-   * Design "Etikett": petrol is the one colour for actions, tag yellow marks what is due now,
-   * coral is kept for discounts and warnings, green only for states. Warm paper instead of white.
+   * Clean white with a strong colour for actions (blue unless an admin picks another
+   * scheme, see [data-brand] below); tag yellow marks what is due now, coral is kept for
+   * discounts and warnings, green only for states.
    */
   --font-size: 16px;
-  --background: #f5f0e7;
-  --foreground: #1b2326;
+  --background: #ffffff;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #1b2326;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #1b2326;
-  --primary: #0e5e63;
+  --popover-foreground: #0f172a;
+  --primary: #1d4ed8;
   --primary-foreground: #ffffff;
   /* The darker edge under filled buttons */
-  --primary-shade: #08363a;
-  --secondary: #e9e1d3;
-  --secondary-foreground: #1b2326;
-  --muted: #ece5d9;
-  --muted-foreground: #4f585b;
-  --accent: #ebe3d6;
-  --accent-foreground: #1b2326;
-  --destructive: #c23a20;
+  --primary-shade: #1e3a8a;
+  --secondary: #eef2f7;
+  --secondary-foreground: #0f172a;
+  --muted: #eef1f6;
+  --muted-foreground: #4b5565;
+  --accent: #e9eef7;
+  --accent-foreground: #0f172a;
+  --destructive: #c62828;
   --destructive-foreground: #ffffff;
-  --border: #d9d0c1;
-  /* Borders of fields, checkboxes and outline buttons: 3:1 against paper and white */
-  --input: #8a8378;
+  --border: #dbe1ea;
+  /* Borders of fields, checkboxes and outline buttons: 3:1 against white */
+  --input: #8a94a6;
   --input-background: #ffffff;
-  --switch-background: #8a8378;
+  --switch-background: #8a94a6;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #0e5e63;
+  --ring: #1d4ed8;
   --tag: #f6c445;
   --tag-foreground: #1b2326;
-  /* A dark petrol ground with white text in both themes: call to action, desk bar */
-  --brand-panel: #0e5e63;
+  /* A dark ground in the action colour with white text in both themes: call to action, desk bar */
+  --brand-panel: #1e40af;
   --tag-soft: #fdf1cc;
   --tag-soft-foreground: #6b4d06;
   --success: #2f7d32;
@@ -45,53 +46,53 @@
   --success-soft-foreground: #24622a;
   --warning-soft: #fdf1cc;
   --warning-soft-foreground: #6b4d06;
-  --danger-soft: #fbe3dc;
-  --danger-soft-foreground: #a8341c;
-  --chart-1: #0e5e63;
+  --danger-soft: #fde4e1;
+  --danger-soft-foreground: #a3261f;
+  --chart-1: #1d4ed8;
   --chart-2: #f6c445;
   --chart-3: #d1452a;
   --chart-4: #2f7d32;
   --chart-5: #5b8fa8;
   --radius: 0.875rem;
-  --sidebar: #f5f0e7;
-  --sidebar-foreground: #1b2326;
-  --sidebar-primary: #0e5e63;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #1d4ed8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ebe3d6;
-  --sidebar-accent-foreground: #1b2326;
-  --sidebar-border: #d9d0c1;
-  --sidebar-ring: #0e5e63;
+  --sidebar-accent: #e9eef7;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #dbe1ea;
+  --sidebar-ring: #1d4ed8;
 }
 
 .dark {
   /* Browser-drawn parts follow the theme: select lists, date pickers, scrollbars */
   color-scheme: dark;
-  --background: #0b1416;
-  --foreground: #eef2f1;
-  --card: #18272a;
-  --card-foreground: #eef2f1;
-  --popover: #18272a;
-  --popover-foreground: #eef2f1;
-  /* Lighter petrol with dark text: readable as text and as a button on the dark ground */
-  --primary: #4fb3a9;
-  --primary-foreground: #0b1f1e;
-  --primary-shade: #2a7a73;
-  --secondary: #22322f;
-  --secondary-foreground: #eef2f1;
-  --muted: #1f2f32;
-  --muted-foreground: #b3bfbf;
-  --accent: #22322f;
-  --accent-foreground: #eef2f1;
-  --destructive: #f0846c;
+  --background: #0b1120;
+  --foreground: #eef2f8;
+  --card: #151d2e;
+  --card-foreground: #eef2f8;
+  --popover: #151d2e;
+  --popover-foreground: #eef2f8;
+  /* Lighter action colour with dark text: readable as text and as a button on the dark ground */
+  --primary: #7ea2ff;
+  --primary-foreground: #0b1120;
+  --primary-shade: #3d5fd6;
+  --secondary: #1f2a40;
+  --secondary-foreground: #eef2f8;
+  --muted: #1b2438;
+  --muted-foreground: #aeb8cc;
+  --accent: #1f2a40;
+  --accent-foreground: #eef2f8;
+  --destructive: #f2806e;
   --destructive-foreground: #1b0d09;
-  --border: #34484c;
-  --input: #7d8d8e;
-  --input-background: #12201f;
-  --switch-background: #6d7c7d;
+  --border: #2c3852;
+  --input: #73809b;
+  --input-background: #0f1727;
+  --switch-background: #73809b;
   --ring: #f6c445;
   --tag: #f6c445;
   --tag-foreground: #1b2326;
-  --brand-panel: #0f4a4d;
+  --brand-panel: #1e3a8a;
   --tag-soft: #3a3115;
   --tag-soft-foreground: #f6d57a;
   --success: #5fbf63;
@@ -99,22 +100,136 @@
   --success-soft-foreground: #9fdc9f;
   --warning-soft: #3a3115;
   --warning-soft-foreground: #f6d57a;
-  --danger-soft: #3d1f18;
+  --danger-soft: #3d1f1c;
   --danger-soft-foreground: #f4a48f;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #4fb3a9;
+  --chart-1: #7ea2ff;
   --chart-2: #f6c445;
   --chart-3: #e0664c;
   --chart-4: #5fbf63;
   --chart-5: #8bb8cf;
-  --sidebar: #0b1416;
-  --sidebar-foreground: #eef2f1;
+  --sidebar: #0b1120;
+  --sidebar-foreground: #eef2f8;
+  --sidebar-primary: #7ea2ff;
+  --sidebar-primary-foreground: #0b1120;
+  --sidebar-accent: #1f2a40;
+  --sidebar-accent-foreground: #eef2f8;
+  --sidebar-border: #2c3852;
+  --sidebar-ring: #f6c445;
+}
+
+/*
+ * Colour schemes an admin can choose (Admin → Einstellungen): they swap only the action
+ * colour. Blue is the default above; light and dark each get their own shade.
+ */
+[data-brand='petrol'] {
+  --primary: #0e5e63;
+  --primary-shade: #08363a;
+  --ring: #0e5e63;
+  --brand-panel: #0f4a4d;
+  --chart-1: #0e5e63;
+  --sidebar-primary: #0e5e63;
+  --sidebar-ring: #0e5e63;
+}
+[data-brand='petrol'] .dark,
+[data-brand='petrol'].dark {
+  --primary: #4fb3a9;
+  --primary-foreground: #0b1f1e;
+  --primary-shade: #2a7a73;
+  --ring: #f6c445;
+  --brand-panel: #0f4a4d;
+  --chart-1: #4fb3a9;
   --sidebar-primary: #4fb3a9;
   --sidebar-primary-foreground: #0b1f1e;
-  --sidebar-accent: #22322f;
-  --sidebar-accent-foreground: #eef2f1;
-  --sidebar-border: #34484c;
+  --sidebar-ring: #f6c445;
+}
+
+[data-brand='green'] {
+  --primary: #15803d;
+  --primary-shade: #14532d;
+  --ring: #15803d;
+  --brand-panel: #166534;
+  --chart-1: #15803d;
+  --sidebar-primary: #15803d;
+  --sidebar-ring: #15803d;
+}
+[data-brand='green'] .dark,
+[data-brand='green'].dark {
+  --primary: #5fd08a;
+  --primary-foreground: #06150c;
+  --primary-shade: #1f9d55;
+  --ring: #f6c445;
+  --brand-panel: #14532d;
+  --chart-1: #5fd08a;
+  --sidebar-primary: #5fd08a;
+  --sidebar-primary-foreground: #06150c;
+  --sidebar-ring: #f6c445;
+}
+
+[data-brand='violet'] {
+  --primary: #6d28d9;
+  --primary-shade: #4c1d95;
+  --ring: #6d28d9;
+  --brand-panel: #5b21b6;
+  --chart-1: #6d28d9;
+  --sidebar-primary: #6d28d9;
+  --sidebar-ring: #6d28d9;
+}
+[data-brand='violet'] .dark,
+[data-brand='violet'].dark {
+  --primary: #b59bff;
+  --primary-foreground: #140a2b;
+  --primary-shade: #7c4ddb;
+  --ring: #f6c445;
+  --brand-panel: #4c1d95;
+  --chart-1: #b59bff;
+  --sidebar-primary: #b59bff;
+  --sidebar-primary-foreground: #140a2b;
+  --sidebar-ring: #f6c445;
+}
+
+[data-brand='orange'] {
+  --primary: #c2410c;
+  --primary-shade: #7c2d12;
+  --ring: #c2410c;
+  --brand-panel: #9a3412;
+  --chart-1: #c2410c;
+  --sidebar-primary: #c2410c;
+  --sidebar-ring: #c2410c;
+}
+[data-brand='orange'] .dark,
+[data-brand='orange'].dark {
+  --primary: #ff9f66;
+  --primary-foreground: #1f0c03;
+  --primary-shade: #d9621f;
+  --ring: #f6c445;
+  --brand-panel: #7c2d12;
+  --chart-1: #ff9f66;
+  --sidebar-primary: #ff9f66;
+  --sidebar-primary-foreground: #1f0c03;
+  --sidebar-ring: #f6c445;
+}
+
+[data-brand='red'] {
+  --primary: #be123c;
+  --primary-shade: #881337;
+  --ring: #be123c;
+  --brand-panel: #9f1239;
+  --chart-1: #be123c;
+  --sidebar-primary: #be123c;
+  --sidebar-ring: #be123c;
+}
+[data-brand='red'] .dark,
+[data-brand='red'].dark {
+  --primary: #ff8aa5;
+  --primary-foreground: #21060d;
+  --primary-shade: #e0436a;
+  --ring: #f6c445;
+  --brand-panel: #881337;
+  --chart-1: #ff8aa5;
+  --sidebar-primary: #ff8aa5;
+  --sidebar-primary-foreground: #21060d;
   --sidebar-ring: #f6c445;
 }
 
@@ -204,6 +319,10 @@
  * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
  */
 @layer base {
+  /*
+   * Headings without a size of their own. Text, labels and buttons inherit their size
+   * from where they stand (a text-xs box keeps its paragraphs small).
+   */
   #root :where(:not(:has([class*=' text-']), :not(:has([class^='text-'])))) {
     h1 {
       font-size: var(--text-2xl);
@@ -226,30 +345,6 @@
     h4 {
       font-size: var(--text-base);
       font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
-
-    p {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-normal);
-      line-height: 1.5;
-    }
-
-    label {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
-
-    button {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
-
-    input {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-normal);
       line-height: 1.5;
     }
   }

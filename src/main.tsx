@@ -20,6 +20,11 @@ import { initPlausible } from './lib/plausible';
 import { openPersistedQueries } from './lib/api/persistedQueries';
 import { isOfflineAvailable } from './lib/offlineMode';
 
+import { applyColorTheme, rememberedColorTheme } from './lib/colorTheme';
+
+// The colour scheme of the last visit right away, before the config loads: no blue flash
+applyColorTheme(rememberedColorTheme());
+
 const client = new ApiClient();
 
 void initPlausible(client);

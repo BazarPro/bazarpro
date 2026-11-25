@@ -804,7 +804,7 @@ function DeskBar({
 }) {
   const { t } = useTranslation('organizer');
   return (
-    <header className="flex items-center gap-3 bg-[#08363a] px-4 py-2.5 text-white sm:gap-4 sm:px-6">
+    <header className="flex items-center gap-3 bg-primary-shade dark:bg-brand-panel px-4 py-2.5 text-white sm:gap-4 sm:px-6">
       <BrandMark onDark className="h-7 w-7" />
       <p className="min-w-0 flex-1 truncate text-sm">
         <span className="font-bold">{t('checkout.title')}</span>

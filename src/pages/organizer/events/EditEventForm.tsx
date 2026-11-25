@@ -281,6 +281,9 @@ const buildEventSchema = (
         pickupStart: z.string(),
         pickupEnd: z.string(),
         note: z.string().max(2000, zodMessage('form.noteMax', 'organizer')),
+        // A window switched off keeps its times here, but they are not saved
+        dropoffOff: z.boolean().optional(),
+        pickupOff: z.boolean().optional(),
       }),
     })
     .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
@@ -607,6 +610,9 @@ function logisticsToForm(stored: StoredLogistics | undefined, withTimes = true):
     pickupStart: time(stored?.pickupStart),
     pickupEnd: time(stored?.pickupEnd),
     note: stored?.note ?? '',
+    // Saved without times: the window was switched off
+    dropoffOff: !!stored && withTimes && !stored.dropoffStart && !stored.dropoffEnd,
+    pickupOff: !!stored && withTimes && !stored.pickupStart && !stored.pickupEnd,
   };
 }
 
@@ -619,10 +625,9 @@ function formatForDateTimeLocal(timestamp: number): string {
 }
 
 /**
- * Steps of the creation wizard and the form fields each one checks before moving on. Only
- * the fields shown in that step: an error elsewhere could not be seen, let alone fixed.
+ * The fields of each group of settings, checked before the wizard moves on. Only the
+ * fields shown in that step: an error elsewhere could not be seen, let alone fixed.
  */
-/** The fields of each group of settings, checked before the wizard moves on */
 const SECTION_FIELDS = {
   basics: ['title', 'location', 'address', 'startDate', 'endDate'],
   sale: ['features.maxDiscountPercent', 'features.discountStartsAt'],
@@ -647,9 +652,9 @@ type SectionKey = keyof typeof SECTION_FIELDS;
 const WIZARD_STEP_SECTIONS = [
   { id: 'type', sections: [] },
   // Date and place first: the times of discounts, registration and drop-off follow them
-  { id: 'basics', sections: ['basics', 'logistics'] },
-  // What is sold and how, with a preview of each choice
-  { id: 'items', sections: ['items', 'sale'] },
+  { id: 'basics', sections: ['basics'] },
+  // How and what is sold; drop-off follows the choice of a direct sale (setup and teardown)
+  { id: 'items', sections: ['sale', 'items', 'logistics'] },
   { id: 'fees', sections: ['fees', 'registration'] },
   // The words for the bazaar page last, with the page growing next to them
   { id: 'details', sections: ['details'] },
@@ -659,6 +664,28 @@ const WIZARD_STEPS = WIZARD_STEP_SECTIONS.map((step) => ({
   ...step,
   fields: (step.sections as readonly SectionKey[]).flatMap((section) => SECTION_FIELDS[section]),
 }));
+/** The nine steps before they were merged (until 11/2026), for drafts that kept a number */
+const OLD_STEP_IDS = [
+  'type',
+  'basics',
+  'sale',
+  'items',
+  'fees',
+  'registration',
+  'logistics',
+  'details',
+  'preview',
+];
+
+/** Where a saved draft goes on: its step by name, else the old number, else the end. */
+function draftStep(draft: { step?: number; stepId?: string }) {
+  const byName = draft.stepId ? stepOfSection(draft.stepId) : -1;
+  if (byName >= 0) return byName;
+  if (draft.step === undefined) return WIZARD_STEPS.length - 1;
+  const old = stepOfSection(OLD_STEP_IDS[draft.step] ?? '');
+  return old >= 0 ? old : 1;
+}
+
 /** Steps with a name of their own */
 const MERGED_STEPS = new Set<WizardStepId>(['items', 'fees']);
 
@@ -879,44 +906,67 @@ function Disclosure({
   title,
   hint,
   fields = [],
+  defaultOpen = false,
+  onUse,
   children,
 }: {
   title: string;
   hint?: string;
   fields?: readonly string[];
+  /** Open from the start, e.g. reached with "edit" from the summary */
+  defaultOpen?: boolean;
+  /** Opened or worked in, e.g. for the preview beside */
+  onUse?: () => void;
   children: ReactNode;
 }) {
   const { formState } = useFormContext();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const id = useId();
   const invalid = fields.some((field) => get(formState.errors, field));
-  const shown = open || invalid;
+  // An error opens it and it stays open while being fixed: the field must not vanish
+  useEffect(() => {
+    if (invalid) setOpen(true);
+  }, [invalid]);
   return (
-    <section className="rounded-xl border bg-card shadow-xs">
-      <button
-        type="button"
-        aria-expanded={shown}
-        aria-controls={id}
-        onClick={() => setOpen(!shown)}
-        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+    <section
+      className="rounded-xl border bg-card shadow-xs"
+      onFocusCapture={onUse}
+      onPointerDownCapture={onUse}
+    >
+      <h3>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen(!open)}
+          className="flex w-full items-center gap-3 rounded-xl px-5 py-4 text-left font-sans hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-6"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">{title}</span>
+            {hint && (
+              <span className="block text-sm font-normal text-muted-foreground">{hint}</span>
+            )}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-5 shrink-0 text-muted-foreground transition-transform',
+              open && 'rotate-180'
+            )}
+            aria-hidden
+          />
+        </button>
+      </h3>
+      {/*
+        Always there, only hidden: the fields keep their state, and the button points to it.
+        Cards inside lose their own frame: one box, the content in line with the title.
+      */}
+      <div
+        id={id}
+        hidden={!open}
+        className="border-t [&>section]:rounded-none [&>section]:border-0 [&>section]:bg-transparent [&>section]:shadow-none"
       >
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">{title}</span>
-          {hint && <span className="block text-sm text-muted-foreground">{hint}</span>}
-        </span>
-        <ChevronDown
-          className={cn(
-            'size-5 shrink-0 text-muted-foreground transition-transform',
-            shown && 'rotate-180'
-          )}
-          aria-hidden
-        />
-      </button>
-      {shown && (
-        <div id={id} className="border-t p-2 sm:p-3 [&>*]:shadow-none">
-          {children}
-        </div>
-      )}
+        {children}
+      </div>
     </section>
   );
 }
@@ -994,7 +1044,8 @@ function EventSection({
       );
     case 'details':
       return (
-        <>
+        // Two cards: with room between them
+        <div className="space-y-4">
           <FormSection>
             <EditEventBasicInfo allowCoverImage={false} parts={['description']} />
             <EditEventContact parts={['contact']} bare />
@@ -1004,7 +1055,7 @@ function EventSection({
             pendingLocationCategories={pendingLocationCategories}
             onPendingLocationCategoriesChange={onPendingLocationCategoriesChange}
           />
-        </>
+        </div>
       );
     case 'sale':
       return <EditEventFeatures parts={['sale']} showHeader={false} />;
@@ -1033,7 +1084,7 @@ function EventSection({
             // The cap and groups with their own fees are for experienced teams: folded
             <div className="sm:col-span-2">
               <AdvancedDisclosure fields={['features.maxFeesPerSeller', 'features.feeGroups']}>
-                <div className="space-y-5 p-2">
+                <div className="space-y-5 p-5 sm:p-6">
                   <div className="max-w-sm">
                     <EditEventFeatures parts={['fees']} showHeader={false} advanced="only" bare />
                   </div>
@@ -1058,18 +1109,21 @@ function EventSection({
             {editing ? (
               <EditEventRegion />
             ) : (
-              // Private sellers, fixed data and postal codes: rarely needed, folded
-              <AdvancedDisclosure fields={['features.allowedPostalCodes']}>
-                <div className={cn(FORM_ROWS, 'p-2')}>
-                  <EditEventFeatures
-                    parts={['registration']}
-                    showHeader={false}
-                    advanced="only"
-                    bare
-                  />
-                  <EditEventRegion />
-                </div>
-              </AdvancedDisclosure>
+              // Private sellers, fixed data and postal codes: rarely needed, folded. A plain
+              // wrapper: the row padding of FORM_ROWS goes around the box, not into it
+              <div>
+                <AdvancedDisclosure fields={['features.allowedPostalCodes']}>
+                  <div className={cn(FORM_ROWS, 'p-5 sm:p-6')}>
+                    <EditEventFeatures
+                      parts={['registration']}
+                      showHeader={false}
+                      advanced="only"
+                      bare
+                    />
+                    <EditEventRegion />
+                  </div>
+                </AdvancedDisclosure>
+              </div>
             )}
           </FormSection>
         </>
@@ -1096,34 +1150,25 @@ function WizardFinal({ type }: { type?: EventType }) {
 }
 
 /**
- * The preview next to a step; the type and final steps show theirs full width. A step with
- * two groups shows both previews, one below the other.
+ * The preview next to a step: the one of the group of settings in use (focused or
+ * touched last). The type and final steps show theirs full width.
  */
-function StepPreview({ id, type }: { id: WizardStepId; type?: EventType }) {
+function StepPreview({ id, type }: { id: string; type?: EventType }) {
   switch (id) {
+    case 'sale':
+      return <SalePreview type={type} />;
     case 'items':
-      return (
-        <div className="space-y-4">
-          <ItemsPreview type={type} />
-          <SalePreview type={type} />
-        </div>
-      );
+      return <ItemsPreview type={type} />;
     case 'fees':
-      return (
-        <div className="space-y-4">
-          <FeesPreview type={type} />
-          <ListingPreview type={type} />
-        </div>
-      );
+      return <FeesPreview type={type} />;
+    case 'registration':
+      return <ListingPreview type={type} />;
     case 'basics':
-      return (
-        <div className="space-y-4">
-          <PlacePreview type={type} />
-          <LogisticsPreview />
-        </div>
-      );
+      return <PlacePreview type={type} />;
     case 'details':
       return <PlacePreview type={type} withContact />;
+    case 'logistics':
+      return <LogisticsPreview />;
     default:
       return null;
   }
@@ -1350,6 +1395,13 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
   const [eventType, setEventType] = useState<EventTypeId>();
   const chosenType = findEventType(eventType);
   const stepId = WIZARD_STEPS[step].id;
+  // The group of settings in use, for the preview beside; a new step starts with its first
+  const [active, setActive] = useState<{ step: number; section: string }>();
+  const activeSection = active?.step === step ? active.section : undefined;
+  const setActiveSection = (section: string) =>
+    setActive((current) =>
+      current?.step === step && current.section === section ? current : { step, section }
+    );
   // Settings and their preview side by side; the first and the last step are previews
   const sideBySide = stepId !== 'type' && stepId !== 'preview';
   const applyEventType = (id: EventTypeId) => {
@@ -1398,6 +1450,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       pendingLocationCategories,
       eventType,
       step: draftStep,
+      stepId: WIZARD_STEPS[draftStep]?.id,
       submitted,
       continues: continuedDraftAt,
     });
@@ -1549,7 +1602,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
     });
     setPendingLocationCategories(draft.pendingLocationCategories);
     setEventType(findEventType(draft.eventType)?.id);
-    setStep(Math.min(draft.step ?? WIZARD_STEPS.length - 1, WIZARD_STEPS.length - 1));
+    setStep(draftStep(draft));
     if (isAuthenticated && wantsDraft && draft.submitted) {
       setCreatingDraft(true);
     } else {
@@ -1921,7 +1974,9 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                         </div>
                       </>
                     )}
-                    {WIZARD_STEPS[step].sections.map((section, index) => {
+                    {WIZARD_STEPS[step].sections.map((section) => {
+                      // The preview beside follows the group being worked on
+                      const use = () => setActiveSection(section);
                       const content = (
                         <EventSection
                           id={section}
@@ -1930,12 +1985,20 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                           onPendingLocationCategoriesChange={setPendingLocationCategories}
                         />
                       );
-                      if (index === 0) return <div key={section}>{content}</div>;
+                      // A step of one group has no heading of its own; with more, each has one
+                      if (WIZARD_STEPS[step].sections.length === 1)
+                        return (
+                          <div key={section} onFocusCapture={use} onPointerDownCapture={use}>
+                            {content}
+                          </div>
+                        );
                       const title = t(`wizard.steps.${stepKey(section, directSale)}.title`);
                       // Drop-off is prefilled from the date: folded, opened by an error in it
                       return section === 'logistics' ? (
                         <Disclosure
                           key={section}
+                          defaultOpen={activeSection === section}
+                          onUse={use}
                           title={title}
                           hint={t(`wizard.steps.${stepKey(section, directSale)}.text`)}
                           fields={SECTION_FIELDS[section]}
@@ -1943,14 +2006,25 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                           {content}
                         </Disclosure>
                       ) : (
-                        <section key={section} className="space-y-4">
+                        <section
+                          key={section}
+                          className="space-y-4"
+                          onFocusCapture={use}
+                          onPointerDownCapture={use}
+                        >
                           <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
                           {content}
                         </section>
                       );
                     })}
                     {stepId === 'preview' && (
-                      <WizardSummary onEdit={(id) => void goToStep(stepOfSection(id))} />
+                      <WizardSummary
+                        onEdit={(id) => {
+                          // A folded group opens when the summary leads to it
+                          setActive({ step: stepOfSection(id), section: id });
+                          void goToStep(stepOfSection(id));
+                        }}
+                      />
                     )}
                     {stepId === 'preview' && (
                       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
@@ -1970,10 +2044,18 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                   {sideBySide && (
                     <div
                       id="wizard-preview"
-                      // Two previews can be taller than the screen: they scroll on their own
-                      className="scroll-mt-20 lg:sticky lg:top-24 lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pb-1"
+                      // A tall preview scrolls on its own, clear of the bar with the buttons below
+                      className="scroll-mt-20 lg:sticky lg:top-24 lg:max-h-[calc(100svh-11rem)] lg:overflow-y-auto lg:pb-1"
                     >
-                      <StepPreview id={stepId} type={chosenType} />
+                      <StepPreview
+                        id={
+                          activeSection &&
+                          (WIZARD_STEPS[step].sections as readonly string[]).includes(activeSection)
+                            ? activeSection
+                            : (WIZARD_STEPS[step].sections[0] ?? stepId)
+                        }
+                        type={chosenType}
+                      />
                     </div>
                   )}
                 </div>

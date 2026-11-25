@@ -249,8 +249,9 @@ describe('event creation wizard', () => {
     expect(await screen.findByText(/−\d+ %/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Artikel rabattieren' }));
 
-    // Items on the same step: the bike category is preselected, the label is the large one with price
+    // Items on the same step, its preview once worked on: the bike category is preselected, the label is the large one with price
     expect(await screen.findByText('Artikel und Verkauf')).toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByText('Welche Artikel?'));
     expect(screen.getByText(/Großes Etikett/)).toBeInTheDocument();
     expect(screen.getByText('Erlaubt: Fahrräder')).toBeInTheDocument();
     next();
@@ -365,14 +366,6 @@ describe('event creation wizard', () => {
       target: { value: 'Münsterplatz' },
     });
 
-    // Drop-off and pickup are suggested on the same day, folded below: only the times are left
-    fireEvent.click(screen.getByRole('button', { name: /Abgabe und Abholung/ }));
-    expect(document.getElementById('dropoffDay')).toHaveValue('2099-04-18');
-    expect(document.getElementById('dropoffFrom')).toHaveValue('07:00');
-    expect(document.getElementById('dropoffTo')).toHaveValue('08:30');
-    expect(document.getElementById('pickupFrom')).toHaveValue('14:00');
-    expect(document.getElementById('pickupTo')).toHaveValue('15:00');
-    fireEvent.change(document.getElementById('pickupTo')!, { target: { value: '16:00' } });
     next();
 
     // The discount start has to lie within the bazaar
@@ -387,6 +380,15 @@ describe('event creation wizard', () => {
     ).toBeInTheDocument();
     fireEvent.change(discountStart, { target: { value: '2099-04-18T12:00' } });
     expect(await screen.findByText('Artikel und Verkauf')).toBeInTheDocument();
+
+    // Drop-off and pickup are suggested on the same day, folded below: only the times are left
+    fireEvent.click(screen.getByRole('button', { name: /Abgabe und Abholung/ }));
+    expect(document.getElementById('dropoffDay')).toHaveValue('2099-04-18');
+    expect(document.getElementById('dropoffFrom')).toHaveValue('07:00');
+    expect(document.getElementById('dropoffTo')).toHaveValue('08:30');
+    expect(document.getElementById('pickupFrom')).toHaveValue('14:00');
+    expect(document.getElementById('pickupTo')).toHaveValue('15:00');
+    fireEvent.change(document.getElementById('pickupTo')!, { target: { value: '16:00' } });
     next();
     expect(await screen.findByText('Gebühren und Anmeldung')).toBeInTheDocument();
     expect(await screen.findByText('Wer darf mitmachen?')).toBeInTheDocument();
@@ -403,10 +405,8 @@ describe('event creation wizard', () => {
     );
     // The summary leads back to the step of each fact
     fireEvent.click(screen.getByRole('button', { name: 'Abgabe bearbeiten' }));
-    expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Abgabe und Abholung/ })).toBeInTheDocument();
-    next();
     expect(await screen.findByText('Artikel und Verkauf')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Abgabe und Abholung/ })).toBeInTheDocument();
     next();
     expect(await screen.findByText('Gebühren und Anmeldung')).toBeInTheDocument();
     next();
