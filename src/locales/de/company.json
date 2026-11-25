@@ -49,11 +49,7 @@
       "title": "Wie eine Verkäufernummer – nur schneller sortiert",
       "text": "Statt einer Nummer bekommt jeder Verkäufer ein festes Sortierzeichen aus Ziffer, Buchstaben und Zahl. Zum Zurücksortieren muss niemand scannen: Nicht erst „Nummer 247“ in der Liste suchen, sondern auf die große Ziffer schauen, dann auf Buchstabe und Zahl.",
       "example": "Beispiel für drei Etiketten eines Verkäufers mit demselben Sortierzeichen, mit Größe und Preis",
-      "exampleItems": [
-        "Body mit Bären",
-        "Regenjacke",
-        "Gummistiefel"
-      ],
+      "exampleItems": ["Body mit Bären", "Regenjacke", "Gummistiefel"],
       "steps": {
         "sort": {
           "title": "Auf einen Blick sortieren",
@@ -70,11 +66,7 @@
       },
       "default": "Universal-Etiketten sind überall voreingestellt, in beiden Formaten. Das Sortierzeichen ersetzt die Verkäufernummer, Größe und Preis stehen wie gewohnt darauf.",
       "guide": "Anleitung in der Dokumentation",
-      "exampleSizes": [
-        "Gr. 74",
-        "Gr. 104",
-        "Gr. 27"
-      ]
+      "exampleSizes": ["Gr. 74", "Gr. 104", "Gr. 27"]
     },
     "useCases": {
       "eyebrow": "Einsatzbereiche",
