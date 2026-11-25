@@ -23,6 +23,7 @@ import { EventHero } from '../../../components/EventHero';
 import { EventPageSidebar } from '../../organizer/events/components/EventPageSidebar';
 import { SafeMarkdown } from '../../../components/markdown/SafeMarkdown';
 import { EventProductPreview } from '../../../components/events/EventProductPreview';
+import { ConditionFacts } from '../../../components/events/SellerConditions';
 import { Seo } from '../../../components/seo/Seo';
 import {
   buildSeoDescription,
@@ -381,6 +382,13 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
           <div className="mb-6 space-y-6 empty:hidden">
             <MyRejections eventId={event._id} />
             <SellerBroadcasts eventId={event._id} />
+          </div>
+        )}
+
+        {/* The conditions in a few words; the sidebar has them in full */}
+        {!isPast && (
+          <div className="mb-6">
+            <ConditionFacts event={event} detailsId="seller-conditions" />
           </div>
         )}
 

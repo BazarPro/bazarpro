@@ -133,11 +133,8 @@ export function EventManagementDashboard() {
       id: 'sale',
       icon: ShoppingCart,
       title: t('dashboard.steps.sale'),
-      text: t('dashboard.steps.saleText', {
-        sold,
-        total: products.length,
-        revenue: formatPrice(totalRevenue),
-      }),
+      // The revenue stands in its tile below
+      text: t('dashboard.steps.saleText', { sold, total: products.length }),
       to: `${base}/checkout`,
       done: hasEnded,
       current: hasStarted && !hasEnded,
@@ -162,6 +159,8 @@ export function EventManagementDashboard() {
     (step, index) =>
       index < currentIndex && !step.done && step.to && !(hasStarted && step.id === 'promote')
   );
+  // Figures the card above already names are left out of the tiles below: not twice
+  const inCard = new Set([current?.id, ...leftBehind.map((step) => step.id)]);
   const nextAction: Record<string, string> = {
     promote: t('dashboard.next.promote'),
     sellers: t('dashboard.next.sellers'),
@@ -337,16 +336,22 @@ export function EventManagementDashboard() {
               label={t('dashboard.products')}
               value={products.length}
               hint={
-                waiting > 0 ? t('dashboard.steps.intakeWaiting', { count: waiting }) : undefined
+                waiting > 0 && !inCard.has('intake')
+                  ? t('dashboard.steps.intakeWaiting', { count: waiting })
+                  : undefined
               }
-              urgent={waiting > 0}
+              urgent={waiting > 0 && !inCard.has('intake')}
               to={`${base}/products`}
             />
             <StatTile
               icon={Banknote}
               label={t('dashboard.revenue')}
               value={`${formatPrice(totalRevenue)} €`}
-              hint={t('dashboard.soldOf', { sold, total: products.length })}
+              hint={
+                inCard.has('sale')
+                  ? undefined
+                  : t('dashboard.soldOf', { sold, total: products.length })
+              }
               to={`${base}/products?tab=sold`}
             />
           </div>

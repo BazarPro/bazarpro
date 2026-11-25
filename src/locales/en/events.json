@@ -176,7 +176,8 @@
     "fixedDataDetails": "Once your first item is accepted, they are fixed, and so are the details of accepted items. The organizer keeps a record of them.",
     "directSaleDetails": "You agree on the price, then the cash desk books the sale at that price. There you only pay the commission.",
     "region": "Only for sellers from postal codes {{codes}}",
-    "regionShort": "Only for sellers from the region"
+    "regionShort": "Only for sellers from the region",
+    "showAll": "Show all conditions ({{count}})"
   },
   "sidebar": {
     "details": "Bazaar details",
@@ -270,5 +271,13 @@
     "upcoming": "Upcoming",
     "running": "Happening now",
     "ended": "Ended"
+  },
+  "facts": {
+    "title": "For sellers:",
+    "commission": "{{percent}} % commission",
+    "intakeFee": "{{fee}} € per item",
+    "maxItems_one": "up to {{count}} item",
+    "maxItems_other": "up to {{count}} items",
+    "all": "All conditions"
   }
 }

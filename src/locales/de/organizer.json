@@ -270,7 +270,7 @@
       "intakeText_one": "{{count}} Artikel angemeldet",
       "intakeText_other": "{{count}} Artikel angemeldet",
       "sale": "An der Kasse verkaufen",
-      "saleText": "{{sold}} von {{total}} verkauft · {{revenue}} € Umsatz",
+      "saleText": "{{sold}} von {{total}} Artikeln verkauft",
       "settle": "Abrechnen und auszahlen",
       "settleText": "{{settled}} von {{total}} Verkäufern abgerechnet",
       "promote": "Werbung machen",

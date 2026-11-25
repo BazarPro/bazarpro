@@ -270,7 +270,7 @@
       "intakeText_one": "{{count}} item registered",
       "intakeText_other": "{{count}} items registered",
       "sale": "Sell at the cash desk",
-      "saleText": "{{sold}} of {{total}} sold · {{revenue}} € revenue",
+      "saleText": "{{sold}} of {{total}} items sold",
       "settle": "Settle and pay out",
       "settleText": "{{settled}} of {{total}} sellers settled",
       "promote": "Promote",

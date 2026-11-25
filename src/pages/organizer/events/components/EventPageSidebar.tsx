@@ -273,9 +273,10 @@ export function EventPageSidebar({
 
       {conditions && (
         <SellerConditions
+          id="seller-conditions"
           event={conditions}
           eventId={eventId}
-          className="bg-card rounded-xl border p-6"
+          className="scroll-mt-24 bg-card rounded-xl border p-6"
           compact
         />
       )}

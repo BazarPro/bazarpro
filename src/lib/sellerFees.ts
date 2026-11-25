@@ -367,6 +367,6 @@ export function formatSignedEuro(amount: number) {
   return `${sign}${formatPrice(Math.abs(amount))} €`;
 }
 
-function formatPercent(value: number) {
+export function formatPercent(value: number) {
   return value.toLocaleString(dateLocale(), { maximumFractionDigits: 1 });
 }
