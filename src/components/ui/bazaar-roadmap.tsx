@@ -128,48 +128,55 @@ export function BazaarRoadmap({
 }
 
 /**
- * The one thing to do now, with its button. A tag-yellow band with a punched hole on top,
- * like a price tag. Without a step due, `doneText` says all is done.
+ * The one thing to do now, with its button: a calm card with a tag-yellow edge, the step's
+ * icon on a yellow tile, title and figures, the button at the end of the row (below it
+ * when the card is narrow). Without a step due, `doneText` says all is done.
  */
 export function NextStepCard({
   step,
   eyebrow,
   action,
   doneText,
+  header,
   children,
 }: {
   step: NextStep | undefined;
   eyebrow: ReactNode;
   action: ReactNode;
   doneText: ReactNode;
+  /** Above the step in the same card, e.g. the roadmap */
+  header?: ReactNode;
   children?: ReactNode;
 }) {
   return (
-    <section
-      data-testid="next-step"
-      className="overflow-hidden rounded-xl border-2 border-primary bg-card shadow-sm"
-    >
-      <div className="flex items-center gap-2.5 bg-tag px-5 py-2.5 text-tag-foreground sm:px-6">
-        <span aria-hidden="true" className="size-2.5 rounded-full bg-card shadow-inner" />
-        <span className="font-display text-sm font-bold">{eyebrow}</span>
-      </div>
-      <div className="space-y-4 p-5 sm:p-6">
+    <section className="@container relative overflow-hidden rounded-xl border bg-card shadow-sm">
+      {header && <div className="border-b bg-muted/40 px-2 pb-3 pt-4 sm:px-4">{header}</div>}
+      <div data-testid="next-step" className="relative space-y-4 p-5 pl-6 sm:p-6 sm:pl-7">
+        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-tag" />
         {step ? (
-          <>
-            <div>
-              <h2 className="text-2xl font-extrabold leading-tight">{step.title}</h2>
-              {step.text && <p className="mt-1.5 text-muted-foreground">{step.text}</p>}
+          <div className="flex flex-col gap-4 @xl:flex-row @xl:items-center">
+            <div className="flex min-w-0 flex-1 items-start gap-4">
+              <span
+                aria-hidden="true"
+                className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-tag text-tag-foreground shadow-xs"
+              >
+                <step.icon className="size-6" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-tag-soft-foreground">{eyebrow}</p>
+                <h2 className="text-xl font-extrabold leading-tight sm:text-2xl">{step.title}</h2>
+                {step.text && <p className="mt-1 text-muted-foreground">{step.text}</p>}
+              </div>
             </div>
             {step.to && (
-              <Button asChild size="lg" className="max-sm:w-full">
+              <Button asChild size="lg" className="shrink-0 @max-xl:w-full">
                 <Link to={step.to} state={step.state}>
-                  <step.icon className="size-5" />
                   {action}
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
             )}
-          </>
+          </div>
         ) : (
           <p className="flex items-center gap-3 text-lg font-semibold">
             <PartyPopper className="size-6 shrink-0 text-primary" />

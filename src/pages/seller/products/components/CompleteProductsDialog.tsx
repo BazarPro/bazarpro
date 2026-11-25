@@ -96,7 +96,7 @@ export function CompleteProductsDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !isSaving && onCancel()}>
-      <DialogContent className="max-w-lg max-h-[90svh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('complete.title', { step: step + 1, total: items.length })}</DialogTitle>
           <DialogDescription>
@@ -139,7 +139,7 @@ export function CompleteProductsDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
+        <DialogFooter className="sm:justify-between">
           <Button
             variant="ghost"
             disabled={isSaving}

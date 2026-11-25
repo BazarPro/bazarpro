@@ -71,6 +71,8 @@
     },
     "categories": "Categories & services",
     "allBazaars": "All bazaars",
+    "switchBazaar": "Switch bazaar",
+    "newBazaar": "Create new bazaar",
     "sales": "Sales"
   },
   "footer": {

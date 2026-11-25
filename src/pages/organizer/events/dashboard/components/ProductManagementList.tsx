@@ -2,7 +2,8 @@ import { EmptyState } from '../../../../../components/ui/empty-state';
 import {
   CheckCircle2,
   Download,
-  RotateCcw,
+  HandHelping,
+  Ban,
   ShoppingCart,
   Undo2,
   UserCircle,
@@ -89,7 +90,7 @@ const TABS: {
   { value: 'announced', icon: CheckCircle2 },
   { value: 'available', icon: ShoppingCart },
   { value: 'sold', icon: DollarSign },
-  { value: 'returned', icon: RotateCcw },
+  { value: 'returned', icon: HandHelping },
   { value: 'rejected', icon: PackageX },
 ];
 
@@ -401,12 +402,14 @@ function ProductRow({
             </>
           ) : product.discountPercent ? (
             <>
-              <div className="font-semibold text-destructive">
+              <div className="font-semibold">
                 {formatPrice(discountedPrice(product.price, product.discountPercent))} €
               </div>
               <div className="text-xs text-muted-foreground">
-                <span className="line-through">{formatPrice(product.price)} €</span> −
-                {product.discountPercent}%
+                <span className="line-through">{formatPrice(product.price)} €</span>{' '}
+                <span className="rounded-sm bg-tag px-1 font-semibold text-tag-foreground">
+                  −{product.discountPercent} %
+                </span>
               </div>
             </>
           ) : (
@@ -462,7 +465,8 @@ function ProductRow({
                   title={t('list.return')}
                   aria-label={t('list.return')}
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  {/* A hand giving it back, not an arrow: the arrow is "cancel the sale" */}
+                  <HandHelping className="h-4 w-4" />
                 </Button>
               )}
             </>
@@ -484,8 +488,9 @@ function ProductRow({
                   onClick={() => trigger('undoSale')}
                   title={t('list.cancelSale')}
                   aria-label={t('list.cancelSale')}
+                  className="text-destructive hover:bg-danger-soft hover:text-danger-soft-foreground"
                 >
-                  <Undo2 className="h-4 w-4" />
+                  <Ban className="h-4 w-4" />
                 </Button>
               )}
             </>

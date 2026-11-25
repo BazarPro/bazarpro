@@ -13,7 +13,7 @@ import { MAX_DISCOUNT_PERCENT } from '../../../../shared/eventFeatures';
 import { getCategoryFields } from '../../../../shared/categoryFields';
 import { expandCategories } from '../../../../shared/categoryTree';
 import { useRequirableFields } from '../../../../hooks/useCategoryFields';
-import { feeLockHint, type FeeLock } from '../../../../lib/sellerFees';
+import { feeLockHint, feeLockShort, type FeeLock } from '../../../../lib/sellerFees';
 import { categoryFieldText } from '../../../../i18n/categoryFields';
 import { useTranslation } from 'react-i18next';
 import {
@@ -22,6 +22,7 @@ import {
   HandCoins,
   Handshake,
   ImageOff,
+  Lock,
   MessageCircleQuestion,
   Percent,
   Printer,
@@ -181,15 +182,16 @@ function RequiredFieldsPicker() {
     (field) => available.has(field.key) || required.includes(field.key)
   );
 
+  // Nothing to require for the chosen categories: no empty row
+  if (fields.length === 0) return null;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-1">
         <p className="text-sm font-medium">{t('features.requiredFields')}</p>
         <InfoTip>{t('features.requiredFieldsText')}</InfoTip>
       </div>
-      {fields.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{t('features.requiredFieldsNone')}</p>
-      ) : (
+      {
         <Controller
           name="features.requiredFields"
           control={control}
@@ -222,7 +224,7 @@ function RequiredFieldsPicker() {
             );
           }}
         />
-      )}
+      }
     </div>
   );
 }
@@ -350,7 +352,12 @@ function EuroField({
           €
         </span>
       </div>
-      {feeLock && <p className="text-xs text-muted-foreground">{feeLockHint(feeLock)}</p>}
+      {feeLock && (
+        <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <Lock className="size-3" aria-hidden />
+          {feeLockShort(feeLock)}
+        </p>
+      )}
       {error && <FieldError>{error}</FieldError>}
     </div>
   );
@@ -555,9 +562,7 @@ export function EditEventFeatures({
             description={t('features.priceOnLabelText')}
           />
           {priceOnLabel && discounts && (
-            <p className="text-sm text-muted-foreground">
-              {t('features.priceOnLabelDiscounts')}
-            </p>
+            <p className="text-sm text-muted-foreground">{t('features.priceOnLabelDiscounts')}</p>
           )}
         </>
       )}

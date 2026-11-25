@@ -1,6 +1,6 @@
 import { InvitePage } from './pages/public/invite/InvitePage';
 import { useAuthState, useQuery, useAuthActions } from './lib/api/react';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -163,15 +163,33 @@ function EditEventRedirect() {
 
 function AppToaster() {
   const { resolvedTheme } = useTheme();
-  // On phones above the tab bar
+  // Phones: at the top, over the header; at the bottom they hid the content, the tab
+  // bar and the save buttons
+  const phone = useIsPhone();
   return (
     <Toaster
       richColors
-      position="bottom-right"
+      position={phone ? 'top-center' : 'bottom-right'}
       theme={resolvedTheme}
-      mobileOffset={{ bottom: '4.5rem' }}
+      mobileOffset={{ top: 'calc(0.5rem + env(safe-area-inset-top))' }}
     />
   );
+}
+
+const PHONE_QUERY = '(max-width: 639px)';
+
+function useIsPhone() {
+  const [phone, setPhone] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.(PHONE_QUERY).matches
+  );
+  useEffect(() => {
+    const query = window.matchMedia?.(PHONE_QUERY);
+    if (!query) return;
+    const update = () => setPhone(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  return phone;
 }
 
 function ScrollToTop() {
@@ -333,13 +351,16 @@ function App() {
                         }
                       />
 
+                      {/* Visitors find the bazaars on the landing page instead of a login */}
+                      <Route
+                        path="/browse-events"
+                        element={
+                          <VisitorsToLandingEvents>
+                            {isSingleInstance ? <CurrentBazaarRedirect /> : <SearchEventsPage />}
+                          </VisitorsToLandingEvents>
+                        }
+                      />
                       <Route element={<PrivateMainAppContent />}>
-                        <Route
-                          path="/browse-events"
-                          element={
-                            isSingleInstance ? <CurrentBazaarRedirect /> : <SearchEventsPage />
-                          }
-                        />
                         <Route path="/my-products" element={<MyProductsPage />} />
                         <Route path="/my-sales" element={<MySalesPage />} />
                         <Route path="/products/new" element={<ProductForm />} />
@@ -401,6 +422,14 @@ function App() {
       </Router>
     </ThemeProvider>
   );
+}
+
+/** Signed-in users see the page; visitors the list of bazaars on the landing page. */
+function VisitorsToLandingEvents({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuthState();
+  if (isLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/#events-section" replace />;
+  return <RequireSignIn>{children}</RequireSignIn>;
 }
 
 function PrivateMainAppContent() {

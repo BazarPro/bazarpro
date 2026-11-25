@@ -35,10 +35,7 @@ export function BulkEventAssignmentDialog({
   const { t } = useTranslation('seller');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-lg max-h-[90svh] overflow-y-auto"
-        aria-describedby={undefined}
-      >
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t('bulkEvents.title', { count: selectedCount })}</DialogTitle>
         </DialogHeader>

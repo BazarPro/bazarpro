@@ -14,6 +14,7 @@ import { SettlementExportCard } from './components/SettlementExportCard';
 import { SaleConflictsCard } from './components/SaleConflictsCard';
 import { PageSkeleton } from '../../../../components/ui/loading';
 import { useEventAccess } from '../../../../hooks/useEventAccess';
+import { InfoTip } from '../../../../components/ui/info-tip';
 
 /**
  * What should be in the cash box right now, and whose money it is:
@@ -64,18 +65,59 @@ export function CashReconciliationPage() {
 
       {can('sale') && <SaleConflictsCard eventId={eventId as Id<'events'>} />}
 
-      <Card className="border-2 border-primary">
-        <CardContent className="space-y-6 pt-6">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{t('cash.shouldBe')}</p>
-            <p className="mt-1 flex items-center gap-3 whitespace-nowrap text-3xl font-semibold tabular-nums min-[360px]:text-4xl sm:text-5xl">
-              <Banknote className="h-8 w-8 shrink-0 text-primary dark:text-foreground sm:h-10 sm:w-10" />
-              {formatPrice(summary.cashInHandSoll)} €
-            </p>
+      {/* The one figure that matters, how it splits up, and the one thing to do */}
+      <Card>
+        <CardContent className="grid gap-6 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-start">
+          <div className="space-y-5">
+            <div>
+              <p className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+                {t('cash.shouldBe')}
+                <InfoTip label={t('cash.howTitle')}>
+                  <span className="block font-semibold">{t('cash.howTitle')}</span>
+                  <span className="mt-1 block tabular-nums">
+                    {t('cash.income', { count: summary.salesCount })}:{' '}
+                    {formatPrice(summary.totalNetRevenue)} €
+                    {summary.totalDirectSales > 0.005 &&
+                      ` · ${t('cash.directSales')}: −${formatPrice(summary.totalDirectSales - summary.totalDirectCommission)} €`}
+                    {' · '}
+                    {t('cash.paidOut')}: −{formatPrice(summary.totalPaidOut)} €
+                    {summary.totalFeesCollected > 0.005 &&
+                      ` · ${t('cash.feesCollectedIncome')}: +${formatPrice(summary.totalFeesCollected)} €`}
+                  </span>
+                  {summary.totalDiscounts > 0.005 && (
+                    <span className="mt-1 block">
+                      {t('cash.discounts', {
+                        gross: formatPrice(summary.totalGrossRevenue),
+                        discounts: formatPrice(summary.totalDiscounts),
+                      })}
+                    </span>
+                  )}
+                </InfoTip>
+              </p>
+              <p className="mt-1 flex items-center gap-3 whitespace-nowrap text-4xl font-extrabold tabular-nums sm:text-5xl">
+                <Banknote className="h-8 w-8 shrink-0 text-primary sm:h-10 sm:w-10" />
+                {formatPrice(summary.cashInHandSoll)} €
+              </p>
+            </div>
+            {/* The one thing to do here: pay the sellers still waiting */}
+            {!allPaid && !nothingToSettle && summary.vendorsTotalCount > 0 && (
+              <Button asChild size="lg" className="max-sm:w-full">
+                <Link to={`/events/view/${eventId}/sellers`} state={{ filter: 'open' }}>
+                  <Users className="h-5 w-5" />
+                  {t('cash.settleNow', {
+                    count: summary.vendorsTotalCount - summary.vendorsPaidCount,
+                  })}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
           </div>
 
-          {/* How the sum comes about, read like a receipt: line by line down to the total */}
-          <dl className="max-w-2xl divide-y rounded-xl border bg-card text-sm tabular-nums">
+          {/* What the sum is made of, read like a receipt */}
+          <dl className="divide-y rounded-xl border bg-muted/40 text-sm tabular-nums">
+            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground">
+              {t('cash.breakdown')}
+            </div>
             <div className="flex items-baseline justify-between gap-4 px-4 py-3">
               <dt>{t('cash.pending')}</dt>
               <dd className="whitespace-nowrap text-base font-semibold">
@@ -84,18 +126,21 @@ export function CashReconciliationPage() {
             </div>
             <div className="flex items-baseline justify-between gap-4 px-4 py-3">
               <dt>
-                <span aria-hidden="true" className="mr-1 text-muted-foreground">
-                  +
-                </span>
-                {summary.totalIntakeFees > 0 ? t('cash.commissionAndFees') : t('cash.commission')}
-                {summary.totalIntakeFees > 0 && (
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {t('cash.split', {
-                      commission: formatPrice(summary.totalCommission),
-                      fees: formatPrice(summary.totalIntakeFees),
-                    })}
+                <span className="inline-flex items-center gap-1">
+                  <span aria-hidden="true" className="text-muted-foreground">
+                    +
                   </span>
-                )}
+                  {summary.totalIntakeFees > 0 ? t('cash.commissionAndFees') : t('cash.commission')}
+                  <InfoTip>
+                    {t('cash.keepsInfo')}
+                    {summary.totalIntakeFees > 0 &&
+                      ' ' +
+                        t('cash.split', {
+                          commission: formatPrice(summary.totalCommission),
+                          fees: formatPrice(summary.totalIntakeFees),
+                        })}
+                  </InfoTip>
+                </span>
                 {capCredits > 0 && (
                   <span className="mt-0.5 block text-xs text-success-soft-foreground">
                     {t('cash.capSplit', { amount: formatPrice(capCredits) })}
@@ -107,7 +152,7 @@ export function CashReconciliationPage() {
               </dd>
             </div>
             {collecting && (
-              <div className="flex items-baseline justify-between gap-4 bg-warning-soft px-4 py-3 text-warning-soft-foreground">
+              <div className="flex items-baseline justify-between gap-4 px-4 py-3 text-warning-soft-foreground">
                 <dt>
                   <span aria-hidden="true" className="mr-1">
                     −
@@ -119,174 +164,76 @@ export function CashReconciliationPage() {
                 </dd>
               </div>
             )}
-            <div className="flex items-baseline justify-between gap-4 px-4 py-3 font-semibold">
-              <dt>
-                <span aria-hidden="true" className="mr-1 text-muted-foreground">
-                  =
-                </span>
-                {t('cash.shouldBe')}
-              </dt>
-              <dd className="whitespace-nowrap text-base">
-                {formatPrice(summary.cashInHandSoll)} €
-              </dd>
-            </div>
           </dl>
-          {/* The one thing to do here: pay the sellers still waiting */}
-          {!allPaid && !nothingToSettle && summary.vendorsTotalCount > 0 && (
-            <Button asChild size="lg" className="max-sm:w-full">
-              <Link to={`/events/view/${eventId}/sellers`} state={{ filter: 'open' }}>
-                <Users className="h-5 w-5" />
-                {t('cash.settleNow', {
-                  count: summary.vendorsTotalCount - summary.vendorsPaidCount,
-                })}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            {t('cash.settlements')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {nothingToSettle ? (
+            <p className="flex items-start gap-2 rounded-lg bg-success-soft p-3 text-sm text-success-soft-foreground">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              {t('cash.directNoPayout')}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm tabular-nums">
+                <span className="font-medium">
+                  {t('cash.progress', {
+                    paid: summary.vendorsPaidCount,
+                    total: summary.vendorsTotalCount,
+                  })}
+                </span>
+                <span className="text-muted-foreground">
+                  {t('cash.paid')} {formatPrice(summary.totalPaidOut)} € · {t('cash.open')}{' '}
+                  {formatPrice(summary.totalPendingPayout)} €
+                </span>
+              </div>
+              <Progress value={payoutProgress} className="h-2" />
+            </div>
+          )}
+          {collecting && (
+            <div className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm text-warning-soft-foreground">
+              <p className="mb-2 flex items-center gap-1 font-semibold">
+                {t('cash.sellersToCollect')}
+                <InfoTip>{t('cash.sellersToCollectInfo')}</InfoTip>
+              </p>
+              <ul className="grid gap-x-8 gap-y-1 tabular-nums sm:grid-cols-2">
+                {summary.sellersToCollect.map((seller, index) => (
+                  <li key={index} className="flex justify-between gap-3">
+                    <span className="min-w-0 truncate">
+                      {seller.sellerNumber
+                        ? `${t('cash.sellerNumber', { number: seller.sellerNumber })} · `
+                        : ''}
+                      {seller.name}
+                    </span>
+                    <span className="whitespace-nowrap font-medium">
+                      {formatPrice(seller.amount)} €
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {allPaid && (
+            <p className="flex items-start gap-2 rounded-lg bg-success-soft p-3 text-sm text-success-soft-foreground">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              {summary.totalIntakeFees > 0 ? t('cash.allPaidWithFees') : t('cash.allPaid')}
+            </p>
           )}
         </CardContent>
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t('cash.howTitle')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2 text-sm tabular-nums">
-              <div className="flex justify-between gap-3">
-                <dt>{t('cash.income', { count: summary.salesCount })}</dt>
-                <dd className="whitespace-nowrap font-medium">
-                  {formatPrice(summary.totalNetRevenue)} €
-                </dd>
-              </div>
-              {summary.totalDirectSales > 0.005 && (
-                <div className="flex justify-between gap-3">
-                  <dt>{t('cash.directSales')}</dt>
-                  <dd className="whitespace-nowrap font-medium">
-                    −{formatPrice(summary.totalDirectSales - summary.totalDirectCommission)} €
-                  </dd>
-                </div>
-              )}
-              <div className="flex justify-between gap-3">
-                <dt>{t('cash.paidOut')}</dt>
-                <dd className="whitespace-nowrap font-medium">
-                  {summary.totalPaidOut > 0 ? '−' : ''}
-                  {formatPrice(summary.totalPaidOut)} €
-                </dd>
-              </div>
-              {summary.totalFeesCollected > 0.005 && (
-                <div className="flex justify-between gap-3">
-                  <dt>{t('cash.feesCollectedIncome')}</dt>
-                  <dd className="whitespace-nowrap font-medium">
-                    +{formatPrice(summary.totalFeesCollected)} €
-                  </dd>
-                </div>
-              )}
-              <div className="flex justify-between gap-3 border-t pt-2 text-base font-bold">
-                <dt>{t('cash.inCash')}</dt>
-                <dd className="whitespace-nowrap">{formatPrice(summary.cashInHandSoll)} €</dd>
-              </div>
-            </dl>
-            {summary.totalDiscounts > 0.005 && (
-              <p className="mt-4 text-xs text-muted-foreground">
-                {t('cash.discounts', {
-                  gross: formatPrice(summary.totalGrossRevenue),
-                  discounts: formatPrice(summary.totalDiscounts),
-                })}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-muted-foreground" />
-              {t('cash.settlements')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {nothingToSettle ? (
-              <p className="flex items-start gap-2 rounded-lg bg-success-soft p-3 text-sm text-success-soft-foreground">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                {t('cash.directNoPayout')}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>
-                    {t('cash.progress', {
-                      paid: summary.vendorsPaidCount,
-                      total: summary.vendorsTotalCount,
-                    })}
-                  </span>
-                  <span className="font-medium">{payoutProgress.toFixed(0)} %</span>
-                </div>
-                <Progress value={payoutProgress} className="h-2" />
-              </div>
-            )}
-            <dl className="space-y-2 text-sm tabular-nums">
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">{t('cash.paid')}</dt>
-                <dd className="whitespace-nowrap font-medium">
-                  {formatPrice(summary.totalPaidOut)} €
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">{t('cash.open')}</dt>
-                <dd className="whitespace-nowrap font-medium">
-                  {formatPrice(summary.totalPendingPayout)} €
-                </dd>
-              </div>
-              {summary.totalFeesCollected > 0.005 && (
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">{t('cash.feesCollected')}</dt>
-                  <dd className="whitespace-nowrap font-medium">
-                    {formatPrice(summary.totalFeesCollected)} €
-                  </dd>
-                </div>
-              )}
-              {collecting && (
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">{t('cash.feesOpen')}</dt>
-                  <dd className="whitespace-nowrap font-medium">
-                    {formatPrice(summary.totalFeesToCollect)} €
-                  </dd>
-                </div>
-              )}
-            </dl>
-            {collecting && (
-              <div className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm">
-                <p className="mb-2 font-medium">{t('cash.sellersToCollect')}</p>
-                <ul className="space-y-1 tabular-nums">
-                  {summary.sellersToCollect.map((seller, index) => (
-                    <li key={index} className="flex justify-between gap-3">
-                      <span>
-                        {seller.sellerNumber
-                          ? `${t('cash.sellerNumber', { number: seller.sellerNumber })} · `
-                          : ''}
-                        {seller.name}
-                      </span>
-                      <span className="whitespace-nowrap font-medium">
-                        {formatPrice(seller.amount)} €
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {allPaid && (
-              <p className="flex items-start gap-2 rounded-lg bg-success-soft p-3 text-sm text-success-soft-foreground">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                {summary.totalIntakeFees > 0 ? t('cash.allPaidWithFees') : t('cash.allPaid')}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <SettlementExportCard eventId={eventId as Id<'events'>} />
+        <ProofOfOffersCard eventId={eventId as Id<'events'>} />
       </div>
-
-      <SettlementExportCard eventId={eventId as Id<'events'>} />
-      <ProofOfOffersCard eventId={eventId as Id<'events'>} />
     </div>
   );
 }

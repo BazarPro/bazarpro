@@ -66,7 +66,7 @@ export function ProductDiscountDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('discountDialog.title')}</DialogTitle>
             <DialogDescription>

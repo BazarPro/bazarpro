@@ -286,7 +286,7 @@ export function PublicEventProductsPage() {
           className={cn(
             viewMode === 'list'
               ? 'flex flex-col gap-1.5'
-              : 'grid sm:grid-cols-2 lg:grid-cols-3 gap-6'
+              : 'grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3'
           )}
           id="products-start"
         >

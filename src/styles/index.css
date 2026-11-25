@@ -8,7 +8,7 @@
    * coral is kept for discounts and warnings, green only for states. Warm paper instead of white.
    */
   --font-size: 16px;
-  --background: #faf7f2;
+  --background: #f5f0e7;
   --foreground: #1b2326;
   --card: #ffffff;
   --card-foreground: #1b2326;
@@ -18,15 +18,15 @@
   --primary-foreground: #ffffff;
   /* The darker edge under filled buttons */
   --primary-shade: #08363a;
-  --secondary: #efe9df;
+  --secondary: #e9e1d3;
   --secondary-foreground: #1b2326;
-  --muted: #f1ece3;
-  --muted-foreground: #5f686b;
-  --accent: #f1ebe1;
+  --muted: #ece5d9;
+  --muted-foreground: #4f585b;
+  --accent: #ebe3d6;
   --accent-foreground: #1b2326;
   --destructive: #c23a20;
   --destructive-foreground: #ffffff;
-  --border: #e4ddd1;
+  --border: #d9d0c1;
   /* Borders of fields, checkboxes and outline buttons: 3:1 against paper and white */
   --input: #8a8378;
   --input-background: #ffffff;
@@ -53,24 +53,24 @@
   --chart-4: #2f7d32;
   --chart-5: #5b8fa8;
   --radius: 0.875rem;
-  --sidebar: #faf7f2;
+  --sidebar: #f5f0e7;
   --sidebar-foreground: #1b2326;
   --sidebar-primary: #0e5e63;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1ebe1;
+  --sidebar-accent: #ebe3d6;
   --sidebar-accent-foreground: #1b2326;
-  --sidebar-border: #e4ddd1;
+  --sidebar-border: #d9d0c1;
   --sidebar-ring: #0e5e63;
 }
 
 .dark {
   /* Browser-drawn parts follow the theme: select lists, date pickers, scrollbars */
   color-scheme: dark;
-  --background: #0f1a1c;
+  --background: #0b1416;
   --foreground: #eef2f1;
-  --card: #172427;
+  --card: #18272a;
   --card-foreground: #eef2f1;
-  --popover: #172427;
+  --popover: #18272a;
   --popover-foreground: #eef2f1;
   /* Lighter petrol with dark text: readable as text and as a button on the dark ground */
   --primary: #4fb3a9;
@@ -78,14 +78,14 @@
   --primary-shade: #2a7a73;
   --secondary: #22322f;
   --secondary-foreground: #eef2f1;
-  --muted: #1d2b2d;
-  --muted-foreground: #a3b0b0;
+  --muted: #1f2f32;
+  --muted-foreground: #b3bfbf;
   --accent: #22322f;
   --accent-foreground: #eef2f1;
   --destructive: #f0846c;
   --destructive-foreground: #1b0d09;
-  --border: #2a3a3d;
-  --input: #6d7c7d;
+  --border: #34484c;
+  --input: #7d8d8e;
   --input-background: #12201f;
   --switch-background: #6d7c7d;
   --ring: #f6c445;
@@ -108,13 +108,13 @@
   --chart-3: #e0664c;
   --chart-4: #5fbf63;
   --chart-5: #8bb8cf;
-  --sidebar: #0f1a1c;
+  --sidebar: #0b1416;
   --sidebar-foreground: #eef2f1;
   --sidebar-primary: #4fb3a9;
   --sidebar-primary-foreground: #0b1f1e;
   --sidebar-accent: #22322f;
   --sidebar-accent-foreground: #eef2f1;
-  --sidebar-border: #2a3a3d;
+  --sidebar-border: #34484c;
   --sidebar-ring: #f6c445;
 }
 

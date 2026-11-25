@@ -21,6 +21,7 @@ import { getUserFacingErrorMessage } from '../../../lib/errors';
 import { formatPrice } from '../../../lib/utils';
 import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
 import { useTranslation } from 'react-i18next';
+import { InfoTip } from '../../../components/ui/info-tip';
 import { dateLocale } from '../../../i18n/format';
 import { ListSkeleton, Loading } from '../../../components/ui/loading';
 
@@ -65,6 +66,8 @@ export function MySalesPage() {
         groups.map((group) => {
           // With an intake fee and few sales the seller pays the bazaar instead
           const owes = group.totals.payout < -0.005;
+          // Direct sales can leave nothing to hand over in either direction
+          const even = Math.abs(group.totals.payout) < 0.005;
           // Direct sales: the buyer paid the seller, who paid the commission at the desk
           const keptDirectly = group.items
             .filter((item) => item.sale.directSale)
@@ -85,7 +88,11 @@ export function MySalesPage() {
                     {t('mySales.soldCount', { count: group.items.length })}
                   </p>
                 </div>
-                {group.paid ? (
+                {even && !group.paid ? (
+                  <Badge variant="secondary" className="gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('mySales.even')}
+                  </Badge>
+                ) : group.paid ? (
                   <Badge variant="success">
                     <CheckCircle2 className="h-3.5 w-3.5" />{' '}
                     {owes ? t('mySales.paidFee') : t('mySales.paid')}
@@ -99,8 +106,9 @@ export function MySalesPage() {
               </header>
 
               {group.items.length === 0 && (
-                <p className="px-5 py-4 text-sm text-muted-foreground">
+                <p className="flex items-center gap-1 px-5 py-4 text-sm text-muted-foreground">
                   {t('mySales.nothingSold')}
+                  <InfoTip>{t('mySales.nothingSoldInfo')}</InfoTip>
                 </p>
               )}
               <ul className="divide-y">
@@ -214,7 +222,10 @@ export function MySalesPage() {
                   </div>
                   {keptDirectly > 0.005 && (
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">{t('mySales.keptDirectly')}</dt>
+                      <dt className="flex items-center gap-1 text-muted-foreground">
+                        {t('mySales.keptDirectly')}
+                        <InfoTip>{t('mySales.keptDirectlyInfo')}</InfoTip>
+                      </dt>
                       <dd>−{formatPrice(keptDirectly)} €</dd>
                     </div>
                   )}
@@ -237,15 +248,24 @@ export function MySalesPage() {
                   )}
                   <div className="flex justify-between border-t pt-2 text-base font-bold">
                     <dt>
-                      {owes
-                        ? group.paid
-                          ? t('mySales.paidFee')
-                          : t('mySales.youPay')
-                        : group.paid
-                          ? t('mySales.paid')
-                          : t('mySales.youGet')}
+                      {even && !group.paid
+                        ? t('mySales.even')
+                        : owes
+                          ? group.paid
+                            ? t('mySales.paidFee')
+                            : t('mySales.youPay')
+                          : group.paid
+                            ? t('mySales.paid')
+                            : t('mySales.youGet')}
                     </dt>
-                    <dd className="text-primary">{formatPrice(Math.abs(group.totals.payout))} €</dd>
+                    {/* Money to pay in the colour of a due step, money to get in petrol */}
+                    <dd
+                      className={
+                        owes && !group.paid ? 'text-warning-soft-foreground' : 'text-primary'
+                      }
+                    >
+                      {formatPrice(Math.abs(group.totals.payout))} €
+                    </dd>
                   </div>
                 </dl>
               </footer>

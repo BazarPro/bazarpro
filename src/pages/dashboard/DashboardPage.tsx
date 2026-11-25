@@ -187,17 +187,17 @@ function SellerOverview() {
 
   return (
     <>
-      {/* What to do first, the bazaar it is about below */}
-      <div className="mb-8 space-y-4">
-        <section className="rounded-xl border bg-card px-2 pb-3 pt-4 shadow-xs sm:px-4">
-          <BazaarRoadmap
-            steps={steps}
-            label={t('steps.title')}
-            nowLabel={t('steps.now')}
-            positionLabel={(position, total) => t('steps.position', { position, total })}
-          />
-        </section>
+      {/* The way through the bazaar and what to do now, in one card; the bazaar below */}
+      <div className="mb-8">
         <NextStepCard
+          header={
+            <BazaarRoadmap
+              steps={steps}
+              label={t('steps.title')}
+              nowLabel={t('steps.now')}
+              positionLabel={(position, total) => t('steps.position', { position, total })}
+            />
+          }
           step={current}
           eyebrow={next ? `${t('steps.next')} · ${next.title}` : t('steps.next')}
           action={current ? nextAction[current.id] : null}

@@ -76,11 +76,14 @@ export function ProductPrice({
       <div className={wrap}>
         <span className={aside}>
           <span className="line-through">{formatItemPrice(item.price)}</span>
-          {showPercent && <> · −{discount} %</>}
+          {/* The discount as a yellow tag, not in red: red means an error here */}
+          {showPercent && (
+            <span className="ml-1.5 rounded-sm bg-tag px-1 font-semibold text-tag-foreground no-underline">
+              −{discount} %
+            </span>
+          )}
         </span>
-        <span className={cn(main, 'text-destructive')}>
-          {formatItemPrice(discountedPrice(item.price, discount))}
-        </span>
+        <span className={main}>{formatItemPrice(discountedPrice(item.price, discount))}</span>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 import { usePublicQuery } from '../../../hooks/usePublicQuery';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../../lib/api/functions';
 import { Footer } from '../../../components/layout/Footer';
 import { Seo } from '../../../components/seo/Seo';
@@ -23,6 +23,18 @@ export function LandingPage() {
 
   const { isAuthenticated, goToOrganizer, goToSeller } = useStartActions();
 
+  // The focus moves along, so keyboard and screen reader users land there too
+  function showEvents() {
+    const section = document.getElementById('events-section');
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    section?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' });
+    section?.focus({ preventScroll: true });
+  }
+  // `/#events-section`, e.g. from /browse-events without an account: straight to the list
+  useEffect(() => {
+    if (window.location.hash === '#events-section') showEvents();
+  }, []);
+
   return (
     <div className="min-h-screen overflow-x-clip bg-background selection:bg-primary selection:text-primary-foreground">
       <Seo
@@ -36,13 +48,7 @@ export function LandingPage() {
         isAuthenticated={!!isAuthenticated}
         onOrganizerClick={goToOrganizer}
         onSellerClick={goToSeller}
-        onFindClick={() => {
-          // The focus moves along, so keyboard and screen reader users land there too
-          const section = document.getElementById('events-section');
-          const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          section?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' });
-          section?.focus({ preventScroll: true });
-        }}
+        onFindClick={showEvents}
       />
 
       <LandingProcess />

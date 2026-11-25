@@ -28,7 +28,7 @@
     "templateHint": "Use one of your past bazaars as a template.",
     "chooseTemplate": "Choose template…",
     "creationDisabled": "Creating new bazaars is currently disabled.",
-    "running": "The bazaar is running. Dates, commission and visibility are locked until the end so that settlement and approval stay correct. You can still change everything else, for example from when discounts are allowed.",
+    "running": "The bazaar is running: date, commission and visibility are locked until it ends.",
     "adminUnlocked": "You are an admin: you can change every setting, including those locked for organizers (e.g. dates, commission and fees while the bazaar runs or after the first sellers registered). Check changes to fees and direct sale carefully, they affect the settlement.",
     "creating": "Creating…",
     "draftSaved": "Draft saved",
@@ -181,7 +181,6 @@
     "questionsDuringEventText": "Items are visible beforehand, but questions can only be asked once the bazaar starts. Existing answers stay visible.",
     "requiredFields": "Required details",
     "requiredFieldsText": "Every item needs these details before it can be registered for the bazaar, e.g. the frame number as proof for the police. They only apply to categories that have the field. If something is missing, BazarPro asks the seller when registering the item.",
-    "requiredFieldsNone": "The chosen categories have no extra fields.",
     "privateSellers": "Private sellers only",
     "privateSellersText": "When registering, sellers confirm that they sell as private persons, not commercially.",
     "fixedData": "Fixed data for the record",
@@ -499,9 +498,9 @@
   "cash": {
     "title": "Settlement",
     "shouldBe": "Should be in the till",
-    "pending": "Still to pay out to sellers",
-    "commissionAndFees": "Commission and intake fees (stay with the organizer)",
-    "commission": "Commission (stays with the organizer)",
+    "pending": "To pay out to sellers",
+    "commissionAndFees": "Commission + intake fees",
+    "commission": "Commission",
     "split": "{{commission}} € commission + {{fees}} € intake fees",
     "howTitle": "How the amount comes about",
     "income_one": "Income from {{count}} sale",
@@ -517,15 +516,16 @@
     "allPaid": "All sellers are settled. The commission stays in the till.",
     "allPaidWithFees": "All sellers are settled. The commission and the intake fees stay in the till.",
     "directNoPayout": "Direct sale: the sellers already have their money from the buyers, nothing is to be paid out.",
-    "feesToCollect": "Intake fees sellers still have to pay",
+    "feesToCollect": "Intake fees still open",
     "feesCollectedIncome": "Intake fees paid by sellers",
-    "feesCollected": "Intake fee paid",
-    "feesOpen": "Intake fee still to collect",
-    "sellersToCollect": "These sellers sold less than the intake fee costs and pay at settlement:",
+    "sellersToCollect": "Pay the difference at settlement",
     "sellerNumber": "No. {{number}}",
     "capSplit": "− {{amount}} € back through the fee cap",
     "settleNow_one": "Settle sellers ({{count}} open)",
-    "settleNow_other": "Settle sellers ({{count}} open)"
+    "settleNow_other": "Settle sellers ({{count}} open)",
+    "sellersToCollectInfo": "These sellers sold less than their intake fee costs and pay the difference at settlement.",
+    "keepsInfo": "Commission and intake fees stay with the organizer.",
+    "breakdown": "Made up of"
   },
   "products": {
     "sellerFound": "Participant {{name}} found",
@@ -823,7 +823,9 @@
   },
   "feeLock": {
     "running": "Cannot be changed during the bazaar so that all sales are settled the same way.",
-    "sellers": "Sellers registered with this fee and are counting on it. You can only lower it."
+    "sellers": "Sellers registered with this fee and are counting on it. You can only lower it.",
+    "runningShort": "Locked until the bazaar ends",
+    "sellersShort": "Can only be lowered"
   },
   "helperPicker": {
     "text": "Choose a seller of this bazaar. Invite new people with “Invite by email”.",
@@ -951,7 +953,8 @@
     "notSold": "not sold",
     "soldFor": "sold for {{price}} € on {{date}}",
     "empty": "No items are registered for this bazaar.",
-    "fileName": "Record"
+    "fileName": "Record",
+    "cardShort": "All accepted items with their seller, e.g. for the police."
   },
   "printout": {
     "itemsTitle": "Item list: {{event}}",
@@ -1016,7 +1019,8 @@
     "fileNameSales": "Settlement-sales",
     "direct": "paid directly",
     "feeCap": "Fee cap (€)",
-    "feeGroup": "Fee group"
+    "feeGroup": "Fee group",
+    "cardShort": "Keep for 8 years (German tax law, § 147 AO)."
   },
   "wizard": {
     "back": "Back",
@@ -1108,7 +1112,7 @@
     },
     "fixErrors": "Please check the marked details.",
     "guestCreate": "Sign up and create bazaar",
-    "draftRestored": "You are continuing your draft from {{date}}.",
+    "draftNote": "Draft from {{date}}",
     "draftDiscardTitle": "Discard draft?",
     "draftReplaceTitle": "Replace saved draft?",
     "draftReplaceText": "You already saved the draft “{{title}}” on {{date}}. There is only one draft: if you save this bazaar, the other one is lost.",
@@ -1220,6 +1224,20 @@
       "locked": "You can upload your own cover and site plan after signing in – your bazaar is kept.",
       "login": "Log in and upload",
       "noCover": "No cover picture"
+    },
+    "advanced": "Advanced",
+    "advancedHint": "Most bazaars do not need this.",
+    "merged": {
+      "items": {
+        "title": "Items and sale",
+        "text": "What is offered and how it is sold.",
+        "short": "Items & sale"
+      },
+      "fees": {
+        "title": "Fees and registration",
+        "text": "What it costs and who may take part.",
+        "short": "Fees & registration"
+      }
     }
   },
   "eventTypes": {

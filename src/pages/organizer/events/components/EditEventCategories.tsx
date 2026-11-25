@@ -8,6 +8,7 @@ import type { Doc } from '../../../../lib/api/types';
 import { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { InfoTip } from '../../../../components/ui/info-tip';
 import { useServiceLabel, useServices } from '../../../../i18n/services';
 import { categoryName } from '../../../../i18n/categories';
 import {
@@ -60,7 +61,10 @@ function AllowedCategories({ categoryList }: EventCategoriesProbs) {
     <div className="space-y-2">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <Label>{t('categories.allowed')}</Label>
+          <div className="flex items-center gap-1">
+            <Label>{t('categories.allowed')}</Label>
+            <InfoTip>{t('categories.allowedHint')}</InfoTip>
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {t('categories.chosenSummary', { count: chosenGroups, total: groups.length })}
           </p>
@@ -141,7 +145,6 @@ function AllowedCategories({ categoryList }: EventCategoriesProbs) {
           );
         })}
       </div>
-      <p className="text-xs text-muted-foreground">{t('categories.allowedHint')}</p>
     </div>
   );
 }

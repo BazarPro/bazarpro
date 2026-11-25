@@ -49,6 +49,11 @@ export function feeLockHint(lock: 'running' | 'sellers'): string {
   return i18n.t(`feeLock.${lock}` as never, { ns: 'organizer' }) as string;
 }
 
+/** The lock in two words under the field; the reason stands in its (i) */
+export function feeLockShort(lock: 'running' | 'sellers'): string {
+  return i18n.t(`feeLock.${lock}Short` as never, { ns: 'organizer' }) as string;
+}
+
 export interface FeeExample {
   /**
    * One sentence, e.g. "Verkaufst du ein Rad für 150,00 €, bekommst du 135,00 €

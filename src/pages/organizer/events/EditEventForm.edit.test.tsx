@@ -163,14 +163,14 @@ describe('editing an event', () => {
   it('says what is locked while the event runs', async () => {
     mockBackend({ event: storedEvent(Date.now() - HOUR) });
     renderAt('/events/edit/event1');
-    expect(await screen.findByText(/Der Basar läuft gerade/)).toBeInTheDocument();
+    expect(await screen.findByText(/Der Basar läuft:/)).toBeInTheDocument();
   });
 
   it('lets the platform admin change what is locked for organizers', async () => {
     mockBackend({ event: storedEvent(Date.now() - HOUR), feeLocked: true, admin: true });
     renderAt('/events/edit/event1');
     expect(await screen.findByText(/Du bist Admin/)).toBeInTheDocument();
-    expect(screen.queryByText(/Der Basar läuft gerade/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Der Basar läuft:/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('Beginn')).not.toHaveAttribute('readonly');
     const commission = screen.getByLabelText(/Provision/);
     await waitFor(() => expect(commission).toHaveValue(15));
@@ -220,10 +220,10 @@ describe('creation wizard', () => {
     fillBasics('13:00', '09:00');
     next();
     expect(await screen.findByText('Enddatum muss nach dem Startdatum liegen')).toBeInTheDocument();
-    expect(screen.getByText('Schritt 2 von 9')).toBeInTheDocument();
+    expect(screen.getByText('Schritt 2 von 6')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
-    expect(await screen.findByText('Schritt 1 von 9')).toBeInTheDocument();
+    expect(await screen.findByText('Schritt 1 von 6')).toBeInTheDocument();
   }, 20_000);
 
   it('a children’s bazaar preselects its categories and small labels', async () => {
@@ -233,13 +233,12 @@ describe('creation wizard', () => {
     expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
     fillBasics('09:00', '13:00');
     next();
-    await screen.findByText('Schritt 3 von 9');
-    next();
-    expect(await screen.findByText('Welche Artikel?')).toBeInTheDocument();
+    await screen.findByText('Schritt 3 von 6');
+    expect(await screen.findByText('Artikel und Verkauf')).toBeInTheDocument();
     expect(screen.getByLabelText(/Etiketten/)).toHaveValue('small');
-    for (const step of [5, 6, 7, 8]) {
+    for (const step of [4, 5]) {
       next();
-      await screen.findByText(`Schritt ${step} von 9`);
+      await screen.findByText(`Schritt ${step} von 6`);
     }
     fillDescription();
     next();
@@ -263,7 +262,7 @@ describe('creation wizard', () => {
     expect(await screen.findByText('Wann und wo?')).toBeInTheDocument();
     fillBasics('09:00', '13:00');
     fireEvent.submit(screen.getByLabelText('Veranstaltungsort *').closest('form')!);
-    expect(await screen.findByText('Schritt 3 von 9')).toBeInTheDocument();
+    expect(await screen.findByText('Schritt 3 von 6')).toBeInTheDocument();
     expect(createEvent).not.toHaveBeenCalled();
   }, 20_000);
 

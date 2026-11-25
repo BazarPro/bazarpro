@@ -47,7 +47,7 @@ import {
   UserCheck,
   ShieldCheck,
   SlidersHorizontal,
-  RotateCcw,
+  HandHelping,
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
@@ -662,7 +662,7 @@ export function ProductManagementPage() {
                 )}
                 {canReturnLeftovers && (
                   <DropdownMenuItem onSelect={() => setReturnLeftoversOpen(true)}>
-                    <RotateCcw /> {t('products.returnLeftovers')}
+                    <HandHelping /> {t('products.returnLeftovers')}
                     <span className="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">
                       {leftovers.length}
                     </span>

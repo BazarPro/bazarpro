@@ -4,7 +4,8 @@ import { useFormContext } from 'react-hook-form';
 import { Label } from '../../../../components/ui/label';
 import { Textarea } from '../../../../components/ui/text-area';
 import { Input } from '../../../../components/ui/input';
-import { feeLockHint, type FeeLock } from '../../../../lib/sellerFees';
+import { feeLockHint, feeLockShort, type FeeLock } from '../../../../lib/sellerFees';
+import { Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LabelWithInfo } from '../../../../components/ui/info-tip';
 
@@ -65,7 +66,12 @@ export function EditEventContact({
               %
             </span>
           </div>
-          {feeLock && <p className="text-xs text-muted-foreground">{feeLockHint(feeLock)}</p>}
+          {feeLock && (
+            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <Lock className="size-3" aria-hidden />
+              {feeLockShort(feeLock)}
+            </p>
+          )}
           {errors.commission && <FieldError>{errors.commission.message as string}</FieldError>}
         </div>
       )}

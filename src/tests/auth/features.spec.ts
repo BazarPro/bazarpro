@@ -41,7 +41,7 @@ test.describe('event settings', () => {
     await expect(page.locator('#commission')).toHaveValue('10');
     await expect(page.locator('#maxDiscountPercent')).toHaveValue('30');
     await expect(page.getByLabel('Preisvorschläge online')).toBeChecked();
-    await expect(page.getByText('Der Basar läuft gerade.')).toBeVisible();
+    await expect(page.getByText(/^Der Basar läuft:/)).toBeVisible();
     await expect(page.locator('#startDay')).toHaveAttribute('readonly', '');
     await expect(page.locator('#commission')).toHaveAttribute('readonly', '');
 

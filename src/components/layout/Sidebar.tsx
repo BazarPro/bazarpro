@@ -7,6 +7,7 @@ import { SheetHeader, SheetTitle } from '../ui/sheet';
 import { useUserRole, type UserRole } from '../../context/UserRoleContext';
 import type { Id } from '../../lib/api/types';
 import { cn } from '../../lib/utils';
+import { BazaarSwitcher } from './BazaarSwitcher';
 import { isActivePage, useNavigation, type BadgeKind, type NavItem } from './useNavigation';
 
 interface SidebarProps {
@@ -37,6 +38,7 @@ export function Sidebar({
     eventId,
   });
   const allItems = [...mainItems, ...eventItems];
+  const switcher = currentRole === 'organizer' && !!eventId && eventItems.length > 0;
 
   const close = () => {
     if (isMobile) onClose?.();
@@ -128,18 +130,25 @@ export function Sidebar({
       )}
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-2">
-        <div className="space-y-1" data-onboarding-id="sidebar-participant-nav">
-          {mainItems.map(renderItem)}
-        </div>
+        {/* Organizers: their bazaar as a switcher, its pages right below it */}
+        {switcher ? (
+          <BazaarSwitcher eventId={eventId!} badge={mainItems[0]?.badge} onNavigate={close} />
+        ) : (
+          <div className="space-y-1" data-onboarding-id="sidebar-participant-nav">
+            {mainItems.map(renderItem)}
+          </div>
+        )}
         {eventId && eventItems.length > 0 && (
-          <div className="mt-5 space-y-1">
-            {/* One line, kept free while the title loads: the entries below stay put */}
-            <div
-              className="h-5 truncate px-3 text-xs font-medium leading-5 text-muted-foreground"
-              title={eventTitle}
-            >
-              {eventTitle ?? <Skeleton className="mt-1 h-3 w-28" />}
-            </div>
+          <div className={cn('space-y-1', switcher ? 'mt-3' : 'mt-5')}>
+            {!switcher && (
+              // One line, kept free while the title loads: the entries below stay put
+              <div
+                className="h-5 truncate px-3 text-xs font-medium leading-5 text-muted-foreground"
+                title={eventTitle}
+              >
+                {eventTitle ?? <Skeleton className="mt-1 h-3 w-28" />}
+              </div>
+            )}
             {eventItems.map(renderItem)}
           </div>
         )}
