@@ -291,7 +291,10 @@
       "position": "Schritt {{position}} von {{total}}"
     },
     "soldOf": "{{sold}} von {{total}} verkauft",
-    "sellersTile": "Verkäufer"
+    "sellersTile": "Verkäufer",
+    "qrDownload": "QR-Code der Basarseite herunterladen (PNG)",
+    "qrShort": "QR-Code",
+    "qrFailed": "Der QR-Code ließ sich nicht erstellen."
   },
   "settingsPage": {
     "deleted": "Basar gelöscht",
@@ -1518,10 +1521,11 @@
     "codeNeeded": "Verkäufer brauchen diesen Code zum Anmelden",
     "copyCode": "Code kopieren",
     "copyFailed": "Kopieren nicht möglich",
-    "edit": "Ändern",
+    "edit": "Anmeldung einstellen",
     "summarySpots": "{{taken}}/{{limit}} Plätze",
     "summarySellers_one": "{{count}} Verkäufer",
-    "summarySellers_other": "{{count}} Verkäufer"
+    "summarySellers_other": "{{count}} Verkäufer",
+    "placesUnit": "Plätze"
   },
   "feeGroups": {
     "title": "Gebührengruppen (optional)",

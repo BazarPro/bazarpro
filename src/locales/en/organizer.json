@@ -291,7 +291,10 @@
       "position": "Step {{position}} of {{total}}"
     },
     "soldOf": "{{sold}} of {{total}} sold",
-    "sellersTile": "Sellers"
+    "sellersTile": "Sellers",
+    "qrDownload": "Download the QR code of the bazaar page (PNG)",
+    "qrShort": "QR code",
+    "qrFailed": "The QR code could not be created."
   },
   "settingsPage": {
     "deleted": "Bazaar deleted",
@@ -1518,10 +1521,11 @@
     "codeNeeded": "Sellers need this code to register",
     "copyCode": "Copy code",
     "copyFailed": "Copying failed",
-    "edit": "Change",
+    "edit": "Registration settings",
     "summarySpots": "{{taken}}/{{limit}} places",
     "summarySellers_one": "{{count}} seller",
-    "summarySellers_other": "{{count}} sellers"
+    "summarySellers_other": "{{count}} sellers",
+    "placesUnit": "places"
   },
   "feeGroups": {
     "title": "Fee groups (optional)",

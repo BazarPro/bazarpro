@@ -241,10 +241,11 @@ export function EventPageSidebar({
           {!isPast && (
             <div className="pt-2 border-t">
               <div className="text-sm text-muted-foreground mb-2">{t('sidebar.calendar')}</div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="justify-start"
                   onClick={() =>
                     downloadIcsEvent({
                       title: event.title,
@@ -259,7 +260,7 @@ export function EventPageSidebar({
                   <Download className="mr-2 h-4 w-4" />
                   {t('sidebar.ics')}
                 </Button>
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" className="justify-start" asChild>
                   <a href={googleCalendarUrl} target="_blank" rel="noopener noreferrer">
                     <CalendarPlus className="mr-2 h-4 w-4" />
                     {t('sidebar.google')}

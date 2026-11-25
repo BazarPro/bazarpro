@@ -144,11 +144,11 @@
     "titleStart": "Consignment sales",
     "titleHighlight": "without",
     "titleEnd": "the paperwork",
-    "text": "List items at home, print the label – on the day itself everything is just scanned."
+    "text": "List items at home and print the label. On the day itself everything is just scanned."
   },
   "cta": {
     "title": "Ready for your next bazaar?",
-    "text": "Create your bazaar or sign up as a seller – for free.",
+    "text": "Create your bazaar or sign up as a seller. For free.",
     "openSource": "BazarPro is open source (MIT) – <github>code on GitHub</github> · <about>about the project</about>"
   },
   "events": {

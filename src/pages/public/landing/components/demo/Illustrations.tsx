@@ -1,6 +1,5 @@
 import { BrandMark } from '../../../../../components/layout/BrandMark';
-import { QrCode } from '../../../../../components/ui/QrCode';
-import { SortMarkBadge } from '../../../../../components/sellers/SortMarkBadge';
+import { PrintedLabel } from '../../../../../components/products/PrintedLabel';
 import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '../../../../../lib/utils';
 
@@ -151,13 +150,13 @@ export const EXAMPLE_SORT_CODE = 66_647;
 export const OTHER_SORT_CODE = 40_512;
 
 interface HangTagProps {
-  /** As on the label sheet: `small` (clothes, landscape) or `standard` (portrait) */
+  /** As on the label sheet: `small` (clothes, landscape) or `standard` (large labels) */
   format?: 'small' | 'standard';
   title: string;
   /** e.g. the size of clothes, printed big on small labels */
   size?: string;
-  /** Without "€" on small labels, as printed */
-  price?: string;
+  /** Printed without "€" on small labels, as on the sheet */
+  price?: number;
   /** The seller's sort mark, to sort the unsold items back */
   sortCode?: number;
   className?: string;
@@ -168,8 +167,8 @@ interface HangTagProps {
 }
 
 /**
- * A hang tag as it comes out of the printer (src/lib/productQRCodePdf.ts): QR code,
- * title, sort mark, size and price, on a string. Texts scale with the tag's width.
+ * A label as it comes out of the printer (PrintedLabel, the layout of the PDF), hanging on
+ * a string. Everything scales with the tag's width.
  */
 export function HangTag({
   format = 'standard',
@@ -181,49 +180,23 @@ export function HangTag({
   overlay,
   style,
 }: HangTagProps) {
-  const small = format === 'small';
   return (
     <div
-      className={cn('flex flex-col items-center', small ? 'w-[5.5rem]' : 'w-[3.8rem]', className)}
+      className={cn(
+        'flex flex-col items-center',
+        format === 'small' ? 'w-[5.5rem]' : 'w-[4.5rem]',
+        className
+      )}
       style={style}
     >
       {/* The string in tag yellow, like the one of the logo */}
       <span className="h-3 w-0.5 rounded-full bg-tag" />
-      <div className="@container relative w-full rounded-md bg-white p-[5%] text-zinc-900 shadow-lg ring-1 ring-black/10">
-        <span className="absolute left-1/2 top-[2%] size-[3cqw] min-h-1 min-w-1 -translate-x-1/2 rounded-full bg-zinc-300 shadow-inner" />
-        {small ? (
-          <div className="mt-[4%] flex items-stretch gap-[5%]">
-            <div className="relative w-[45%] shrink-0 overflow-hidden">
-              <QrCode value="https://bazarpro.de" className="h-auto w-full" />
-              {overlay}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col">
-              {sortCode !== undefined && (
-                <SortMarkBadge code={sortCode} className="h-auto w-full" />
-              )}
-              <p className="mt-[3%] truncate text-[8cqw] leading-tight">{title}</p>
-              <p className="mt-auto flex items-baseline justify-between text-[10cqw] font-bold leading-none tabular-nums">
-                <span>{size}</span>
-                <span>{price}</span>
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-[6%] text-center">
-            <div className="relative overflow-hidden">
-              <QrCode value="https://bazarpro.de" className="h-auto w-full" />
-              {overlay}
-            </div>
-            <p className="mt-[4%] line-clamp-2 text-[11cqw] leading-tight">{title}</p>
-            {sortCode !== undefined && (
-              <SortMarkBadge code={sortCode} className="mx-auto mt-[4%] h-auto w-[80%]" />
-            )}
-            {price && (
-              <p className="mt-[3%] text-[14cqw] font-bold leading-none tabular-nums">{price}</p>
-            )}
-          </div>
-        )}
-      </div>
+      <PrintedLabel
+        format={format}
+        label={{ title, size, price, sortCode }}
+        overlay={overlay}
+        className="w-full rounded-[3px] shadow-lg ring-1 ring-black/10"
+      />
     </div>
   );
 }

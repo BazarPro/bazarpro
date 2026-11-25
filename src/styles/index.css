@@ -30,7 +30,8 @@
   --border: #dbe1ea;
   /* Borders of fields, checkboxes and outline buttons: 3:1 against white */
   --input: #8a94a6;
-  --input-background: #ffffff;
+  /* Fields stand out from white cards and the page: a light fill, white while typing */
+  --input-background: #f2f5f9;
   --switch-background: #8a94a6;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
@@ -87,7 +88,7 @@
   --destructive-foreground: #1b0d09;
   --border: #2c3852;
   --input: #73809b;
-  --input-background: #0f1727;
+  --input-background: #1b2539;
   --switch-background: #73809b;
   --ring: #f6c445;
   --tag: #f6c445;

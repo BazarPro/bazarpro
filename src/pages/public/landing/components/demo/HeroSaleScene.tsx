@@ -8,13 +8,12 @@ import {
   HangTag,
   PhoneFrame,
   EXAMPLE_SORT_CODE,
-  OTHER_SORT_CODE,
   RackWithTag,
   RaincoatThumb,
 } from './Illustrations';
 
 /** The tags grow with the scene (container width), but stay readable on phones */
-const TAG_WIDTH = 'max(3.8rem, 16cqw)';
+const TAG_WIDTH = 'max(4.5rem, 18cqw)';
 /** The clothes label is the small format, wider than high */
 const SMALL_TAG_WIDTH = 'max(5.5rem, 24cqw)';
 
@@ -62,13 +61,13 @@ export function HeroSaleScene({
                   style={{ width: SMALL_TAG_WIDTH }}
                   title={t('demo.raincoatShort')}
                   size="110"
-                  price={formatPrice(8)}
+                  price={8}
                   sortCode={EXAMPLE_SORT_CODE}
                   overlay={
                     !still && (
                       <ScanLine
                         className="landing-hero-scan-a"
-                        distance={`calc(${SMALL_TAG_WIDTH} * 0.9 * 0.45)`}
+                        distance={`calc(${SMALL_TAG_WIDTH} * 0.52)`}
                       />
                     )
                   }
@@ -83,13 +82,12 @@ export function HeroSaleScene({
                 <HangTag
                   style={{ width: TAG_WIDTH }}
                   title={t('demo.bike')}
-                  price={`${formatPrice(45)} €`}
-                  sortCode={OTHER_SORT_CODE}
+                  price={45}
                   overlay={
                     !still && (
                       <ScanLine
                         className="landing-hero-scan-b"
-                        distance={`calc(${TAG_WIDTH} * 0.9)`}
+                        distance={`calc(${TAG_WIDTH} * 0.627)`}
                       />
                     )
                   }

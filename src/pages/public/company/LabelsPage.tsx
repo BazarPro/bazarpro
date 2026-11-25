@@ -9,11 +9,13 @@ import { DEMO_URL } from '../../../lib/links';
 import { LandingCTA } from '../landing/components/LandingCTA';
 import { MarketingHero, SectionHeading } from './components/MarketingHero';
 import { SortingGame } from './components/SortingGame';
-import { UniversalLabelSection } from './components/UniversalLabelSection';
 import { useStartActions } from './components/useStartActions';
+import { SORT_PATTERNS } from '../../../shared/sortCode';
 
 /** Any code gives a realistic mark; this one has a clear digit and two colored fields. */
 const EXAMPLE_CODE = 66_643;
+/** The same mark for a second seller of a bazaar: with the extra letter (SORT_PATTERNS) */
+const TWICE_CODE = EXAMPLE_CODE + SORT_PATTERNS;
 
 const PARTS = ['pile', 'letter', 'basket'] as const;
 
@@ -102,6 +104,13 @@ export function LabelsPage() {
                 ))}
               </ol>
             </div>
+            {/* The extra letter: only when two sellers of a bazaar share a mark */}
+            <p className="mx-auto mt-10 flex max-w-2xl items-center gap-4 rounded-2xl border bg-card p-4 text-sm text-pretty text-muted-foreground">
+              <span className="shrink-0 rounded-md bg-white p-1 ring-1 ring-black/10">
+                <SortMarkBadge code={TWICE_CODE} className="h-16" />
+              </span>
+              {t('labelsPage.anatomy.twice')}
+            </p>
           </div>
         </section>
 
@@ -116,10 +125,6 @@ export function LabelsPage() {
             <SortingGame />
           </div>
         </section>
-
-        <div className="pt-20 sm:pt-24">
-          <UniversalLabelSection eyebrow={t('labelsPage.everyday')} />
-        </div>
       </main>
 
       <LandingCTA

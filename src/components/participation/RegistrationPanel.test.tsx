@@ -35,17 +35,10 @@ describe('registration on the sellers page', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30');
   });
 
-  it('sums up in one line on phones and opens the details on a tap', () => {
-    renderPanel({ vendorLimit: 60, sellerCount: 13 });
-    const summary = screen.getByRole('button', { expanded: false });
-    expect(summary).toHaveTextContent('13/60 Plätze');
-    fireEvent.click(summary);
-    expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument();
-  });
-
-  it('counts the sellers in the summary when there is no limit', () => {
+  it('counts the sellers when there is no limit', () => {
     renderPanel({ sellerCount: 1 });
-    expect(screen.getByRole('button', { expanded: false })).toHaveTextContent('1 Verkäufer');
+    expect(screen.getByText('1 Verkäufer')).toBeVisible();
+    expect(screen.getByText(/Kein Limit/)).toBeVisible();
   });
 
   it('says when all places are taken', () => {
@@ -73,7 +66,7 @@ describe('registration on the sellers page', () => {
 
   it('says when all places for items are taken, also without a seller limit', () => {
     renderPanel({ features: { maxItemsTotal: 400 }, itemPlacesLeft: 0 });
-    expect(screen.getByText('Kein Limit')).toBeVisible();
+    expect(screen.getByText(/Kein Limit/)).toBeVisible();
     expect(screen.getByText('Alle Plätze für Artikel belegt')).toBeVisible();
   });
 
@@ -85,14 +78,14 @@ describe('registration on the sellers page', () => {
   it('shows the access code sellers need', () => {
     renderPanel({ accessCode: 'SKI2026', visibility: 'approved' });
     expect(screen.getByText('SKI2026')).toBeVisible();
-    expect(screen.getByText('Verkäufer brauchen diesen Code zum Anmelden')).toBeVisible();
-    expect(screen.getByText('Nur mit Link und Zugangscode')).toBeVisible();
+    expect(screen.getByTitle('Verkäufer brauchen diesen Code zum Anmelden')).toBeVisible();
+    expect(screen.getByText(/Nur mit Link und Zugangscode/)).toBeVisible();
   });
 
   it('lets the organizer close and open the registration', async () => {
     renderPanel({ features: { registrationEndsAt: Date.now() + HOUR } });
     expect(within(screen.getByTestId('registration-details')).getByText('Offen')).toBeVisible();
-    expect(screen.getByText(/^Bis /)).toBeVisible();
+    expect(screen.getByText(/· Bis /)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Anmeldung schließen' }));
     await waitFor(() => expect(setRegistrationOpen).toHaveBeenCalledWith({ eventId, open: false }));
   });

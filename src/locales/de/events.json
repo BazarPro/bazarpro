@@ -23,7 +23,9 @@
     "newMessages_other": "{{count}} neue Nachrichten vom Veranstalter",
     "excluded": "Ausgeschlossen",
     "excludedSince": "Ausgeschlossen seit {{date}}",
-    "findNew": "Neuen Basar finden"
+    "findNew": "Neuen Basar finden",
+    "myItems": "Meine Artikel",
+    "printLabels": "Etiketten drucken"
   },
   "filters": {
     "search": "Basare suchen…",

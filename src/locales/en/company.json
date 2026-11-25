@@ -276,34 +276,35 @@
     "seoDescription": "How BazarPro's universal labels work: one fixed sort mark per seller, two steps to the right basket – with a mini game to try it.",
     "eyebrow": "Universal label",
     "title": "Sorting back <highlight>without scanning</highlight>",
-    "intro": "After the bazaar a mountain of unsold items lies on the table. With the sort mark on every label, helpers find the right basket at a glance – no phone, no list.",
+    "intro": "After the bazaar a mountain of unsold items lies on the table. With the sort mark, helpers find the right basket at a glance.",
     "play": "Try it yourself",
     "demo": "See the demo",
     "anatomy": {
       "eyebrow": "How to read the mark",
-      "title": "One mark, two glances",
-      "text": "Every seller gets a fixed mark. It is on all their labels and on their basket.",
+      "title": "One mark per seller",
+      "text": "It is on all of the seller's labels and on their basket.",
       "pile": {
-        "title": "Large digit and colour",
-        "text": "Tells which of the ten piles the item goes on. Colour helps, the digit is enough – also in black and white."
+        "title": "Large digit",
+        "text": "One of ten piles. Colour helps, the digit is enough."
       },
       "letter": {
         "title": "Letter below",
-        "text": "Splits a pile further when many sellers share the digit."
+        "text": "Splits the pile further."
       },
       "basket": {
         "title": "Letters and number",
-        "text": "Find the seller's basket within the pile. No mark appears twice."
-      }
+        "text": "Find the seller's basket within the pile."
+      },
+      "twice": "Very rarely two sellers of a bazaar share the same mark. Then a small dark box with an extra letter stands next to the letter below the digit. The organizer is warned beforehand."
     },
     "game": {
       "eyebrow": "Mini game",
-      "title": "Sort 12 labels back",
-      "text": "First onto the piles by the large digit, then from the pile into the baskets – just as helpers do after the bazaar.",
+      "title": "Try it yourself",
+      "text": "First everything onto piles, then you take pile 3 and sort it into the baskets.",
       "step1": "Onto piles",
-      "step2": "Into baskets",
+      "step2": "Pile {{pile}} into baskets",
       "taskPile": "Which pile? Look at the large digit.",
-      "taskBasket": "Which basket? Compare letters and number.",
+      "taskBasket": "Pile {{pile}}: which basket?",
       "how": "Drag, or tap the target",
       "pile": "Pile {{pile}}",
       "labels_one": "{{count}} label",
@@ -314,11 +315,11 @@
       "seconds_other": "{{count}} s",
       "progress": "{{done}} of {{total}}",
       "hintPile": "Not quite – the large digit is a {{pile}}.",
-      "hintBasket": "Not quite – compare the two letters and the number.",
+      "hintBasket": "Not quite – compare the letter, the letter pair and the number.",
       "doneTitle": "{{count}} labels in {{seconds}} seconds",
-      "donePerfect": "Without a mistake and without a single scan. With seller numbers you would have looked up every number in a list.",
-      "doneMistakes_one": "With one mistake – the second time is faster already. Without any scan.",
-      "doneMistakes_other": "With {{count}} mistakes – the second time is faster already. Without any scan.",
+      "donePerfect": "Without a mistake and without a single scan.",
+      "doneMistakes_one": "With one mistake – the second time is faster.",
+      "doneMistakes_other": "With {{count}} mistakes – the second time is faster.",
       "again": "Shuffle again",
       "items": [
         {
@@ -368,15 +369,27 @@
         {
           "title": "Pyjamas",
           "size": "128"
+        },
+        {
+          "title": "Swimsuit",
+          "size": "104"
+        },
+        {
+          "title": "Trainers",
+          "size": "31"
         }
-      ]
+      ],
+      "format": "Label size",
+      "small": "Small",
+      "standard": "Large",
+      "otherHelper": "other helper",
+      "basketsLater": "Then: pile {{pile}} into {{count}} baskets"
     },
     "teaser": {
       "eyebrow": "Universal label",
       "title": "After the bazaar: sorted in minutes",
       "text": "Every seller has a fixed sort mark. Helpers sort unsold items by the large digit first, then into the basket – no scanning, no list. And the label stays for the next bazaar.",
-      "cta": "How it works – with a mini game"
-    },
-    "everyday": "Day to day"
+      "cta": "How it works, with a mini game"
+    }
   }
 }

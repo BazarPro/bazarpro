@@ -2,14 +2,7 @@ import { Banknote, Check, MapPin, PackageOpen, Printer, ScanLine } from 'lucide-
 import { QrCode } from '../../../../../components/ui/QrCode';
 import type { CSSProperties, ReactNode } from 'react';
 import { cn, formatPrice } from '../../../../../lib/utils';
-import {
-  AppBar,
-  BikePhoto,
-  BikeWithTag,
-  OTHER_SORT_CODE,
-  HangTag,
-  PhoneFrame,
-} from './Illustrations';
+import { AppBar, BikePhoto, BikeWithTag, HangTag, PhoneFrame } from './Illustrations';
 import { useTranslation } from 'react-i18next';
 
 /*
@@ -29,7 +22,6 @@ function useScene() {
   const item = {
     title: t('landing:demo.bike'),
     price: `${formatPrice(45)} €`,
-    sortCode: OTHER_SORT_CODE,
   };
   return { t, item };
 }
@@ -138,12 +130,7 @@ export function TagScene() {
         className="mb-24 w-[90%] sm:mb-28"
         tag={
           <div className="landing-attach origin-top" style={delay(900)}>
-            <HangTag
-              className="w-24 sm:w-28"
-              title={item.title}
-              price={item.price}
-              sortCode={item.sortCode}
-            />
+            <HangTag className="w-24 sm:w-28" title={item.title} price={45} />
           </div>
         }
       />
@@ -160,12 +147,11 @@ export function CheckInScene() {
           tag={
             <HangTag
               title={item.title}
-              price={item.price}
-              sortCode={item.sortCode}
+              price={45}
               overlay={
                 <span
                   className="landing-scan-loop pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-tag shadow-[0_0_8px_2px_color-mix(in_oklab,var(--tag)_80%,transparent)]"
-                  style={{ ['--landing-scan-distance' as string]: 'calc(3.8rem * 0.9)' }}
+                  style={{ ['--landing-scan-distance' as string]: 'calc(4.5rem * 0.627)' }}
                 />
               }
             />

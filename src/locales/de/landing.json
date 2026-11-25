@@ -144,11 +144,11 @@
     "titleStart": "Second-Hand-Basare",
     "titleHighlight": "ohne",
     "titleEnd": "Zettelwirtschaft",
-    "text": "Artikel zu Hause erfassen, Etikett drucken – am Basartag wird nur noch gescannt."
+    "text": "Artikel zu Hause erfassen und Etikett drucken. Am Basartag wird nur noch gescannt."
   },
   "cta": {
     "title": "Bereit für deinen nächsten Basar?",
-    "text": "Leg deinen Basar an oder melde dich als Verkäufer – kostenlos.",
+    "text": "Leg deinen Basar an oder melde dich als Verkäufer an. Kostenlos.",
     "openSource": "BazarPro ist Open Source (MIT) – <github>Code auf GitHub</github> · <about>Über das Projekt</about>"
   },
   "events": {

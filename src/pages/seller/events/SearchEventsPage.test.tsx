@@ -159,7 +159,7 @@ describe('find bazaars', () => {
     renderPage();
     const mine = screen.getByRole('region', { name: 'Meine Basare' });
     expect(within(mine).getByText(/Nr\. 12/)).toBeTruthy();
-    expect(within(mine).getByText('4 Artikel · Etiketten')).toBeTruthy();
+    expect(within(mine).getByRole('link', { name: '4 Artikel' })).toBeTruthy();
     expect(within(mine).getByText('Abgabe:')).toBeTruthy();
   });
 
@@ -252,14 +252,14 @@ describe('find bazaars', () => {
   it('leads to the bazaar page for new messages and details', () => {
     mockQueries([MINE], { e1: { count: 2 } });
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /2 neue Nachrichten vom Veranstalter/ }));
+    fireEvent.click(screen.getByRole('link', { name: /2 neue Nachrichten vom Veranstalter/ }));
     expect(screen.getByTestId('location').textContent).toBe('/public-events/e1');
   });
 
   it('leads to the items of an own bazaar', () => {
     mockQueries([MINE]);
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /4 Artikel · Etiketten/ }));
+    fireEvent.click(screen.getByRole('link', { name: '4 Artikel' }));
     expect(screen.getByTestId('location').textContent).toBe('/my-products');
   });
 

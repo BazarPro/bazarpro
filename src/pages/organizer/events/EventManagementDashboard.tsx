@@ -6,6 +6,7 @@ import { BazaarJourney } from '../../../components/ui/bazaar-roadmap';
 import { StatStrip } from '../../../components/ui/stat-tile';
 import { ImageWithFallback } from '../../../components/ui/image-with-fallback';
 import { EventPhaseBadge } from '../../../components/events/EventPhaseBadge';
+import { EventShareActions } from '../../../components/events/EventShareActions';
 import {
   Banknote,
   Calendar,
@@ -243,12 +244,12 @@ export function EventManagementDashboard() {
         )}
 
         {/* Which bazaar and where it stands: compact, the next step is what counts here */}
-        <header className="mb-6 flex items-start gap-3 sm:items-center sm:gap-4">
+        <header className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
           <div className="flex min-w-0 flex-1 items-center gap-4">
             <ImageWithFallback
               alt=""
               storageId={event.coverImage}
-              className="size-16 shrink-0 rounded-xl object-cover sm:size-20"
+              className="size-14 shrink-0 rounded-xl object-cover sm:size-20"
             />
             <div className="min-w-0 space-y-1.5">
               <EventPhaseBadge event={event} />
@@ -268,20 +269,9 @@ export function EventManagementDashboard() {
               </div>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 self-start sm:self-center"
-            onClick={() =>
-              navigate(`/public-events/${eventId}`, {
-                state: { from: `${location.pathname}${location.search}` },
-              })
-            }
-          >
-            <Eye className="h-4 w-4" />
-            {/* Phones: the eye alone, the button stays beside the title */}
-            <span className="max-sm:sr-only">{t('dashboard.publicView')}</span>
-          </Button>
+          <div className="md:self-center">
+            <EventShareActions eventId={eventId} title={event.title} />
+          </div>
         </header>
 
         <div className="space-y-4">
@@ -295,8 +285,8 @@ export function EventManagementDashboard() {
             doneText={t('dashboard.next.allDone')}
           >
             {leftBehind.length > 0 && (
-              <div className="border-t border-tag/50 pt-4">
-                <h3 className="mb-1 font-sans text-sm font-semibold text-muted-foreground">
+              <div className="border-t pt-3">
+                <h3 className="mb-0.5 font-sans text-xs font-semibold text-muted-foreground">
                   {t('dashboard.next.alsoOpen')}
                 </h3>
                 <ul>
@@ -304,13 +294,13 @@ export function EventManagementDashboard() {
                     <li key={step.id}>
                       <Link
                         to={step.to!}
-                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-tag/20"
+                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted"
                       >
                         <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-tag" />
                         <span className="min-w-0 flex-1">
-                          <span className="font-medium">{step.title}</span>
+                          <span className="text-sm font-medium">{step.title}</span>
                           {step.text && (
-                            <span className="block text-sm text-muted-foreground">{step.text}</span>
+                            <span className="text-sm text-muted-foreground"> · {step.text}</span>
                           )}
                         </span>
                         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

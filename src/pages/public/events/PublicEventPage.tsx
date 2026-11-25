@@ -402,51 +402,54 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
 
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-6">
-            <div className="bg-card rounded-xl border p-6 md:p-8">
+            <div className="bg-card rounded-xl border p-5 sm:p-6">
               <SafeMarkdown
                 content={event.description}
                 className="text-foreground/90 leading-7 
-                    [&_p]:mb-6 [&_p:last-child]:mb-0 
-                    [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:mb-6 [&_ol]:mb-6 [&_li]:ml-5 [&_li]:mb-2
-                    [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mt-8 [&_h1]:mb-4 
-                    [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mt-8 [&_h2]:mb-4 
-                    [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mt-6 [&_h3]:mb-3 
-                    [&_hr]:my-10 [&_hr]:border-border/60
+                    [&_p]:mb-5 [&_p:last-child]:mb-0 
+                    [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:mb-5 [&_ol]:mb-5 [&_li]:ml-5 [&_li]:mb-2
+                    [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-8 [&_h1]:mb-4 
+                    [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-8 [&_h2]:mb-3 
+                    [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-6 [&_h3]:mb-3 
+                    [&_hr]:my-8 [&_hr]:border-border/60
                     [&_strong]:font-semibold [&_strong]:text-foreground"
               />
-              {/* What is sold, under the text that tells about it */}
-              <div className="mt-6 border-t pt-4">
-                <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-                  {t('page.categories')}
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels
-                  )?.map((category: string) => (
-                    <Badge key={category} variant="secondary">
-                      <Tag className="mr-1 h-3 w-3" />
-                      {category}
-                    </Badge>
-                  ))}
+              {/* What is sold and what else there is, under the text that tells about it */}
+              <dl className="mt-6 grid gap-4 border-t pt-5 sm:grid-cols-2">
+                <div>
+                  <dt className="mb-2 text-sm font-semibold text-muted-foreground">
+                    {t('page.categories')}
+                  </dt>
+                  <dd className="flex flex-wrap gap-1.5">
+                    {(
+                      eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels
+                    )?.map((category: string) => (
+                      <Badge key={category} variant="secondary">
+                        <Tag className="mr-1 h-3 w-3" />
+                        {category}
+                      </Badge>
+                    ))}
+                  </dd>
                 </div>
-              </div>
+                {event.services.length > 0 && (
+                  <div>
+                    <dt className="mb-2 text-sm font-semibold text-muted-foreground">
+                      {t('page.services')}
+                    </dt>
+                    <dd className="flex flex-wrap gap-1.5">
+                      {event.services.map((service: string) => (
+                        <Badge key={service} variant="outline">
+                          {serviceLabel(service)}
+                        </Badge>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+              </dl>
             </div>
 
-            {event.services.length > 0 && (
-              <div className="bg-card rounded-xl border p-6">
-                <h2 className="text-lg font-semibold mb-3">{t('page.services')}</h2>
-                <div className="flex flex-wrap gap-2">
-                  {event.services.map((service: string) => (
-                    <Badge key={service} variant="outline">
-                      {serviceLabel(service)}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {event.eventMapImageUrl && (
-              <div className="bg-card rounded-xl border p-6">
+              <div className="bg-card rounded-xl border p-5 sm:p-6">
                 <h2 className="text-lg font-semibold mb-3">{t('page.map')}</h2>
                 <a
                   href={event.eventMapImageUrl}

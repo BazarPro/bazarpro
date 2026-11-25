@@ -1174,7 +1174,18 @@ function StepPreview({ id, type }: { id: string; type?: EventType }) {
   }
 }
 
-export function EditEventForm({ after }: { after?: ReactNode } = {}) {
+export function EditEventForm({
+  headerAside,
+  notice,
+  dangerZone,
+}: {
+  /** Beside the title of the settings, e.g. the approval of the platform */
+  headerAside?: ReactNode;
+  /** Above the settings, e.g. why the platform rejected the bazaar */
+  notice?: ReactNode;
+  /** At the end of the settings, before the save bar: deleting the bazaar */
+  dangerZone?: ReactNode;
+} = {}) {
   const { t } = useTranslation('organizer');
   const navigate = useNavigate();
   const createEvent = useMutation(api.events.createEvent);
@@ -1810,7 +1821,17 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
       <div>
         {/* Editing is a form; creating shows the preview beside it */}
         <div className={isEditing ? 'page-narrow' : 'page-wide'}>
-          {isEditing && <PageHeader title={t('settingsPage.title')} className="mb-6" />}
+          {isEditing && (
+            <PageHeader
+              title={
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {t('settingsPage.title')}
+                  {headerAside && <span className="text-base font-normal">{headerAside}</span>}
+                </span>
+              }
+              className="mb-6"
+            />
+          )}
 
           {!isEventCreationEnabled && !isEditing && (
             <Alert variant="destructive" className="mb-6">
@@ -1824,6 +1845,7 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                 onSubmit={handleSubmit(onSubmit, showFirstInvalidSection)}
                 className="space-y-6"
               >
+                {notice}
                 {isRunning && (
                   <Alert>
                     <AlertDescription>{t('form.running')}</AlertDescription>
@@ -1866,7 +1888,10 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
                   </section>
                 ))}
 
-                <StickyActionBar className="md:mx-0 md:px-0 lg:mx-0 lg:px-0">
+                {dangerZone}
+
+                {/* Floats over the end of the page as a card of its own */}
+                <StickyActionBar className="bottom-[calc(var(--bottom-inset,0px)+var(--tab-bar-bulge,0px)+0.75rem)] mx-0 rounded-xl border bg-card/95 px-4 pb-3 shadow-lg md:mx-0 md:px-5 lg:mx-0 lg:px-5">
                   <Button type="submit" className="flex-1 sm:flex-none" disabled={isSubmitting}>
                     {t('form.save')}
                   </Button>
@@ -2106,7 +2131,6 @@ export function EditEventForm({ after }: { after?: ReactNode } = {}) {
               </form>
             )}
           </FormProvider>
-          {after}
         </div>
       </div>
     </div>

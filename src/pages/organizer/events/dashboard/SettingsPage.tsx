@@ -11,7 +11,8 @@ import { useEffect } from 'react';
 import { EventApprovalBadge } from '../../../../components/events/EventApprovalBadge';
 import { useEventAccess } from '../../../../hooks/useEventAccess';
 import { eventApproval } from '../../../../lib/eventApproval';
-import { FormSection } from '../../../../components/ui/form-section';
+import { Alert, AlertDescription, AlertTitle } from '../../../../components/ui/alert';
+import { Trash2 } from 'lucide-react';
 import { EditEventForm } from '../EditEventForm';
 import { EventSettingsSummary } from './components/EventSettingsSummary';
 import { useTranslation } from 'react-i18next';
@@ -61,61 +62,72 @@ export function SettingsPage() {
     }
   };
 
-  const approval = approvalState && (
-    <div className="rounded-xl border bg-card p-5 shadow-xs sm:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="font-medium">{t('settingsPage.approval')}</div>
-        <EventApprovalBadge event={event} />
-      </div>
-      {isRejected && event.rejectionReason && (
-        <div className="mt-2 text-sm text-muted-foreground">
-          {t('settingsPage.reason', { reason: event.rejectionReason })}
-        </div>
-      )}
-      {isPending && (
-        <div className="mt-2 text-sm text-muted-foreground">{t('settingsPage.reviewing')}</div>
-      )}
-    </div>
+  // Approved: a quiet badge beside the title. Waiting or rejected: a notice on top
+  const approvalBadge = approvalState && <EventApprovalBadge event={event} />;
+  const approvalNotice = (isRejected || isPending) && (
+    <Alert variant={isRejected ? 'destructive' : 'default'}>
+      <AlertTitle>{t('settingsPage.approval')}</AlertTitle>
+      <AlertDescription>
+        {isRejected
+          ? event.rejectionReason && t('settingsPage.reason', { reason: event.rejectionReason })
+          : t('settingsPage.reviewing')}
+      </AlertDescription>
+    </Alert>
   );
 
+  // The last thing on the page, quiet: deleting is rare and cannot be undone
   const deletion = isOrganizer && (
-    <FormSection title={t('settingsPage.deleteTitle')} description={t('settingsPage.deleteHint')}>
+    <section className="flex flex-col gap-3 rounded-xl border border-dashed border-destructive/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div>
+        <h2 className="font-sans text-sm font-semibold">{t('settingsPage.deleteTitle')}</h2>
+        <p className="text-sm text-muted-foreground">{t('settingsPage.deleteHint')}</p>
+      </div>
       <ConfirmDialog
-        trigger={<Button variant="destructive">{t('settingsPage.delete')}</Button>}
+        trigger={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="size-4" />
+            {t('settingsPage.delete')}
+          </Button>
+        }
         title={t('settingsPage.deleteTitle')}
         description={t('settingsPage.deleteText')}
         confirmLabel={t('settingsPage.deleteConfirm')}
         onConfirm={handleDelete}
         destructive
       />
-    </FormSection>
+    </section>
   );
 
   // Who may change the settings changes them right here; everybody else reads them.
   // The platform admin also after the end, to correct mistakes
   if (isOrganizer && (event.endDate >= Date.now() || isAdmin)) {
     return (
-      <EditEventForm
-        after={
-          <div className="mt-8 space-y-6">
-            {approval}
-            {deletion}
-          </div>
-        }
-      />
+      <EditEventForm headerAside={approvalBadge} notice={approvalNotice} dangerZone={deletion} />
     );
   }
 
   return (
     <div className="page-narrow space-y-6">
-      <PageHeader title={t('settingsPage.title')} />
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {t('settingsPage.title')}
+            {approvalBadge && <span className="text-base font-normal">{approvalBadge}</span>}
+          </span>
+        }
+      />
+      {approvalNotice}
       {event.endDate < Date.now() && (
         <p className="text-sm text-muted-foreground">{t('settingsPage.ended')}</p>
       )}
       <div className="rounded-xl border bg-card p-5 shadow-xs sm:p-6">
         <EventSettingsSummary event={event} />
       </div>
-      {approval}
       {deletion}
     </div>
   );

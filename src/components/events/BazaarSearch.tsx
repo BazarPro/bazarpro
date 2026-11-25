@@ -423,6 +423,7 @@ export function BazaarResultCard({
   found: { event, distance },
   from,
   badge,
+  status,
   actions,
 }: {
   found: Found<Doc<'events'>>;
@@ -430,6 +431,8 @@ export function BazaarResultCard({
   from: string;
   /** On the picture, e.g. "Angemeldet" */
   badge?: ReactNode;
+  /** Instead of registration and fees: the seller's own state at a bazaar they joined */
+  status?: ReactNode;
   actions?: ReactNode;
 }) {
   const { t } = useTranslation('events');
@@ -499,34 +502,38 @@ export function BazaarResultCard({
             </span>
           </p>
         </div>
-        <div className="mt-auto flex flex-wrap gap-1.5">
-          {!over && (
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                registration.blocked
-                  ? 'bg-muted text-muted-foreground'
-                  : 'bg-success-soft text-success-soft-foreground'
-              )}
-            >
-              {registration.blocked ?? (
-                <>
-                  <Check className="size-3" />
-                  {t('finder.registrationOpen')}
-                </>
-              )}
-            </span>
-          )}
-          {facts.map((fact) => (
-            <span
-              key={fact}
-              className="rounded-full border px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
-            >
-              {fact}
-            </span>
-          ))}
-        </div>
-        {actions && <div className="relative z-10 flex gap-2">{actions}</div>}
+        {status ? (
+          <div>{status}</div>
+        ) : (
+          <div className="mt-auto flex flex-wrap gap-1.5">
+            {!over && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                  registration.blocked
+                    ? 'bg-muted text-muted-foreground'
+                    : 'bg-success-soft text-success-soft-foreground'
+                )}
+              >
+                {registration.blocked ?? (
+                  <>
+                    <Check className="size-3" />
+                    {t('finder.registrationOpen')}
+                  </>
+                )}
+              </span>
+            )}
+            {facts.map((fact) => (
+              <span
+                key={fact}
+                className="rounded-full border px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+              >
+                {fact}
+              </span>
+            ))}
+          </div>
+        )}
+        {actions && <div className="relative z-10 mt-auto flex gap-2">{actions}</div>}
       </div>
     </article>
   );

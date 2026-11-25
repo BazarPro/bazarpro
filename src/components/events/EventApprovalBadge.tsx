@@ -9,9 +9,9 @@ export function EventApprovalBadge({ event }: { event: Parameters<typeof eventAp
   if (approval === 'rejected') {
     return <Badge variant="destructive">{t('settingsPage.rejected')}</Badge>;
   }
-  if (approval === 'pending') return <Badge variant="outline">{t('settingsPage.pending')}</Badge>;
+  if (approval === 'pending') return <Badge variant="warning">{t('settingsPage.pending')}</Badge>;
   if (approval === 'approved') {
-    return <Badge variant="secondary">{t('settingsPage.approved')}</Badge>;
+    return <Badge variant="success">{t('settingsPage.approved')}</Badge>;
   }
   return null;
 }

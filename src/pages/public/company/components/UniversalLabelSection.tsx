@@ -1,9 +1,7 @@
 import { ArrowRight, Printer, Recycle, ScanEye, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { SortMarkBadge } from '../../../../components/sellers/SortMarkBadge';
-import { QrCode } from '../../../../components/ui/QrCode';
+import { PrintedLabel } from '../../../../components/products/PrintedLabel';
 import { docsUrl } from '../../../../lib/links';
-import { formatPrice } from '../../../../lib/utils';
 import { SectionHeading } from './MarketingHero';
 
 /** Prices as on the labels of a kids' bazaar, without the euro sign */
@@ -43,26 +41,19 @@ export function UniversalLabelSection({ eyebrow }: { eyebrow?: string } = {}) {
             aria-label={t('featuresPage.universalLabel.example')}
             className="mx-auto grid w-full max-w-sm gap-3"
           >
-            {/* As printed: QR code, sorting mark, title, size and price (#328) */}
+            {/* As printed, the layout of the PDF: QR code, sorting mark, title, size and price */}
             {items.map((title, index) => (
-              <div
+              <PrintedLabel
                 key={title}
-                className="flex items-center gap-3 rounded-md bg-white p-2 text-zinc-900 shadow-md ring-1 ring-black/10"
-              >
-                <QrCode value="https://bazarpro.de" className="h-16 w-16 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <SortMarkBadge code={EXAMPLE_SORT_CODE} className="h-10" />
-                  <p className="mt-1 truncate text-sm">{title}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  {sizes[index] && (
-                    <p className="text-sm font-bold leading-tight">{sizes[index]}</p>
-                  )}
-                  <p className="text-xl font-extrabold tabular-nums leading-tight">
-                    {formatPrice(EXAMPLE_PRICES[index] ?? 5)}
-                  </p>
-                </div>
-              </div>
+                format="small"
+                label={{
+                  title,
+                  size: sizes[index],
+                  price: EXAMPLE_PRICES[index] ?? 5,
+                  sortCode: EXAMPLE_SORT_CODE,
+                }}
+                className="w-full rounded-sm shadow-md ring-1 ring-black/10"
+              />
             ))}
           </div>
           <div className="space-y-6">

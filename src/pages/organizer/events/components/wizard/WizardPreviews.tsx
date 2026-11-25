@@ -1,4 +1,4 @@
-import { SortMarkBadge } from '../../../../../components/sellers/SortMarkBadge';
+import { PrintedLabel } from '../../../../../components/products/PrintedLabel';
 import type { LabelMark } from '../../../../../shared/constants';
 import {
   resolveEventFeatures,
@@ -7,7 +7,6 @@ import {
 import { Children, useEffect, useMemo, type ReactNode } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { QrCode } from '../../../../../components/ui/QrCode';
 import {
   BadgeEuro,
   Calendar,
@@ -370,7 +369,7 @@ export function SalePreview({ type }: { type?: EventType }) {
 
 const EXAMPLE_SORT_CODE = 66_647;
 
-/** The printed hang tag in the chosen format, as on the label sheet. */
+/** The label in the chosen format, exactly as the PDF prints it. */
 function LabelPreview({
   small,
   title,
@@ -385,33 +384,15 @@ function LabelPreview({
   return (
     <div className="flex flex-col items-center">
       <span className="h-4 w-px bg-foreground/50" />
-      <div
+      <PrintedLabel
         key={small ? 'small' : 'large'}
+        format={small ? 'small' : 'standard'}
+        label={{ title, price, sortCode: mark === 'universal' ? EXAMPLE_SORT_CODE : undefined }}
         className={cn(
-          'relative rounded-md bg-white text-zinc-900 shadow-lg ring-1 ring-black/10 animate-in zoom-in-95 duration-300',
-          small ? 'flex w-48 items-center gap-2 p-1.5' : 'w-32 p-2 text-center'
+          'rounded-sm shadow-lg ring-1 ring-black/10 animate-in zoom-in-95 duration-300',
+          small ? 'w-56' : 'w-40'
         )}
-      >
-        <span className="absolute left-1/2 top-0.5 h-1 w-1 -translate-x-1/2 rounded-full bg-zinc-300" />
-        <QrCode
-          value="https://bazarpro.de"
-          className={cn('shrink-0', small ? 'h-[52px] w-[52px]' : 'mx-auto mt-1 h-auto w-full')}
-        />
-        <div className={cn('min-w-0', !small && 'mt-1.5')}>
-          {mark === 'universal' && <SortMarkBadge code={EXAMPLE_SORT_CODE} className="h-7" />}
-          <p
-            className={cn(
-              'line-clamp-2 leading-tight',
-              small ? 'mt-0.5 text-[0.55rem]' : 'text-[0.6rem]'
-            )}
-          >
-            {title}
-          </p>
-          <p className={cn('font-bold tabular-nums', small ? 'text-[0.6rem]' : 'mt-0.5 text-xs')}>
-            {price !== undefined && `${formatPrice(price)} €`}
-          </p>
-        </div>
-      </div>
+      />
     </div>
   );
 }
