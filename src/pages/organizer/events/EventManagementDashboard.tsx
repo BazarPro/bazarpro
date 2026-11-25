@@ -285,8 +285,8 @@ export function EventManagementDashboard() {
             doneText={t('dashboard.next.allDone')}
           >
             {leftBehind.length > 0 && (
-              <div className="border-t pt-3">
-                <h3 className="mb-0.5 font-sans text-xs font-semibold text-muted-foreground">
+              <div className="border-t border-tag/50 pt-4">
+                <h3 className="mb-1 font-sans text-sm font-semibold text-muted-foreground">
                   {t('dashboard.next.alsoOpen')}
                 </h3>
                 <ul>
@@ -294,13 +294,13 @@ export function EventManagementDashboard() {
                     <li key={step.id}>
                       <Link
                         to={step.to!}
-                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted"
+                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-tag/20"
                       >
                         <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-tag" />
                         <span className="min-w-0 flex-1">
-                          <span className="text-sm font-medium">{step.title}</span>
+                          <span className="font-medium">{step.title}</span>
                           {step.text && (
-                            <span className="text-sm text-muted-foreground"> · {step.text}</span>
+                            <span className="block text-sm text-muted-foreground">{step.text}</span>
                           )}
                         </span>
                         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

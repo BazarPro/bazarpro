@@ -456,7 +456,13 @@ export function BazaarResultCard({
         over && 'opacity-75'
       )}
     >
-      <div className="relative aspect-[2/1] overflow-hidden bg-muted">
+      {/* Own bazaars on phones: a flat picture, so the search below comes sooner */}
+      <div
+        className={cn(
+          'relative aspect-[2/1] overflow-hidden bg-muted',
+          status && 'max-sm:aspect-[7/2]'
+        )}
+      >
         <ImageWithFallback
           storageId={event.coverImage}
           alt=""
