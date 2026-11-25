@@ -86,7 +86,8 @@
   "preview": {
     "offers": "Angebote",
     "sold": "Verkauft",
-    "all": "Alle {{count}} Angebote ansehen"
+    "all": "Alle {{count}} Angebote ansehen",
+    "comingSoon": "Die Angebote erscheinen hier, sobald Artikel abgegeben sind."
   },
   "conditions": {
     "title": "Bedingungen für Verkäufer",
@@ -228,10 +229,18 @@
     "seoTitle": "Angebote bei {{title}} in {{location}} | {{brand}}",
     "title": "Angebote",
     "empty": "Keine Artikel gefunden",
-    "emptyText": "Versuche es mit anderen Filtereinstellungen."
+    "emptyText": "Versuche es mit anderen Filtereinstellungen.",
+    "none": "Noch keine Artikel im Angebot",
+    "noneText": "Sobald Verkäufer ihre Artikel abgeben, erscheinen sie hier.",
+    "toEvent": "Zum Basar"
   },
   "hero": {
-    "ended": "Basar beendet"
+    "ended": "Basar beendet",
+    "running": "Läuft gerade · bis {{time}} Uhr",
+    "today": "Heute ab {{time}} Uhr",
+    "tomorrow": "Morgen ab {{time}} Uhr",
+    "inDays": "In {{count}} Tagen",
+    "runningDays": "Läuft gerade"
   },
   "invitation": {
     "heading": "Du bist eingeladen",
@@ -279,5 +288,67 @@
     "maxItems_one": "bis {{count}} Artikel",
     "maxItems_other": "bis {{count}} Artikel",
     "all": "Alle Bedingungen"
+  },
+  "finder": {
+    "title": "Basare in deiner Nähe",
+    "lead": "Gib deine Postleitzahl oder deinen Ort ein – wir zeigen dir Basare im Umkreis.",
+    "where": "PLZ oder Ort",
+    "wherePlaceholder": "z. B. 89073 oder Ulm",
+    "search": "Suchen",
+    "radius": "Umkreis",
+    "anyDistance": "Egal",
+    "km": "{{km}} km",
+    "myLocation": "Meinen Standort verwenden",
+    "here": "deinem Standort",
+    "locationFailed": "Dein Standort ließ sich nicht bestimmen. Gib stattdessen PLZ oder Ort ein.",
+    "unknownPlace": "„{{query}}“ kennen wir nicht. Versuch es mit der Postleitzahl.",
+    "when": {
+      "label": "Wann",
+      "upcoming": "Demnächst",
+      "month": "4 Wochen",
+      "past": "Vergangene"
+    },
+    "conditionsLabel": "Bedingungen",
+    "conditions": {
+      "registrationOpen": "Anmeldung offen",
+      "lowCommission": "Provision bis {{percent}} %",
+      "noIntakeFee": "Ohne Gebühr pro Artikel",
+      "directSale": "Direktverkauf",
+      "onlineCatalog": "Artikel online",
+      "priceOffers": "Preisvorschläge online"
+    },
+    "conditionHints": {
+      "registrationOpen": "Du kannst dich jetzt als Verkäufer anmelden, ohne Zugangscode, und es sind noch Plätze frei.",
+      "directSale": "Du verkaufst selbst an deinem Stand, statt die Ware abzugeben.",
+      "onlineCatalog": "Die Artikel stehen online, sobald sie abgegeben sind.",
+      "lowCommission": "Höchstens {{percent}} % des Verkaufspreises gehen an den Veranstalter.",
+      "noIntakeFee": "Keine feste Gebühr für jeden abgegebenen Artikel.",
+      "priceOffers": "Käufer können online einen Preis vorschlagen."
+    },
+    "categories": "Kategorien",
+    "categoriesCount_one": "{{count}} Kategorie",
+    "categoriesCount_other": "{{count}} Kategorien",
+    "filters": "Filter",
+    "reset": "Filter zurücksetzen",
+    "results_one": "{{count}} Basar",
+    "results_other": "{{count}} Basare",
+    "around": "im Umkreis von {{km}} km um {{place}}",
+    "aroundAny": "nach Entfernung von {{place}}",
+    "sortedByDate": "nach Datum",
+    "away": "ca. {{km}} km",
+    "nearby": "unter 5 km",
+    "noneAround": "Im Umkreis von {{km}} km gibt es gerade keinen Basar, der passt.",
+    "widen": "Auf {{km}} km erweitern",
+    "noneFiltered": "Kein Basar passt zu allen Filtern.",
+    "noneAtAll": "Gerade sind keine Basare eingetragen.",
+    "organizeTitle": "Kein Basar in deiner Nähe?",
+    "organizeText": "Organisiere selbst einen – BazarPro ist kostenlos und schnell eingerichtet.",
+    "organize": "Basar anlegen",
+    "registrationOpen": "Anmeldung offen",
+    "addressMissing": "Ort unbekannt",
+    "more": "Mehr Filter",
+    "allMine_one": "Den Basar hier kennst du schon – du bist oben bei „Meine Basare“ angemeldet.",
+    "allMine_other": "Alle {{count}} Basare hier kennst du schon – du bist oben bei „Meine Basare“ angemeldet.",
+    "placeHint": "Gib PLZ oder Ort ein, dann siehst du nur Basare in deiner Nähe."
   }
 }

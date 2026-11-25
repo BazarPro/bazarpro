@@ -154,7 +154,7 @@
     "photosOptional": "Artikel ohne Foto erlauben",
     "photosOptionalText": "Verkäufer müssen nicht jedes Teil fotografieren – sinnvoll bei vielen kleinen Artikeln wie auf einem Kinderbasar. Artikel ohne Foto zeigen ein Platzhalterbild.",
     "publicCatalog": "Artikel online zeigen",
-    "publicCatalogText": "Besucher sehen die Artikel schon vor dem Basar online, mit Preis und Fotos. Ausgeschaltet gibt es keine Online-Liste – vor Ort zeigt das QR-Etikett trotzdem den Preis. Preisvorschläge und Fragen gibt es nur mit Online-Liste.",
+    "publicCatalogText": "Besucher sehen die Artikel online mit Preis und Fotos, sobald sie abgegeben sind; verkaufte verschwinden. Ausgeschaltet gibt es keine Online-Liste – vor Ort zeigt das QR-Etikett trotzdem den Preis. Preisvorschläge und Fragen gibt es nur mit Online-Liste.",
     "needsCatalog": "Ohne Online-Liste nicht möglich",
     "maxItems": "Artikel pro Verkäufer (optional)",
     "unlimited": "unbegrenzt",

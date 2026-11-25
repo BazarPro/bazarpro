@@ -144,10 +144,7 @@
     "titleStart": "Consignment sales",
     "titleHighlight": "without",
     "titleEnd": "the paperwork",
-    "line1Start": "Sellers list their items at home",
-    "line1End": "and attach a QR code.",
-    "line2Start": "At the bazaar, you just scan –",
-    "line2End": "BazarPro does the math."
+    "text": "List items at home, print the label – on the day itself everything is just scanned."
   },
   "cta": {
     "title": "Ready for your next bazaar?",
@@ -157,13 +154,16 @@
   "events": {
     "badge": "Marketplace",
     "title": "Upcoming events",
-    "text": "Discover public events near you and start selling right away.",
+    "text": "Find bazaars near you – to sell or to browse.",
     "showPast": "Show past events",
     "ended": "ENDED",
     "emptyPast": "No events found",
     "empty": "No public bazaars are planned right now",
     "emptyText": "Organizing one? Create it in a few minutes – sellers will find it here.",
-    "create": "Create bazaar"
+    "create": "Create bazaar",
+    "where": "Postcode or town",
+    "wherePlaceholder": "Postcode or town, e.g. 89073",
+    "nearby": "Nearby"
   },
   "demo": {
     "checkout": "Checkout",
@@ -216,7 +216,6 @@
   "scenes": {
     "condition": "Good condition · Bike sale",
     "printLabels": "Print labels.pdf",
-    "labelCaption": "Name, price, QR code and sort mark – printed exactly like this.",
     "seller": "Seller {{number}}",
     "product": "Item",
     "visitorScans": "Visitor scans",
@@ -255,10 +254,12 @@
     "organize": "I'm organizing a bazaar",
     "organizeText": "Free, ready in minutes",
     "organizeSignedIn": "Manage your bazaars",
-    "sell": "I want to sell something",
-    "sellText": "Print labels at home",
+    "nearby": "Find a bazaar nearby",
+    "nearbyText": "To sell or to browse, search by postcode",
     "sellSignedIn": "Items and labels",
-    "find": "I'm looking for a bazaar",
-    "findText": "See dates and items"
+    "find": "Find a bazaar",
+    "findText": "Near you, by postcode",
+    "try": "Try it first",
+    "tryText": "Demo with sample bazaars, no sign-up"
   }
 }

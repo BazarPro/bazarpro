@@ -49,7 +49,9 @@ import { useTranslation } from 'react-i18next';
 import { eventCategoryNames } from '../../../i18n/categories';
 import { useServiceLabel } from '../../../i18n/services';
 import { useNowPassing } from '../../../hooks/useNowPassing';
-import { registrationTimes } from '../../../shared/eventFeatures';
+import { registrationTimes, resolveEventFeatures } from '../../../shared/eventFeatures';
+import { dateLocale } from '../../../i18n/format';
+import i18n from '../../../i18n';
 import { describeRegistration } from '../../../components/participation/registrationText';
 import { eventPhase } from '../../../shared/eventPhase';
 import { RegionMapLink } from '../../../components/events/RegionMap';
@@ -208,7 +210,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
 
   const phase = eventPhase(event, now);
   const isPast = phase === 'ended';
-  const isRunning = phase === 'running';
+  const status = whenLabel(event, now, phase === 'running');
   const registration = describeRegistration(event, now, isTeam ? 'team' : undefined);
   const closedText = registration.blocked;
 
@@ -254,6 +256,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
           endDate={event.endDate}
           location={formatEventPlace(event)}
           isPast={isPast}
+          status={status}
           maxHeightClassName="min-h-[340px] md:min-h-[400px]"
         >
           {isSeller ? (
@@ -392,7 +395,10 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
           </div>
         )}
 
-        <EventProductPreview eventId={event._id} isRunning={isRunning} />
+        <EventProductPreview
+          eventId={event._id}
+          comingSoon={phase === 'running' && resolveEventFeatures(event).publicCatalog}
+        />
 
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-6">
@@ -408,19 +414,21 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
                     [&_hr]:my-10 [&_hr]:border-border/60
                     [&_strong]:font-semibold [&_strong]:text-foreground"
               />
-            </div>
-
-            <div className="bg-card rounded-xl border p-6">
-              <h2 className="text-lg font-semibold mb-3">{t('page.categories')}</h2>
-              <div className="flex flex-wrap gap-2">
-                {(eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels)?.map(
-                  (category: string) => (
+              {/* What is sold, under the text that tells about it */}
+              <div className="mt-6 border-t pt-4">
+                <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+                  {t('page.categories')}
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    eventCategoryNames(event.categories, categoryList) ?? event.categoryLabels
+                  )?.map((category: string) => (
                     <Badge key={category} variant="secondary">
                       <Tag className="mr-1 h-3 w-3" />
                       {category}
                     </Badge>
-                  )
-                )}
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -455,14 +463,19 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
                 </a>
               </div>
             )}
-            <ReportButton targetType="event" targetId={event._id} label={t('page.report')} />
           </div>
-          <EventPageSidebar
-            event={event}
-            conditions={event}
-            withWhenWhere={false}
-            eventId={isSeller ? event._id : undefined}
-          />
+          {/* On phones conditions and contact come before the long description */}
+          <div className="max-md:order-first">
+            <EventPageSidebar
+              event={event}
+              conditions={event}
+              withWhenWhere={false}
+              eventId={isSeller ? event._id : undefined}
+            />
+          </div>
+        </div>
+        <div className="mt-8 flex justify-end">
+          <ReportButton targetType="event" targetId={event._id} label={t('page.report')} />
         </div>
 
         <EventRegistrationDialog
@@ -490,4 +503,31 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
       </div>
     </div>
   );
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+const formatTimeDE = (timestamp: number) =>
+  new Date(timestamp).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });
+
+/** "Läuft gerade · bis 19 Uhr", "Heute ab 13 Uhr", "In 3 Tagen": soon enough to say so */
+function whenLabel(
+  event: { startDate: number; endDate: number },
+  now: number,
+  running: boolean
+): string | undefined {
+  const t = (key: 'running' | 'runningDays' | 'today' | 'tomorrow' | 'inDays', options: object) =>
+    i18n.t(`hero.${key}`, { ns: 'events', ...options });
+  if (running) {
+    // The end time only when it is today; a bazaar over days just runs
+    const endsToday = new Date(event.endDate - 1).toDateString() === new Date(now).toDateString();
+    return endsToday ? t('running', { time: formatTimeDE(event.endDate) }) : t('runningDays', {});
+  }
+  if (event.startDate < now) return undefined;
+  const midnight = new Date(now).setHours(0, 0, 0, 0);
+  const days = Math.floor((event.startDate - midnight) / DAY);
+  const time = formatTimeDE(event.startDate);
+  if (days === 0) return t('today', { time });
+  if (days === 1) return t('tomorrow', { time });
+  return days <= 7 ? t('inDays', { count: days }) : undefined;
 }

@@ -24,7 +24,14 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import type { Doc, Exclusion, Id } from '../../../lib/api/types';
 import { useState } from 'react';
-import { EventFilters } from '../../../components/events/EventFilters';
+import {
+  BazaarFilters,
+  BazaarResultCard,
+  BazaarResultsHeading,
+  BazaarSearchBar,
+  BazaarSearchEmpty,
+} from '../../../components/events/BazaarSearch';
+import { useBazaarSearch } from '../../../hooks/useBazaarSearch';
 import { EventRegistrationDialog } from '../../../components/events/EventRegistrationDialog';
 import { cn, formatDateDE, formatDateRangeDE } from '../../../lib/utils';
 import { describeSellerSchedule } from '../../../lib/sellerFees';
@@ -264,8 +271,11 @@ function EventCard({
 
 export function SearchEventsPage() {
   const { t } = useTranslation('events');
-  const [includePast, setIncludePast] = useState(false);
-  const allEvents = useQuery(api.events.get, { includePast }) as Doc<'events'>[] | undefined;
+  const allEvents = useQuery(api.events.get, { includePast: true }) as Doc<'events'>[] | undefined;
+  const categories = useQuery(api.categories.getAllCategories, {});
+  const search = useBazaarSearch(allEvents, categories);
+  // Only the search looks into the past; the own bazaars are those still to come
+  const includePast = false;
   const registeredEvents = useQuery(api.events.getMyRegisteredEvents, { includePast }) as
     | Doc<'events'>[]
     | undefined;
@@ -273,9 +283,6 @@ export function SearchEventsPage() {
   const excludedEvents = useQuery(api.eventExclusions.getMyExcludedEvents, { includePast });
   // The excluded bazaars are right here among the seller's own
   useMarkNoticesSeen('participation');
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('date-asc');
 
   // State for Registration Dialog
   const [selectedEvent, setSelectedEvent] = useState<{
@@ -314,21 +321,10 @@ export function SearchEventsPage() {
       .filter((event) => !registeredEventIds.has(event._id)),
   ].sort((a, b) => a.startDate - b.startDate);
 
-  const search = searchTerm.toLowerCase();
-  const newEvents = (allEvents ?? []).filter(
-    (event) =>
-      !registeredEventIds.has(event._id) &&
-      !exclusions.has(event._id) &&
-      (event.title.toLowerCase().includes(search) ||
-        event.description.toLowerCase().includes(search) ||
-        formatEventPlace(event).toLowerCase().includes(search))
+  // The search finds new bazaars; the own ones stand above it
+  const found = search.results?.filter(
+    ({ event }) => !registeredEventIds.has(event._id) && !exclusions.has(event._id)
   );
-  newEvents.sort((a, b) => {
-    if (sortBy === 'date-asc') return a.startDate - b.startDate;
-    if (sortBy === 'date-desc') return b.startDate - a.startDate;
-    if (sortBy === 'name') return a.title.localeCompare(b.title);
-    return 0;
-  });
 
   const renderCard = (event: Doc<'events'>, onboardingId?: string) => (
     <div key={event._id} className={isEventOver(event, now) ? 'opacity-75 grayscale-[0.5]' : ''}>
@@ -397,24 +393,44 @@ export function SearchEventsPage() {
                 >
                   {t('search.discover')}
                 </h2>
-                <EventFilters
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  sortBy={sortBy}
-                  onSortChange={setSortBy}
-                  includePast={includePast}
-                  onIncludePastChange={setIncludePast}
-                />
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {newEvents.map((event, index) =>
-                    renderCard(event, index === 0 ? 'events-search-first-card' : undefined)
-                  )}
-                  {newEvents.length === 0 && (
-                    <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/50 rounded-lg border-2 border-dashed">
-                      {searchTerm ? t('search.none') : t('search.noneNew')}
-                    </div>
-                  )}
-                </div>
+                <BazaarSearchBar search={search} />
+                <BazaarFilters search={search} categories={categories} />
+                <BazaarResultsHeading search={{ ...search, results: found }} />
+                {found && found.length > 0 ? (
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {found.map((result, index) => {
+                      const closed = describeRegistration(result.event, now).blocked;
+                      return (
+                        <div
+                          key={result.event._id}
+                          data-onboarding-id={index === 0 ? 'events-search-first-card' : undefined}
+                        >
+                          <BazaarResultCard
+                            found={result}
+                            from={`/browse-events${window.location.search}`}
+                            actions={
+                              !isEventOver(result.event, now) && (
+                                <Button
+                                  className="flex-1"
+                                  disabled={!!closed}
+                                  onClick={() => handleJoinClick(result.event)}
+                                >
+                                  {closed ?? t('search.join')}
+                                </Button>
+                              )
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <BazaarSearchEmpty
+                    search={search}
+                    noneText={t('search.noneNew')}
+                    hidden={(search.results?.length ?? 0) - (found?.length ?? 0)}
+                  />
+                )}
               </section>
             </>
           )}

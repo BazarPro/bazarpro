@@ -10,6 +10,7 @@ import { LandingEventsSection } from './components/LandingEventsSection';
 import { LandingFeatures } from './components/LandingFeatures';
 import { LandingHero } from './components/LandingHero';
 import { LandingKinds } from './components/LandingKinds';
+import { LandingLabels } from './components/LandingLabels';
 import { LandingProcess } from './components/LandingProcess';
 import './landing.css';
 import { useTranslation } from 'react-i18next';
@@ -48,10 +49,11 @@ export function LandingPage() {
         isAuthenticated={!!isAuthenticated}
         onOrganizerClick={goToOrganizer}
         onSellerClick={goToSeller}
-        onFindClick={showEvents}
       />
 
       <LandingProcess />
+
+      <LandingLabels />
 
       <LandingKinds />
 

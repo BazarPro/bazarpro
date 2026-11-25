@@ -181,7 +181,6 @@ export function LandingProcess() {
 
   const activeStep = steps[active];
   const { Scene } = activeStep;
-  const activeRole = ROLE_STYLES[activeStep.group.role];
 
   return (
     <section id="process-section" className="scroll-mt-20 py-20 sm:py-24">
@@ -207,7 +206,8 @@ export function LandingProcess() {
         >
           <div
             aria-hidden="true"
-            className="relative order-last hidden h-[30rem] items-center justify-center rounded-[2rem] bg-gradient-to-br from-primary/10 via-muted/40 to-transparent p-8 pt-16 lg:sticky lg:top-24 lg:flex"
+            // The step list beside names the role; the scene alone, in the middle
+            className="relative order-last hidden h-[30rem] flex-col justify-center rounded-[2rem] bg-gradient-to-br from-primary/10 via-muted/40 to-transparent p-6 lg:sticky lg:top-24 lg:flex"
             onTouchStart={(e) => {
               touchStartX.current = e.touches[0].clientX;
             }}
@@ -218,17 +218,11 @@ export function LandingProcess() {
               if (Math.abs(dx) > SWIPE_THRESHOLD_PX) goTo(active + (dx < 0 ? 1 : -1));
             }}
           >
-            <span
-              className={cn(
-                'absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold sm:left-6 sm:top-6',
-                activeRole.badge
-              )}
-            >
-              <activeRole.icon className="h-3.5 w-3.5" />
-              {groupLabel(activeStep.group)}
-            </span>
             {/* key remounts the scene so its animations replay */}
-            <div key={active} className="landing-fade-up flex w-full justify-center">
+            <div
+              key={active}
+              className="landing-fade-up flex min-h-0 w-full flex-1 items-center justify-center"
+            >
               <Scene />
             </div>
           </div>

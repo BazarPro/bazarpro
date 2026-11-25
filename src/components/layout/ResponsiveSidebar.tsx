@@ -22,10 +22,12 @@ interface ResponsiveSidebarProps {
 const PAGE_FADE =
   'animate-in fade-in-0 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none';
 
-const FULL_BLEED_PAGES = new Set(['/features', '/pricing', '/about']);
+const FULL_BLEED_PAGES = new Set(['/features', '/labels', '/bazaars', '/pricing', '/about']);
 const FOCUS_PAGES = new Set(['/events/new']);
 const MARKETING_PAGES = [
   '/features',
+  '/labels',
+  '/bazaars',
   '/pricing',
   '/about',
   '/contact',

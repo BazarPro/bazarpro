@@ -90,7 +90,10 @@
     "imprint": "Impressum",
     "poweredBy": "Powered by",
     "rights": "© {{year}} BazarPro. Alle Rechte vorbehalten.",
-    "version": "Version {{version}}"
+    "version": "Version {{version}}",
+    "labels": "Universal-Etiketten",
+    "bazaars": "Basare finden",
+    "demo": "Demo"
   },
   "actions": {
     "back": "Zurück",

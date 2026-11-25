@@ -147,6 +147,8 @@ export function BikeWithTag({ tag, className }: { tag?: ReactNode; className?: s
 
 /** The sort mark of the examples, the same as in the wizard and on the features page */
 export const EXAMPLE_SORT_CODE = 66_647;
+/** Another seller's mark, clearly different: digit, colors, letters and number */
+export const OTHER_SORT_CODE = 40_512;
 
 interface HangTagProps {
   /** As on the label sheet: `small` (clothes, landscape) or `standard` (portrait) */

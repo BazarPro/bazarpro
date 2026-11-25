@@ -438,3 +438,22 @@ html [data-sonner-toaster] [data-sonner-toast][data-type='info'] {
 html [data-sonner-toaster] [data-sonner-toast] [data-title] {
   font-weight: 600;
 }
+
+/* A wrong answer: a short shake, none with reduced motion */
+@utility animate-shake {
+  animation: shake 0.4s ease-in-out;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}

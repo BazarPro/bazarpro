@@ -27,6 +27,7 @@ import { CurrentBazaarRedirect, InstanceHomePage } from './pages/public/instance
 import { PublicEventLanding } from './pages/public/events/PublicEventPage';
 import { PublicEventProductsPage } from './pages/public/events/PublicEventProductsPage';
 import { FeaturesPage } from './pages/public/company/FeaturesPage';
+import { LabelsPage } from './pages/public/company/LabelsPage';
 import { PricingPage } from './pages/public/company/PricingPage';
 import { AboutPage } from './pages/public/company/AboutPage';
 import { ContactPage } from './pages/public/company/ContactPage';
@@ -78,6 +79,10 @@ const PromoPage = lazyPage(
 const EditEventForm = lazyPage(
   () => import('./pages/organizer/events/EditEventForm'),
   'EditEventForm'
+);
+const BazaarSearchPage = lazyPage(
+  () => import('./pages/public/events/BazaarSearchPage'),
+  'BazaarSearchPage'
 );
 const SearchEventsPage = lazyPage(
   () => import('./pages/seller/events/SearchEventsPage'),
@@ -238,6 +243,8 @@ function localizedPage(route: string, locale: Locale) {
       return <HomePage landing={landingPage()} />;
     case '/features':
       return isSingleInstance ? start : <FeaturesPage />;
+    case '/labels':
+      return isSingleInstance ? start : <LabelsPage />;
     case '/pricing':
       return isSingleInstance ? start : <PricingPage />;
     case '/about':
@@ -315,6 +322,10 @@ function App() {
                         element={isSingleInstance ? <Navigate to="/" replace /> : <FeaturesPage />}
                       />
                       <Route
+                        path="/labels"
+                        element={isSingleInstance ? <Navigate to="/" replace /> : <LabelsPage />}
+                      />
+                      <Route
                         path="/pricing"
                         element={isSingleInstance ? <Navigate to="/" replace /> : <PricingPage />}
                       />
@@ -364,7 +375,20 @@ function App() {
                         }
                       />
 
-                      {/* Visitors find the bazaars on the landing page instead of a login */}
+                      {/* One search, signed in with joining: each goes to their own */}
+                      <Route
+                        path="/bazaars"
+                        element={
+                          isSingleInstance ? (
+                            <Navigate to="/" replace />
+                          ) : (
+                            <SignedInToBrowseEvents>
+                              <BazaarSearchPage />
+                            </SignedInToBrowseEvents>
+                          )
+                        }
+                      />
+                      {/* Visitors find the bazaars on the public search instead of a login */}
                       <Route
                         path="/browse-events"
                         element={
@@ -440,9 +464,21 @@ function App() {
 /** Signed-in users see the page; visitors the list of bazaars on the landing page. */
 function VisitorsToLandingEvents({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthState();
+  const { search } = useLocation();
   if (isLoading) return null;
-  if (!isAuthenticated) return <Navigate to="/#events-section" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to={isSingleInstance ? '/#events-section' : `/bazaars${search}`} replace />;
+  }
   return <RequireSignIn>{children}</RequireSignIn>;
+}
+
+/** Signed in, the search with joining; the search in the address comes along. */
+function SignedInToBrowseEvents({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuthState();
+  const { search } = useLocation();
+  if (isLoading) return null;
+  if (isAuthenticated) return <Navigate to={`/browse-events${search}`} replace />;
+  return <>{children}</>;
 }
 
 function PrivateMainAppContent() {

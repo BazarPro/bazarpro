@@ -1,4 +1,16 @@
-import { ArrowRight, Calendar, Search, Tag, type LucideIcon } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Calendar,
+  MapPin,
+  PlayCircle,
+  Search,
+  Tag,
+  type LucideIcon,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useFeatureFlags } from '../../../../hooks/useFeatureFlags';
+import { DEMO_URL } from '../../../../lib/links';
 import { cn } from '../../../../lib/utils';
 import { HeroSaleScene } from './demo/HeroSaleScene';
 import { useTranslation } from 'react-i18next';
@@ -7,17 +19,16 @@ interface LandingHeroProps {
   isAuthenticated: boolean;
   onOrganizerClick: () => void;
   onSellerClick: () => void;
-  /** "I am looking for a bazaar": to the list of bazaars further down */
-  onFindClick: () => void;
 }
 
 export function LandingHero({
   isAuthenticated,
   onOrganizerClick,
   onSellerClick,
-  onFindClick,
 }: LandingHeroProps) {
   const { t } = useTranslation('landing');
+  const navigate = useNavigate();
+  const { isDemoMode } = useFeatureFlags();
   return (
     <section className="relative isolate flex items-center overflow-hidden lg:min-h-[min(calc(100svh-4rem),44rem)]">
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -42,13 +53,8 @@ export function LandingHero({
             {t('hero.titleEnd')}
           </h1>
 
-          <p className="text-pretty text-lg text-muted-foreground sm:text-xl lg:text-[1.3rem] lg:leading-relaxed">
-            <span className="block">
-              {t('hero.line1Start')} <span className="whitespace-nowrap">{t('hero.line1End')}</span>
-            </span>
-            <span className="mt-1 block">
-              {t('hero.line2Start')} <span className="whitespace-nowrap">{t('hero.line2End')}</span>
-            </span>
+          <p className="mx-auto max-w-xl text-balance text-lg text-muted-foreground sm:text-xl lg:mx-0 lg:leading-relaxed">
+            {t('hero.text')}
           </p>
 
           {/* One way in per intention, so nobody has to guess which button is theirs */}
@@ -70,18 +76,39 @@ export function LandingHero({
               onClick={onOrganizerClick}
               primary
             />
-            <IntentCard
-              icon={Tag}
-              title={isAuthenticated ? t('actions.myProducts') : t('intent.sell')}
-              text={isAuthenticated ? t('intent.sellSignedIn') : t('intent.sellText')}
-              onClick={onSellerClick}
-            />
-            <IntentCard
-              icon={Search}
-              title={t('intent.find')}
-              text={t('intent.findText')}
-              onClick={onFindClick}
-            />
+            {isAuthenticated ? (
+              <>
+                <IntentCard
+                  icon={Tag}
+                  title={t('actions.myProducts')}
+                  text={t('intent.sellSignedIn')}
+                  onClick={onSellerClick}
+                />
+                <IntentCard
+                  icon={Search}
+                  title={t('intent.find')}
+                  text={t('intent.findText')}
+                  onClick={() => navigate('/browse-events')}
+                />
+              </>
+            ) : (
+              <>
+                <IntentCard
+                  icon={MapPin}
+                  title={t('intent.nearby')}
+                  text={t('intent.nearbyText')}
+                  onClick={() => navigate('/bazaars')}
+                />
+                {/* The demo is its own instance; on it, its accounts wait at the login */}
+                <IntentCard
+                  icon={PlayCircle}
+                  title={t('intent.try')}
+                  text={t('intent.tryText')}
+                  href={isDemoMode ? undefined : DEMO_URL}
+                  onClick={isDemoMode ? () => navigate('/login') : undefined}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -97,32 +124,30 @@ function IntentCard({
   title,
   text,
   onClick,
+  href,
   primary = false,
 }: {
   icon: LucideIcon;
   title: string;
   text: string;
-  onClick: () => void;
+  onClick?: () => void;
+  /** Another site, opened in a new tab */
+  href?: string;
   primary?: boolean;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'group flex w-full items-center gap-4 rounded-2xl border p-3 pr-4 text-left transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        primary
-          ? // Dark theme: a petrol tint, a full light block would glare
-            'border-primary bg-primary text-primary-foreground shadow-[0_3px_0_var(--primary-shade)] hover:bg-primary/90 dark:border-primary/70 dark:bg-primary/20 dark:text-foreground dark:shadow-none dark:hover:bg-primary/30'
-          : 'bg-card hover:bg-accent'
-      )}
-    >
+  const className = cn(
+    'group flex w-full items-center gap-4 rounded-2xl border p-3 pr-4 text-left transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+    primary
+      ? // Dark theme: a petrol tint, a full light block would glare
+        'border-primary bg-primary text-primary-foreground shadow-[0_3px_0_var(--primary-shade)] hover:bg-primary/90 dark:shadow-none'
+      : 'bg-card hover:bg-accent'
+  );
+  const content = (
+    <>
       <span
         className={cn(
           'flex size-11 shrink-0 items-center justify-center rounded-xl',
-          primary
-            ? 'bg-primary-foreground/15 dark:bg-primary/25 dark:text-primary'
-            : 'bg-tag-soft text-tag-soft-foreground'
+          primary ? 'bg-primary-foreground/15' : 'bg-tag-soft text-tag-soft-foreground'
         )}
       >
         <Icon className="size-5" />
@@ -132,9 +157,7 @@ function IntentCard({
         <span
           className={cn(
             'block text-sm',
-            primary
-              ? 'text-primary-foreground/85 dark:text-muted-foreground'
-              : 'text-muted-foreground'
+            primary ? 'text-primary-foreground/85' : 'text-muted-foreground'
           )}
         >
           {text}
@@ -146,8 +169,17 @@ function IntentCard({
           primary ? 'bg-tag text-tag-foreground' : 'bg-muted'
         )}
       >
-        <ArrowRight className="size-4" />
+        {href ? <ArrowUpRight className="size-4" /> : <ArrowRight className="size-4" />}
       </span>
+    </>
+  );
+  return href ? (
+    <a href={href} target="_blank" rel="noopener" className={className}>
+      {content}
+    </a>
+  ) : (
+    <button type="button" onClick={onClick} className={className}>
+      {content}
     </button>
   );
 }

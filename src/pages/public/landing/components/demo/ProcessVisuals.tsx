@@ -6,7 +6,7 @@ import {
   AppBar,
   BikePhoto,
   BikeWithTag,
-  EXAMPLE_SORT_CODE,
+  OTHER_SORT_CODE,
   HangTag,
   PhoneFrame,
 } from './Illustrations';
@@ -29,7 +29,7 @@ function useScene() {
   const item = {
     title: t('landing:demo.bike'),
     price: `${formatPrice(45)} €`,
-    sortCode: EXAMPLE_SORT_CODE + 1,
+    sortCode: OTHER_SORT_CODE,
   };
   return { t, item };
 }
@@ -147,9 +147,6 @@ export function TagScene() {
           </div>
         }
       />
-      <p className="landing-fade-up text-center text-sm text-muted-foreground" style={delay(2200)}>
-        {t('landing:scenes.labelCaption')}
-      </p>
     </div>
   );
 }

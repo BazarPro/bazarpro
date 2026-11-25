@@ -19,7 +19,7 @@ const STEPS: { icon: LucideIcon; id: 'sort' | 'reuse' | 'print' }[] = [
 ];
 
 /** Explains universal labels with labels as they are printed, in every theme on white. */
-export function UniversalLabelSection() {
+export function UniversalLabelSection({ eyebrow }: { eyebrow?: string } = {}) {
   const { t, i18n } = useTranslation('company');
   const items = t('featuresPage.universalLabel.exampleItems', {
     returnObjects: true,
@@ -32,7 +32,7 @@ export function UniversalLabelSection() {
     <section className="pb-20 sm:pb-24">
       <div className="container mx-auto max-w-5xl px-4">
         <SectionHeading
-          eyebrow={t('featuresPage.universalLabel.eyebrow')}
+          eyebrow={eyebrow ?? t('featuresPage.universalLabel.eyebrow')}
           title={t('featuresPage.universalLabel.title')}
         >
           {t('featuresPage.universalLabel.text')}

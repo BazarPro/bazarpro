@@ -154,7 +154,7 @@
     "photosOptional": "Allow items without photo",
     "photosOptionalText": "Sellers do not have to photograph every item – useful for many small items as at a children's bazaar. Items without photo show a placeholder.",
     "publicCatalog": "Show items online",
-    "publicCatalogText": "Visitors see the items online before the bazaar, with price and photos. Switched off there is no online list – on site the QR label still shows the price. Price offers and questions need the online list.",
+    "publicCatalogText": "Visitors see the items online with price and photos once they are handed in; sold ones disappear. Switched off there is no online list – on site the QR label still shows the price. Price offers and questions need the online list.",
     "needsCatalog": "Needs the online list",
     "maxItems": "Items per seller (optional)",
     "unlimited": "unlimited",

@@ -144,10 +144,7 @@
     "titleStart": "Second-Hand-Basare",
     "titleHighlight": "ohne",
     "titleEnd": "Zettelwirtschaft",
-    "line1Start": "Verkäufer inserieren zu Hause",
-    "line1End": "und hängen einen QR-Code dran.",
-    "line2Start": "Beim Basar wird nur noch gescannt –",
-    "line2End": "den Rest rechnet BazarPro."
+    "text": "Artikel zu Hause erfassen, Etikett drucken – am Basartag wird nur noch gescannt."
   },
   "cta": {
     "title": "Bereit für deinen nächsten Basar?",
@@ -157,13 +154,16 @@
   "events": {
     "badge": "Marktplatz",
     "title": "Aktuelle Veranstaltungen",
-    "text": "Entdecke öffentliche Events in deiner Nähe und starte direkt mit dem Verkauf.",
+    "text": "Finde Basare in deiner Nähe – zum Verkaufen oder zum Stöbern.",
     "showPast": "Vergangene anzeigen",
     "ended": "BEENDET",
     "emptyPast": "Keine Veranstaltungen gefunden",
     "empty": "Gerade sind keine öffentlichen Basare geplant",
     "emptyText": "Du organisierst einen? Leg ihn in wenigen Minuten an – Verkäufer finden ihn dann hier.",
-    "create": "Basar anlegen"
+    "create": "Basar anlegen",
+    "where": "PLZ oder Ort",
+    "wherePlaceholder": "PLZ oder Ort, z. B. 89073",
+    "nearby": "In der Nähe"
   },
   "demo": {
     "checkout": "Kasse",
@@ -216,7 +216,6 @@
   "scenes": {
     "condition": "Gut erhalten · Fahrradbörse",
     "printLabels": "Etiketten.pdf drucken",
-    "labelCaption": "Name, Preis, QR-Code und Sortierzeichen – genau so wird gedruckt.",
     "seller": "Verkäufer {{number}}",
     "product": "Artikel",
     "visitorScans": "Besucher scannt",
@@ -255,10 +254,12 @@
     "organize": "Ich organisiere einen Basar",
     "organizeText": "Kostenlos, schnell startklar",
     "organizeSignedIn": "Deine Basare verwalten",
-    "sell": "Ich möchte etwas verkaufen",
-    "sellText": "Etiketten zu Hause drucken",
+    "nearby": "Basar in der Nähe finden",
+    "nearbyText": "Zum Verkaufen oder Stöbern, Suche nach PLZ",
     "sellSignedIn": "Artikel und Etiketten",
-    "find": "Ich suche einen Basar",
-    "findText": "Termine und Artikel ansehen"
+    "find": "Basar finden",
+    "findText": "In deiner Nähe, nach PLZ",
+    "try": "Erst mal ausprobieren",
+    "tryText": "Demo mit Beispielbasaren, ohne Anmeldung"
   }
 }

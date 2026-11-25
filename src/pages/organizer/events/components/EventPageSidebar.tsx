@@ -241,7 +241,7 @@ export function EventPageSidebar({
           {!isPast && (
             <div className="pt-2 border-t">
               <div className="text-sm text-muted-foreground mb-2">{t('sidebar.calendar')}</div>
-              <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   size="sm"

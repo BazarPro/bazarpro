@@ -16,6 +16,8 @@ interface EventHeroProps {
   publicEventButton?: React.ReactNode;
   children?: React.ReactNode;
   isPast?: boolean;
+  /** Above the title in tag yellow, e.g. "Läuft gerade · bis 19 Uhr" */
+  status?: React.ReactNode;
 }
 
 export function EventHero({
@@ -29,6 +31,7 @@ export function EventHero({
   publicEventButton,
   children,
   isPast,
+  status,
 }: EventHeroProps) {
   const { t } = useTranslation('events');
   const hasActions = publicEventButton || children;
@@ -63,6 +66,11 @@ export function EventHero({
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/15 flex items-end">
         <div className="p-6 md:p-10 text-white w-full flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
+            {status && (
+              <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-tag px-2.5 py-0.5 text-xs font-bold text-tag-foreground shadow">
+                {status}
+              </span>
+            )}
             <h1 className="text-2xl md:text-4xl font-semibold tracking-tight mb-3 leading-tight text-balance">
               {title}
             </h1>

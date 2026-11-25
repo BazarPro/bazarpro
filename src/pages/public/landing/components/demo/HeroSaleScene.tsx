@@ -8,6 +8,7 @@ import {
   HangTag,
   PhoneFrame,
   EXAMPLE_SORT_CODE,
+  OTHER_SORT_CODE,
   RackWithTag,
   RaincoatThumb,
 } from './Illustrations';
@@ -83,7 +84,7 @@ export function HeroSaleScene({
                   style={{ width: TAG_WIDTH }}
                   title={t('demo.bike')}
                   price={`${formatPrice(45)} €`}
-                  sortCode={EXAMPLE_SORT_CODE + 1}
+                  sortCode={OTHER_SORT_CODE}
                   overlay={
                     !still && (
                       <ScanLine
