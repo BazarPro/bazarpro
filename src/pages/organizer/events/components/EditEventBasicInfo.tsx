@@ -269,12 +269,15 @@ export function EditEventBasicInfo({
           >
             {t('basic.cover')}
           </LabelWithInfo>
-          <ImageUpload
-            onFilesChange={handleFilesChange}
-            initialImageUrls={initialImageUrls}
-            onRemoveExistingImage={handleRemoveExistingImage}
-            maxFiles={1}
-          />
+          {/* A thumbnail, not the whole width: the form stays in view */}
+          <div className="max-w-sm">
+            <ImageUpload
+              onFilesChange={handleFilesChange}
+              initialImageUrls={initialImageUrls}
+              onRemoveExistingImage={handleRemoveExistingImage}
+              maxFiles={1}
+            />
+          </div>
         </div>
       )}
 

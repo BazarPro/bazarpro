@@ -172,7 +172,7 @@
     "sell": "Sell",
     "sold": "Sold",
     "total": "Total",
-    "itemNumber": "No. {{number}}"
+    "raincoatShort": "Raincoat"
   },
   "process": {
     "eyebrow": "How selling works",
@@ -216,7 +216,7 @@
   "scenes": {
     "condition": "Good condition · Bike sale",
     "printLabels": "Print labels.pdf",
-    "noPrice": "No price on the label – discounts are possible at any time.",
+    "labelCaption": "Name, price, QR code and sort mark – printed exactly like this.",
     "seller": "Seller {{number}}",
     "product": "Item",
     "visitorScans": "Visitor scans",

@@ -235,7 +235,7 @@
     "new": "New bazaar",
     "ended": "Ended",
     "helper": "Helper",
-    "open": "Open bazaar",
+    "open": "Manage",
     "none": "No bazaars found",
     "create": "Create a new bazaar",
     "draft": "Draft",
@@ -286,7 +286,7 @@
       "sale": "Open cash desk",
       "settle": "Open settlement",
       "allDone": "All done – thanks for organizing!",
-      "alsoOpen": "Also still open",
+      "alsoOpen": "Still open from earlier steps",
       "now": "Due now",
       "position": "Step {{position}} of {{total}}"
     },
@@ -500,7 +500,7 @@
     "title": "Settlement",
     "shouldBe": "Should be in the till",
     "pending": "To pay out to sellers",
-    "commissionAndFees": "Commission + intake fees",
+    "commissionAndFees": "Commission & fees",
     "commission": "Commission",
     "split": "{{commission}} € commission + {{fees}} € intake fees",
     "howTitle": "How the amount comes about",
@@ -519,14 +519,14 @@
     "directNoPayout": "Direct sale: the sellers already have their money from the buyers, nothing is to be paid out.",
     "feesToCollect": "Intake fees still open",
     "feesCollectedIncome": "Intake fees paid by sellers",
-    "sellersToCollect": "Pay the difference at settlement",
+    "sellersToCollect": "Still have to pay",
     "sellerNumber": "No. {{number}}",
     "capSplit": "− {{amount}} € back through the fee cap",
     "settleNow_one": "Settle sellers ({{count}} open)",
     "settleNow_other": "Settle sellers ({{count}} open)",
     "sellersToCollectInfo": "These sellers sold less than their intake fee costs and pay the difference at settlement.",
     "keepsInfo": "Commission and intake fees stay with the organizer.",
-    "breakdown": "Made up of"
+    "breakdown": "How it adds up"
   },
   "products": {
     "sellerFound": "Participant {{name}} found",

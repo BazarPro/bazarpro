@@ -60,11 +60,8 @@ export function Sidebar({
       <Button
         key={item.page}
         variant={isActivePage(item, currentPage, allItems) ? 'default' : 'ghost'}
-        className={cn(
-          'w-full justify-start shadow-none',
-          isActivePage(item, currentPage, allItems) &&
-            'dark:bg-primary/20 dark:text-foreground dark:hover:bg-primary/30'
-        )}
+        // The page open: filled in the action colour, in both themes alike
+        className="w-full justify-start shadow-none"
         onClick={() => {
           navigate(item.page);
           close();

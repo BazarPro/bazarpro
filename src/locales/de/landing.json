@@ -172,7 +172,7 @@
     "sell": "Verkaufen",
     "sold": "Verkauft",
     "total": "Summe",
-    "itemNumber": "Nr. {{number}}"
+    "raincoatShort": "Regenjacke"
   },
   "process": {
     "eyebrow": "So funktioniert der Verkauf",
@@ -216,7 +216,7 @@
   "scenes": {
     "condition": "Gut erhalten · Fahrradbörse",
     "printLabels": "Etiketten.pdf drucken",
-    "noPrice": "Ohne Preis auf dem Etikett – Rabatte gehen jederzeit.",
+    "labelCaption": "Name, Preis, QR-Code und Sortierzeichen – genau so wird gedruckt.",
     "seller": "Verkäufer {{number}}",
     "product": "Artikel",
     "visitorScans": "Besucher scannt",

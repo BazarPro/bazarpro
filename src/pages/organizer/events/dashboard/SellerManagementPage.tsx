@@ -182,6 +182,9 @@ export function SellerManagementPage() {
   if (rolesLoading) return <PageSkeleton />;
   if (!canManage) return <div className="p-8 text-center">{t('sellers.noAccess')}</div>;
 
+  // The role column only when someone in the list has one: else it stays empty
+  const showRoles = filteredVendors.some((v) => v.isHelper || event?.organizerId === v._id);
+
   return (
     <div className="page-wide space-y-6 pb-20">
       <PageHeader
@@ -350,14 +353,17 @@ export function SellerManagementPage() {
                 <TableHead>{t('sellers.details')}</TableHead>
                 <TableHead className="text-right">{t('sellers.netRevenue')}</TableHead>
                 <TableHead className="text-center">{t('sellers.status')}</TableHead>
-                <TableHead className="text-center">{t('sellers.role')}</TableHead>
+                {showRoles && <TableHead className="text-center">{t('sellers.role')}</TableHead>}
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredVendors.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">
+                  <TableCell
+                    colSpan={showRoles ? 6 : 5}
+                    className="h-32 text-center text-muted-foreground italic"
+                  >
                     {emptyText ?? t('sellers.noneForFilter')}
                   </TableCell>
                 </TableRow>
@@ -414,17 +420,19 @@ export function SellerManagementPage() {
                       <TableCell className="text-center">
                         <PaidBadge paid={v.paid} />
                       </TableCell>
-                      <TableCell className="text-center">
-                        {isOwner ? (
-                          <Badge variant="default" className="bg-primary hover:bg-primary gap-1">
-                            <Crown className="h-3 w-3" /> {t('sellers.owner')}
-                          </Badge>
-                        ) : v.isHelper ? (
-                          <Badge variant="secondary" className="gap-1">
-                            <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
-                          </Badge>
-                        ) : null}
-                      </TableCell>
+                      {showRoles && (
+                        <TableCell className="text-center">
+                          {isOwner ? (
+                            <Badge variant="default" className="bg-primary hover:bg-primary gap-1">
+                              <Crown className="h-3 w-3" /> {t('sellers.owner')}
+                            </Badge>
+                          ) : v.isHelper ? (
+                            <Badge variant="secondary" className="gap-1">
+                              <ShieldCheck className="h-3 w-3" /> {t('sellers.helpers')}
+                            </Badge>
+                          ) : null}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                       </TableCell>
@@ -551,13 +559,12 @@ export function SellerManagementPage() {
 function PaidBadge({ paid }: { paid?: boolean }) {
   const { t } = useTranslation('organizer');
   return paid ? (
-    <Badge variant="secondary" className="gap-1.5 whitespace-nowrap">
+    <Badge variant="success" className="gap-1.5 whitespace-nowrap">
       <CheckCircle2 className="h-3 w-3" /> {t('sellers.paid')}
     </Badge>
   ) : (
-    <Badge variant="outline" className="whitespace-nowrap">
-      {t('sellers.open')}
-    </Badge>
+    // The usual state: quiet text, only what happened stands out
+    <span className="whitespace-nowrap text-sm text-muted-foreground">{t('sellers.open')}</span>
   );
 }
 

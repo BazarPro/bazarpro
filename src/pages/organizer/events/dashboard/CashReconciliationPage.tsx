@@ -118,13 +118,13 @@ export function CashReconciliationPage() {
             <div className="px-4 py-2 text-xs font-semibold text-muted-foreground">
               {t('cash.breakdown')}
             </div>
-            <div className="flex items-baseline justify-between gap-4 px-4 py-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 px-4 py-3">
               <dt>{t('cash.pending')}</dt>
               <dd className="whitespace-nowrap text-base font-semibold">
                 {formatPrice(summary.totalPendingPayout)} €
               </dd>
             </div>
-            <div className="flex items-baseline justify-between gap-4 px-4 py-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 px-4 py-3">
               <dt>
                 <span className="inline-flex items-center gap-1">
                   <span aria-hidden="true" className="text-muted-foreground">
@@ -152,7 +152,7 @@ export function CashReconciliationPage() {
               </dd>
             </div>
             {collecting && (
-              <div className="flex items-baseline justify-between gap-4 px-4 py-3 text-warning-soft-foreground">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 px-4 py-3 text-warning-soft-foreground">
                 <dt>
                   <span aria-hidden="true" className="mr-1">
                     −
@@ -164,6 +164,17 @@ export function CashReconciliationPage() {
                 </dd>
               </div>
             )}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 px-4 py-3 font-semibold">
+              <dt>
+                <span aria-hidden="true" className="mr-1 text-muted-foreground">
+                  =
+                </span>
+                {t('cash.shouldBe')}
+              </dt>
+              <dd className="whitespace-nowrap text-base">
+                {formatPrice(summary.cashInHandSoll)} €
+              </dd>
+            </div>
           </dl>
         </CardContent>
       </Card>
@@ -204,7 +215,7 @@ export function CashReconciliationPage() {
                 {t('cash.sellersToCollect')}
                 <InfoTip>{t('cash.sellersToCollectInfo')}</InfoTip>
               </p>
-              <ul className="grid gap-x-8 gap-y-1 tabular-nums sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-x-8 gap-y-1 tabular-nums sm:grid-cols-2">
                 {summary.sellersToCollect.map((seller, index) => (
                   <li key={index} className="flex justify-between gap-3">
                     <span className="min-w-0 truncate">

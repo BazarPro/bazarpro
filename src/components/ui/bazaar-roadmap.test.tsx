@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Megaphone, ShoppingCart, Users } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
-import { BazaarRoadmap, NextStepCard } from './bazaar-roadmap';
+import { BazaarJourney, NextStepCard } from './bazaar-roadmap';
 import type { NextStep } from './next-steps';
 
 const steps: NextStep[] = [
@@ -18,15 +18,17 @@ const steps: NextStep[] = [
   },
 ];
 
-describe('BazaarRoadmap', () => {
-  it('links every stop to its page and marks the one due now', () => {
+describe('BazaarJourney', () => {
+  it('links every stop to its page and grows the card out of the one due now', () => {
     render(
       <MemoryRouter>
-        <BazaarRoadmap
+        <BazaarJourney
           steps={steps}
           label="So läuft dein Basar"
           nowLabel="Jetzt dran"
           positionLabel={(position, total) => `Schritt ${position} von ${total}`}
+          action="Kasse öffnen"
+          doneText="Alles erledigt"
         />
       </MemoryRouter>
     );
@@ -42,8 +44,13 @@ describe('BazaarRoadmap', () => {
     const current = roadmap.querySelector('[aria-current="step"]');
     expect(current).toHaveTextContent('An der Kasse verkaufen');
     expect(current).toHaveTextContent('Jetzt dran');
-    // Phones: the position of the step due now, not the number of steps done
-    expect(screen.getByText(/Schritt 3 von 3/)).toBeInTheDocument();
+    // The card below names the position and the step, with its one button
+    const card = screen.getByTestId('next-step');
+    expect(within(card).getByText('Jetzt dran · Schritt 3 von 3')).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: /Kasse öffnen/ })).toHaveAttribute(
+      'href',
+      '/checkout'
+    );
   });
 });
 

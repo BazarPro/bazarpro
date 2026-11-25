@@ -48,3 +48,50 @@ export function StatTile({
     </Link>
   );
 }
+
+export interface StatItem {
+  icon: LucideIcon;
+  label: ReactNode;
+  value: ReactNode;
+  hint?: ReactNode;
+  to: string;
+  urgent?: boolean;
+}
+
+/**
+ * Key figures side by side in one strip, each a link to its page: the figure big, its
+ * name below. Short on phones too (three in a row).
+ */
+export function StatStrip({ items }: { items: StatItem[] }) {
+  return (
+    <div
+      className="grid divide-x overflow-hidden rounded-xl border bg-card shadow-xs"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+    >
+      {items.map(({ icon: Icon, label, value, hint, to, urgent }) => (
+        <Link
+          key={to}
+          to={to}
+          className="group min-w-0 px-3 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 sm:py-4"
+        >
+          <span
+            className={cn(
+              'block truncate text-xl font-semibold tabular-nums sm:text-2xl',
+              urgent && 'text-primary'
+            )}
+          >
+            {value}
+          </span>
+          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+            <Icon className="size-4 shrink-0" aria-hidden />
+            <span className="truncate">{label}</span>
+            <ChevronRight className="ml-auto size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 max-sm:hidden" />
+          </span>
+          {hint && (
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{hint}</span>
+          )}
+        </Link>
+      ))}
+    </div>
+  );
+}

@@ -448,8 +448,9 @@ function ProductRow({
             <>
               {can('sale') && (
                 <Button
-                  variant="soft"
-                  className="flex-1 gap-2"
+                  // One per row: quiet, the item stays what the eye reads first
+                  variant="ghost"
+                  className="flex-1 gap-2 text-primary hover:text-primary"
                   onClick={() => onAddToCheckout(product)}
                   disabled={isSubmitting}
                 >

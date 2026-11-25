@@ -2,8 +2,8 @@ import type { ProductWithStatus } from './dashboard/components/inventoryTypes';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { OfflineReadyCard } from './dashboard/components/OfflineReadyCard';
 import { type NextStep } from '../../../components/ui/next-steps';
-import { BazaarRoadmap, NextStepCard } from '../../../components/ui/bazaar-roadmap';
-import { StatTile } from '../../../components/ui/stat-tile';
+import { BazaarJourney } from '../../../components/ui/bazaar-roadmap';
+import { StatStrip } from '../../../components/ui/stat-tile';
 import { ImageWithFallback } from '../../../components/ui/image-with-fallback';
 import { EventPhaseBadge } from '../../../components/events/EventPhaseBadge';
 import {
@@ -135,6 +135,7 @@ export function EventManagementDashboard() {
       title: t('dashboard.steps.sale'),
       // The revenue stands in its tile below
       text: t('dashboard.steps.saleText', { sold, total: products.length }),
+      progress: products.length > 0 ? sold / products.length : undefined,
       to: `${base}/checkout`,
       done: hasEnded,
       current: hasStarted && !hasEnded,
@@ -144,6 +145,7 @@ export function EventManagementDashboard() {
       icon: Banknote,
       title: t('dashboard.steps.settle'),
       text: t('dashboard.steps.settleText', { settled, total: vendors.length }),
+      progress: vendors.length > 0 ? settled / vendors.length : undefined,
       to: `${base}/cash`,
       done: vendors.length > 0 && settled === vendors.length,
       current: hasEnded && settled < vendors.length,
@@ -241,7 +243,7 @@ export function EventManagementDashboard() {
         )}
 
         {/* Which bazaar and where it stands: compact, the next step is what counts here */}
-        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <header className="mb-6 flex items-start gap-3 sm:items-center sm:gap-4">
           <div className="flex min-w-0 flex-1 items-center gap-4">
             <ImageWithFallback
               alt=""
@@ -277,28 +279,23 @@ export function EventManagementDashboard() {
             }
           >
             <Eye className="h-4 w-4" />
-            {t('dashboard.publicView')}
+            {/* Phones: the eye alone, the button stays beside the title */}
+            <span className="max-sm:sr-only">{t('dashboard.publicView')}</span>
           </Button>
         </header>
 
-        <section className="mb-6 rounded-xl border bg-card px-2 pb-3 pt-4 shadow-xs sm:px-4">
-          <BazaarRoadmap
+        <div className="space-y-4">
+          {/* The way through the bazaar and what to do now, in one card */}
+          <BazaarJourney
             steps={steps}
             label={t('dashboard.steps.title')}
             nowLabel={t('dashboard.next.now')}
             positionLabel={(position, total) => t('dashboard.next.position', { position, total })}
-          />
-        </section>
-
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
-          <NextStepCard
-            step={current}
-            eyebrow={t('dashboard.next.eyebrow')}
             action={current ? nextAction[current.id] : null}
             doneText={t('dashboard.next.allDone')}
           >
             {leftBehind.length > 0 && (
-              <div className="border-t border-dashed pt-4">
+              <div className="border-t border-tag/50 pt-4">
                 <h3 className="mb-1 font-sans text-sm font-semibold text-muted-foreground">
                   {t('dashboard.next.alsoOpen')}
                 </h3>
@@ -307,9 +304,9 @@ export function EventManagementDashboard() {
                     <li key={step.id}>
                       <Link
                         to={step.to!}
-                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/60"
+                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-tag/20"
                       >
-                        <step.icon className="size-4 shrink-0 text-muted-foreground" />
+                        <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-tag" />
                         <span className="min-w-0 flex-1">
                           <span className="font-medium">{step.title}</span>
                           {step.text && (
@@ -323,38 +320,37 @@ export function EventManagementDashboard() {
                 </ul>
               </div>
             )}
-          </NextStepCard>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <StatTile
-              icon={Users}
-              label={t('dashboard.sellersTile')}
-              value={vendors.length}
-              to={`${base}/sellers`}
-            />
-            <StatTile
-              icon={PackageCheck}
-              label={t('dashboard.products')}
-              value={products.length}
-              hint={
-                waiting > 0 && !inCard.has('intake')
-                  ? t('dashboard.steps.intakeWaiting', { count: waiting })
-                  : undefined
-              }
-              urgent={waiting > 0 && !inCard.has('intake')}
-              to={`${base}/products`}
-            />
-            <StatTile
-              icon={Banknote}
-              label={t('dashboard.revenue')}
-              value={`${formatPrice(totalRevenue)} €`}
-              hint={
-                inCard.has('sale')
+          </BazaarJourney>
+          <StatStrip
+            items={[
+              {
+                icon: Users,
+                label: t('dashboard.sellersTile'),
+                value: vendors.length,
+                to: `${base}/sellers`,
+              },
+              {
+                icon: PackageCheck,
+                label: t('dashboard.products'),
+                value: products.length,
+                hint:
+                  waiting > 0 && !inCard.has('intake')
+                    ? t('dashboard.steps.intakeWaiting', { count: waiting })
+                    : undefined,
+                urgent: waiting > 0 && !inCard.has('intake'),
+                to: `${base}/products`,
+              },
+              {
+                icon: Banknote,
+                label: t('dashboard.revenue'),
+                value: `${formatPrice(totalRevenue)} €`,
+                hint: inCard.has('sale')
                   ? undefined
-                  : t('dashboard.soldOf', { sold, total: products.length })
-              }
-              to={`${base}/products?tab=sold`}
-            />
-          </div>
+                  : t('dashboard.soldOf', { sold, total: products.length }),
+                to: `${base}/products?tab=sold`,
+              },
+            ]}
+          />
         </div>
       </div>
     </div>

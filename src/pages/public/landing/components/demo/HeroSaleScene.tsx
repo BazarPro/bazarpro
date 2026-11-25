@@ -7,22 +7,25 @@ import {
   BikeWithTag,
   HangTag,
   PhoneFrame,
+  EXAMPLE_SORT_CODE,
   RackWithTag,
   RaincoatThumb,
 } from './Illustrations';
 
 /** The tags grow with the scene (container width), but stay readable on phones */
-const TAG_WIDTH = 'max(3.4rem, 15cqw)';
+const TAG_WIDTH = 'max(3.8rem, 16cqw)';
+/** The clothes label is the small format, wider than high */
+const SMALL_TAG_WIDTH = 'max(5.5rem, 24cqw)';
 
-/** Red scan line running down a QR code; `className` sets its animation. */
-function ScanLine({ className }: { className: string }) {
+/** Red scan line running down a QR code; `className` sets its animation, `distance` the QR's height. */
+function ScanLine({ className, distance }: { className: string; distance: string }) {
   return (
     <span
       className={cn(
         'pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-destructive shadow-[0_0_8px_2px_color-mix(in_oklab,var(--destructive)_70%,transparent)]',
         className
       )}
-      style={{ ['--landing-scan-distance' as string]: `calc(${TAG_WIDTH} - 0.6rem)` }}
+      style={{ ['--landing-scan-distance' as string]: distance }}
     />
   );
 }
@@ -54,9 +57,20 @@ export function HeroSaleScene({
             tag={
               <div className={cn('origin-top [animation-delay:-1.5s]', motion('landing-swing'))}>
                 <HangTag
-                  style={{ width: TAG_WIDTH }}
-                  itemNumber={t('demo.itemNumber', { number: '07-112' })}
-                  overlay={!still && <ScanLine className="landing-hero-scan-a" />}
+                  format="small"
+                  style={{ width: SMALL_TAG_WIDTH }}
+                  title={t('demo.raincoatShort')}
+                  size="110"
+                  price={formatPrice(8)}
+                  sortCode={EXAMPLE_SORT_CODE}
+                  overlay={
+                    !still && (
+                      <ScanLine
+                        className="landing-hero-scan-a"
+                        distance={`calc(${SMALL_TAG_WIDTH} * 0.9 * 0.45)`}
+                      />
+                    )
+                  }
                 />
               </div>
             }
@@ -67,8 +81,17 @@ export function HeroSaleScene({
               <div className={cn('origin-top', motion('landing-swing'))}>
                 <HangTag
                   style={{ width: TAG_WIDTH }}
-                  itemNumber={t('demo.itemNumber', { number: '12-034' })}
-                  overlay={!still && <ScanLine className="landing-hero-scan-b" />}
+                  title={t('demo.bike')}
+                  price={`${formatPrice(45)} €`}
+                  sortCode={EXAMPLE_SORT_CODE + 1}
+                  overlay={
+                    !still && (
+                      <ScanLine
+                        className="landing-hero-scan-b"
+                        distance={`calc(${TAG_WIDTH} * 0.9)`}
+                      />
+                    )
+                  }
                 />
               </div>
             }

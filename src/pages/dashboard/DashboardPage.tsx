@@ -22,7 +22,7 @@ import type { Doc, FunctionReturnType } from '../../lib/api/types';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { type NextStep } from '../../components/ui/next-steps';
-import { BazaarRoadmap, NextStepCard } from '../../components/ui/bazaar-roadmap';
+import { BazaarJourney } from '../../components/ui/bazaar-roadmap';
 import { Card, CardContent } from '../../components/ui/card';
 import { StorageImage } from '../../components/ui/StorageImage';
 import { ListSkeleton, Loading, PageSkeleton } from '../../components/ui/loading';
@@ -210,19 +210,14 @@ function SellerOverview() {
     <>
       {/* The way through the bazaar and what to do now, in one card; the bazaar below */}
       <div className="mb-8">
-        <NextStepCard
-          header={
-            <BazaarRoadmap
-              steps={steps}
-              label={t('steps.title')}
-              nowLabel={t('steps.now')}
-              positionLabel={(position, total) => t('steps.position', { position, total })}
-            />
-          }
-          step={current}
-          eyebrow={next ? `${t('steps.next')} · ${next.title}` : t('steps.next')}
+        <BazaarJourney
+          steps={steps}
+          label={t('steps.title')}
+          nowLabel={t('steps.now')}
+          positionLabel={(position, total) => t('steps.position', { position, total })}
           action={current ? nextAction[current.id] : null}
           doneText={t('steps.allDone')}
+          context={next?.title}
         />
       </div>
       {next && (

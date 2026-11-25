@@ -178,7 +178,7 @@ describe('DashboardPage', () => {
     expect(markSeen).toHaveBeenCalledWith({ area: 'events' });
     // Only this role
     expect(screen.queryByRole('heading', { name: 'So geht es weiter' })).toBeNull();
-    fireEvent.click(within(current).getByRole('button', { name: 'Basar öffnen' }));
+    fireEvent.click(within(current).getByRole('button', { name: 'Verwalten' }));
     expect(screen.getByTestId('where')).toHaveTextContent('/events/view/o1');
   });
 

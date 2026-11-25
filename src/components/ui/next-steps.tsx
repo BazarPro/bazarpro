@@ -15,6 +15,8 @@ export interface NextStep {
   done?: boolean;
   /** The step to do now: at most one, highlighted */
   current?: boolean;
+  /** How far the step is (0–1), shown as a bar, e.g. items sold of all */
+  progress?: number;
 }
 
 /** The way through a bazaar: what is done, what is next, each step leads to its page. */

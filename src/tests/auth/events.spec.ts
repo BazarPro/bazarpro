@@ -39,7 +39,7 @@ test.describe('event creation and co-organizer flow', () => {
     await expect(
       page.getByTestId('current-event').getByRole('heading', { name: eventTitle })
     ).toBeVisible();
-    await page.getByTestId('current-event').getByRole('button', { name: 'Basar öffnen' }).click();
+    await page.getByTestId('current-event').getByRole('button', { name: 'Verwalten' }).click();
     await page.waitForURL(`**/events/view/${eventId}`);
     await approveEventByTitle(page, eventTitle);
 

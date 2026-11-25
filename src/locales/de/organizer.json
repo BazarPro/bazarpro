@@ -235,7 +235,7 @@
     "new": "Neuer Basar",
     "ended": "Beendet",
     "helper": "Helfer",
-    "open": "Basar öffnen",
+    "open": "Verwalten",
     "none": "Keine Basare gefunden",
     "create": "Neuen Basar anlegen",
     "draft": "Entwurf",
@@ -286,7 +286,7 @@
       "sale": "Kasse öffnen",
       "settle": "Abrechnung öffnen",
       "allDone": "Alles erledigt – danke fürs Organisieren!",
-      "alsoOpen": "Außerdem noch offen",
+      "alsoOpen": "Noch offen aus früheren Schritten",
       "now": "Jetzt dran",
       "position": "Schritt {{position}} von {{total}}"
     },
@@ -500,7 +500,7 @@
     "title": "Abrechnung",
     "shouldBe": "In der Kasse sollten sein",
     "pending": "An Verkäufer auszuzahlen",
-    "commissionAndFees": "Provision + Annahmegebühren",
+    "commissionAndFees": "Provision & Gebühren",
     "commission": "Provision",
     "split": "{{commission}} € Provision + {{fees}} € Annahmegebühren",
     "howTitle": "So kommt der Betrag zustande",
@@ -519,14 +519,14 @@
     "directNoPayout": "Direktverkauf: Die Verkäufer haben ihr Geld schon vom Käufer erhalten, es ist nichts auszuzahlen.",
     "feesToCollect": "Noch offene Annahmegebühren",
     "feesCollectedIncome": "Annahmegebühren von Verkäufern bezahlt",
-    "sellersToCollect": "Zahlen bei der Abrechnung drauf",
+    "sellersToCollect": "Müssen noch zahlen",
     "sellerNumber": "Nr. {{number}}",
     "capSplit": "− {{amount}} € zurück durch den Gebühren-Deckel",
     "settleNow_one": "Verkäufer abrechnen ({{count}} offen)",
     "settleNow_other": "Verkäufer abrechnen ({{count}} offen)",
     "sellersToCollectInfo": "Diese Verkäufer haben weniger verkauft, als die Annahmegebühr kostet, und zahlen die Differenz bei der Abrechnung.",
     "keepsInfo": "Provision und Annahmegebühren bleiben beim Veranstalter.",
-    "breakdown": "Davon"
+    "breakdown": "So setzt sich das zusammen"
   },
   "products": {
     "sellerFound": "Teilnehmer {{name}} gefunden",
