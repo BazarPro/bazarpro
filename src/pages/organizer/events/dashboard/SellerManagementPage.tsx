@@ -24,7 +24,6 @@ import {
   TableRow,
 } from '../../../../components/ui/table';
 import {
-  UserCircle,
   CheckCircle2,
   Mail,
   Phone,
@@ -374,11 +373,7 @@ export function SellerManagementPage() {
                       <TableCell className="whitespace-normal">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
-                            {isOwner ? (
-                              <Crown className="h-5 w-5" />
-                            ) : (
-                              <UserCircle className="h-5 w-5" />
-                            )}
+                            {isOwner ? <Crown className="h-5 w-5" /> : <Initials name={v.name} />}
                           </div>
                           <div className="flex flex-col min-w-0">
                             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
@@ -387,9 +382,6 @@ export function SellerManagementPage() {
                               {v.managedByEventId && <WalkInBadge />}
                               {v.excluded && <ExcludedBadge exclusion={v.excluded} />}
                               <FeeGroupBadge group={v.feeGroup} />
-                              {v.isHelper && !isOwner && (
-                                <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
-                              )}
                             </div>
                             {/* Mail and phone follow in the next column */}
                             {v.managedByEventId && (
@@ -461,11 +453,7 @@ export function SellerManagementPage() {
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="h-10 w-10 shrink-0 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                        {isOwner ? (
-                          <Crown className="h-6 w-6" />
-                        ) : (
-                          <UserCircle className="h-6 w-6" />
-                        )}
+                        {isOwner ? <Crown className="h-6 w-6" /> : <Initials name={v.name} />}
                       </div>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -570,5 +558,20 @@ function PaidBadge({ paid }: { paid?: boolean }) {
     <Badge variant="outline" className="whitespace-nowrap">
       {t('sellers.open')}
     </Badge>
+  );
+}
+
+/** "Lena Hoffmann" → "LH": tells the rows apart better than one icon for everybody */
+function Initials({ name }: { name?: string }) {
+  const letters = (name ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .filter((letter) => /\p{L}/u.test(letter));
+  const text = (letters.length > 1 ? letters[0] + letters[letters.length - 1] : letters[0]) ?? '?';
+  return (
+    <span aria-hidden="true" className="font-display text-sm font-bold">
+      {text.toUpperCase()}
+    </span>
   );
 }

@@ -261,8 +261,9 @@ export function RegisterPage() {
             <p className="text-sm text-muted-foreground sm:text-base">{t('register.subtitle')}</p>
           </div>
 
+          {/* Switched off is a state, not an error */}
           {!isRegistrationEnabled && (
-            <Alert variant="destructive">
+            <Alert>
               <AlertDescription>{t('register.disabled')}</AlertDescription>
             </Alert>
           )}

@@ -566,8 +566,11 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
           )}
 
           {cart.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center text-muted-foreground">
-              <ShoppingCart className="h-8 w-8" />
+            // Wide screens: the cart keeps its place at full height, waiting for the first item
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-card/50 p-10 text-center text-muted-foreground lg:min-h-[calc(100svh-16rem)]">
+              <span className="flex size-16 items-center justify-center rounded-full bg-muted">
+                <ShoppingCart className="h-8 w-8" />
+              </span>
               <p>{t('checkout.empty')}</p>
             </div>
           ) : (

@@ -64,7 +64,7 @@ export function LandingPage() {
         />
       </div>
 
-      <LandingFeatures />
+      <LandingFeatures compact />
 
       <LandingCTA
         isAuthenticated={!!isAuthenticated}

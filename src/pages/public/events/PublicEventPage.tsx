@@ -452,6 +452,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
           <EventPageSidebar
             event={event}
             conditions={event}
+            withWhenWhere={false}
             eventId={isSeller ? event._id : undefined}
           />
         </div>

@@ -30,6 +30,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useState } from 'react';
+import { InfoTip } from '../../../../components/ui/info-tip';
 import { cn } from '../../../../lib/utils';
 import { docsUrl } from '../../../../lib/links';
 import { Trans, useTranslation } from 'react-i18next';
@@ -103,7 +104,11 @@ const groups: FeatureGroup[] = [
   },
 ];
 
-export function LandingFeatures() {
+/**
+ * `compact` (landing page): only the names of the features, each explained behind its (i);
+ * the features page shows the texts in full.
+ */
+export function LandingFeatures({ compact = false }: { compact?: boolean } = {}) {
   const { t, i18n } = useTranslation('landing');
   const localized = useLocalizedPath();
   // Below lg only one role is shown at a time; from lg on all three columns
@@ -162,9 +167,9 @@ export function LandingFeatures() {
                 <group.icon className="h-5 w-5" />
                 {t(`features.groups.${group.id}.title`)}
               </h3>
-              <ul className="space-y-4">
+              <ul className={compact ? 'space-y-2.5' : 'space-y-4'}>
                 {group.features.map((feature) => (
-                  <li key={feature.id} className="flex gap-3">
+                  <li key={feature.id} className={cn('flex gap-3', compact && 'items-center')}>
                     <span
                       className={cn(
                         'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
@@ -173,14 +178,23 @@ export function LandingFeatures() {
                     >
                       <feature.icon className="h-4 w-4" />
                     </span>
-                    <div>
-                      <p className="font-semibold leading-snug">
+                    {compact ? (
+                      <p className="flex items-center gap-1 font-semibold leading-snug">
                         {t(`features.groups.${group.id}.items.${feature.id}.title` as never)}
+                        <InfoTip>
+                          {t(`features.groups.${group.id}.items.${feature.id}.text` as never)}
+                        </InfoTip>
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {t(`features.groups.${group.id}.items.${feature.id}.text` as never)}
-                      </p>
-                    </div>
+                    ) : (
+                      <div>
+                        <p className="font-semibold leading-snug">
+                          {t(`features.groups.${group.id}.items.${feature.id}.title` as never)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t(`features.groups.${group.id}.items.${feature.id}.text` as never)}
+                        </p>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

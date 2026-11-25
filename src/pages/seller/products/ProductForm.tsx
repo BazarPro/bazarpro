@@ -465,19 +465,35 @@ export function ProductForm() {
               </div>
 
               <StickyActionBar className="md:mx-0 md:px-0 lg:mx-0 lg:px-0">
-                <Button type="submit" size="lg" className="flex-1" disabled={disabled}>
-                  {isEditing ? t('form.saveChanges') : t('form.create')}
+                {/* Phones: both side by side with short words, the bar stays one row high */}
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="min-w-0 flex-1"
+                  disabled={disabled}
+                  aria-label={isEditing ? undefined : t('form.create')}
+                >
+                  {isEditing ? (
+                    t('form.saveChanges')
+                  ) : (
+                    <>
+                      <span className="sm:hidden">{t('form.createShort')}</span>
+                      <span className="max-sm:hidden">{t('form.create')}</span>
+                    </>
+                  )}
                 </Button>
                 {!isEditing && (
                   <Button
                     type="button"
                     variant="outline"
                     size="lg"
-                    className="flex-1"
+                    className="min-w-0 flex-1"
                     disabled={disabled}
+                    aria-label={t('form.createAndNext')}
                     onClick={handleSubmit((data) => onSubmit(data, true))}
                   >
-                    {t('form.createAndNext')}
+                    <span className="sm:hidden">{t('form.createAndNextShort')}</span>
+                    <span className="max-sm:hidden">{t('form.createAndNext')}</span>
                   </Button>
                 )}
                 {productId && (

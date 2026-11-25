@@ -48,6 +48,8 @@ export interface EventPageSidebarEvent {
 }
 
 interface EventPageSidebarProps {
+  /** Date, time and place; off where the page shows them above */
+  withWhenWhere?: boolean;
   event: EventPageSidebarEvent;
   /** Shown to everyone thinking about selling here and to registered sellers */
   conditions?: SellerConditionsEvent;
@@ -64,7 +66,12 @@ const timeOptions: Intl.DateTimeFormatOptions = {
   minute: '2-digit',
 };
 
-export function EventPageSidebar({ event, conditions, eventId }: EventPageSidebarProps) {
+export function EventPageSidebar({
+  event,
+  conditions,
+  eventId,
+  withWhenWhere = true,
+}: EventPageSidebarProps) {
   const { t } = useTranslation('events');
   const startDate = new Date(event.startDate);
   const endDate = new Date(event.endDate);
@@ -99,74 +106,79 @@ export function EventPageSidebar({ event, conditions, eventId }: EventPageSideba
       <div className="bg-card rounded-xl border p-6">
         <h3 className="mb-4 text-lg font-semibold">{t('sidebar.details')}</h3>
         <div className="space-y-4">
-          {isSameDay ? (
+          {/* The page's header already names date and place: not twice */}
+          {withWhenWhere && (
             <>
-              <div>
-                <div className="flex items-start gap-2 text-sm">
-                  <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+              {isSameDay ? (
+                <>
                   <div>
-                    <div className="text-muted-foreground">{t('sidebar.date')}</div>
-                    <div>{startDate.toLocaleDateString(dateLocale(), dateOptions)}</div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="flex items-start gap-2 text-sm">
-                  <Clock className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                  <div>
-                    <div className="text-muted-foreground">{t('sidebar.time')}</div>
-                    <div>
-                      {t('time.range', {
-                        ns: 'common',
-                        start: startDate.toLocaleTimeString(dateLocale(), timeOptions),
-                        end: endDate.toLocaleTimeString(dateLocale(), timeOptions),
-                      })}
+                    <div className="flex items-start gap-2 text-sm">
+                      <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <div className="text-muted-foreground">{t('sidebar.date')}</div>
+                        <div>{startDate.toLocaleDateString(dateLocale(), dateOptions)}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <div className="flex items-start gap-2 text-sm">
-                  <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                   <div>
-                    <div className="text-muted-foreground">{t('sidebar.start')}</div>
-                    <div>
-                      {t('sidebar.atTime', {
-                        date: startDate.toLocaleDateString(dateLocale(), dateOptions),
-                        time: startDate.toLocaleTimeString(dateLocale(), timeOptions),
-                      })}
+                    <div className="flex items-start gap-2 text-sm">
+                      <Clock className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <div className="text-muted-foreground">{t('sidebar.time')}</div>
+                        <div>
+                          {t('time.range', {
+                            ns: 'common',
+                            start: startDate.toLocaleTimeString(dateLocale(), timeOptions),
+                            end: endDate.toLocaleTimeString(dateLocale(), timeOptions),
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <div className="text-muted-foreground">{t('sidebar.start')}</div>
+                        <div>
+                          {t('sidebar.atTime', {
+                            date: startDate.toLocaleDateString(dateLocale(), dateOptions),
+                            time: startDate.toLocaleTimeString(dateLocale(), timeOptions),
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <div className="text-muted-foreground">{t('sidebar.end')}</div>
+                        <div>
+                          {t('sidebar.atTime', {
+                            date: endDate.toLocaleDateString(dateLocale(), dateOptions),
+                            time: endDate.toLocaleTimeString(dateLocale(), timeOptions),
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
               <div>
                 <div className="flex items-start gap-2 text-sm">
-                  <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                  <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                   <div>
-                    <div className="text-muted-foreground">{t('sidebar.end')}</div>
-                    <div>
-                      {t('sidebar.atTime', {
-                        date: endDate.toLocaleDateString(dateLocale(), dateOptions),
-                        time: endDate.toLocaleTimeString(dateLocale(), timeOptions),
-                      })}
-                    </div>
+                    <div className="text-muted-foreground">{t('sidebar.location')}</div>
+                    <div>{formatEventPlace(event)}</div>
                   </div>
                 </div>
               </div>
             </>
           )}
-          <div>
-            <div className="flex items-start gap-2 text-sm">
-              <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="text-muted-foreground">{t('sidebar.location')}</div>
-                <div>{formatEventPlace(event)}</div>
-              </div>
-            </div>
-          </div>
           {registration && (
             <div className="flex items-start gap-2 text-sm">
               <CalendarClock className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />

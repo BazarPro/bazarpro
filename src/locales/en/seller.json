@@ -163,7 +163,9 @@
     "details": "More details",
     "detailsHint": "Description, condition, negotiating",
     "priceHint": "0 € means: free.",
-    "priceRequired": "Please enter a price"
+    "priceRequired": "Please enter a price",
+    "createShort": "Create",
+    "createAndNextShort": "+ Another item"
   },
   "discountDialog": {
     "title": "Adjust discount",

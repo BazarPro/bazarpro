@@ -90,7 +90,7 @@ export function EventProductPreview({ eventId, isRunning = false }: EventProduct
                     </span>
                   ) : (
                     discount > 0 && (
-                      <span className="absolute left-2 top-2 rounded-full bg-destructive px-2.5 py-0.5 text-xs font-semibold text-destructive-foreground">
+                      <span className="absolute left-2 top-2 rounded-md bg-tag px-2 py-0.5 text-xs font-bold text-tag-foreground shadow">
                         −{discount} %
                       </span>
                     )

@@ -1024,15 +1024,21 @@ function EventSection({
             showHeader={false}
             feeLock={feeLock}
             feeExampleKind={!!editing}
+            advanced={editing ? 'include' : 'exclude'}
             bare
           />
           {editing ? (
             <EditEventFeeGroups feeLock={feeLock} registeredIds={editing.registeredFeeGroups} />
           ) : (
-            // Groups with their own fees are for experienced teams: folded in the wizard
+            // The cap and groups with their own fees are for experienced teams: folded
             <div className="sm:col-span-2">
-              <AdvancedDisclosure fields={['features.feeGroups']}>
-                <EditEventFeeGroups feeLock={feeLock} />
+              <AdvancedDisclosure fields={['features.maxFeesPerSeller', 'features.feeGroups']}>
+                <div className="space-y-5 p-2">
+                  <div className="max-w-sm">
+                    <EditEventFeatures parts={['fees']} showHeader={false} advanced="only" bare />
+                  </div>
+                  <EditEventFeeGroups feeLock={feeLock} />
+                </div>
               </AdvancedDisclosure>
             </div>
           )}
@@ -1043,12 +1049,26 @@ function EventSection({
         <>
           <EditEventAccess lockVisibility={editing?.isRunning} />
           <FormSection contentClassName={FORM_ROWS}>
-            <EditEventFeatures parts={['registration']} showHeader={false} bare />
+            <EditEventFeatures
+              parts={['registration']}
+              showHeader={false}
+              advanced={editing ? 'include' : 'exclude'}
+              bare
+            />
             {editing ? (
               <EditEventRegion />
             ) : (
+              // Private sellers, fixed data and postal codes: rarely needed, folded
               <AdvancedDisclosure fields={['features.allowedPostalCodes']}>
-                <EditEventRegion />
+                <div className={cn(FORM_ROWS, 'p-2')}>
+                  <EditEventFeatures
+                    parts={['registration']}
+                    showHeader={false}
+                    advanced="only"
+                    bare
+                  />
+                  <EditEventRegion />
+                </div>
               </AdvancedDisclosure>
             )}
           </FormSection>
