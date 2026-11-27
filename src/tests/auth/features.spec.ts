@@ -37,7 +37,8 @@ test.describe('event settings', () => {
     const showcase = createShowcase(testInfo, 'Settings');
     await login(page, ORGANIZER);
 
-    await page.goto(`/events/view/${showcase.eventId}/settings`);
+    // The discounts are in the tab "Verkauf"
+    await page.goto(`/events/view/${showcase.eventId}/settings?tab=sale`);
     await expect(page.locator('#commission')).toHaveValue('10');
     await expect(page.locator('#maxDiscountPercent')).toHaveValue('30');
     await expect(page.getByLabel('Preisvorschläge online')).toBeChecked();

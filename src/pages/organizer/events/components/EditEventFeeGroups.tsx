@@ -45,7 +45,7 @@ function UnitInput({
         min={0}
         readOnly={readOnly}
         aria-readonly={readOnly}
-        className={cn(unit && 'pr-8', readOnly && 'cursor-not-allowed opacity-60')}
+        className={cn(unit && 'pr-8')}
         {...props}
       />
       {unit && (

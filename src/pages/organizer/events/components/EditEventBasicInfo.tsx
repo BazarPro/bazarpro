@@ -17,6 +17,7 @@ import {
 import { Input } from '../../../../components/ui/input';
 import { TimeInput } from '../../../../components/ui/time-input';
 import { Label } from '../../../../components/ui/label';
+import { LockedChip } from '../../../../components/ui/locked-chip';
 import { Textarea } from '../../../../components/ui/text-area';
 import { Button } from '../../../../components/ui/button';
 import { ImageUpload } from '../../../../components/ui/ImageUpload';
@@ -413,7 +414,6 @@ function EventDateFields({ lockDates }: { lockDates: boolean }) {
   const lockProps = {
     readOnly: lockDates,
     'aria-readonly': lockDates,
-    className: lockDates ? 'opacity-60 cursor-not-allowed' : undefined,
   };
   const startError = errors.startDate?.message as string | undefined;
   const endError = errors.endDate?.message as string | undefined;
@@ -424,6 +424,7 @@ function EventDateFields({ lockDates }: { lockDates: boolean }) {
         <CalendarDays className="h-4 w-4 text-primary" />
         {t('basic.when')}
         <InfoTip>{t('basic.whenHint')}</InfoTip>
+        {lockDates && <LockedChip />}
       </legend>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div className="col-span-2 space-y-2 sm:col-span-1">

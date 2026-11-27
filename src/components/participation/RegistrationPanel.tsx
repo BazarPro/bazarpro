@@ -328,7 +328,7 @@ export function RegistrationPanel({
               </Button>
               <Button asChild variant="ghost" size="icon" className="size-8">
                 <Link
-                  to={`/events/view/${event._id}/settings`}
+                  to={`/events/view/${event._id}/settings?tab=registration`}
                   aria-label={t('registrationPanel.edit')}
                   title={t('registrationPanel.edit')}
                 >

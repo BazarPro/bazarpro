@@ -158,12 +158,30 @@ describe('editing an event', () => {
       await screen.findByText('Verkäufer sind angemeldet: höchstens 15 %')
     ).toBeInTheDocument();
     expect(editEvent).not.toHaveBeenCalled();
+    // The error is in the tab of the fees: it opens and is marked
+    const fees = screen.getByRole('tab', { name: /Gebühren/ });
+    await waitFor(() => expect(fees).toHaveAttribute('aria-selected', 'true'));
+    expect(fees).toHaveAccessibleName(/Bitte prüfe/);
+  });
+
+  it('shows one tab at a time; the address opens one', async () => {
+    mockBackend({ event: storedEvent(Date.now() + 24 * HOUR) });
+    renderAt('/events/edit/event1?tab=registration');
+    const tab = await screen.findByRole('tab', { name: 'Mitmachen' });
+    expect(tab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Angebotssichtbarkeit');
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Termin & Ort' }));
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Titel des Basars');
   });
 
   it('says what is locked while the event runs', async () => {
     mockBackend({ event: storedEvent(Date.now() - HOUR) });
     renderAt('/events/edit/event1');
     expect(await screen.findByText(/Der Basar läuft:/)).toBeInTheDocument();
+    // The date is marked as locked, not only greyed out
+    expect(screen.getAllByText('Gesperrt').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Beginn')).toHaveAttribute('readonly');
   });
 
   it('lets the platform admin change what is locked for organizers', async () => {

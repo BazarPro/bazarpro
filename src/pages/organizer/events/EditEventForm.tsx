@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { ArrowRight, Bookmark, ChevronDown, Eye, FilePen, X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { StickyActionBar } from '../../../components/ui/sticky-action-bar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useApiClient, useAuthState, useMutation, useQuery } from '../../../lib/api/react';
 import { api } from '../../../lib/api/functions';
 import type { Doc, Id } from '../../../lib/api/types';
@@ -835,69 +836,19 @@ function stepKey<T extends string>(id: T, directSale: boolean | undefined) {
 /** The sections of the edit page, in the order of the wizard's steps. */
 const EDIT_SECTIONS = ['basics', 'sale', 'items', 'fees', 'registration', 'logistics'] as const;
 
-/**
- * The jump bar of the settings: as wide as the form, stays on top while scrolling and
- * marks the part in view. On phones it scrolls sideways, a fade at the edge says so.
- */
-function SectionJumpBar({
-  label,
-  sections,
-}: {
-  label: string;
-  sections: { id: string; label: string }[];
-}) {
-  const [active, setActive] = useState(sections[0]?.id);
-  // The ids as one string: the list is built anew on every render
-  const ids = sections.map((section) => section.id).join(' ');
-  useEffect(() => {
-    const elements = ids
-      .split(' ')
-      .map((id) => document.getElementById(`section-${id}`))
-      .filter((element): element is HTMLElement => !!element);
-    if (elements.length === 0 || typeof IntersectionObserver === 'undefined') return;
-    // The part whose top passed the bar last is the one being read
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(visible[0].target.id.replace('section-', ''));
-      },
-      { rootMargin: '-140px 0px -55% 0px' }
-    );
-    elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, [ids]);
+type EditSectionId = (typeof EDIT_SECTIONS)[number];
 
-  return (
-    <nav
-      aria-label={label}
-      className="sticky top-[77px] z-20 overflow-hidden rounded-xl border bg-card/95 shadow-sm backdrop-blur"
-    >
-      <div className="flex gap-1 overflow-x-auto p-1.5 [mask-image:linear-gradient(90deg,#000_88%,transparent)] sm:[mask-image:none]">
-        {sections.map((section) => (
-          <Button
-            key={section.id}
-            type="button"
-            variant={active === section.id ? 'default' : 'ghost'}
-            size="sm"
-            className="shrink-0"
-            aria-current={active === section.id ? 'location' : undefined}
-            onClick={() => {
-              setActive(section.id);
-              const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-              document
-                .getElementById(`section-${section.id}`)
-                ?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' });
-            }}
-          >
-            {section.label}
-          </Button>
-        ))}
-      </div>
-    </nav>
-  );
+/** The fields of a tab of the settings; the basics there hold the description and contact too */
+function editSectionFields(id: EditSectionId): readonly string[] {
+  return id === 'basics'
+    ? [...SECTION_FIELDS.basics, ...SECTION_FIELDS.details]
+    : SECTION_FIELDS[id];
 }
+
+function isEditSection(value: string | null): value is EditSectionId {
+  return (EDIT_SECTIONS as readonly string[]).includes(value ?? '');
+}
+
 /**
  * A folded group of settings with a title and one line about it. Opens by itself when a
  * field in it is invalid, so a check never stops at something hidden.
@@ -1444,14 +1395,21 @@ export function EditEventForm({
     if (index >= 0) setStep(index);
     toast.error(t('wizard.fixErrors'));
   };
-  // The edit page shows everything: the first error may be far off the screen
+  // The settings show one tab at a time (`?tab=` in the address, so a link can open one)
+  const tabParam = searchParams.get('tab');
+  const activeTab: EditSectionId = isEditSection(tabParam) ? tabParam : 'basics';
+  const openTab = (tab: EditSectionId) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'basics') next.delete('tab');
+    else next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
+  // An error may sit in another tab: open the first one with an error
   const showFirstInvalidSection = (errors: Record<string, unknown>) => {
     const invalid = EDIT_SECTIONS.find((section) =>
-      (SECTION_FIELDS[section] as readonly string[]).some((field) => get(errors, field))
+      editSectionFields(section).some((field) => get(errors, field))
     );
-    if (invalid) {
-      document.getElementById(`section-${invalid}`)?.scrollIntoView?.({ behavior: 'smooth' });
-    }
+    if (invalid) openTab(invalid);
     toast.error(t('wizard.fixErrors'));
   };
   const [continuedDraftAt, setContinuedDraftAt] = useState<number>();
@@ -1856,48 +1814,80 @@ export function EditEventForm({
                     <AlertDescription>{t('form.adminUnlocked')}</AlertDescription>
                   </Alert>
                 )}
-                {/* Long page: its parts are one tap away, in the order of the wizard */}
-                <SectionJumpBar
-                  label={t('settingsPage.title')}
-                  sections={EDIT_SECTIONS.map((id) => ({
-                    id,
-                    label: t(`wizard.short.${stepKey(id, directSale)}`),
-                  }))}
-                />
-                {EDIT_SECTIONS.map((id) => (
-                  <section key={id} id={`section-${id}`} className="scroll-mt-32 space-y-4">
-                    <div>
-                      <h2 className="text-xl font-semibold tracking-tight">
+                {/*
+                  One part at a time, in the order of the wizard. Every tab stays mounted (only
+                  hidden), so its fields keep their values and are checked on saving
+                */}
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(value) => isEditSection(value) && openTab(value)}
+                  className="gap-5"
+                >
+                  <TabsList
+                    aria-label={t('settingsPage.title')}
+                    className="flex h-auto w-full justify-start overflow-x-auto [mask-image:linear-gradient(90deg,#000_85%,transparent)] *:shrink-0 sm:grid sm:grid-cols-6 sm:[mask-image:none]"
+                  >
+                    {EDIT_SECTIONS.map((id) => {
+                      const invalid = editSectionFields(id).some((field) =>
+                        get(methods.formState.errors, field)
+                      );
+                      return (
+                        <TabsTrigger key={id} value={id} className="px-3 py-1.5">
+                          {t(`wizard.short.${stepKey(id, directSale)}`)}
+                          {invalid && (
+                            <span
+                              className="size-1.5 rounded-full bg-destructive"
+                              aria-label={t('wizard.fixErrors')}
+                            />
+                          )}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                  {EDIT_SECTIONS.map((id) => (
+                    <TabsContent
+                      key={id}
+                      value={id}
+                      forceMount
+                      hidden={id !== activeTab}
+                      className="space-y-4"
+                    >
+                      <h2 className="sr-only">
                         {t(`wizard.steps.${stepKey(id, directSale)}.title`)}
                       </h2>
-                    </div>
-                    <EventSection
-                      id={id}
-                      categories={categories}
-                      pendingLocationCategories={pendingLocationCategories}
-                      onPendingLocationCategoriesChange={setPendingLocationCategories}
-                      editing={{
-                        eventId: eventId!,
-                        coverImageUrl: event?.coverImageUrl,
-                        eventMapImageUrl: event?.eventMapImageUrl,
-                        isRunning,
-                        feeLock,
-                        registeredFeeGroups: registeredTerms.current?.feeGroups.map((g) => g.id),
-                      }}
-                    />
-                  </section>
-                ))}
+                      <EventSection
+                        id={id}
+                        categories={categories}
+                        pendingLocationCategories={pendingLocationCategories}
+                        onPendingLocationCategoriesChange={setPendingLocationCategories}
+                        editing={{
+                          eventId: eventId!,
+                          coverImageUrl: event?.coverImageUrl,
+                          eventMapImageUrl: event?.eventMapImageUrl,
+                          isRunning,
+                          feeLock,
+                          registeredFeeGroups: registeredTerms.current?.feeGroups.map((g) => g.id),
+                        }}
+                      />
+                    </TabsContent>
+                  ))}
+                </Tabs>
 
                 {dangerZone}
 
                 {/* Floats over the end of the page as a card of its own */}
-                <StickyActionBar className="bottom-[calc(var(--bottom-inset,0px)+var(--tab-bar-bulge,0px)+0.75rem)] mx-0 rounded-xl border bg-card/95 px-4 pb-3 shadow-lg md:mx-0 md:px-5 lg:mx-0 lg:px-5">
-                  <Button type="submit" className="flex-1 sm:flex-none" disabled={isSubmitting}>
-                    {t('form.save')}
-                  </Button>
+                <StickyActionBar className="bottom-[calc(var(--bottom-inset,0px)+var(--tab-bar-bulge,0px)+0.75rem)] mx-0 mb-3 rounded-xl border bg-card/95 px-4 pb-3 shadow-lg md:mx-0 md:px-5 lg:mx-0 lg:px-5">
                   {isDirty && (
                     <span className="text-sm text-muted-foreground">{t('form.unsaved')}</span>
                   )}
+                  <Button
+                    type="submit"
+                    className="ml-auto flex-1 sm:flex-none sm:min-w-40"
+                    loading={isSubmitting}
+                    disabled={isSubmitting}
+                  >
+                    {t('form.save')}
+                  </Button>
                 </StickyActionBar>
               </form>
             ) : (

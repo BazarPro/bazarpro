@@ -349,7 +349,7 @@ function EuroField({
           min={0}
           max={max}
           step={step}
-          className={running ? 'pr-8 opacity-60 cursor-not-allowed' : 'pr-8'}
+          className="pr-8"
           placeholder={placeholder}
           readOnly={running}
           aria-readonly={running}

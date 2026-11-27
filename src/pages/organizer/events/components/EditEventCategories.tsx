@@ -2,11 +2,10 @@ import { FormSection } from '../../../../components/ui/form-section';
 import { FieldError } from '../../../../components/ui/field-error';
 import { useFormContext } from 'react-hook-form';
 import { Label } from '../../../../components/ui/label';
-import { Badge } from '../../../../components/ui/badge';
 import { Checkbox } from '../../../../components/ui/checkbox';
 import type { Doc } from '../../../../lib/api/types';
 import { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { InfoTip } from '../../../../components/ui/info-tip';
 import { useServiceLabel, useServices } from '../../../../i18n/services';
@@ -182,16 +181,27 @@ export function EditEventCategories({ categoryList }: EventCategoriesProbs) {
       <div className="space-y-2">
         <Label>{t('categories.services')}</Label>
         <div className="flex flex-wrap gap-2 mb-2">
-          {(available ?? []).map(({ name: svc }) => (
-            <Badge
-              key={svc}
-              variant={services.includes(svc) ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => toggleService(svc)}
-            >
-              {serviceLabel(svc)}
-            </Badge>
-          ))}
+          {/* Chips to switch on and off: buttons, so they work with the keyboard too */}
+          {(available ?? []).map(({ name: svc }) => {
+            const on = services.includes(svc);
+            return (
+              <button
+                key={svc}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleService(svc)}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  on
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-card text-foreground hover:bg-accent dark:bg-transparent'
+                )}
+              >
+                {on && <Check className="size-3.5" aria-hidden />}
+                {serviceLabel(svc)}
+              </button>
+            );
+          })}
         </div>
       </div>
     </FormSection>

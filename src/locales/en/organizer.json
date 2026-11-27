@@ -29,6 +29,7 @@
     "chooseTemplate": "Choose template…",
     "creationDisabled": "Creating new bazaars is currently disabled.",
     "running": "The bazaar is running: date, commission and visibility are locked until it ends.",
+    "locked": "Locked",
     "adminUnlocked": "You are an admin: you can change every setting, including those locked for organizers (e.g. dates, commission and fees while the bazaar runs or after the first sellers registered). Check changes to fees and direct sale carefully, they affect the settlement.",
     "creating": "Creating…",
     "draftSaved": "Draft saved",

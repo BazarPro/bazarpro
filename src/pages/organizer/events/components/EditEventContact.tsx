@@ -59,7 +59,7 @@ export function EditEventContact({
               step="0.5"
               readOnly={lockCommission}
               aria-readonly={lockCommission}
-              className={lockCommission ? 'pr-8 opacity-60 cursor-not-allowed' : 'pr-8'}
+              className="pr-8"
               {...register('commission', { valueAsNumber: true })}
             />
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
