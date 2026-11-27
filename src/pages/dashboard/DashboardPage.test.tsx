@@ -194,7 +194,7 @@ describe('DashboardPage', () => {
     organizer([event('o1', kita.title, 3), event('o2', 'Fahrradbörse Ulm', 12)]);
     renderAt(<AllBazaarsPage />);
     const later = screen.getByRole('heading', { name: 'Weitere Basare' }).closest('section')!;
-    fireEvent.click(within(later).getByRole('button', { name: 'Öffnen' }));
+    fireEvent.click(within(later).getByRole('button', { name: 'Verwalten' }));
     expect(screen.getByTestId('where')).toHaveTextContent('/events/view/o2');
   });
 

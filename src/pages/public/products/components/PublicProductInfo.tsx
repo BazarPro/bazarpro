@@ -46,13 +46,16 @@ export function PublicProductSummary({
       <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
         {discountedPrice ? (
           <>
-            <span className="text-3xl sm:text-4xl font-bold text-destructive">
+            <span className="text-3xl sm:text-4xl font-bold tabular-nums">
               {formatPrice(discountedPrice)} €
             </span>
-            <span className="pb-1 text-muted-foreground line-through">{formatPrice(price)} €</span>
-            <Badge variant="destructive" className="mb-1.5">
+            <span className="pb-1 text-muted-foreground line-through tabular-nums">
+              {formatPrice(price)} €
+            </span>
+            {/* The discount as a yellow tag like on the cards, not in red: red means an error */}
+            <span className="mb-1.5 rounded-md bg-tag px-2 py-0.5 text-xs font-bold text-tag-foreground">
               {t('info.discount', { percent: discountPercent })}
-            </Badge>
+            </span>
           </>
         ) : (
           <span
@@ -74,7 +77,7 @@ export function PublicProductSummary({
           </Badge>
         )}
         {sold && (
-          <Badge variant="destructive" className="mb-1.5">
+          <Badge variant="secondary" className="mb-1.5">
             {t('info.sold')}
           </Badge>
         )}

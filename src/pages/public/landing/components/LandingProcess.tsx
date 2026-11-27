@@ -1,4 +1,4 @@
-import { Calendar, ShoppingBag, type LucideIcon } from 'lucide-react';
+import { Calendar, Tag, type LucideIcon } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ComponentType } from 'react';
 import { cn } from '../../../../lib/utils';
 import { useInView, usePrefersReducedMotion } from '../hooks/useLandingMotion';
@@ -39,7 +39,7 @@ const ROLE_STYLES: Record<
   { icon: LucideIcon; badge: string; active: string; ring: string; text: string; bar: string }
 > = {
   seller: {
-    icon: ShoppingBag,
+    icon: Tag,
     badge: 'bg-warning-soft text-warning-soft-foreground',
     active: 'bg-tag text-white',
     ring: 'border-tag/60',

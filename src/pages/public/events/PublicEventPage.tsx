@@ -307,7 +307,7 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
             <div className="flex flex-col items-start gap-2 md:items-end">
               <Button
                 size="lg"
-                className="bg-white font-semibold text-primary shadow-lg hover:bg-white/90"
+                className="bg-white font-semibold text-primary shadow-lg hover:bg-white/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
                 onClick={handleJoinAsVendor}
               >
                 <Plus className="mr-2 h-5 w-5" />

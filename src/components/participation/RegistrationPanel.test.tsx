@@ -12,12 +12,14 @@ const eventId = '0199f2a4-7c1e-7b3a-9d2e-5f6a7b8c9d0e' as Id<'events'>;
 
 function renderPanel(
   event: Partial<Doc<'events'>> & { itemPlacesLeft?: number } = {},
-  canSwitch = true
+  canSwitch = true,
+  sellers?: number
 ) {
   render(
     <MemoryRouter>
       <RegistrationPanel
         canSwitch={canSwitch}
+        sellers={sellers}
         event={{ _id: eventId, visibility: 'public', endDate: Date.now() + 24 * HOUR, ...event }}
       />
     </MemoryRouter>
@@ -39,6 +41,11 @@ describe('registration on the sellers page', () => {
     renderPanel({ sellerCount: 1 });
     expect(screen.getByText('1 Verkäufer')).toBeVisible();
     expect(screen.getByText(/Kein Limit/)).toBeVisible();
+  });
+
+  it('without a limit the backend counts no places: the sellers of the list are shown', () => {
+    renderPanel({}, true, 4);
+    expect(screen.getByText('4 Verkäufer')).toBeVisible();
   });
 
   it('says when all places are taken', () => {

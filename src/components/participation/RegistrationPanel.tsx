@@ -95,10 +95,16 @@ function Meter({
 export function RegistrationPanel({
   event,
   canSwitch,
+  sellers,
 }: {
   event: RegistrationPanelEvent;
   /** Only the organizer opens and closes the registration */
   canSwitch: boolean;
+  /**
+   * The sellers of the list below. The backend counts the places taken only for a bazaar
+   * with a limit (`sellerCount`); without one, this number is shown.
+   */
+  sellers?: number;
 }) {
   const { t } = useTranslation('organizer');
   const setRegistrationOpen = useMutation(api.events.setRegistrationOpen);
@@ -112,7 +118,7 @@ export function RegistrationPanel({
   const state = getRegistrationState(event, now);
   const limit = event.vendorLimit && event.vendorLimit > 0 ? event.vendorLimit : undefined;
   const left = spotsLeft(event);
-  const taken = event.sellerCount ?? 0;
+  const taken = event.sellerCount ?? sellers ?? 0;
   const full = left === 0;
   const maxItemsTotal =
     event.features?.maxItemsTotal && event.features.maxItemsTotal > 0

@@ -312,9 +312,10 @@ function App() {
                         <Route path={WELCOME_PATH} element={<AppWelcome />} />
                       )}
                       <Route path="/register" element={<RegisterPage />} />
+                      {/* Old address: the login opens its "forgot password" form */}
                       <Route
                         path="/password-reset-request"
-                        element={<div>Password Reset Page (Not Implemented)</div>}
+                        element={<Navigate to="/login?mode=reset" replace />}
                       />
                       {/* Advertising for BazarPro; a self-hosted instance has its own start page */}
                       <Route

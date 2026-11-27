@@ -1,4 +1,4 @@
-import { ArrowRight, Calendar, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Calendar, Tag } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -41,7 +41,7 @@ export function LandingCTA({ isAuthenticated, onOrganizerClick, onSellerClick }:
             className="h-12 border-white/40 bg-white/10 px-6 text-base font-semibold text-white hover:bg-white/20 hover:text-white dark:border-white/40 dark:bg-white/10 dark:hover:bg-white/20"
             onClick={onSellerClick}
           >
-            <ShoppingBag className="mr-2 h-5 w-5" />
+            <Tag className="mr-2 h-5 w-5" />
             {isAuthenticated ? t('actions.myProducts') : t('actions.joinAsSeller')}
           </Button>
         </div>

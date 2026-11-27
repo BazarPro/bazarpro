@@ -252,7 +252,7 @@ test.describe('discounts and editing rules', () => {
     // The toast fires before both dialogs have closed; they also show the new price.
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.getByText('-20% Rabatt')).toBeVisible();
+    await expect(page.getByText('−20 % Rabatt')).toBeVisible();
     await expect(page.getByText('304,00 €')).toBeVisible();
   });
 });

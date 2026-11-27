@@ -77,7 +77,7 @@
   },
   "footer": {
     "tagline": "Second-Hand-Basare ohne Zettelwirtschaft.",
-    "product": "Artikel",
+    "product": "Produkt",
     "features": "Funktionen",
     "pricing": "Preise",
     "docs": "Dokumentation",
@@ -89,7 +89,7 @@
     "terms": "AGB",
     "imprint": "Impressum",
     "poweredBy": "Powered by",
-    "rights": "© {{year}} BazarPro. Alle Rechte vorbehalten.",
+    "rights": "© {{year}} BazarPro · Open Source unter MIT-Lizenz",
     "version": "Version {{version}}",
     "labels": "Universal-Etiketten",
     "bazaars": "Basare finden",

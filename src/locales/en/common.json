@@ -89,7 +89,7 @@
     "terms": "Terms",
     "imprint": "Imprint",
     "poweredBy": "Powered by",
-    "rights": "© {{year}} BazarPro. All rights reserved.",
+    "rights": "© {{year}} BazarPro · Open source under the MIT licence",
     "version": "Version {{version}}",
     "labels": "Universal labels",
     "bazaars": "Find bazaars",

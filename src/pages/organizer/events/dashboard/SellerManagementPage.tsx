@@ -265,7 +265,13 @@ export function SellerManagementPage() {
         }
       />
 
-      {event && <RegistrationPanel event={event} canSwitch={canBroadcast} />}
+      {event && (
+        <RegistrationPanel
+          event={event}
+          canSwitch={canBroadcast}
+          sellers={vendors?.filter((v) => !v.isHelper).length}
+        />
+      )}
 
       {clashingCodes.size > 0 && (
         <p role="alert" className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm">

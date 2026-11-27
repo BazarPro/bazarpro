@@ -140,7 +140,7 @@ function CategoryDialog({
   const sizes = definitions.filter((field) => field.key === 'size').length;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {t(

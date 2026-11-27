@@ -20,7 +20,7 @@ import {
   Receipt,
   ScanLine,
   Search,
-  ShoppingBag,
+  Tag,
   SlidersHorizontal,
   Smartphone,
   UserPlus,
@@ -53,7 +53,7 @@ interface FeatureGroup {
 
 const groups: FeatureGroup[] = [
   {
-    icon: ShoppingBag,
+    icon: Tag,
     id: 'seller',
     accent: 'text-warning-soft-foreground',
     iconBox: 'bg-warning-soft text-warning-soft-foreground',

@@ -18,7 +18,7 @@ function Switch({ className, ...props }: React.ComponentProps<typeof CheckboxPri
     >
       <span
         aria-hidden
-        className="pointer-events-none block h-5 w-5 translate-x-0.5 rounded-full bg-background shadow-sm dark:bg-foreground dark:group-data-[state=checked]:bg-primary-foreground ring-0 transition-transform group-data-[state=checked]:translate-x-[1.05rem]"
+        className="pointer-events-none block h-5 w-5 translate-x-0.5 rounded-full bg-background shadow-sm dark:bg-muted-foreground dark:group-data-[state=checked]:bg-primary-foreground ring-0 transition-transform group-data-[state=checked]:translate-x-[1.05rem]"
       />
     </CheckboxPrimitive.Root>
   );

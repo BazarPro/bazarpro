@@ -263,7 +263,7 @@ export function MyProductCard({
           className="absolute right-3 top-3 max-w-[70%] flex-col items-end"
         />
         {!product.sold && !!price.discountPercent && (
-          <span className="absolute bottom-3 left-3 rounded-full bg-destructive px-2.5 py-0.5 text-xs font-semibold text-destructive-foreground shadow">
+          <span className="absolute bottom-3 left-3 rounded-md bg-tag px-2 py-0.5 text-xs font-bold text-tag-foreground shadow">
             −{price.discountPercent} %
           </span>
         )}
