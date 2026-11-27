@@ -17,6 +17,9 @@ import { EditEventForm } from '../EditEventForm';
 import { EventSettingsSummary } from './components/EventSettingsSummary';
 import { useTranslation } from 'react-i18next';
 import { PageSkeleton } from '../../../../components/ui/loading';
+import { Tabs, TabsContent } from '../../../../components/ui/tabs';
+import { isSettingsTab, useSettingsTab } from '../settingsTabs';
+import { SettingsTabsList } from '../SettingsTabsList';
 
 export function SettingsPage() {
   const { t } = useTranslation('organizer');
@@ -27,6 +30,7 @@ export function SettingsPage() {
   const deleteEvent = useMutation(api.events.deleteEvent);
   const event = useQuery(api.events.getEvent, { id: eventId });
   const { isLoading, canManage, isOrganizer, isAdmin } = useEventAccess(eventId);
+  const [tab, openTab] = useSettingsTab();
 
   useEffect(() => {
     if (!isLoading && !canManage) {
@@ -125,10 +129,20 @@ export function SettingsPage() {
       {event.endDate < Date.now() && (
         <p className="text-sm text-muted-foreground">{t('settingsPage.ended')}</p>
       )}
-      <div className="rounded-xl border bg-card p-5 shadow-xs sm:p-6">
-        <EventSettingsSummary event={event} />
-      </div>
-      {deletion}
+      {/* The same tabs as when editing, to read one part at a time */}
+      <Tabs
+        value={tab}
+        onValueChange={(value) => isSettingsTab(value) && openTab(value)}
+        className="gap-5"
+      >
+        <SettingsTabsList directSale={event.features?.directSale} />
+        <TabsContent value={tab} className="space-y-6">
+          <div className="rounded-xl border bg-card p-5 shadow-xs sm:p-6">
+            <EventSettingsSummary event={event} section={tab} />
+          </div>
+          {tab === 'basics' && deletion}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

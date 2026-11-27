@@ -7,7 +7,9 @@ import { z } from 'zod';
 import { ArrowRight, Bookmark, ChevronDown, Eye, FilePen, X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { StickyActionBar } from '../../../components/ui/sticky-action-bar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
+import { Tabs, TabsContent } from '../../../components/ui/tabs';
+import { isSettingsTab, SETTINGS_TABS, type SettingsTab, useSettingsTab } from './settingsTabs';
+import { SettingsTabsList } from './SettingsTabsList';
 import { useApiClient, useAuthState, useMutation, useQuery } from '../../../lib/api/react';
 import { api } from '../../../lib/api/functions';
 import type { Doc, Id } from '../../../lib/api/types';
@@ -833,20 +835,11 @@ function stepKey<T extends string>(id: T, directSale: boolean | undefined) {
   return id === 'logistics' && directSale ? 'logisticsDirect' : id;
 }
 
-/** The sections of the edit page, in the order of the wizard's steps. */
-const EDIT_SECTIONS = ['basics', 'sale', 'items', 'fees', 'registration', 'logistics'] as const;
-
-type EditSectionId = (typeof EDIT_SECTIONS)[number];
-
 /** The fields of a tab of the settings; the basics there hold the description and contact too */
-function editSectionFields(id: EditSectionId): readonly string[] {
+function editSectionFields(id: SettingsTab): readonly string[] {
   return id === 'basics'
     ? [...SECTION_FIELDS.basics, ...SECTION_FIELDS.details]
     : SECTION_FIELDS[id];
-}
-
-function isEditSection(value: string | null): value is EditSectionId {
-  return (EDIT_SECTIONS as readonly string[]).includes(value ?? '');
 }
 
 /**
@@ -939,7 +932,7 @@ function AdvancedDisclosure({
 }
 
 /** "details" exists only in the wizard; the edit page keeps them with the basics */
-type EventSectionId = (typeof EDIT_SECTIONS)[number] | 'details';
+type EventSectionId = SettingsTab | 'details';
 
 /**
  * One group of settings: the wizard shows them step by step, the edit page all at once.
@@ -1396,17 +1389,10 @@ export function EditEventForm({
     toast.error(t('wizard.fixErrors'));
   };
   // The settings show one tab at a time (`?tab=` in the address, so a link can open one)
-  const tabParam = searchParams.get('tab');
-  const activeTab: EditSectionId = isEditSection(tabParam) ? tabParam : 'basics';
-  const openTab = (tab: EditSectionId) => {
-    const next = new URLSearchParams(searchParams);
-    if (tab === 'basics') next.delete('tab');
-    else next.set('tab', tab);
-    setSearchParams(next, { replace: true });
-  };
+  const [activeTab, openTab] = useSettingsTab();
   // An error may sit in another tab: open the first one with an error
   const showFirstInvalidSection = (errors: Record<string, unknown>) => {
-    const invalid = EDIT_SECTIONS.find((section) =>
+    const invalid = SETTINGS_TABS.find((section) =>
       editSectionFields(section).some((field) => get(errors, field))
     );
     if (invalid) openTab(invalid);
@@ -1820,31 +1806,16 @@ export function EditEventForm({
                 */}
                 <Tabs
                   value={activeTab}
-                  onValueChange={(value) => isEditSection(value) && openTab(value)}
+                  onValueChange={(value) => isSettingsTab(value) && openTab(value)}
                   className="gap-5"
                 >
-                  <TabsList
-                    aria-label={t('settingsPage.title')}
-                    className="flex h-auto w-full justify-start overflow-x-auto [mask-image:linear-gradient(90deg,#000_85%,transparent)] *:shrink-0 sm:grid sm:grid-cols-6 sm:[mask-image:none]"
-                  >
-                    {EDIT_SECTIONS.map((id) => {
-                      const invalid = editSectionFields(id).some((field) =>
-                        get(methods.formState.errors, field)
-                      );
-                      return (
-                        <TabsTrigger key={id} value={id} className="px-3 py-1.5">
-                          {t(`wizard.short.${stepKey(id, directSale)}`)}
-                          {invalid && (
-                            <span
-                              className="size-1.5 rounded-full bg-destructive"
-                              aria-label={t('wizard.fixErrors')}
-                            />
-                          )}
-                        </TabsTrigger>
-                      );
-                    })}
-                  </TabsList>
-                  {EDIT_SECTIONS.map((id) => (
+                  <SettingsTabsList
+                    directSale={directSale}
+                    invalid={(id) =>
+                      editSectionFields(id).some((field) => get(methods.formState.errors, field))
+                    }
+                  />
+                  {SETTINGS_TABS.map((id) => (
                     <TabsContent
                       key={id}
                       value={id}
@@ -1869,11 +1840,11 @@ export function EditEventForm({
                           registeredFeeGroups: registeredTerms.current?.feeGroups.map((g) => g.id),
                         }}
                       />
+                      {/* Deleting is rare: once, at the end of the general settings */}
+                      {id === 'basics' && dangerZone}
                     </TabsContent>
                   ))}
                 </Tabs>
-
-                {dangerZone}
 
                 {/* Floats over the end of the page as a card of its own */}
                 <StickyActionBar className="bottom-[calc(var(--bottom-inset,0px)+var(--tab-bar-bulge,0px)+0.75rem)] mx-0 mb-3 rounded-xl border bg-card/95 px-4 pb-3 shadow-lg md:mx-0 md:px-5 lg:mx-0 lg:px-5">
