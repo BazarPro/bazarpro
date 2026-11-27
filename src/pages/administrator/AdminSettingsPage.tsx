@@ -10,6 +10,7 @@ import { StickyActionBar } from '../../components/ui/sticky-action-bar';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
+import { InfoTip } from '../../components/ui/info-tip';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { getUserFacingErrorMessage } from '../../lib/errors';
 import { normalizeImageForUpload } from '../../lib/imageProcessing';
@@ -258,9 +259,10 @@ export function AdminSettingsPage() {
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
+          {/* The status in words; where empty fields come from is for whoever runs the server */}
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Trans
-              i18nKey="settings.envHint"
+              i18nKey="settings.analyticsStatus"
               ns="admin"
               values={{
                 status: resolvePlausible({
@@ -271,12 +273,15 @@ export function AdminSettingsPage() {
                   ? t('settings.on')
                   : t('settings.off'),
               }}
-              components={{ code: <code />, b: <b /> }}
+              components={{ b: <b /> }}
             />
+            <InfoTip>
+              <Trans i18nKey="settings.envHint" ns="admin" components={{ code: <code /> }} />
+            </InfoTip>
           </p>
         </section>
 
-        <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
           <Trans
             i18nKey="settings.mode"
             ns="admin"
@@ -284,8 +289,11 @@ export function AdminSettingsPage() {
               mode:
                 config.mode === 'single' ? t('settings.modeSingle') : t('settings.modePlatform'),
             }}
-            components={{ code: <code />, b: <b /> }}
+            components={{ b: <b /> }}
           />
+          <InfoTip>
+            <Trans i18nKey="settings.modeHint" ns="admin" components={{ code: <code /> }} />
+          </InfoTip>
         </div>
       </div>
       {/* Long form: saving stays in reach at the lower edge, like the other forms */}

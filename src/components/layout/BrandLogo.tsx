@@ -17,7 +17,8 @@ export function BrandLogo() {
   return (
     <>
       <BrandMark />
-      <span className="font-display text-[1.375rem] font-extrabold tracking-tight truncate">
+      {/* A little smaller on the narrowest phones, so it keeps clear of "Anmelden" */}
+      <span className="font-display text-lg font-extrabold tracking-tight truncate min-[360px]:text-[1.375rem]">
         {pro > 0 ? (
           <>
             {brand.slice(0, pro)}

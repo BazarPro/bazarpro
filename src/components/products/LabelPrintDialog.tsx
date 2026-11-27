@@ -167,7 +167,7 @@ export function LabelPrintDialog({
           {clash && (
             <p
               role="alert"
-              className="flex gap-2 rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm"
+              className="flex gap-2 rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm"
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-soft-foreground" />
               {t('labels.clash')}

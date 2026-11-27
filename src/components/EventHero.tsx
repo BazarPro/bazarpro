@@ -37,13 +37,16 @@ export function EventHero({
   const hasActions = publicEventButton || children;
 
   return (
-    <div className="relative rounded-xl overflow-hidden mb-8">
+    // The picture lies behind; the box grows with the text, e.g. a long title on phones
+    <div className="relative mb-8 grid overflow-hidden rounded-xl bg-muted">
       <div
+        aria-hidden
         className={cn(
-          'relative aspect-[16/10] md:aspect-[21/9] bg-muted max-h-[800px] min-h-[260px] md:min-h-[380px] overflow-hidden',
+          'col-start-1 row-start-1 aspect-[16/10] md:aspect-[21/9] max-h-[800px] min-h-[260px] md:min-h-[380px]',
           maxHeightClassName
         )}
-      >
+      />
+      <div className="absolute inset-0 overflow-hidden">
         <ImageWithFallback
           alt={title}
           storageId={coverImage}
@@ -63,8 +66,8 @@ export function EventHero({
           </div>
         )}
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/15 flex items-end">
-        <div className="p-6 md:p-10 text-white w-full flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="relative col-start-1 row-start-1 bg-gradient-to-t from-black/85 via-black/55 to-black/15 flex items-end">
+        <div className="p-6 pt-10 md:p-10 text-white w-full flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             {status && (
               <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-tag px-2.5 py-0.5 text-xs font-bold text-tag-foreground shadow">

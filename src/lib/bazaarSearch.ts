@@ -67,7 +67,14 @@ export function locate(places: Places, query: string): Origin | undefined {
     for (const country of COUNTRY_ORDER) {
       if ((digits.length === 5) !== (country === 'DE') && digits.length >= 4) continue;
       const position = codePosition(places, digits, country);
-      if (position) return { position, label: digits, postalCode: digits, country };
+      // Four digits are Austrian or Swiss: the country says so, "8907 (AT)"
+      if (position)
+        return {
+          position,
+          label: country === 'DE' ? digits : `${digits} (${country})`,
+          postalCode: digits,
+          country,
+        };
     }
     return undefined;
   }

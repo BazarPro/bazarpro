@@ -55,8 +55,9 @@ const groups: FeatureGroup[] = [
   {
     icon: Tag,
     id: 'seller',
-    accent: 'text-warning-soft-foreground',
-    iconBox: 'bg-warning-soft text-warning-soft-foreground',
+    // The groups in one colour: yellow and green have their own meaning in the app
+    accent: 'text-primary',
+    iconBox: 'bg-primary/15 text-primary',
     features: [
       { icon: Camera, id: 'camera' },
       { icon: Layers, id: 'layers' },
@@ -91,8 +92,8 @@ const groups: FeatureGroup[] = [
   {
     icon: Search,
     id: 'visitor',
-    accent: 'text-success-soft-foreground',
-    iconBox: 'bg-success-soft text-success-soft-foreground',
+    accent: 'text-primary',
+    iconBox: 'bg-primary/15 text-primary',
     features: [
       { icon: Search, id: 'search' },
       { icon: ClipboardCheck, id: 'clipboardCheck' },

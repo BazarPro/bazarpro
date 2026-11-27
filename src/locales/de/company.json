@@ -313,6 +313,8 @@
       "basket_other": "Korb mit {{count}} Etiketten",
       "seconds_one": "{{count}} s",
       "seconds_other": "{{count}} s",
+      "mistakes_one": "{{count}} Fehler",
+      "mistakes_other": "{{count}} Fehler",
       "progress": "{{done}} von {{total}}",
       "hintPile": "Nicht ganz – die große Ziffer ist eine {{pile}}.",
       "hintBasket": "Nicht ganz – vergleiche Buchstabe, Buchstabenpaar und Zahl.",

@@ -132,6 +132,21 @@ describe('DashboardPage', () => {
     expect(screen.queryByText(/-2,50/)).toBeNull();
   });
 
+  it('counts only the sales of the bazaar on the card, not those of other bazaars', () => {
+    const past = { _id: 'old', title: 'Frühjahrsbasar' };
+    seller({
+      'purchases.getMySales': [
+        { event: past, paid: false, items: [{}, {}, {}, {}, {}], totals: { payout: 279 } },
+        { event: kita, paid: false, sellerNumber: 17, items: [], totals: { payout: -3 } },
+      ],
+    });
+    renderAt(<DashboardPage />);
+    expect(
+      screen.getAllByText('Noch nichts verkauft · 3,00 € Gebühren offen').length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/276,00/)).toBeNull();
+  });
+
   const organizer = (events: Record<string, unknown>[], roles: unknown[] = []) => {
     seller({
       'instance.getMyAccess': { canOrganize: true, canCreateEvents: true },
@@ -166,7 +181,8 @@ describe('DashboardPage', () => {
     renderAt(<AllBazaarsPage />);
     const current = screen.getByTestId('current-event');
     expect(within(current).getByRole('heading', { name: kita.title })).toBeInTheDocument();
-    expect(within(current).getByText('Freigegeben')).toBeInTheDocument();
+    // Approved needs no word next to the phase: only an open approval shows
+    expect(within(current).queryByText('Freigegeben')).toBeNull();
     const later = screen.getByRole('heading', { name: 'Weitere Basare' }).closest('section')!;
     expect(within(later).getByText('Fahrradbörse Ulm')).toBeInTheDocument();
     expect(within(later).getByText('Freigabe ausstehend')).toBeInTheDocument();
@@ -279,7 +295,7 @@ describe('DashboardPage', () => {
   it('invites organizers without events to create one', () => {
     organizer([]);
     renderAt(<AllBazaarsPage />);
-    expect(screen.getByText('Keine Basare gefunden')).toBeInTheDocument();
+    expect(screen.getByText('Dein erster Basar')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Neuer Basar' }));
     expect(screen.getByTestId('where')).toHaveTextContent('/events/new');
   });
@@ -303,7 +319,7 @@ describe('DashboardPage', () => {
     results['events.getMyEventDraft'] = { draft: { values: { title: ' ' } }, updatedAt: now };
     renderAt(<AllBazaarsPage />);
     expect(screen.getByText('Basar ohne Titel')).toBeInTheDocument();
-    expect(screen.queryByText('Keine Basare gefunden')).toBeNull();
+    expect(screen.queryByText('Dein erster Basar')).toBeNull();
   });
 
   it('shows the demo note in the overview instead of a banner', () => {

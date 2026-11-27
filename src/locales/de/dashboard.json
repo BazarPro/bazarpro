@@ -18,6 +18,7 @@
     "sales_one": "{{count}} verkauft · {{payout}} € Auszahlung",
     "sales_other": "{{count}} verkauft · {{payout}} € Auszahlung",
     "noSales": "Noch nichts verkauft",
+    "noSalesFees": "Noch nichts verkauft · {{fees}} € Gebühren offen",
     "salesFees_one": "{{count}} verkauft · {{fees}} € Gebühren offen",
     "salesFees_other": "{{count}} verkauft · {{fees}} € Gebühren offen"
   },

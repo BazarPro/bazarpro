@@ -220,6 +220,12 @@ export function SortingGame() {
               <Timer className="size-4" /> {t('labelsPage.game.seconds', { count: seconds })}
             </span>
             <span>{t('labelsPage.game.progress', { done: progress, total })}</span>
+            {/* Mistakes count from the first one, not only in the result at the end */}
+            {mistakes > 0 && (
+              <span className="text-destructive">
+                {t('labelsPage.game.mistakes', { count: mistakes })}
+              </span>
+            )}
           </p>
         </div>
       </div>

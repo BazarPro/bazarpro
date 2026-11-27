@@ -1,6 +1,6 @@
 import { PageHeader } from '../../../components/ui/page-header';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -216,6 +216,20 @@ export function ProductForm() {
     setExistingImageIds(copySource.images);
     setCopied(true);
   }, [copyFrom, copied, copySource, copyEventIds, registeredEvents, reset, methods]);
+
+  // A new item with only one bazaar to go to: chosen already, else it would miss labels
+  // and intake until the seller notices the empty box
+  const preselected = useRef(false);
+  useEffect(() => {
+    if (isEditing || copyFrom || preselected.current || !registeredEvents) return;
+    preselected.current = true;
+    if (methods.getValues('eventIds')?.length) return;
+    const now = Date.now();
+    const upcoming = registeredEvents.filter((event) => event.endDate >= now);
+    if (upcoming.length === 1) {
+      methods.setValue('eventIds', [upcoming[0]._id as string], { shouldDirty: false });
+    }
+  }, [isEditing, copyFrom, registeredEvents, methods]);
 
   const copyImageUrls = useQuery(
     api.products.getImageUrls,

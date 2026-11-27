@@ -80,6 +80,7 @@ const EditEventForm = lazyPage(
   () => import('./pages/organizer/events/EditEventForm'),
   'EditEventForm'
 );
+const NotFoundPage = lazyPage(() => import('./pages/public/notFound/NotFoundPage'), 'NotFoundPage');
 const BazaarSearchPage = lazyPage(
   () => import('./pages/public/events/BazaarSearchPage'),
   'BazaarSearchPage'
@@ -448,7 +449,8 @@ function App() {
                           <Route path="/admin/pages" element={<AdminLegalPagesPage />} />
                         </Route>
                       </Route>
-                      <Route path="*" element={<Navigate to="/" />} />
+                      {/* An address that leads nowhere says so (not silently the start page) */}
+                      <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                   </RouteErrorBoundary>
                 </ResponsiveSidebar>

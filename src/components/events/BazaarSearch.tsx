@@ -110,7 +110,7 @@ export function BazaarSearchBar<E extends Doc<'events'>>({
             list={listId}
             autoComplete="postal-code"
             enterKeyHint="search"
-            className="h-12 border-0 pl-11 text-base shadow-none focus-visible:ring-0 sm:text-lg"
+            className="h-12 pl-11 text-base sm:text-lg"
           />
           <datalist id={listId}>
             {suggestions.map((name) => (
@@ -203,7 +203,8 @@ export function BazaarFilters<E extends Doc<'events'>>({
         <div
           role="radiogroup"
           aria-label={t('finder.when.label')}
-          className="inline-flex rounded-full border bg-muted p-0.5"
+          // Fits a 320 px phone: the three parts share the width there
+          className="flex w-full rounded-full border bg-muted p-0.5 min-[400px]:inline-flex min-[400px]:w-auto"
         >
           {WHEN.map((value) => (
             <button
@@ -213,7 +214,7 @@ export function BazaarFilters<E extends Doc<'events'>>({
               aria-checked={search.when === value}
               onClick={() => search.setWhen(value)}
               className={cn(
-                'whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
+                'flex-1 whitespace-nowrap rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring min-[400px]:flex-none min-[400px]:px-3',
                 search.when === value
                   ? 'bg-card text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'

@@ -86,3 +86,30 @@ describe('NextStepCard', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });
+
+describe('BazaarRoadmap with a step past its use', () => {
+  it('shows a lapsed step neutral, a forgotten one with the dashed yellow edge', () => {
+    const journey: NextStep[] = [
+      { id: 'promote', icon: Megaphone, title: 'Werbung machen', to: '/promo', lapsed: true },
+      { id: 'sellers', icon: Users, title: 'Verkäufer', to: '/sellers' },
+      { id: 'sale', icon: ShoppingCart, title: 'Verkaufen', to: '/checkout', current: true },
+    ];
+    render(
+      <MemoryRouter>
+        <BazaarJourney
+          steps={journey}
+          label="So läuft dein Basar"
+          nowLabel="Jetzt dran"
+          positionLabel={(position, total) => `Schritt ${position} von ${total}`}
+          action="Kasse öffnen"
+          doneText="Alles erledigt"
+        />
+      </MemoryRouter>
+    );
+    const roadmap = screen.getByRole('navigation', { name: 'So läuft dein Basar' });
+    const circle = (name: RegExp) =>
+      within(roadmap).getByRole('link', { name }).querySelector('span');
+    expect(circle(/Werbung machen/)).not.toHaveClass('border-dashed');
+    expect(circle(/Verkäufer/)).toHaveClass('border-dashed');
+  });
+});

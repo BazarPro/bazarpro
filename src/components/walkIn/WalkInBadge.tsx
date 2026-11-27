@@ -8,10 +8,8 @@ export function WalkInBadge({ className }: { className?: string }) {
   return (
     <Badge
       variant="outline"
-      className={cn(
-        'shrink-0 gap-1 border-tag/60 bg-warning-soft text-warning-soft-foreground',
-        className
-      )}
+      // A plain fact, not a warning: neutral, not in tag yellow
+      className={cn('shrink-0 gap-1 text-muted-foreground', className)}
       title={i18n.t('walkIn.badgeTitle', { ns: 'organizer' })}
     >
       <UserX className="h-3 w-3" />

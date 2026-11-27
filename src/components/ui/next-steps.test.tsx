@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { Megaphone, ShoppingCart, Users } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 import { NextSteps, type NextStep } from './next-steps';
+import { keepFirstCurrent } from '../../lib/nextSteps';
 
 const steps: NextStep[] = [
   {
@@ -39,5 +40,18 @@ describe('NextSteps', () => {
     expect(screen.getByText('Verkaufen')).toBeInTheDocument();
     const current = screen.getByText('Verkäufer anmelden').closest('li');
     expect(current).toHaveAttribute('aria-current', 'step');
+  });
+});
+
+describe('keepFirstCurrent', () => {
+  it('leaves only the first step due now, e.g. promotion before the intake', () => {
+    const due: NextStep[] = [
+      { id: 'promote', icon: Megaphone, title: 'Werbung machen', current: true },
+      { id: 'sellers', icon: Users, title: 'Verkäufer', done: true },
+      { id: 'intake', icon: Users, title: 'Artikel annehmen', current: true },
+    ];
+    expect(keepFirstCurrent(due)?.id).toBe('promote');
+    expect(due.filter((step) => step.current).map((step) => step.id)).toEqual(['promote']);
+    expect(keepFirstCurrent([{ id: 'x', icon: Users, title: 'X' }])).toBeUndefined();
   });
 });

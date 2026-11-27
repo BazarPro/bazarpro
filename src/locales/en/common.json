@@ -118,6 +118,12 @@
     "previous": "Previous",
     "next": "Next"
   },
+  "notFound": {
+    "title": "This page does not exist",
+    "text": "There is nothing at “{{path}}”. The link may be old or mistyped.",
+    "find": "Find a bazaar nearby",
+    "home": "To the start page"
+  },
   "close": "Close",
   "closeDialog": "Close dialog",
   "imageMissing": "Image not found",

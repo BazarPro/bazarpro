@@ -39,7 +39,8 @@ export interface LabelText {
 
 /** "5,00"; prices from 1000 € on are whole euros and go without cents ("1200"). */
 export function labelPrice(price: number): string {
-  return formatPrice(price, price >= 1000 ? 0 : 2);
+  // Narrow on the label: no thousands point ("1200", not "1.200")
+  return formatPrice(price, price >= 1000 ? 0 : 2).replace(/[.,](?=\d{3}\b)/g, '');
 }
 
 /** "Gr. 104 · 5,00 €" – whatever is known about the item. */

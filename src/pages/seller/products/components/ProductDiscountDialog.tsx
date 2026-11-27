@@ -74,7 +74,7 @@ export function ProductDiscountDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
-            <div className="bg-warning-soft border border-tag/60 rounded-lg p-3 flex gap-3 text-sm text-warning-soft-foreground">
+            <div className="bg-warning-soft border border-warning-soft-foreground/30 rounded-lg p-3 flex gap-3 text-sm text-warning-soft-foreground">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <p>
                 <Trans

@@ -5,8 +5,8 @@
 :root {
   /*
    * Clean white with a strong colour for actions (blue unless an admin picks another
-   * scheme, see [data-brand] below); tag yellow marks what is due now, coral is kept for
-   * discounts and warnings, green only for states.
+   * scheme, see [data-brand] below); tag yellow marks what is due now and discounts,
+   * coral is kept for warnings, green only for states. Focus rings in the action colour.
    */
   --font-size: 16px;
   --background: #ffffff;
@@ -45,8 +45,9 @@
   --success: #2f7d32;
   --success-soft: #e1f1dc;
   --success-soft-foreground: #24622a;
-  --warning-soft: #fdf1cc;
-  --warning-soft-foreground: #6b4d06;
+  /* Warnings in coral, not in tag yellow: yellow means "your turn" and discounts only */
+  --warning-soft: #fde8dc;
+  --warning-soft-foreground: #8a3410;
   --danger-soft: #fde4e1;
   --danger-soft-foreground: #a3261f;
   --chart-1: #1d4ed8;
@@ -90,7 +91,7 @@
   --input: #73809b;
   --input-background: #1b2539;
   --switch-background: #73809b;
-  --ring: #f6c445;
+  --ring: var(--primary);
   --tag: #f6c445;
   --tag-foreground: #1b2326;
   --brand-panel: #1e3a8a;
@@ -99,8 +100,8 @@
   --success: #5fbf63;
   --success-soft: #1c3320;
   --success-soft-foreground: #9fdc9f;
-  --warning-soft: #3a3115;
-  --warning-soft-foreground: #f6d57a;
+  --warning-soft: #3b2219;
+  --warning-soft-foreground: #f7b393;
   --danger-soft: #3d1f1c;
   --danger-soft-foreground: #f4a48f;
   --font-weight-medium: 500;
@@ -117,7 +118,7 @@
   --sidebar-accent: #1f2a40;
   --sidebar-accent-foreground: #eef2f8;
   --sidebar-border: #2c3852;
-  --sidebar-ring: #f6c445;
+  --sidebar-ring: var(--primary);
 }
 
 /*
@@ -138,12 +139,12 @@
   --primary: #4fb3a9;
   --primary-foreground: #0b1f1e;
   --primary-shade: #2a7a73;
-  --ring: #f6c445;
+  --ring: var(--primary);
   --brand-panel: #0f4a4d;
   --chart-1: #4fb3a9;
   --sidebar-primary: #4fb3a9;
   --sidebar-primary-foreground: #0b1f1e;
-  --sidebar-ring: #f6c445;
+  --sidebar-ring: var(--primary);
 }
 
 [data-brand='green'] {
@@ -160,12 +161,12 @@
   --primary: #5fd08a;
   --primary-foreground: #06150c;
   --primary-shade: #1f9d55;
-  --ring: #f6c445;
+  --ring: var(--primary);
   --brand-panel: #14532d;
   --chart-1: #5fd08a;
   --sidebar-primary: #5fd08a;
   --sidebar-primary-foreground: #06150c;
-  --sidebar-ring: #f6c445;
+  --sidebar-ring: var(--primary);
 }
 
 [data-brand='violet'] {
@@ -182,12 +183,12 @@
   --primary: #b59bff;
   --primary-foreground: #140a2b;
   --primary-shade: #7c4ddb;
-  --ring: #f6c445;
+  --ring: var(--primary);
   --brand-panel: #4c1d95;
   --chart-1: #b59bff;
   --sidebar-primary: #b59bff;
   --sidebar-primary-foreground: #140a2b;
-  --sidebar-ring: #f6c445;
+  --sidebar-ring: var(--primary);
 }
 
 [data-brand='orange'] {
@@ -204,12 +205,12 @@
   --primary: #ff9f66;
   --primary-foreground: #1f0c03;
   --primary-shade: #d9621f;
-  --ring: #f6c445;
+  --ring: var(--primary);
   --brand-panel: #7c2d12;
   --chart-1: #ff9f66;
   --sidebar-primary: #ff9f66;
   --sidebar-primary-foreground: #1f0c03;
-  --sidebar-ring: #f6c445;
+  --sidebar-ring: var(--primary);
 }
 
 [data-brand='red'] {
@@ -226,12 +227,12 @@
   --primary: #ff8aa5;
   --primary-foreground: #21060d;
   --primary-shade: #e0436a;
-  --ring: #f6c445;
+  --ring: var(--primary);
   --brand-panel: #881337;
   --chart-1: #ff8aa5;
   --sidebar-primary: #ff8aa5;
   --sidebar-primary-foreground: #21060d;
-  --sidebar-ring: #f6c445;
+  --sidebar-ring: var(--primary);
 }
 
 @theme inline {
@@ -412,7 +413,7 @@ html [data-sonner-toaster][data-sonner-theme] {
   --info-border: var(--border);
   --warning-bg: var(--warning-soft);
   --warning-text: var(--warning-soft-foreground);
-  --warning-border: color-mix(in oklab, var(--tag) 60%, transparent);
+  --warning-border: color-mix(in oklab, var(--warning-soft-foreground) 35%, transparent);
   --error-bg: var(--danger-soft);
   --error-text: var(--danger-soft-foreground);
   --error-border: color-mix(in oklab, var(--destructive) 40%, transparent);

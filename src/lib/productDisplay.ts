@@ -15,7 +15,7 @@ export function initialOf(title: string): string {
   return (letter ?? title.trim()[0] ?? '?').toUpperCase();
 }
 
-/** "8,00 €", whole prices above 999 € without cents as on the labels: "1500 €". */
+/** "8,00 €", whole prices above 999 € without cents as on the labels: "1.500 €". */
 export function formatItemPrice(price: number): string {
   return `${formatPrice(price, price >= 1000 && Number.isInteger(price) ? 0 : 2)} €`;
 }

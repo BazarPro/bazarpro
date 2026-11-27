@@ -94,14 +94,15 @@ export function CashReconciliationPage() {
                   )}
                 </InfoTip>
               </p>
-              <p className="mt-1 flex items-center gap-3 whitespace-nowrap text-4xl font-extrabold tabular-nums sm:text-5xl">
+              <p className="mt-1 flex items-center gap-3 whitespace-nowrap text-3xl font-extrabold tabular-nums min-[360px]:text-4xl sm:text-5xl">
                 <Banknote className="h-8 w-8 shrink-0 text-primary sm:h-10 sm:w-10" />
                 {formatPrice(summary.cashInHandSoll)} €
               </p>
             </div>
             {/* The one thing to do here: pay the sellers still waiting */}
             {!allPaid && !nothingToSettle && summary.vendorsTotalCount > 0 && (
-              <Button asChild size="lg" className="max-sm:w-full">
+              // Wraps on narrow phones instead of sticking out of the card
+              <Button asChild size="lg" className="h-auto min-h-11 whitespace-normal max-sm:w-full">
                 <Link to={`/events/view/${eventId}/sellers`} state={{ filter: 'open' }}>
                   <Users className="h-5 w-5" />
                   {t('cash.settleNow', {
@@ -210,7 +211,7 @@ export function CashReconciliationPage() {
             </div>
           )}
           {collecting && (
-            <div className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm text-warning-soft-foreground">
+            <div className="rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm text-warning-soft-foreground">
               <p className="mb-2 flex items-center gap-1 font-semibold">
                 {t('cash.sellersToCollect')}
                 <InfoTip>{t('cash.sellersToCollectInfo')}</InfoTip>

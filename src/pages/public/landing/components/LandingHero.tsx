@@ -147,7 +147,7 @@ function IntentCard({
       <span
         className={cn(
           'flex size-11 shrink-0 items-center justify-center rounded-xl',
-          primary ? 'bg-primary-foreground/15' : 'bg-tag-soft text-tag-soft-foreground'
+          primary ? 'bg-primary-foreground/15' : 'bg-primary/10 text-primary'
         )}
       >
         <Icon className="size-5" />

@@ -28,7 +28,8 @@ export function LandingCTA({ isAuthenticated, onOrganizerClick, onSellerClick }:
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <Button
             size="lg"
-            className="group h-12 border-none bg-tag px-6 text-base font-semibold text-tag-foreground shadow-[0_2px_0_rgba(0,0,0,0.25)] hover:bg-tag/90"
+            // White on the blue panel: yellow is for what is due now, not for a main button
+            className="group h-12 border-none bg-white px-6 text-base font-semibold text-slate-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] hover:bg-white/90"
             onClick={onOrganizerClick}
           >
             <Calendar className="mr-2 h-5 w-5" />

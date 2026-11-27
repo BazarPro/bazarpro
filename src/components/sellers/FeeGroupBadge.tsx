@@ -37,7 +37,7 @@ function badgeClass(group: VendorWithCalculations['feeGroup']) {
   return cn(
     'inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium',
     group?.pending
-      ? 'border-tag/60 bg-warning-soft text-warning-soft-foreground'
+      ? 'border-warning-soft-foreground/30 bg-warning-soft text-warning-soft-foreground'
       : 'border-primary/20 bg-primary/5 text-primary'
   );
 }

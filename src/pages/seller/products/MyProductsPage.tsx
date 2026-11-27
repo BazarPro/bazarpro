@@ -644,7 +644,7 @@ export function MyProductsPage() {
         {clashingEvents.length > 0 && (
           <p
             role="alert"
-            className="mb-4 flex gap-2 rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm"
+            className="mb-4 flex gap-2 rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm"
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-soft-foreground" />
             {t('labels.clashAt', { bazaars: clashingEvents.map((e) => e.title).join(', ') })}
@@ -827,7 +827,7 @@ export function MyProductsPage() {
               <>
                 {/* The one thing to do before the bazaar: print what has no label yet */}
                 {!isEventSelectionMode && withoutLabel.length > 0 && (
-                  <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-tag/60 bg-warning-soft p-3 text-warning-soft-foreground">
+                  <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-warning-soft-foreground/30 bg-warning-soft p-3 text-warning-soft-foreground">
                     <Printer className="h-5 w-5 shrink-0" />
                     <p className="min-w-0 flex-1 text-sm font-medium">
                       {t('myProducts.labelsMissing', { count: withoutLabel.length })}

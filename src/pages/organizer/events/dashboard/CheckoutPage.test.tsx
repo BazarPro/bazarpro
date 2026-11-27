@@ -154,6 +154,7 @@ describe('CheckoutPage', () => {
   beforeEach(() => {
     permissions.sale = true;
     localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem('bazarpro:checkout:camera-enabled', 'true');
     resetOfflineCheckout();
     vi.clearAllMocks();
@@ -248,6 +249,37 @@ describe('CheckoutPage', () => {
     // Only a help: the money is still ticked by hand
     expect(received()).not.toBeChecked();
     expect(finish()).toBeDisabled();
+  });
+
+  it('warns, without blocking, when the tick and "Gegeben" disagree or the change is unlikely', async () => {
+    renderPage();
+    scan('jack');
+    scan('hose');
+    await waitFor(() => expect(received()).toBeEnabled());
+    const given = screen.getByLabelText('Gegeben');
+    fireEvent.change(given, { target: { value: '10' } });
+    fireEvent.click(received());
+    // The tick stays by hand: the sale can still be completed
+    expect(finish()).toBeEnabled();
+    expect(screen.getByText(/Laut „Gegeben“ fehlen noch 5,00 €/)).toBeInTheDocument();
+
+    fireEvent.change(given, { target: { value: '1000000' } });
+    expect(screen.getByText(/Rückgeld über 500 €/)).toBeInTheDocument();
+    expect(screen.getByTestId('checkout-change')).toHaveTextContent('Rückgeld 999.985,00 €');
+  });
+
+  it('keeps the change in sight after the sale and "Gegeben" over a reload', async () => {
+    renderPage();
+    scan('jack');
+    scan('hose');
+    await waitFor(() => expect(received()).toBeEnabled());
+    fireEvent.change(screen.getByLabelText('Gegeben'), { target: { value: '20' } });
+    expect(sessionStorage.getItem('bazarpro.checkout.given.evt1')).toBe('20');
+    fireEvent.click(received());
+    fireEvent.click(finish());
+    expect(await screen.findByText('Rückgeld 5,00 €.')).toBeInTheDocument();
+    // The next buyer starts with an empty field
+    expect(sessionStorage.getItem('bazarpro.checkout.given.evt1')).toBeNull();
   });
 
   it('folds the receipt email away until it is asked for', async () => {

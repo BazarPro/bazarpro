@@ -15,6 +15,11 @@ export interface NextStep {
   done?: boolean;
   /** The step to do now: at most one, highlighted */
   current?: boolean;
+  /**
+   * Left behind, but past its use: shown neutral, not with the dashed yellow edge, e.g.
+   * promotion once the bazaar runs
+   */
+  lapsed?: boolean;
   /** How far the step is (0–1), shown as a bar, e.g. items sold of all */
   progress?: number;
 }

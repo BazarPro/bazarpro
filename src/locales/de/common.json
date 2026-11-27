@@ -118,6 +118,12 @@
     "previous": "Zurück",
     "next": "Weiter"
   },
+  "notFound": {
+    "title": "Diese Seite gibt es nicht",
+    "text": "Unter „{{path}}“ ist nichts zu finden. Vielleicht ist der Link veraltet oder vertippt.",
+    "find": "Basar in der Nähe finden",
+    "home": "Zur Startseite"
+  },
   "close": "Schließen",
   "closeDialog": "Dialog schließen",
   "imageMissing": "Bild nicht gefunden",

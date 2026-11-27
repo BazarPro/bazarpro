@@ -313,6 +313,8 @@
       "basket_other": "Basket with {{count}} labels",
       "seconds_one": "{{count}} s",
       "seconds_other": "{{count}} s",
+      "mistakes_one": "{{count}} mistake",
+      "mistakes_other": "{{count}} mistakes",
       "progress": "{{done}} of {{total}}",
       "hintPile": "Not quite – the large digit is a {{pile}}.",
       "hintBasket": "Not quite – compare the letter, the letter pair and the number.",

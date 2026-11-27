@@ -32,7 +32,11 @@ export function FilterTabs<T extends string>({
   options: { value: T; label: string; count?: number }[];
 }) {
   return (
-    <div className="inline-flex flex-wrap gap-1 rounded-lg bg-muted p-[3px]" role="tablist">
+    // One row that scrolls on phones, like the seller filters: wrapped rows looked broken
+    <div
+      className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-[3px] *:shrink-0 sm:inline-flex sm:w-fit"
+      role="tablist"
+    >
       {options.map((option) => (
         <button
           key={option.value}
@@ -41,7 +45,7 @@ export function FilterTabs<T extends string>({
           aria-selected={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            'cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors',
+            'cursor-pointer whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-colors',
             value === option.value
               ? 'bg-card text-foreground shadow-xs'
               : 'text-muted-foreground hover:text-foreground'

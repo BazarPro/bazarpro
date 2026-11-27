@@ -116,6 +116,11 @@ describe('bazaar search', () => {
     expect(locate(PLACES, '   ')).toBeUndefined();
     expect(locate(PLACES, '00000')).toBeUndefined();
     expect(locate(PLACES, '890')?.country).toBe('DE');
+    // Four digits are Austrian or Swiss: the label says which country
+    const austrian = locate(PLACES, '8907');
+    expect(austrian?.country).not.toBe('DE');
+    expect(austrian?.label).toBe(`8907 (${austrian?.country})`);
+    expect(locate(PLACES, '89073')?.label).toBe('89073');
     expect(locate({}, 'Ulm')).toBeUndefined();
     expect(suggestPlaces(PLACES, 'U')).toEqual([]);
     expect(suggestPlaces(PLACES, '89')).toEqual([]);

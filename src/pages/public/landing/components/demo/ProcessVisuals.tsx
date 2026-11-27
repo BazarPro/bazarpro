@@ -26,7 +26,7 @@ function useScene() {
   return { t, item };
 }
 
-type Tone = 'amber' | 'primary' | 'success' | 'muted';
+type Tone = 'primary' | 'success' | 'muted';
 
 function StatusChip({
   tone,
@@ -40,7 +40,6 @@ function StatusChip({
   style?: CSSProperties;
 }) {
   const tones: Record<Tone, string> = {
-    amber: 'bg-warning-soft text-warning-soft-foreground',
     primary: 'bg-primary/15 text-primary',
     success: 'bg-success-soft text-success-soft-foreground',
     muted: 'bg-muted text-muted-foreground',
@@ -102,7 +101,7 @@ export function PhotoScene() {
           <p className="text-lg font-extrabold tabular-nums">{item.price}</p>
           <p className="text-xs text-muted-foreground">{t('landing:scenes.condition')}</p>
         </div>
-        <StatusChip tone="amber" className="landing-pop" style={delay(2000)}>
+        <StatusChip tone="muted" className="landing-pop" style={delay(2000)}>
           <Check className="h-3 w-3" /> {t('records:status.announced.title')}
         </StatusChip>
       </div>
@@ -115,7 +114,7 @@ export function TagScene() {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4">
       <div className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 shadow-lg">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning-soft text-warning-soft-foreground">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
           <Printer className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1 space-y-1.5">
@@ -325,7 +324,7 @@ export function PickupScene() {
           className="landing-fade-up flex items-center gap-2 rounded-2xl border bg-card p-2.5 shadow-lg sm:gap-3 sm:p-3"
           style={delay(1900)}
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 bg-warning-soft text-warning-soft-foreground">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 bg-primary/15 text-primary">
             <PackageOpen className="h-5 w-5" />
           </span>
           <div className="min-w-0 space-y-1">

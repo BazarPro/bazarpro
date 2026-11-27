@@ -118,7 +118,7 @@ export function BazaarRoadmap({
         )}
         {steps.map((step, index) => {
           const Icon = step.icon;
-          const behind = currentIndex >= 0 && index < currentIndex && !step.done;
+          const behind = currentIndex >= 0 && index < currentIndex && !step.done && !step.lapsed;
           const content = (
             <>
               <span

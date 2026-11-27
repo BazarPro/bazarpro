@@ -40,11 +40,12 @@ export interface MyProductHandlers {
   onUpdateDiscount?: (id: Id<'products'>) => void;
 }
 
+// The same tones as the badges of the organizer's item list (ProductManagementList)
 const STATUS_TONE: Record<EventProductStatus, string> = {
-  announced: 'bg-primary',
+  announced: 'bg-input',
   available: 'bg-success',
-  sold: 'bg-muted-foreground',
-  returned: 'bg-tag',
+  sold: 'bg-foreground',
+  returned: 'bg-warning-soft-foreground',
   rejected: 'bg-destructive',
 };
 

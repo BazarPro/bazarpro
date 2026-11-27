@@ -12,7 +12,7 @@ export const HEADER_STATUS_ID = 'header-status';
 export const OFFLINE_NOTICE_OPEN_MS = 5000;
 
 const TONES = {
-  amber: 'border-tag/60 bg-warning-soft text-warning-soft-foreground',
+  amber: 'border-warning-soft-foreground/30 bg-warning-soft text-warning-soft-foreground',
   destructive: 'border-destructive/40 bg-danger-soft text-destructive',
 } as const;
 

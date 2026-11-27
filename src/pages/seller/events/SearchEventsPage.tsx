@@ -319,7 +319,9 @@ export function SearchEventsPage() {
                             from={`/browse-events${window.location.search}`}
                             actions={
                               !isEventOver(result.event, now) && (
+                                // Outlined: one blue button per card made the whole page shout
                                 <Button
+                                  variant="outline"
                                   className="flex-1"
                                   disabled={!!closed}
                                   onClick={() => handleJoinClick(result.event)}

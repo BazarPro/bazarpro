@@ -69,7 +69,7 @@ export function SaleConflictsCard({
   };
 
   return (
-    <Card className={`border-tag/60 bg-warning-soft   ${className}`}>
+    <Card className={`border-warning-soft-foreground/30 bg-warning-soft   ${className}`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <AlertTriangle className="h-5 w-5 text-warning-soft-foreground" />

@@ -189,7 +189,7 @@ function SellerOverview() {
       id: 'payout',
       icon: Receipt,
       title: t(direct ? 'steps.payoutDirect' : 'steps.payout'),
-      text: [salesSummary(sales, t), seller?.paid && t('nextBazaar.paid')]
+      text: [salesSummary(seller ? [seller] : [], t), seller?.paid && t('nextBazaar.paid')]
         .filter(Boolean)
         .join(' · '),
       to: '/my-sales',
@@ -307,7 +307,14 @@ function OrganizerOverview({ canCreate }: { canCreate: boolean }) {
     return draftCard ? (
       draftCard
     ) : (
-      <EmptyState title={t('myEvents.none', { ns: 'organizer' })}>{createButton}</EmptyState>
+      // The first bazaar: what organizing means here, not "nothing found"
+      <EmptyState
+        icon={CalendarPlus}
+        title={t('myEvents.firstTitle', { ns: 'organizer' })}
+        text={t('myEvents.firstText', { ns: 'organizer' })}
+      >
+        {createButton}
+      </EmptyState>
     );
   }
 
@@ -321,7 +328,7 @@ function OrganizerOverview({ canCreate }: { canCreate: boolean }) {
         label={t('organizer.current')}
         badges={
           <>
-            <EventApprovalBadge event={selected} />
+            <EventApprovalBadge event={selected} onlyOpen />
             {isHelper(selected) && (
               <Badge variant="outline">{t('myEvents.helper', { ns: 'organizer' })}</Badge>
             )}
@@ -436,7 +443,7 @@ function EventList({
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <span>{formatDateRangeDE(event.startDate, event.endDate)}</span>
                   <EventPhaseBadge event={event} />
-                  <EventApprovalBadge event={event} />
+                  <EventApprovalBadge event={event} onlyOpen />
                   {isHelper(event) && (
                     <Badge variant="outline">{t('myEvents.helper', { ns: 'organizer' })}</Badge>
                   )}
@@ -489,12 +496,15 @@ function upcomingFirst(events: Doc<'events'>[] | undefined): Doc<'events'>[] {
     .sort((a, b) => a.startDate - b.startDate);
 }
 
-type SalesGroups = FunctionReturnType<typeof api.purchases.getMySales> | undefined;
+type SalesGroup = FunctionReturnType<typeof api.purchases.getMySales>[number];
 
-function salesSummary(sales: SalesGroups, t: TFunction<'dashboard'>): string {
-  const sold = (sales ?? []).reduce((sum, group) => sum + group.items.length, 0);
+/** The sales of the bazaar on the card only: sales of other bazaars do not belong there */
+function salesSummary(sales: SalesGroup[], t: TFunction<'dashboard'>): string {
+  const sold = sales.reduce((sum, group) => sum + group.items.length, 0);
+  const payout = sales.reduce((sum, group) => sum + group.totals.payout, 0);
+  // Fees with nothing sold yet, e.g. the intake fee: still owed
+  if (sold === 0 && payout < 0) return t('seller.noSalesFees', { fees: formatPrice(-payout) });
   if (sold === 0) return t('seller.noSales');
-  const payout = (sales ?? []).reduce((sum, group) => sum + group.totals.payout, 0);
   // Fees above the takings: the seller owes the difference, not a payout below zero
   if (payout < 0) return t('seller.salesFees', { count: sold, fees: formatPrice(-payout) });
   return t('seller.sales', { count: sold, payout: formatPrice(payout) });

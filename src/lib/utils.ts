@@ -32,21 +32,21 @@ export function truncateText(text: string, maxLength: number = 20): string {
 }
 
 /**
- * An amount in the format of the app's language, without the currency: "12,34" in
- * German, "12.34" in English. The euro sign follows in the texts ("12,34 €", "12.34 €"),
- * the same in both languages.
+ * An amount in the format of the app's language, without the currency and with thousands
+ * grouped: "2.349,50" in German, "2,349.50" in English. The euro sign follows in the texts
+ * ("12,34 €", "12.34 €"), the same in both languages.
  */
 export function formatPrice(price: number, decimals: number = 2): string {
-  const text = price.toFixed(decimals);
-  return dateLocale().startsWith('de') ? text.replace('.', ',') : text;
+  return new Intl.NumberFormat(dateLocale().startsWith('de') ? 'de-DE' : 'en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(price);
 }
 
-/**
- * Formatiert einen Timestamp als deutsches Datum lang (z.B. "08. Februar 2025")
- */
+/** A date in long form, without a leading zero: "8. Februar 2025" */
 export function formatDateDE(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString(dateLocale(), {
-    day: '2-digit',
+    day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
@@ -68,9 +68,8 @@ export function formatDateDEShort(timestamp: number): string {
 }
 
 /**
- * Formatiert einen Zeitraum (Start- und Enddatum) im deutschen Format.
- * Wenn Start- und Enddatum am selben Tag liegen, wird das Datum nur einmal
- * mit der entsprechenden Uhrzeitspanne ausgegeben.
+ * A period in the app's language. On one day the date once with the times
+ * ("6. Dezember 2026, 09:00 – 14:00 Uhr"), over several days the dates with a dash.
  *
  * @param start - Start-Timestamp
  * @param end - End-Timestamp
@@ -87,7 +86,7 @@ export function formatDateRangeDE(start: number, end: number): string {
 
   if (isSameDay) {
     const date = startDate.toLocaleDateString(dateLocale(), {
-      day: '2-digit',
+      day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
@@ -102,5 +101,15 @@ export function formatDateRangeDE(start: number, end: number): string {
     return `${date}, ${i18n.t('time.range', { start: startTime, end: endTime })}`;
   }
 
-  return `${formatDateDE(start)} - ${formatDateDE(end)}`;
+  // The year and month only once: "27.–28. November 2026", "30. November – 2. Dezember 2026"
+  return (
+    new Intl.DateTimeFormat(dateLocale(), {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+      .formatRange(startDate, endDate)
+      // Thin spaces around the dash: plain ones, as in the other texts
+      .replace(/\u2009/g, ' ')
+  );
 }

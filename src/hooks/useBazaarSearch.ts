@@ -76,16 +76,15 @@ export function useBazaarSearch<E extends Doc<'events'>>(
     () =>
       !events
         ? undefined
-        : unknown
-          ? []
-          : searchBazaars(events, {
-              places,
-              origin,
-              radius,
-              filters: { when, conditions, categories: chosenCategories },
-              categories,
-              now,
-            }),
+        : // An unknown place filters nothing: all bazaars by date, the field says why
+          searchBazaars(events, {
+            places,
+            origin,
+            radius,
+            filters: { when, conditions, categories: chosenCategories },
+            categories,
+            now,
+          }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the arrays follow the address
     [events, places, origin?.label, unknown, radius, when, params, categories, now]
   );

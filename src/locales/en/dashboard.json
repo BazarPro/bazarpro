@@ -18,6 +18,7 @@
     "sales_one": "{{count}} sold · {{payout}} € payout",
     "sales_other": "{{count}} sold · {{payout}} € payout",
     "noSales": "Nothing sold yet",
+    "noSalesFees": "Nothing sold yet · {{fees}} € fees due",
     "salesFees_one": "{{count}} sold · {{fees}} € fees due",
     "salesFees_other": "{{count}} sold · {{fees}} € fees due"
   },

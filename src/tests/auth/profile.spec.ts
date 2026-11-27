@@ -151,7 +151,7 @@ test.describe('profile page', () => {
 
       await page.getByRole('button', { name: 'Basar löschen' }).click();
       await page.getByRole('button', { name: 'Löschen', exact: true }).click();
-      await expect(page.getByText('Keine Basare gefunden')).toBeVisible({
+      await expect(page.getByText('Dein erster Basar')).toBeVisible({
         timeout: 10000,
       });
     });

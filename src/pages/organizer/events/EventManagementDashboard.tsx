@@ -2,6 +2,7 @@ import type { ProductWithStatus } from './dashboard/components/inventoryTypes';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { OfflineReadyCard } from './dashboard/components/OfflineReadyCard';
 import { type NextStep } from '../../../components/ui/next-steps';
+import { keepFirstCurrent } from '../../../lib/nextSteps';
 import { BazaarJourney } from '../../../components/ui/bazaar-roadmap';
 import { StatStrip } from '../../../components/ui/stat-tile';
 import { ImageWithFallback } from '../../../components/ui/image-with-fallback';
@@ -108,6 +109,8 @@ export function EventManagementDashboard() {
       done: promoted,
       // First thing to do: sellers and visitors need to hear of the bazaar
       current: !hasStarted && !promoted,
+      // Once the bazaar runs, promotion is past its use: no reproach for it
+      lapsed: hasStarted,
     },
     {
       id: 'sellers',
@@ -153,14 +156,12 @@ export function EventManagementDashboard() {
     },
   ];
 
-  // One step at most is due now; the card shows it with its button
-  const current = steps.find((step) => step.current);
+  // One step at most is due now: the card shows it with its button
+  const current = keepFirstCurrent(steps);
   // Steps before the current one that are still open: easy to forget once the bazaar runs
   const currentIndex = current ? steps.indexOf(current) : steps.length;
-  // Promotion is past its use once the bazaar runs: no reproach for it then
   const leftBehind = steps.filter(
-    (step, index) =>
-      index < currentIndex && !step.done && step.to && !(hasStarted && step.id === 'promote')
+    (step, index) => index < currentIndex && !step.done && step.to && !step.lapsed
   );
   // Figures the card above already names are left out of the tiles below: not twice
   const inCard = new Set([current?.id, ...leftBehind.map((step) => step.id)]);
@@ -334,9 +335,11 @@ export function EventManagementDashboard() {
                 icon: Banknote,
                 label: t('dashboard.revenue'),
                 value: `${formatPrice(totalRevenue)} €`,
-                hint: inCard.has('sale')
-                  ? undefined
-                  : t('dashboard.soldOf', { sold, total: products.length }),
+                // Without items "0 von 0 verkauft" says nothing
+                hint:
+                  inCard.has('sale') || products.length === 0
+                    ? undefined
+                    : t('dashboard.soldOf', { sold, total: products.length }),
                 to: `${base}/products?tab=sold`,
               },
             ]}

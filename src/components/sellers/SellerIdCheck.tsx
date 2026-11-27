@@ -14,7 +14,7 @@ export function SellerIdCheck({ seller }: { seller: VendorWithCalculations }) {
   return (
     <section
       aria-label={t('products.idCheckTitle')}
-      className="rounded-lg border border-tag/60 bg-warning-soft p-3"
+      className="rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3"
     >
       <div className="flex items-center gap-2 text-sm font-semibold text-warning-soft-foreground">
         <IdCard className="h-4 w-4 shrink-0" />

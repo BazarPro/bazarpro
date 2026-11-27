@@ -69,7 +69,8 @@ export function EventShareActions({ eventId, title }: { eventId: string; title: 
         title={t('share', { ns: 'common' })}
       >
         <Share2 className="size-4" />
-        <span className="md:max-lg:sr-only">{t('share', { ns: 'common' })}</span>
+        {/* Symbols only on phones: the three buttons fit one row, "QR-Code" no longer wraps alone */}
+        <span className="max-sm:sr-only md:max-lg:sr-only">{t('share', { ns: 'common' })}</span>
       </Button>
       <Button
         variant="outline"
@@ -80,7 +81,7 @@ export function EventShareActions({ eventId, title }: { eventId: string; title: 
         title={t('dashboard.qrDownload')}
       >
         <QrCode className="size-4" />
-        <span className="md:max-lg:sr-only">{t('dashboard.qrShort')}</span>
+        <span className="max-sm:sr-only md:max-lg:sr-only">{t('dashboard.qrShort')}</span>
       </Button>
     </div>
   );

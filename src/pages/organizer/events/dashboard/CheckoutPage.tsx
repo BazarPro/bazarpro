@@ -102,6 +102,27 @@ export type ResolvedLine =
   | { ok: false; problem: string };
 
 /** The cash desk, for whom the organizer lets sell (helper permission "sale"). */
+/** The biggest euro note: more change than that is rather a typo */
+const LARGEST_NOTE = 500;
+
+const givenKey = (eventId: string | undefined) => `bazarpro.checkout.given.${eventId}`;
+function loadGiven(eventId: string | undefined): string {
+  try {
+    return (eventId && sessionStorage.getItem(givenKey(eventId))) || '';
+  } catch {
+    return '';
+  }
+}
+function saveGiven(eventId: string | undefined, given: string) {
+  if (!eventId) return;
+  try {
+    if (given) sessionStorage.setItem(givenKey(eventId), given);
+    else sessionStorage.removeItem(givenKey(eventId));
+  } catch {
+    // Private mode: the field is just empty after a reload
+  }
+}
+
 export function CheckoutPage({ fullscreen = false }: { fullscreen?: boolean }) {
   const { eventId } = useParams<{ eventId: string }>();
   const { isLoading, can } = useEventAccess(eventId as Id<'events'>);
@@ -158,14 +179,17 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
   const [buyerEmail, setBuyerEmail] = useState('');
   // The receipt field stays folded away until the buyer asks for one
   const [emailOpen, setEmailOpen] = useState(false);
-  // What the buyer handed over, only to work out the change
-  const [given, setGiven] = useState('');
+  // What the buyer handed over, only to work out the change; kept for a reload, like the cart
+  const [given, setGiven] = useState(() => loadGiven(eventId));
+  useEffect(() => saveGiven(eventId, given), [eventId, given]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSale, setLastSale] = useState<{
     count: number;
     total: number;
     /** Kept on the device, booked once online */
     queued: boolean;
+    /** What went back to the buyer, if "Gegeben" was filled in */
+    change: number | null;
     lines: Extract<ResolvedLine, { ok: true }>[];
   } | null>(null);
   // Product pages and seller IDs too, for a look at an item without internet
@@ -306,6 +330,8 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
   const givenAmount = parseAmount(given);
   const givenInvalid = given.trim() !== '' && givenAmount === null;
   const change = givenAmount === null ? null : Math.round((givenAmount - due) * 100) / 100;
+  // More change than the biggest note: rather a typo, e.g. a label scanned into this field
+  const changeUnlikely = change !== null && allReady && change >= LARGEST_NOTE;
   const changeText =
     change === null || !allReady
       ? ''
@@ -363,7 +389,13 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
       },
       feeCapSpent
     );
-    setLastSale({ count: ready.length, total: taken, queued: true, lines: ready });
+    setLastSale({
+      count: ready.length,
+      total: taken,
+      queued: true,
+      lines: ready,
+      change: change !== null && change >= 0 ? change : null,
+    });
     nextBuyer();
   };
 
@@ -388,6 +420,7 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
         total: result.taken ?? result.total,
         queued: false,
         lines: ready,
+        change: change !== null && change >= 0 ? change : null,
       });
       if (buyerEmail.trim()) toast.success(t('checkout.receiptSent'));
       nextBuyer();
@@ -552,6 +585,12 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
                   values={{ total: formatPrice(lastSale.total) }}
                   components={{ b: <b /> }}
                 />
+                {/* The change stays in sight after the tap: the helper may still count it out */}
+                {lastSale.change !== null && lastSale.change > 0 && (
+                  <span className="ml-1 font-semibold">
+                    {t('checkout.changeGiven', { amount: formatPrice(lastSale.change) })}
+                  </span>
+                )}
               </p>
               <Button
                 variant="outline"
@@ -627,12 +666,13 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
                             line.commissionPercent !== commissionPercent
                         )
                         ? // Sellers of fee groups pay their own percentage
-                          t('checkout.direct.sumMixed', { count: cart.length })
+                          t('checkout.direct.sumMixed', { count: ready.length })
                         : t('checkout.direct.sum', {
-                            count: cart.length,
+                            count: ready.length,
                             percent: commissionPercent,
                           })
-                      : t('checkout.sum', { count: cart.length })}
+                      : // Only what the sum holds: marked items are not part of it
+                        t('checkout.sum', { count: ready.length })}
                   </span>
                   <span className="font-display text-2xl font-extrabold tabular-nums lg:text-4xl">
                     {formatPrice(taken)} €
@@ -720,6 +760,19 @@ function CashDesk({ fullscreen }: { fullscreen: boolean }) {
                     {t('checkout.clear')}
                   </Button>
                 </div>
+                {/* The tick stays by hand (#251); a contradiction only gets a word */}
+                {moneyReceived && change !== null && change < 0 && (
+                  <p className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    {t('checkout.missingButReceived', { amount: formatPrice(-change) })}
+                  </p>
+                )}
+                {changeUnlikely && (
+                  <p className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    {t('checkout.changeUnlikely')}
+                  </p>
+                )}
                 {!allReady && lines.some((line) => line && !line.ok) && (
                   <p className="flex items-center gap-2 text-sm text-destructive">
                     <AlertTriangle className="h-4 w-4" />
@@ -1087,9 +1140,12 @@ function CartLine({
         )}
 
         {item?.discountPercent ? (
-          <p className="text-xs text-muted-foreground">
-            <span className="line-through">{formatPrice(item.price)} €</span> −
-            {item.discountPercent} %
+          // The discount as a yellow tag, as on the product page and the cards
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="line-through tabular-nums">{formatPrice(item.price)} €</span>
+            <span className="rounded-md bg-tag px-1.5 py-0.5 font-bold text-tag-foreground">
+              −{item.discountPercent} %
+            </span>
           </p>
         ) : null}
 

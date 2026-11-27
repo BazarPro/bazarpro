@@ -274,7 +274,10 @@ export function SellerManagementPage() {
       )}
 
       {clashingCodes.size > 0 && (
-        <p role="alert" className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm">
+        <p
+          role="alert"
+          className="rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm"
+        >
           {t('sellers.sortClash', { count: clashingCodes.size })}
         </p>
       )}
@@ -344,7 +347,7 @@ export function SellerManagementPage() {
       )}
 
       {pendingGroups > 0 && (
-        <p className="rounded-lg border border-tag/60 bg-warning-soft p-3 text-sm">
+        <p className="rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm">
           {t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
         </p>
       )}
@@ -357,7 +360,7 @@ export function SellerManagementPage() {
               <TableRow>
                 <TableHead>{t('sellers.participant')}</TableHead>
                 <TableHead>{t('sellers.details')}</TableHead>
-                <TableHead className="text-right">{t('sellers.netRevenue')}</TableHead>
+                <TableHead className="text-right">{t('sellers.revenue')}</TableHead>
                 <TableHead className="text-center">{t('sellers.status')}</TableHead>
                 {showRoles && <TableHead className="text-center">{t('sellers.role')}</TableHead>}
                 <TableHead className="w-[50px]"></TableHead>

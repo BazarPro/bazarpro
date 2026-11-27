@@ -94,10 +94,12 @@ const TABS: {
   { value: 'rejected', icon: PackageX },
 ];
 
+// The same tones as the dots in "Meine Artikel" (MyProductParts): green is "on sale",
+// blue stays for actions
 const STATUS_BADGE: Record<string, React.ComponentProps<typeof Badge>['variant']> = {
-  announced: 'secondary',
-  available: 'info',
-  sold: 'success',
+  announced: 'outline',
+  available: 'success',
+  sold: 'secondary',
   returned: 'warning',
   rejected: 'outline',
 };

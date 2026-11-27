@@ -185,7 +185,7 @@ export function Header() {
     <>
       <header className="border-b bg-background sticky top-0 z-50">
         <div
-          className={`px-4 py-4 flex items-center justify-between ${fullWidth ? '' : 'container mx-auto'}`}
+          className={`px-4 py-4 flex items-center justify-between gap-3 ${fullWidth ? '' : 'container mx-auto'}`}
         >
           {/* Logo */}
           <div
@@ -301,7 +301,7 @@ export function Header() {
             </>
           ) : (
             <>
-              <div className="flex items-center gap-4">
+              <div className="flex shrink-0 items-center gap-2 sm:gap-4">
                 {!hideAuthButtons && (
                   <>
                     <Button

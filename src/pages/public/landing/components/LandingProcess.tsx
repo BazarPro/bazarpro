@@ -38,13 +38,14 @@ const ROLE_STYLES: Record<
   Role,
   { icon: LucideIcon; badge: string; active: string; ring: string; text: string; bar: string }
 > = {
+  // Roles in neutral and the action colour: yellow is for what is due now, green for states
   seller: {
     icon: Tag,
-    badge: 'bg-warning-soft text-warning-soft-foreground',
-    active: 'bg-tag text-white',
-    ring: 'border-tag/60',
-    text: 'text-warning-soft-foreground',
-    bar: 'bg-warning-soft',
+    badge: 'bg-muted text-foreground',
+    active: 'bg-foreground text-background',
+    ring: 'border-foreground/30',
+    text: 'text-foreground',
+    bar: 'bg-foreground/50',
   },
   organizer: {
     icon: Calendar,
