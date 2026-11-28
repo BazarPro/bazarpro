@@ -1,17 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getFunctionName } from '../../../lib/api/functions';
 import type { FunctionReference } from '../../../lib/api/types';
 import { RegisterPage } from './RegisterPage';
 
 const signIn = vi.hoisted(() => vi.fn());
+const flags = vi.hoisted(() => ({ current: {} as Record<string, boolean> }));
 vi.mock('../../../lib/api/react', () => ({
   useAuthState: () => ({ isLoading: false, isAuthenticated: false }),
   useAuthActions: () => ({ signIn }),
   useQuery: (ref: FunctionReference<'query'>) =>
     ({
-      'featureFlags.get': {},
+      'featureFlags.get': flags.current,
       'authProviders.configured': { google: true, github: true },
     })[getFunctionName(ref)],
 }));
@@ -32,6 +33,7 @@ function renderAt(url: string) {
 describe('RegisterPage', () => {
   beforeEach(() => {
     signIn.mockReset();
+    flags.current = {};
     signIn.mockResolvedValue({ signingIn: false });
   });
 
@@ -76,3 +78,38 @@ describe('RegisterPage', () => {
     expect(await screen.findByTestId('form-email-verification')).toBeInTheDocument();
   });
 });
+
+describe('RegisterPage with registration switched off (#334)', () => {
+  beforeEach(() => {
+    flags.current = { is_registration_enabled: false };
+  });
+
+  it('shows no locked form, but the way to the login and the demo', () => {
+    render(
+      <MemoryRouter initialEntries={['/register?joinEventId=e1']}>
+        <Routes>
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginTarget />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('register-closed')).toBeInTheDocument();
+    expect(screen.queryByLabelText('E-Mail-Adresse')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Weiter mit Google' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Demo ansehen' })).toHaveAttribute(
+      'href',
+      'https://demo.bazarpro.de'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zur Anmeldung' }));
+    // Back to the bazaar afterwards, with its join dialog
+    expect(screen.getByTestId('login-target')).toHaveTextContent(
+      '?redirect=%2Fpublic-events%2Fe1%3FopenJoinDialog%3D1'
+    );
+  });
+});
+
+function LoginTarget() {
+  const { search } = useLocation();
+  return <p data-testid="login-target">{search}</p>;
+}

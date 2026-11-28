@@ -99,7 +99,7 @@ export function DangerZoneCard() {
 
         <ConfirmDialog
           trigger={
-            <Button variant="destructive" className="sm:flex-none">
+            <Button variant="danger" className="sm:flex-none">
               <Trash2 className="mr-2 h-4 w-4" />
               {t('danger.delete')}
             </Button>

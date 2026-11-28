@@ -18,7 +18,7 @@ const SELFHOSTED_FEATURES = ['allFeatures', 'ownData', 'ownDomain', 'docker'] as
 const FAQ = ['free', 'useCases', 'commission', 'hardware', 'universalLabels', 'selfHost'] as const;
 
 export function PricingPage() {
-  const { isAuthenticated, goToOrganizer, goToSeller } = useStartActions();
+  const { isAuthenticated, registrationOpen, goToOrganizer, goToSeller } = useStartActions();
   const { t, i18n } = useTranslation(['company', 'landing']);
   const jsonLd = useMemo(
     () => [
@@ -63,7 +63,9 @@ export function PricingPage() {
               name="bazarpro.de"
               tagline={t('pricing.hosted.tagline')}
               priceNote={t('pricing.hosted.priceNote')}
-              features={HOSTED_FEATURES.map((id) => t(`pricing.hosted.features.${id}`))}
+              features={HOSTED_FEATURES.filter((id) => registrationOpen || id !== 'instant').map(
+                (id) => t(`pricing.hosted.features.${id}`)
+              )}
               highlighted
               action={
                 <Button
@@ -71,7 +73,11 @@ export function PricingPage() {
                   className="group h-12 w-full text-base font-semibold"
                   onClick={goToOrganizer}
                 >
-                  {isAuthenticated ? t('landing:actions.myEvents') : t('pricing.hosted.register')}
+                  {isAuthenticated
+                    ? t('landing:actions.myEvents')
+                    : registrationOpen
+                      ? t('pricing.hosted.register')
+                      : t('pricing.hosted.login')}
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               }

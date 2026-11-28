@@ -13,3 +13,12 @@ export function useFeatureFlags() {
     isLoading: flags === undefined,
   };
 }
+
+/**
+ * Whether new accounts can be created (Admin → Funktionen). While it loads it counts as
+ * open, so the buttons do not flicker. Off, no button leads into the locked form (#334):
+ * the backend refuses every new account then, invitations included.
+ */
+export function useRegistrationOpen(): boolean {
+  return useFeatureFlags().isRegistrationEnabled;
+}

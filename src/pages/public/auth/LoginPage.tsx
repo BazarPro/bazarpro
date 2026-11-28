@@ -46,7 +46,12 @@ export function LoginPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { isLoading } = useAuthState();
-  const { isLoginEnabled, isDemoMode, isLoading: isFlagsLoading } = useFeatureFlags();
+  const {
+    isLoginEnabled,
+    isDemoMode,
+    isRegistrationEnabled,
+    isLoading: isFlagsLoading,
+  } = useFeatureFlags();
   const redirectAfterLogin = useRedirectAfterLogin();
   const returnTo = safeRedirectPath(searchParams.get('redirect'));
   const resendRemainingSeconds =
@@ -272,7 +277,7 @@ export function LoginPage() {
     >
       {!verificationEmail && !showForgotPassword && (
         <>
-          <h1 className="text-2xl font-bold tracking-tight sm:mb-1 sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight sm:mb-1 sm:text-3xl">
             {t('login.title')}
           </h1>
           <p className="mb-4 text-sm text-muted-foreground sm:mb-6 sm:text-base">
@@ -363,19 +368,21 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm sm:mt-6" data-testid="div-login-register">
-            <span className="text-muted-foreground">{t('login.noAccount')} </span>
-            <button
-              onClick={() =>
-                navigate(
-                  returnTo ? `/register?redirect=${encodeURIComponent(returnTo)}` : '/register'
-                )
-              }
-              className="text-sm text-primary hover:underline"
-            >
-              {t('login.registerNow')}
-            </button>
-          </div>
+          {isRegistrationEnabled && (
+            <div className="mt-4 text-center text-sm sm:mt-6" data-testid="div-login-register">
+              <span className="text-muted-foreground">{t('login.noAccount')} </span>
+              <button
+                onClick={() =>
+                  navigate(
+                    returnTo ? `/register?redirect=${encodeURIComponent(returnTo)}` : '/register'
+                  )
+                }
+                className="text-sm text-primary hover:underline"
+              >
+                {t('login.registerNow')}
+              </button>
+            </div>
+          )}
         </>
       ) : verificationEmail ? (
         <EmailVerificationForm

@@ -257,7 +257,7 @@ function UserDetail({ userId, onClose }: { userId: Id<'users'>; onClose: () => v
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{summary?.name ?? summary?.email ?? t('users.user')}</DialogTitle>
           <DialogDescription>
@@ -287,7 +287,7 @@ function UserDetail({ userId, onClose }: { userId: Id<'users'>; onClose: () => v
                       <Link to={`/events/view/${event._id}`} className="underline">
                         {event.title}
                       </Link>
-                      {event.hidden && <Badge variant="destructive">{t('users.blocked')}</Badge>}
+                      {event.hidden && <Badge variant="danger">{t('users.blocked')}</Badge>}
                     </li>
                   ))}
                 </ul>
@@ -305,7 +305,7 @@ function UserDetail({ userId, onClose }: { userId: Id<'users'>; onClose: () => v
               </Button>
               {canBan && (
                 <Button
-                  variant="destructive"
+                  variant="danger"
                   size="sm"
                   onClick={() =>
                     setRequest({
@@ -337,7 +337,7 @@ function UserDetail({ userId, onClose }: { userId: Id<'users'>; onClose: () => v
                 </Button>
               )}
               {viewer?._id !== summary._id && (
-                <Button variant="destructive" size="sm" onClick={() => setDeleting(true)}>
+                <Button variant="danger" size="sm" onClick={() => setDeleting(true)}>
                   {t('users.delete')}
                 </Button>
               )}

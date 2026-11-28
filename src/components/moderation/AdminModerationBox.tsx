@@ -62,13 +62,13 @@ export function AdminModerationBox({
         </div>
       )}
       {target.hidden ? (
-        <Button size="sm" variant="secondary" onClick={restore}>
+        <Button size="sm" variant="outline" onClick={restore}>
           {target.type === 'product' ? t('moderate.showAgain') : t('moderate.unblock')}
         </Button>
       ) : (
         <Button
           size="sm"
-          variant="destructive"
+          variant="danger"
           onClick={() =>
             setRequest(
               target.type === 'product'

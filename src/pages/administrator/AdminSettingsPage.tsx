@@ -1,14 +1,16 @@
 import { PageHeader } from '../../components/ui/page-header';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApiClient, useMutation, useQuery } from '../../lib/api/react';
 import { toast } from 'sonner';
 import { BarChart3, ImageIcon, Trash2, Upload } from 'lucide-react';
 import { api } from '../../lib/api/functions';
 import type { Id } from '../../lib/api/types';
 import { Button } from '../../components/ui/button';
+import { FormSaveBar } from '../../components/ui/form-save-bar';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
+import { InfoTip } from '../../components/ui/info-tip';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { getUserFacingErrorMessage } from '../../lib/errors';
 import { normalizeImageForUpload } from '../../lib/imageProcessing';
@@ -16,6 +18,13 @@ import { resolvePlausible } from '../../lib/analyticsConfig';
 import { selfHostUrl } from '../../lib/links';
 import { runtimeConfig } from '../../lib/runtimeConfig';
 import { Trans, useTranslation } from 'react-i18next';
+import { cn } from '../../lib/utils';
+import {
+  applyColorTheme,
+  COLOR_THEME_SWATCH,
+  COLOR_THEMES,
+  type ColorTheme,
+} from '../../lib/colorTheme';
 import { FormSkeleton, Loading } from '../../components/ui/loading';
 
 /** Name, contact address and logo of this instance. */
@@ -31,20 +40,50 @@ export function AdminSettingsPage() {
   const [removeLogo, setRemoveLogo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [startPage, setStartPage] = useState<'overview' | 'currentEvent'>('overview');
+  const [colorTheme, setColorTheme] = useState<ColorTheme>('blue');
   const [plausibleEnabled, setPlausibleEnabled] = useState(false);
   const [plausibleDomain, setPlausibleDomain] = useState('');
   const [plausibleApiHost, setPlausibleApiHost] = useState('');
 
-  useEffect(() => {
-    if (!config) return;
-    setName(config.name ?? '');
-    setContactEmail(config.contactEmail ?? '');
-    setStartPage(config.startPage);
-    // Off unless switched on here or configured on the web server
-    setPlausibleEnabled(resolvePlausible(config.plausible) !== null);
-    setPlausibleDomain(config.plausible.domain ?? '');
-    setPlausibleApiHost(config.plausible.apiHost ?? '');
-  }, [config]);
+  // What is saved, in the shape of the fields: fills them, and tells what changed
+  const saved = useMemo(
+    () =>
+      config && {
+        name: config.name ?? '',
+        contactEmail: config.contactEmail ?? '',
+        startPage: config.startPage,
+        colorTheme: config.colorTheme ?? ('blue' as ColorTheme),
+        // Off unless switched on here or configured on the web server
+        plausibleEnabled: resolvePlausible(config.plausible) !== null,
+        plausibleDomain: config.plausible.domain ?? '',
+        plausibleApiHost: config.plausible.apiHost ?? '',
+      },
+    [config]
+  );
+  const fill = useCallback(() => {
+    if (!saved) return;
+    setName(saved.name);
+    setContactEmail(saved.contactEmail);
+    setStartPage(saved.startPage);
+    setColorTheme(saved.colorTheme);
+    setPlausibleEnabled(saved.plausibleEnabled);
+    setPlausibleDomain(saved.plausibleDomain);
+    setPlausibleApiHost(saved.plausibleApiHost);
+    setLogoFile(null);
+    setRemoveLogo(false);
+  }, [saved]);
+  useEffect(fill, [fill]);
+  const isDirty =
+    !!saved &&
+    (name !== saved.name ||
+      contactEmail !== saved.contactEmail ||
+      startPage !== saved.startPage ||
+      colorTheme !== saved.colorTheme ||
+      plausibleEnabled !== saved.plausibleEnabled ||
+      plausibleDomain !== saved.plausibleDomain ||
+      plausibleApiHost !== saved.plausibleApiHost ||
+      logoFile !== null ||
+      removeLogo);
 
   const fileUrl = useMemo(() => (logoFile ? URL.createObjectURL(logoFile) : null), [logoFile]);
   useEffect(() => () => void (fileUrl && URL.revokeObjectURL(fileUrl)), [fileUrl]);
@@ -68,6 +107,7 @@ export function AdminSettingsPage() {
         contactEmail,
         logo,
         startPage,
+        colorTheme,
         plausible: {
           enabled: plausibleEnabled,
           domain: plausibleDomain,
@@ -88,7 +128,7 @@ export function AdminSettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader title={t('settings.title')} />
-        <Loading className="max-w-xl">
+        <Loading className="max-w-4xl">
           <FormSkeleton fields={3} />
         </Loading>
       </div>
@@ -99,7 +139,7 @@ export function AdminSettingsPage() {
     <div className="space-y-6">
       <PageHeader title={t('settings.title')} />
 
-      <div className="max-w-xl space-y-6 rounded-xl border bg-card p-6">
+      <div className="max-w-4xl space-y-6 rounded-xl border bg-card p-6">
         <div className="space-y-2">
           <Label htmlFor="instance-name">{t('settings.name')}</Label>
           <Input
@@ -166,6 +206,12 @@ export function AdminSettingsPage() {
             </div>
           </div>
         </div>
+
+        <ColorThemePicker
+          value={colorTheme}
+          saved={config.colorTheme ?? 'blue'}
+          onChange={setColorTheme}
+        />
 
         {config.mode === 'single' && (
           <div className="space-y-2">
@@ -241,9 +287,10 @@ export function AdminSettingsPage() {
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
+          {/* The status in words; where empty fields come from is for whoever runs the server */}
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Trans
-              i18nKey="settings.envHint"
+              i18nKey="settings.analyticsStatus"
               ns="admin"
               values={{
                 status: resolvePlausible({
@@ -254,12 +301,15 @@ export function AdminSettingsPage() {
                   ? t('settings.on')
                   : t('settings.off'),
               }}
-              components={{ code: <code />, b: <b /> }}
+              components={{ b: <b /> }}
             />
+            <InfoTip>
+              <Trans i18nKey="settings.envHint" ns="admin" components={{ code: <code /> }} />
+            </InfoTip>
           </p>
         </section>
 
-        <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
           <Trans
             i18nKey="settings.mode"
             ns="admin"
@@ -267,14 +317,71 @@ export function AdminSettingsPage() {
               mode:
                 config.mode === 'single' ? t('settings.modeSingle') : t('settings.modePlatform'),
             }}
-            components={{ code: <code />, b: <b /> }}
+            components={{ b: <b /> }}
           />
+          <InfoTip>
+            <Trans i18nKey="settings.modeHint" ns="admin" components={{ code: <code /> }} />
+          </InfoTip>
         </div>
-
-        <Button loading={isSaving} onClick={save} disabled={isSaving}>
-          {isSaving ? t('settings.saving') : t('settings.save')}
-        </Button>
       </div>
+      {/* Long form: saving stays in reach at the lower edge, like the other forms */}
+      <FormSaveBar
+        className="max-w-4xl"
+        dirty={isDirty}
+        saving={isSaving}
+        disabled={!isDirty}
+        onSave={() => void save()}
+        onDiscard={fill}
+        saveLabel={t('settings.save')}
+      />
+    </div>
+  );
+}
+
+/**
+ * The colour scheme: one swatch per scheme, the page shows the choice at once. Left
+ * without saving, the saved scheme comes back.
+ */
+function ColorThemePicker({
+  value,
+  saved,
+  onChange,
+}: {
+  value: ColorTheme;
+  saved: ColorTheme;
+  onChange: (theme: ColorTheme) => void;
+}) {
+  const { t } = useTranslation('admin');
+  useEffect(() => {
+    applyColorTheme(value);
+  }, [value]);
+  useEffect(() => () => applyColorTheme(saved), [saved]);
+  return (
+    <div className="space-y-2">
+      <Label id="color-theme-label">{t('settings.colorTheme')}</Label>
+      <div role="radiogroup" aria-labelledby="color-theme-label" className="flex flex-wrap gap-2">
+        {COLOR_THEMES.map((theme) => (
+          <button
+            key={theme}
+            type="button"
+            role="radio"
+            aria-checked={value === theme}
+            onClick={() => onChange(theme)}
+            className={cn(
+              'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              value === theme && 'border-foreground ring-1 ring-foreground'
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className="size-4 rounded-full"
+              style={{ backgroundColor: COLOR_THEME_SWATCH[theme] }}
+            />
+            {t(`settings.colorThemes.${theme}`)}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{t('settings.colorThemeHint')}</p>
     </div>
   );
 }
