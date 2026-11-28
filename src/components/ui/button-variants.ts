@@ -11,6 +11,12 @@ export const buttonVariants = cva(
           'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 [&_svg]:text-destructive-foreground',
         outline:
           'border border-input bg-card text-foreground hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-transparent dark:hover:bg-input/30',
+        /**
+         * Deleting, blocking, removing: a red outline. Solid red (destructive) is only for the
+         * button in the dialog that confirms it.
+         */
+        danger:
+          'border border-destructive/60 bg-card text-destructive hover:bg-danger-soft hover:text-danger-soft-foreground dark:bg-transparent',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         /** Repeated or current actions: the active menu entry, an action per list row */
         soft: 'bg-primary/10 text-primary hover:bg-primary/15 dark:bg-primary/20 dark:text-foreground dark:hover:bg-primary/30',

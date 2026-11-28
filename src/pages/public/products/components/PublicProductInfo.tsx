@@ -41,7 +41,7 @@ export function PublicProductSummary({
         </div>
       )}
 
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-words">{title}</h1>
+      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">{title}</h1>
 
       <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
         {discountedPrice ? (

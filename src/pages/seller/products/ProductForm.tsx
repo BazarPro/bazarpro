@@ -36,7 +36,7 @@ import { BackButton } from '../../../components/navigation/BackButton';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { PageSkeleton } from '../../../components/ui/loading';
-import { StickyActionBar } from '../../../components/ui/sticky-action-bar';
+import { FormSaveBar } from '../../../components/ui/form-save-bar';
 
 /**
  * Create / Edit Form for a Users Product
@@ -424,6 +424,15 @@ export function ProductForm() {
     );
 
   const disabled = isSubmitting || !currentUser || !!isLocked;
+  // The photos already saved are kept outside the form
+  const imagesChanged =
+    !!product && existingImageIds.join() !== (product.images as string[]).join();
+  const editDirty = isDirty || imagesChanged;
+  const discard = () => {
+    reset();
+    if (product) setExistingImageIds(product.images);
+    setImageUploadKey((key) => key + 1);
+  };
 
   return (
     <div>
@@ -478,29 +487,30 @@ export function ProductForm() {
                 <MyProductSelectEvents />
               </div>
 
-              <StickyActionBar className="md:mx-0 md:px-0 lg:mx-0 lg:px-0">
-                {/* Phones: both side by side with short words, the bar stays one row high */}
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="min-w-0 flex-1"
-                  disabled={disabled}
-                  aria-label={isEditing ? undefined : t('form.create')}
-                >
-                  {isEditing ? (
+              <FormSaveBar
+                status={isEditing}
+                dirty={isEditing && editDirty}
+                saving={isSubmitting}
+                disabled={!currentUser || !!isLocked || (isEditing && !editDirty)}
+                onDiscard={isEditing ? discard : undefined}
+                saveAriaLabel={isEditing ? undefined : t('form.create')}
+                // Phones: both side by side with short words, the bar stays one row high
+                saveClassName={isEditing ? undefined : 'min-w-0 sm:flex-1'}
+                saveLabel={
+                  isEditing ? (
                     t('form.saveChanges')
                   ) : (
                     <>
                       <span className="sm:hidden">{t('form.createShort')}</span>
                       <span className="max-sm:hidden">{t('form.create')}</span>
                     </>
-                  )}
-                </Button>
+                  )
+                }
+              >
                 {!isEditing && (
                   <Button
                     type="button"
                     variant="outline"
-                    size="lg"
                     className="min-w-0 flex-1"
                     disabled={disabled}
                     aria-label={t('form.createAndNext')}
@@ -513,7 +523,7 @@ export function ProductForm() {
                 {productId && (
                   <ConfirmDialog
                     trigger={
-                      <Button variant="ghost" className="text-destructive" disabled={!canDelete}>
+                      <Button variant="danger" disabled={!canDelete}>
                         <Trash2 className="h-4 w-4" />
                         {t('form.delete')}
                       </Button>
@@ -525,7 +535,7 @@ export function ProductForm() {
                     destructive
                   />
                 )}
-              </StickyActionBar>
+              </FormSaveBar>
             </form>
           </FormProvider>
         </div>

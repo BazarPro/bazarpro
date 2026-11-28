@@ -138,7 +138,8 @@
     "myEvents": "My events",
     "organize": "Organize a bazaar",
     "myProducts": "My items",
-    "joinAsSeller": "Join as a seller"
+    "joinAsSeller": "Join as a seller",
+    "login": "Log in"
   },
   "hero": {
     "titleStart": "Consignment sales",

@@ -257,7 +257,6 @@
     "modeHint": "The mode is set when the server is set up, via <code>BAZARPRO_MODE</code>.",
     "modeSingle": "One association (single)",
     "modePlatform": "Platform",
-    "saving": "Saving…",
     "save": "Save",
     "logoUploadFailed": "The logo could not be uploaded.",
     "colorTheme": "Colour scheme",
@@ -291,7 +290,6 @@
     "analyticsOn": "currently on",
     "analyticsOff": "currently off, the section is left out",
     "preview": "Preview",
-    "saving": "Saving…",
     "save": "Save",
     "replaceWithTemplate": "Replace the current text with the template?"
   },

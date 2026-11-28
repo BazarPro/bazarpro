@@ -139,9 +139,8 @@ export function AdminReportsPage() {
                   <div className="flex flex-wrap gap-2">
                     {target.exists && !target.isRestricted && (
                       <Button
-                        variant="outline"
+                        variant="danger"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         onClick={() =>
                           setRequest({
                             kind: RESTRICT[report.targetType].kind,

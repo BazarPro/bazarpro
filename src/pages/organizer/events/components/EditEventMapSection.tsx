@@ -143,7 +143,7 @@ function ManagedLocationCategories({ eventId }: { eventId: Id<'events'> }) {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="text-destructive"
+                      className="text-muted-foreground hover:text-destructive"
                       onClick={() => void remove(c._id)}
                       aria-label={t('map.remove')}
                     >

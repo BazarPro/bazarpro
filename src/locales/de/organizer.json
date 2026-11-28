@@ -45,7 +45,6 @@
     "postalCodeInvalid": "Bitte eine gültige Postleitzahl eingeben",
     "cityRequired": "Bitte gib zur Postleitzahl auch den Ort an",
     "addressTooLong": "Zu lang",
-    "unsaved": "Ungespeicherte Änderungen",
     "feeCapMax": "Höchstens 10.000 €",
     "registeredMaxFeeCap": "Verkäufer sind angemeldet: höchstens {{fee}} €"
   },

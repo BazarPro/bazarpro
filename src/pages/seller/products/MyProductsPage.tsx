@@ -38,6 +38,7 @@ import { getUserFacingErrorMessage } from '../../../lib/errors';
 import { findProductsToComplete, type ProductToComplete } from '../../../lib/productCompletion';
 import { uploadImages } from '../../../lib/uploadImages';
 import { AlertTriangle, FileDown, Printer, Tag, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { useMarkNoticesSeen } from '../../../hooks/useMarkNoticesSeen';
 import { Trans, useTranslation } from 'react-i18next';
 import { ListSkeleton, Loading } from '../../../components/ui/loading';
@@ -642,13 +643,12 @@ export function MyProductsPage() {
     <div className="">
       <div className="page-wide">
         {clashingEvents.length > 0 && (
-          <p
-            role="alert"
-            className="mb-4 flex gap-2 rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm"
-          >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-soft-foreground" />
-            {t('labels.clashAt', { bazaars: clashingEvents.map((e) => e.title).join(', ') })}
-          </p>
+          <Alert variant="warning" className="mb-4">
+            <AlertTriangle />
+            <AlertDescription>
+              {t('labels.clashAt', { bazaars: clashingEvents.map((e) => e.title).join(', ') })}
+            </AlertDescription>
+          </Alert>
         )}
         <MyProductsPageHeader
           onCreateProduct={onCreateProduct}
@@ -827,7 +827,7 @@ export function MyProductsPage() {
               <>
                 {/* The one thing to do before the bazaar: print what has no label yet */}
                 {!isEventSelectionMode && withoutLabel.length > 0 && (
-                  <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-warning-soft-foreground/30 bg-warning-soft p-3 text-warning-soft-foreground">
+                  <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-warning-soft-foreground">
                     <Printer className="h-5 w-5 shrink-0" />
                     <p className="min-w-0 flex-1 text-sm font-medium">
                       {t('myProducts.labelsMissing', { count: withoutLabel.length })}

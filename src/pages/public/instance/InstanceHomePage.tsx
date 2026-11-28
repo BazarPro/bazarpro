@@ -9,6 +9,7 @@ import { PageSkeleton } from '../../../components/ui/loading';
 import { usePublicQuery } from '../../../hooks/usePublicQuery';
 import { useAuthState, useQuery } from '../../../lib/api/react';
 import { useInstanceConfig } from '../../../hooks/useInstanceConfig';
+import { useRegistrationOpen } from '../../../hooks/useFeatureFlags';
 import { LandingEventsSection } from '../landing/components/LandingEventsSection';
 import { useTranslation } from 'react-i18next';
 
@@ -40,6 +41,7 @@ export function CurrentBazaarRedirect() {
 
 function InstanceWelcome({ showPast }: { showPast: boolean }) {
   const navigate = useNavigate();
+  const registrationOpen = useRegistrationOpen();
   const { isAuthenticated } = useAuthState();
   const { name, logoUrl } = useInstanceConfig();
   const [includePast, setIncludePast] = useState(showPast);
@@ -70,10 +72,16 @@ function InstanceWelcome({ showPast }: { showPast: boolean }) {
             </Button>
           ) : (
             <>
-              <Button size="lg" onClick={() => navigate('/register?role=participant')}>
-                {t('instance.register')}
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/login')}>
+              {registrationOpen && (
+                <Button size="lg" onClick={() => navigate('/register?role=participant')}>
+                  {t('instance.register')}
+                </Button>
+              )}
+              <Button
+                size="lg"
+                variant={registrationOpen ? 'outline' : 'default'}
+                onClick={() => navigate('/login')}
+              >
                 {t('instance.login')}
               </Button>
             </>

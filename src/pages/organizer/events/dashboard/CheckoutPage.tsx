@@ -866,7 +866,7 @@ function DeskBar({
       <span className="flex shrink-0 items-center gap-2 text-sm text-white/85">
         <span
           aria-hidden="true"
-          className={cn('size-2 rounded-full', offline ? 'bg-tag' : 'bg-[#7ed67a]')}
+          className={cn('size-2 rounded-full', offline ? 'bg-on-dark-warn' : 'bg-on-dark-ok')}
         />
         {offline ? t('checkout.offlineShort') : t('checkout.online')}
       </span>

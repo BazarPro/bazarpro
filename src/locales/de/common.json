@@ -250,5 +250,13 @@
     "grid": "Kacheln",
     "list": "Liste"
   },
-  "moreInfo": "Mehr erfahren"
+  "moreInfo": "Mehr erfahren",
+  "saveBar": {
+    "unsaved": "Ungespeicherte Änderungen",
+    "allSaved": "Alles gespeichert",
+    "discard": "Verwerfen",
+    "discardTitle": "Änderungen verwerfen?",
+    "discardText": "Was du seit dem letzten Speichern geändert hast, geht verloren.",
+    "discardConfirm": "Verwerfen"
+  }
 }

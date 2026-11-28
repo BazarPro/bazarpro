@@ -22,6 +22,7 @@ import { useLocation } from 'react-router-dom';
 import { apiErrorCode, appErrorData, getUserFacingErrorMessage } from '../../../lib/errors';
 import { setFlowSelectionOnboardingPending } from '../../../lib/onboardingTrigger';
 import { loginPath, safeRedirectPath } from '../../../lib/loginRedirect';
+import { DEMO_URL } from '../../../lib/links';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import i18n, { currentLocale } from '../../../i18n';
@@ -252,21 +253,43 @@ export function RegisterPage() {
     return <Navigate to={postAuthRedirectPath} replace />;
   }
 
+  // Switched off: no locked form, but where to go instead (#334)
+  if (!isRegistrationEnabled && !verificationEmail) {
+    return (
+      <AuthPage testId="register-closed">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="sm:space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              {t('register.closedTitle')}
+            </h1>
+            <p className="text-sm text-muted-foreground sm:text-base">{t('register.closedText')}</p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button size="lg" onClick={() => navigate(loginPath(postAuthRedirectPath))}>
+              {t('register.toLogin')}
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <a href={DEMO_URL} target="_blank" rel="noopener">
+                {t('register.demo')}
+              </a>
+            </Button>
+          </div>
+        </div>
+      </AuthPage>
+    );
+  }
+
   return (
     <AuthPage testId="register-form">
       {!verificationEmail ? (
         <div className="space-y-4 sm:space-y-6">
           <div className="sm:space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('register.title')}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              {t('register.title')}
+            </h1>
             <p className="text-sm text-muted-foreground sm:text-base">{t('register.subtitle')}</p>
           </div>
 
-          {/* Switched off is a state, not an error */}
-          {!isRegistrationEnabled && (
-            <Alert>
-              <AlertDescription>{t('register.disabled')}</AlertDescription>
-            </Alert>
-          )}
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

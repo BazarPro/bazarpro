@@ -1,4 +1,4 @@
-import { Bike, ChevronRight, ShoppingBag, Store } from 'lucide-react';
+import { Bike, ChevronRight, Store, Tag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 export const DEMO_PASSWORD = '123456';
 const ACCOUNTS = [
   { key: 'organizer', email: 'sabine.krause@example.org', icon: Store },
-  { key: 'seller', email: 'laura.zimmermann@example.org', icon: ShoppingBag },
+  { key: 'seller', email: 'laura.zimmermann@example.org', icon: Tag },
   { key: 'bikeMarket', email: 'user1@bazarpro.de', icon: Bike },
 ] as const;
 

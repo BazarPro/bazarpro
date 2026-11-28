@@ -345,9 +345,8 @@ export function EditEventFeeGroups({
                       </p>
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="danger"
                         size="sm"
-                        className="text-destructive hover:text-destructive"
                         disabled={fixed || running}
                         onClick={() => {
                           remove(index);

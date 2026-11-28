@@ -206,7 +206,8 @@
         "labels": "QR labels, drop-off and checkout",
         "settlement": "Automatic settlement",
         "instant": "Ready right away – just sign up"
-      }
+      },
+      "login": "Log in"
     },
     "selfHosted": {
       "name": "Self-host",

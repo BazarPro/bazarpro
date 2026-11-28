@@ -206,7 +206,8 @@
         "labels": "QR-Etiketten, Warenannahme und Kasse",
         "settlement": "Automatische Abrechnung",
         "instant": "Sofort startklar – nur registrieren"
-      }
+      },
+      "login": "Anmelden"
     },
     "selfHosted": {
       "name": "Selbst hosten",

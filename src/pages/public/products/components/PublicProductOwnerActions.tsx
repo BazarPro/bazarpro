@@ -64,7 +64,7 @@ export function PublicProductOwnerActions({
 
           <ConfirmDialog
             trigger={
-              <Button variant="destructive" className="w-full gap-2" disabled={!canDelete}>
+              <Button variant="danger" className="w-full gap-2" disabled={!canDelete}>
                 <Trash2 className="h-4 w-4" />
                 {t('owner.delete')}
               </Button>

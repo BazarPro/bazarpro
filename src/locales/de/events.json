@@ -256,7 +256,8 @@
     "otherAccount": "Du bist mit {{account}} angemeldet. Bitte melde dich mit {{email}} an, um die Einladung anzunehmen.",
     "logout": "Abmelden",
     "goneTitle": "Diese Einladung gilt nicht mehr",
-    "goneText": "Sie wurde schon genutzt oder zurückgezogen, oder der Basar ist vorbei. Frag beim Veranstalter nach einer neuen."
+    "goneText": "Sie wurde schon genutzt oder zurückgezogen, oder der Basar ist vorbei. Frag beim Veranstalter nach einer neuen.",
+    "registrationClosed": "Neue Konten sind hier gerade nicht möglich. Melde dich mit einem bestehenden Konto an, um die Einladung anzunehmen."
   },
   "registration": {
     "closed": "Anmeldung geschlossen",

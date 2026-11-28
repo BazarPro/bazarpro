@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery } from '../../../lib/api/react';
 import { api } from '../../../lib/api/functions';
-import { Button } from '../../../components/ui/button';
+import { FormSaveBar } from '../../../components/ui/form-save-bar';
 import { CountrySelect } from '../../../components/ui/country-select';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -197,18 +197,13 @@ export function ProfileCard({ user }: ProfileCardProps) {
           </div>
         </div>
 
-        {isDirty && (
-          <div className="pt-2">
-            <Button
-              loading={isSubmitting}
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full md:w-auto md:px-8"
-            >
-              {isSubmitting ? t('actions.saving', { ns: 'common' }) : t('profile.save')}
-            </Button>
-          </div>
-        )}
+        <FormSaveBar
+          dirty={isDirty}
+          saving={isSubmitting}
+          disabled={!isDirty}
+          onDiscard={() => reset()}
+          saveLabel={t('profile.save')}
+        />
       </form>
     </FormSection>
   );

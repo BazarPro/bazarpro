@@ -250,5 +250,13 @@
     "grid": "Tiles",
     "list": "List"
   },
-  "moreInfo": "Learn more"
+  "moreInfo": "Learn more",
+  "saveBar": {
+    "unsaved": "Unsaved changes",
+    "allSaved": "All saved",
+    "discard": "Discard",
+    "discardTitle": "Discard changes?",
+    "discardText": "Everything you changed since the last save will be lost.",
+    "discardConfirm": "Discard"
+  }
 }

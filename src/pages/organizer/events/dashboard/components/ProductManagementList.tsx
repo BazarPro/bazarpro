@@ -101,7 +101,7 @@ const STATUS_BADGE: Record<string, React.ComponentProps<typeof Badge>['variant']
   available: 'success',
   sold: 'secondary',
   returned: 'warning',
-  rejected: 'outline',
+  rejected: 'danger',
 };
 
 /** Compact rows: small fixed thumbnail, item and seller, status, price and the next action. */
@@ -328,13 +328,7 @@ function ProductRow({
             >
               {product.title}
             </button>
-            <Badge
-              variant={STATUS_BADGE[product.status]}
-              className={cn(
-                'shrink-0',
-                product.status === 'rejected' && 'border-destructive/40 text-destructive'
-              )}
-            >
+            <Badge variant={STATUS_BADGE[product.status]} className="shrink-0">
               {getEventProductStatusTitle(product.status)}
             </Badge>
             {product.status === 'returned' && product.autoReturnedAt !== undefined && (
@@ -356,7 +350,7 @@ function ProductRow({
               <UserCircle className="h-3 w-3" />
               {vendorName}
             </button>
-            {isWalkInVendor && <WalkInBadge className="px-1.5 py-0 text-[10px]" />}
+            {isWalkInVendor && <WalkInBadge className="px-1.5 py-0" />}
             {canChangeForSeller && (
               <>
                 <button

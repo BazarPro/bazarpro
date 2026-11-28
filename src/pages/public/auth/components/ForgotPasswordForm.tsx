@@ -102,7 +102,7 @@ export function ForgotPasswordForm() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Set like the login form: heading on the left, no icon above it */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           {isRequested ? t('reset.titleSet') : t('reset.titleRequest')}
         </h1>
         <p className="text-sm text-muted-foreground">

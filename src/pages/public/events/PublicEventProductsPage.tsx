@@ -3,7 +3,7 @@ import { usePublicQuery } from '../../../hooks/usePublicQuery';
 import { Link, useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../../../lib/api/functions';
 import { useMemo, useEffect, useState } from 'react';
-import { ShoppingBag } from 'lucide-react';
+import { Tag } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 
 import { ProductCard } from '../../../components/products/ProductCard';
@@ -315,27 +315,18 @@ export function PublicEventProductsPage() {
           scrollRefId="products-start"
         />
 
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-12 bg-card rounded-xl border">
-            <ShoppingBag className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            {offered === 0 ? (
-              <>
-                <h3 className="text-xl mb-2">{t('offers.none')}</h3>
-                <p className="mb-4 text-muted-foreground">{t('offers.noneText')}</p>
-                <Button variant="outline" asChild>
-                  <Link to={`/public-events/${eventId}`} state={location.state}>
-                    {t('offers.toEvent')}
-                  </Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <h3 className="text-xl mb-2">{t('offers.empty')}</h3>
-                <p className="text-muted-foreground">{t('offers.emptyText')}</p>
-              </>
-            )}
-          </div>
-        )}
+        {filteredProducts.length === 0 &&
+          (offered === 0 ? (
+            <EmptyState icon={Tag} title={t('offers.none')} text={t('offers.noneText')}>
+              <Button variant="outline" asChild>
+                <Link to={`/public-events/${eventId}`} state={location.state}>
+                  {t('offers.toEvent')}
+                </Link>
+              </Button>
+            </EmptyState>
+          ) : (
+            <EmptyState icon={Tag} title={t('offers.empty')} text={t('offers.emptyText')} />
+          ))}
       </div>
       {/* Impressum, Datenschutz and AGB; the event page is the start page of a self-hosted instance */}
       <div className="mt-16">

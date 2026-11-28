@@ -256,7 +256,8 @@
     "otherAccount": "You are signed in as {{account}}. Please sign in with {{email}} to accept the invitation.",
     "logout": "Sign out",
     "goneTitle": "This invitation is no longer valid",
-    "goneText": "It was used or withdrawn, or the bazaar is over. Ask the organizer for a new one."
+    "goneText": "It was used or withdrawn, or the bazaar is over. Ask the organizer for a new one.",
+    "registrationClosed": "New accounts are not possible here right now. Log in with an existing account to accept the invitation."
   },
   "registration": {
     "closed": "Registration closed",

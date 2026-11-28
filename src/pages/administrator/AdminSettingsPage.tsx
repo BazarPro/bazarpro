@@ -1,12 +1,12 @@
 import { PageHeader } from '../../components/ui/page-header';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApiClient, useMutation, useQuery } from '../../lib/api/react';
 import { toast } from 'sonner';
 import { BarChart3, ImageIcon, Trash2, Upload } from 'lucide-react';
 import { api } from '../../lib/api/functions';
 import type { Id } from '../../lib/api/types';
 import { Button } from '../../components/ui/button';
-import { StickyActionBar } from '../../components/ui/sticky-action-bar';
+import { FormSaveBar } from '../../components/ui/form-save-bar';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
@@ -45,17 +45,45 @@ export function AdminSettingsPage() {
   const [plausibleDomain, setPlausibleDomain] = useState('');
   const [plausibleApiHost, setPlausibleApiHost] = useState('');
 
-  useEffect(() => {
-    if (!config) return;
-    setName(config.name ?? '');
-    setContactEmail(config.contactEmail ?? '');
-    setStartPage(config.startPage);
-    setColorTheme(config.colorTheme ?? 'blue');
-    // Off unless switched on here or configured on the web server
-    setPlausibleEnabled(resolvePlausible(config.plausible) !== null);
-    setPlausibleDomain(config.plausible.domain ?? '');
-    setPlausibleApiHost(config.plausible.apiHost ?? '');
-  }, [config]);
+  // What is saved, in the shape of the fields: fills them, and tells what changed
+  const saved = useMemo(
+    () =>
+      config && {
+        name: config.name ?? '',
+        contactEmail: config.contactEmail ?? '',
+        startPage: config.startPage,
+        colorTheme: config.colorTheme ?? ('blue' as ColorTheme),
+        // Off unless switched on here or configured on the web server
+        plausibleEnabled: resolvePlausible(config.plausible) !== null,
+        plausibleDomain: config.plausible.domain ?? '',
+        plausibleApiHost: config.plausible.apiHost ?? '',
+      },
+    [config]
+  );
+  const fill = useCallback(() => {
+    if (!saved) return;
+    setName(saved.name);
+    setContactEmail(saved.contactEmail);
+    setStartPage(saved.startPage);
+    setColorTheme(saved.colorTheme);
+    setPlausibleEnabled(saved.plausibleEnabled);
+    setPlausibleDomain(saved.plausibleDomain);
+    setPlausibleApiHost(saved.plausibleApiHost);
+    setLogoFile(null);
+    setRemoveLogo(false);
+  }, [saved]);
+  useEffect(fill, [fill]);
+  const isDirty =
+    !!saved &&
+    (name !== saved.name ||
+      contactEmail !== saved.contactEmail ||
+      startPage !== saved.startPage ||
+      colorTheme !== saved.colorTheme ||
+      plausibleEnabled !== saved.plausibleEnabled ||
+      plausibleDomain !== saved.plausibleDomain ||
+      plausibleApiHost !== saved.plausibleApiHost ||
+      logoFile !== null ||
+      removeLogo);
 
   const fileUrl = useMemo(() => (logoFile ? URL.createObjectURL(logoFile) : null), [logoFile]);
   useEffect(() => () => void (fileUrl && URL.revokeObjectURL(fileUrl)), [fileUrl]);
@@ -297,11 +325,15 @@ export function AdminSettingsPage() {
         </div>
       </div>
       {/* Long form: saving stays in reach at the lower edge, like the other forms */}
-      <StickyActionBar className="max-w-4xl md:mx-0 md:px-0 lg:mx-0 lg:px-0">
-        <Button loading={isSaving} onClick={save} disabled={isSaving}>
-          {isSaving ? t('settings.saving') : t('settings.save')}
-        </Button>
-      </StickyActionBar>
+      <FormSaveBar
+        className="max-w-4xl"
+        dirty={isDirty}
+        saving={isSaving}
+        disabled={!isDirty}
+        onSave={() => void save()}
+        onDiscard={fill}
+        saveLabel={t('settings.save')}
+      />
     </div>
   );
 }

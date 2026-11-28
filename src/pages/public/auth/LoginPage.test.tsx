@@ -152,6 +152,13 @@ describe('LoginPage', () => {
       clickRegister();
       expect(currentPath()).toBe('/register?redirect=%2Fevents%2F1');
     });
+
+    it('is not offered while registration is switched off (#334)', () => {
+      state.flags = { is_registration_enabled: false };
+      renderAt();
+      expect(screen.queryByRole('button', { name: 'Jetzt registrieren' })).toBeNull();
+      expect(screen.queryByTestId('div-login-register')).toBeNull();
+    });
   });
 
   it('closes the form while logging in is switched off', () => {

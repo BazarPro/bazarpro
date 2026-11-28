@@ -600,7 +600,7 @@ export function ProductManagementPage() {
 
             {showSuggestions && vendorSuggestions.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95">
-                <div className="p-2 text-[10px] uppercase font-bold text-muted-foreground bg-muted/50">
+                <div className="p-2 text-xs uppercase font-bold text-muted-foreground bg-muted/50">
                   {t('products.suggestions')}
                 </div>
                 {vendorSuggestions.map((v) => (
@@ -619,9 +619,7 @@ export function ProductManagementPage() {
                         <SellerNumberBadge number={v.sellerNumber} />
                         {v.managedByEventId && <WalkInBadge />}
                       </span>
-                      {v.email && (
-                        <span className="text-[10px] text-muted-foreground">{v.email}</span>
-                      )}
+                      {v.email && <span className="text-xs text-muted-foreground">{v.email}</span>}
                     </div>
                   </button>
                 ))}
@@ -864,7 +862,7 @@ export function ProductManagementPage() {
             <div className="mb-6 p-4 bg-muted/40 rounded-lg space-y-4 animate-in slide-in-from-top-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
                     {t('products.contact')}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -893,7 +891,7 @@ export function ProductManagementPage() {
 
                 {(selectedVendor.street || selectedVendor.city) && (
                   <div className="space-y-2 border-t md:border-t-0 md:border-l md:pl-4 pt-4 md:pt-0 border-muted-foreground/20">
-                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                    <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
                       {t('products.address')}
                     </div>
                     <div className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -906,7 +904,7 @@ export function ProductManagementPage() {
                           </span>
                         )}
                         {selectedVendor.country && (
-                          <span className="text-[10px] uppercase">
+                          <span className="text-xs uppercase">
                             {countryName(selectedVendor.country)}
                           </span>
                         )}

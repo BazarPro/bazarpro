@@ -35,6 +35,7 @@ import { AdminEventBanner } from '../../../components/moderation/AdminEventBanne
 import { ModerationNotice } from '../../../components/moderation/ModerationNotice';
 import { Trans, useTranslation } from 'react-i18next';
 import { PageSkeleton } from '../../../components/ui/loading';
+import { EventNotFound } from '../../../components/events/EventNotFound';
 import { formatEventPlace } from '../../../shared/eventJsonLd';
 
 export function EventManagementDashboard() {
@@ -72,13 +73,7 @@ export function EventManagementDashboard() {
   }
 
   if (event === null) {
-    return (
-      <div>
-        <div className="page-wide">
-          <h1 className="text-4xl mb-2">{t('dashboard.notFound')}</h1>
-        </div>
-      </div>
-    );
+    return <EventNotFound />;
   }
 
   if (!event || !products || !vendors) {

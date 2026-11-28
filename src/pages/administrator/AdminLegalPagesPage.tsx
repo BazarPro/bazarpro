@@ -4,10 +4,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '../../lib/api/react';
 import { toast } from 'sonner';
 import { AlertTriangle, ExternalLink, FileText } from 'lucide-react';
+import { Alert, AlertDescription } from '../../components/ui/alert';
 import { api } from '../../lib/api/functions';
 import { SITE_PAGE_SLUGS, type SitePageSlug } from '../../shared/constants';
 import { SafeMarkdown } from '../../components/markdown/SafeMarkdown';
 import { Button } from '../../components/ui/button';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import { FormSaveBar } from '../../components/ui/form-save-bar';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { getUserFacingErrorMessage } from '../../lib/errors';
@@ -39,25 +42,35 @@ export function AdminLegalPagesPage() {
   const [title, setTitle] = useState('');
   const [markdown, setMarkdown] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  // A tab chosen while the text has unsaved changes: asked about before switching
+  const [pendingSlug, setPendingSlug] = useState<SitePageSlug | null>(null);
 
   // Load the saved text when switching pages or after the first load
   const loadedKey = current ? `${slug}:${current.version ?? 0}` : null;
-  useEffect(() => {
+  const fill = () => {
     if (!current) return;
     setTitle(current.title ?? info.title);
     setMarkdown(current.markdown ?? '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadedKey]);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(fill, [loadedKey]);
 
   const isDirty =
     !!current && (title !== (current.title ?? info.title) || markdown !== (current.markdown ?? ''));
   const showsPlaceholders = hasPlaceholders(markdown);
 
   const loadTemplate = () => {
-    if (markdown.trim() && !window.confirm(t('legal.replaceWithTemplate'))) return;
     setTitle(info.title);
     setMarkdown(isSingle ? info.template : info.bazarpro);
   };
+
+  // Over a text of its own only after asking
+  const templateButton = (onClick?: () => void) => (
+    <Button variant="outline" size="sm" className="gap-1" onClick={onClick}>
+      <FileText className="h-4 w-4" />
+      {isSingle ? t('legal.loadTemplate') : t('legal.loadBazarPro')}
+    </Button>
+  );
 
   const submit = async () => {
     setIsSaving(true);
@@ -78,8 +91,8 @@ export function AdminLegalPagesPage() {
       <FilterTabs
         value={slug}
         onChange={(value) => {
-          if (isDirty && !window.confirm(t('legal.discard'))) return;
-          setParams({ page: value });
+          if (isDirty) setPendingSlug(value);
+          else setParams({ page: value });
         }}
         options={SITE_PAGE_SLUGS.map((value) => {
           const page = pages?.find((p) => p.slug === value);
@@ -115,10 +128,17 @@ export function AdminLegalPagesPage() {
                   : t('legal.missingPlatform')}
             </span>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="gap-1" onClick={loadTemplate}>
-                <FileText className="h-4 w-4" />
-                {isSingle ? t('legal.loadTemplate') : t('legal.loadBazarPro')}
-              </Button>
+              {markdown.trim() ? (
+                <ConfirmDialog
+                  trigger={templateButton()}
+                  title={t('legal.replaceWithTemplate')}
+                  confirmLabel={isSingle ? t('legal.loadTemplate') : t('legal.loadBazarPro')}
+                  onConfirm={loadTemplate}
+                  destructive
+                />
+              ) : (
+                templateButton(loadTemplate)
+              )}
               <Button variant="ghost" size="sm" className="gap-1" asChild>
                 <a href={info.path} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4" /> {t('legal.view')}
@@ -128,12 +148,14 @@ export function AdminLegalPagesPage() {
           </div>
 
           {showsPlaceholders && (
-            <div className="flex items-start gap-3 rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-4 text-sm text-warning-soft-foreground">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>
-                <Trans i18nKey="legal.placeholders" ns="admin" components={{ code: <code /> }} />
-              </p>
-            </div>
+            <Alert variant="warning">
+              <AlertTriangle />
+              <AlertDescription>
+                <p>
+                  <Trans i18nKey="legal.placeholders" ns="admin" components={{ code: <code /> }} />
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
 
           <div className="space-y-2">
@@ -166,7 +188,7 @@ export function AdminLegalPagesPage() {
             <div className="space-y-2">
               <Label>{t('legal.preview')}</Label>
               <div className="rounded-md border bg-card p-4 lg:min-h-[60vh]">
-                <h1 className="mb-6 text-2xl font-bold">{title}</h1>
+                <h1 className="mb-6 text-2xl font-semibold">{title}</h1>
                 <SafeMarkdown
                   content={applyLegalDirectives(markdown, plausible)}
                   className={LEGAL_MARKDOWN_CLASSES}
@@ -175,11 +197,28 @@ export function AdminLegalPagesPage() {
             </div>
           </div>
 
-          <Button loading={isSaving} onClick={submit} disabled={isSaving || !isDirty}>
-            {isSaving ? t('legal.saving') : t('legal.save')}
-          </Button>
+          <FormSaveBar
+            dirty={isDirty}
+            saving={isSaving}
+            disabled={!isDirty}
+            onSave={() => void submit()}
+            onDiscard={fill}
+            saveLabel={t('legal.save')}
+          />
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingSlug !== null}
+        onOpenChange={(open) => !open && setPendingSlug(null)}
+        title={t('legal.discard')}
+        confirmLabel={t('saveBar.discardConfirm', { ns: 'common' })}
+        onConfirm={() => {
+          if (pendingSlug) setParams({ page: pendingSlug });
+          setPendingSlug(null);
+        }}
+        destructive
+      />
     </div>
   );
 }

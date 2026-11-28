@@ -72,7 +72,9 @@ test.describe('role permissions', () => {
 
     await page.goto(`/events/view/${eventId}/settings`);
     await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+    // The organizer gets the save bar: without a change saved already, so the button waits
+    await expect(page.getByTestId('form-saved')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Speichern' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Basar löschen' })).toBeEnabled();
 
     await sellerContext.close();

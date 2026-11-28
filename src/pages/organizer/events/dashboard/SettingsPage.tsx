@@ -17,6 +17,7 @@ import { EditEventForm } from '../EditEventForm';
 import { EventSettingsSummary } from './components/EventSettingsSummary';
 import { useTranslation } from 'react-i18next';
 import { PageSkeleton } from '../../../../components/ui/loading';
+import { EventNotFound } from '../../../../components/events/EventNotFound';
 import { Tabs, TabsContent } from '../../../../components/ui/tabs';
 import { isSettingsTab, useSettingsTab } from '../settingsTabs';
 import { SettingsTabsList } from '../SettingsTabsList';
@@ -39,11 +40,7 @@ export function SettingsPage() {
   }, [isLoading, canManage, navigate]);
 
   if (event === null) {
-    return (
-      <div className="page-narrow">
-        <h1 className="text-4xl mb-2">{t('dashboard.notFound')}</h1>
-      </div>
-    );
+    return <EventNotFound />;
   }
   if (isLoading || !event || !canManage) {
     return <PageSkeleton variant="form" />;
@@ -88,12 +85,7 @@ export function SettingsPage() {
       </div>
       <ConfirmDialog
         trigger={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
+          <Button type="button" variant="danger" size="sm" className="shrink-0">
             <Trash2 className="size-4" />
             {t('settingsPage.delete')}
           </Button>

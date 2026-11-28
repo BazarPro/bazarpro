@@ -157,7 +157,7 @@ export function Header() {
   const { t, i18n } = useTranslation();
   const user = useQuery(api.users.viewer);
   const navigate = useNavigate();
-  const { isDemoMode } = useFeatureFlags();
+  const { isDemoMode, isRegistrationEnabled: registrationOpen } = useFeatureFlags();
   const location = useLocation();
   const { fixedSidebarOpen, setMobileSidebarOpen } = useSidebar();
   const { signOut } = useAuthActions();
@@ -286,7 +286,6 @@ export function Header() {
                       <div className={fixedSidebarOpen ? 'hidden' : undefined}>
                         <Button
                           variant="ghost"
-                          className="rounded-m"
                           onClick={() => setMobileSidebarOpen(true)}
                           data-onboarding-id="header-mobile-menu"
                           aria-label={t('header.openMenu')}
@@ -311,14 +310,16 @@ export function Header() {
                       {t('header.login')}
                     </Button>
 
-                    <Button
-                      className="hidden md:block"
-                      variant="ghost"
-                      onClick={() => navigate('/register')}
-                      data-testid="header-button-register"
-                    >
-                      {t('header.register')}
-                    </Button>
+                    {registrationOpen && (
+                      <Button
+                        className="hidden md:block"
+                        variant="ghost"
+                        onClick={() => navigate('/register')}
+                        data-testid="header-button-register"
+                      >
+                        {t('header.register')}
+                      </Button>
+                    )}
                   </>
                 )}
                 <DropdownMenu>

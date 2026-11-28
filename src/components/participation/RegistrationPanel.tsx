@@ -74,7 +74,10 @@ function Meter({
         aria-label={label}
       >
         <span
-          className={cn('block h-full rounded-full', full ? 'bg-tag' : 'bg-primary')}
+          className={cn(
+            'block h-full rounded-full',
+            full ? 'bg-warning-soft-foreground' : 'bg-muted-foreground'
+          )}
           style={{ width: `${Math.min(100, (taken / limit) * 100)}%` }}
         />
       </span>
@@ -199,8 +202,8 @@ export function RegistrationPanel({
               className={cn(
                 'relative inline-flex size-2.5 rounded-full',
                 tone === 'open' && 'bg-success',
-                tone === 'full' && 'bg-tag',
-                tone === 'waiting' && 'bg-primary',
+                tone === 'full' && 'bg-warning-soft-foreground',
+                tone === 'waiting' && 'bg-muted-foreground',
                 tone === 'closed' && 'bg-muted-foreground/50'
               )}
             />

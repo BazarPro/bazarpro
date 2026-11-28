@@ -34,7 +34,10 @@ import {
   Megaphone,
   Plus,
   Printer,
+  AlertTriangle,
+  BadgePercent,
 } from 'lucide-react';
+import { Alert, AlertDescription } from '../../../../components/ui/alert';
 import { formatPrice } from '../../../../lib/utils';
 import type { VendorWithCalculations } from '../../../../lib/api/types';
 import { Tabs, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
@@ -274,12 +277,12 @@ export function SellerManagementPage() {
       )}
 
       {clashingCodes.size > 0 && (
-        <p
-          role="alert"
-          className="rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm"
-        >
-          {t('sellers.sortClash', { count: clashingCodes.size })}
-        </p>
+        <Alert variant="warning">
+          <AlertTriangle />
+          <AlertDescription>
+            {t('sellers.sortClash', { count: clashingCodes.size })}
+          </AlertDescription>
+        </Alert>
       )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -347,9 +350,12 @@ export function SellerManagementPage() {
       )}
 
       {pendingGroups > 0 && (
-        <p className="rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm">
-          {t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
-        </p>
+        <Alert variant="warning" role="status">
+          <BadgePercent />
+          <AlertDescription>
+            {t('sellerFeeGroup.pendingCount', { count: pendingGroups })}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Table only where it fits; the side menu takes room on tablets, too */}

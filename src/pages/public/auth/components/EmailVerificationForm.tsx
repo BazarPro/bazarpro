@@ -84,7 +84,7 @@ export function EmailVerificationForm({
               autoFocus
             />
           </div>
-          <p className="text-[10px] text-center text-muted-foreground uppercase tracking-wider">
+          <p className="text-xs text-center text-muted-foreground uppercase tracking-wider">
             {t('verify.codeHint')}
           </p>
         </div>

@@ -11,11 +11,13 @@ import { dateLocale } from '../../../i18n/format';
 import { api } from '../../../lib/api/functions';
 import { useAuthActions, useAuthState, useQuery } from '../../../lib/api/react';
 import { loginPath } from '../../../lib/loginRedirect';
+import { useRegistrationOpen } from '../../../hooks/useFeatureFlags';
 import { formatEventPlace } from '../../../shared/eventJsonLd';
 
 /** Where the link of an invitation mail leads: the bazaar, then signing in and accepting. */
 export function InvitePage() {
   const { t } = useTranslation('events');
+  const registrationOpen = useRegistrationOpen();
   const { token = '' } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthState();
@@ -79,15 +81,26 @@ export function InvitePage() {
         </Button>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">{t('invitation.sentTo', { email })}</p>
-          <Button asChild className="w-full" size="lg">
-            <Link
-              to={`/register?redirect=${encodeURIComponent(here)}&email=${encodeURIComponent(email)}`}
-            >
-              {t('invitation.register')}
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="w-full">
+          <p className="text-sm text-muted-foreground">
+            {registrationOpen
+              ? t('invitation.sentTo', { email })
+              : t('invitation.registrationClosed')}
+          </p>
+          {registrationOpen && (
+            <Button asChild className="w-full" size="lg">
+              <Link
+                to={`/register?redirect=${encodeURIComponent(here)}&email=${encodeURIComponent(email)}`}
+              >
+                {t('invitation.register')}
+              </Link>
+            </Button>
+          )}
+          <Button
+            asChild
+            variant={registrationOpen ? 'outline' : 'default'}
+            size={registrationOpen ? 'default' : 'lg'}
+            className="w-full"
+          >
             <Link to={loginPath(here)}>{t('invitation.login')}</Link>
           </Button>
         </div>

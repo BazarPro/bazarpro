@@ -41,6 +41,9 @@
   /* A dark ground in the action colour with white text in both themes: call to action, desk bar */
   --brand-panel: #1e40af;
   --tag-soft: #fdf1cc;
+  /* Status dots on the always-dark bars (checkout): the same in both themes */
+  --on-dark-ok: #7ed67a;
+  --on-dark-warn: #f7b393;
   --tag-soft-foreground: #6b4d06;
   --success: #2f7d32;
   --success-soft: #e1f1dc;
@@ -243,6 +246,8 @@
   --color-brand-panel: var(--brand-panel);
   --color-tag-foreground: var(--tag-foreground);
   --color-tag-soft: var(--tag-soft);
+  --color-on-dark-ok: var(--on-dark-ok);
+  --color-on-dark-warn: var(--on-dark-warn);
   --color-tag-soft-foreground: var(--tag-soft-foreground);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);

@@ -86,7 +86,7 @@ function OwnBazaarCard({
         from="/browse-events"
         badge={
           exclusion ? (
-            <Badge variant="destructive">
+            <Badge variant="danger">
               <Ban /> {t('search.excluded')}
             </Badge>
           ) : (

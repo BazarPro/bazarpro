@@ -43,6 +43,8 @@ import { ModerationNotice } from '../../../components/moderation/ModerationNotic
 import { ReportButton } from '../../../components/moderation/ReportDialog';
 import { Footer } from '../../../components/layout/Footer';
 import { useInstanceConfig } from '../../../hooks/useInstanceConfig';
+import { useRegistrationOpen } from '../../../hooks/useFeatureFlags';
+import { loginPath } from '../../../lib/loginRedirect';
 import { SellerBroadcasts } from '../../../components/broadcasts/SellerBroadcasts';
 import { MyRejections } from '../../../components/participation/MyRejections';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +69,7 @@ interface PublicEventLandingProps {
 
 export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingProps) {
   const { isAuthenticated, isLoading: authLoading } = useAuthState();
+  const registrationOpen = useRegistrationOpen();
   const [showRegistrationDialog, setShowRegistrationDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const navigate = useNavigate();
@@ -218,7 +221,12 @@ export function PublicEventLanding({ eventId, onNavigate }: PublicEventLandingPr
     if (isPast) return;
 
     if (!isAuthenticated) {
-      onNavigate(`register?joinEventId=${encodeURIComponent(event._id)}`);
+      if (registrationOpen) {
+        onNavigate(`register?joinEventId=${encodeURIComponent(event._id)}`);
+      } else {
+        // Without registration only an existing account can join: back here after logging in
+        navigate(loginPath(`/public-events/${event._id}?openJoinDialog=1`));
+      }
       return;
     }
 

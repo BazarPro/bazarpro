@@ -138,7 +138,8 @@
     "myEvents": "Meine Veranstaltungen",
     "organize": "Basar organisieren",
     "myProducts": "Meine Artikel",
-    "joinAsSeller": "Als Verkäufer mitmachen"
+    "joinAsSeller": "Als Verkäufer mitmachen",
+    "login": "Anmelden"
   },
   "hero": {
     "titleStart": "Second-Hand-Basare",

@@ -103,6 +103,10 @@ describe('editing an event', () => {
     const limit = await screen.findByLabelText('Teilnehmerlimit für Verkäufer (optional)');
     await waitFor(() => expect(limit).toHaveValue(50));
 
+    // Saving needs a change: another field than the limit
+    fireEvent.change(screen.getByLabelText('Titel des Basars *'), {
+      target: { value: 'Neuer Titel' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(editEvent).toHaveBeenCalledTimes(1));
     expect(editEvent.mock.calls[0][0]).toMatchObject({ vendorLimit: 50 });

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { ArrowRight, Bookmark, ChevronDown, Eye, FilePen, X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { StickyActionBar } from '../../../components/ui/sticky-action-bar';
+import { FormSaveBar } from '../../../components/ui/form-save-bar';
 import { Tabs, TabsContent } from '../../../components/ui/tabs';
 import { isSettingsTab, SETTINGS_TABS, type SettingsTab, useSettingsTab } from './settingsTabs';
 import { SettingsTabsList } from './SettingsTabsList';
@@ -36,7 +37,7 @@ import {
   POSTAL_CODE_PATTERNS,
   type EventVisibility,
 } from '../../../shared/constants';
-import { useFeatureFlags } from '../../../hooks/useFeatureFlags';
+import { useFeatureFlags, useRegistrationOpen } from '../../../hooks/useFeatureFlags';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { toast } from 'sonner';
@@ -746,7 +747,7 @@ function WizardHeader({
           <div className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1">
             <span
               data-testid="draft-restored"
-              className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-tag-soft py-0.5 pl-2.5 pr-1 text-xs font-medium text-tag-soft-foreground"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted py-0.5 pl-2.5 pr-1 text-xs font-medium text-muted-foreground"
             >
               <FilePen className="size-3.5 shrink-0" aria-hidden />
               <span className="truncate">
@@ -757,7 +758,7 @@ function WizardHeader({
                   type="button"
                   onClick={onDiscardDraft}
                   disabled={disabled}
-                  className="shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 underline-offset-2 hover:bg-tag/30 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 underline-offset-2 hover:bg-foreground/10 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {t('wizard.draftDiscard')}
                 </button>
@@ -1229,6 +1230,7 @@ export function EditEventForm({
     formState: { isSubmitting, isDirty },
   } = methods;
   const directSale = methods.watch('features.directSale');
+  const registrationOpen = useRegistrationOpen();
 
   // While a bazaar is set up, drop-off, pickup and the other times around it follow its
   // date: picking the day suggests them on the same day, moving it moves them along
@@ -1477,7 +1479,10 @@ export function EditEventForm({
   const onGuestSubmit = () => {
     guestSubmitted.current = true;
     keepDraft(step, true);
-    navigate(`/register?redirect=${encodeURIComponent(CREATE_DRAFT_PATH)}`);
+    // Without registration only an existing account can create it
+    navigate(
+      `/${registrationOpen ? 'register' : 'login'}?redirect=${encodeURIComponent(CREATE_DRAFT_PATH)}`
+    );
   };
 
   // A waiting draft comes back once the form is ready; after the sign-up it is created
@@ -1847,19 +1852,13 @@ export function EditEventForm({
                 </Tabs>
 
                 {/* Floats over the end of the page as a card of its own */}
-                <StickyActionBar className="bottom-[calc(var(--bottom-inset,0px)+var(--tab-bar-bulge,0px)+0.75rem)] mx-0 mb-3 rounded-xl border bg-card/95 px-4 pb-3 shadow-lg md:mx-0 md:px-5 lg:mx-0 lg:px-5">
-                  {isDirty && (
-                    <span className="text-sm text-muted-foreground">{t('form.unsaved')}</span>
-                  )}
-                  <Button
-                    type="submit"
-                    className="ml-auto flex-1 sm:flex-none sm:min-w-40"
-                    loading={isSubmitting}
-                    disabled={isSubmitting}
-                  >
-                    {t('form.save')}
-                  </Button>
-                </StickyActionBar>
+                <FormSaveBar
+                  dirty={isDirty}
+                  saving={isSubmitting}
+                  disabled={!isDirty}
+                  onDiscard={() => reset()}
+                  saveLabel={t('form.save')}
+                />
               </form>
             ) : (
               <form

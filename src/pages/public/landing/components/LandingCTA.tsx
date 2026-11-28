@@ -3,6 +3,7 @@ import { Button } from '../../../../components/ui/button';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLocalizedPath } from '../../../../i18n/useLocale';
+import { useRegistrationOpen } from '../../../../hooks/useFeatureFlags';
 
 interface LandingCTAProps {
   isAuthenticated: boolean;
@@ -13,6 +14,8 @@ interface LandingCTAProps {
 export function LandingCTA({ isAuthenticated, onOrganizerClick, onSellerClick }: LandingCTAProps) {
   const { t } = useTranslation('landing');
   const localized = useLocalizedPath();
+  // Without registration the seller button logs in (see useStartActions)
+  const registrationOpen = useRegistrationOpen();
   // Dark petrol in both themes: white text and the yellow button read the same everywhere
   return (
     <section className="relative isolate overflow-hidden bg-brand-panel py-20 text-white sm:py-24">
@@ -43,7 +46,11 @@ export function LandingCTA({ isAuthenticated, onOrganizerClick, onSellerClick }:
             onClick={onSellerClick}
           >
             <Tag className="mr-2 h-5 w-5" />
-            {isAuthenticated ? t('actions.myProducts') : t('actions.joinAsSeller')}
+            {isAuthenticated
+              ? t('actions.myProducts')
+              : registrationOpen
+                ? t('actions.joinAsSeller')
+                : t('actions.login')}
           </Button>
         </div>
         <p className="text-sm text-white/80">

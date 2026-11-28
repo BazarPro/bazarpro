@@ -45,7 +45,6 @@
     "postalCodeInvalid": "Please enter a valid postal code",
     "cityRequired": "Please add the town to the postal code",
     "addressTooLong": "Too long",
-    "unsaved": "Unsaved changes",
     "feeCapMax": "At most 10,000 €",
     "registeredMaxFeeCap": "Sellers have registered: at most {{fee}} €"
   },

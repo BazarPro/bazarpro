@@ -257,7 +257,6 @@
     "modeHint": "Der Modus wird beim Einrichten des Servers über <code>BAZARPRO_MODE</code> festgelegt.",
     "modeSingle": "Ein Verein (single)",
     "modePlatform": "Plattform",
-    "saving": "Wird gespeichert…",
     "save": "Speichern",
     "logoUploadFailed": "Das Logo konnte nicht hochgeladen werden.",
     "colorTheme": "Farbschema",
@@ -291,7 +290,6 @@
     "analyticsOn": "gerade aktiv",
     "analyticsOff": "gerade aus, der Abschnitt entfällt",
     "preview": "Vorschau",
-    "saving": "Wird gespeichert…",
     "save": "Speichern",
     "replaceWithTemplate": "Den aktuellen Text durch die Vorlage ersetzen?"
   },

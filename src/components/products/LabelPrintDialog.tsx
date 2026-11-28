@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { AlertTriangle, Printer } from 'lucide-react';
+import { Alert, AlertDescription } from '../ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -165,13 +166,10 @@ export function LabelPrintDialog({
           </div>
 
           {clash && (
-            <p
-              role="alert"
-              className="flex gap-2 rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-3 text-sm"
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-soft-foreground" />
-              {t('labels.clash')}
-            </p>
+            <Alert variant="warning">
+              <AlertTriangle />
+              <AlertDescription>{t('labels.clash')}</AlertDescription>
+            </Alert>
           )}
 
           <div className="space-y-1.5">

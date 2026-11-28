@@ -17,7 +17,7 @@ export function EventApprovalBadge({
   const { t } = useTranslation('organizer');
   const approval = eventApproval(event);
   if (approval === 'rejected') {
-    return <Badge variant="destructive">{t('settingsPage.rejected')}</Badge>;
+    return <Badge variant="danger">{t('settingsPage.rejected')}</Badge>;
   }
   if (approval === 'pending') return <Badge variant="warning">{t('settingsPage.pending')}</Badge>;
   if (approval === 'approved' && !onlyOpen) {

@@ -67,7 +67,7 @@ export function SellersWithoutItems({
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-xl border border-warning-soft-foreground/30 bg-warning-soft p-4 sm:flex-row sm:items-center"
+      className="flex flex-col gap-3 rounded-lg border border-warning-soft-foreground/30 bg-warning-soft p-4 sm:flex-row sm:items-center"
       data-testid="sellers-without-items"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warning-soft text-warning-soft-foreground">
@@ -82,12 +82,7 @@ export function SellersWithoutItems({
           <Button variant="outline" className="gap-2" onClick={onRemind}>
             <Megaphone className="h-4 w-4" /> {t('sellers.remindWithoutItems')}
           </Button>
-          <Button
-            variant="outline"
-            className="gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            disabled={over}
-            onClick={() => setOpen(true)}
-          >
+          <Button variant="danger" className="gap-2" disabled={over} onClick={() => setOpen(true)}>
             <UserMinus className="h-4 w-4" /> {t('sellers.unregisterWithoutItems')}
           </Button>
         </div>

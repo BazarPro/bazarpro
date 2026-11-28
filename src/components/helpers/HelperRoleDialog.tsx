@@ -113,9 +113,9 @@ export function HelperRoleDialog({
       )}
       {action?.mode === 'edit' && (
         <Button
-          variant="ghost"
+          variant="danger"
           size="sm"
-          className="-mt-2 justify-self-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className="-mt-2 justify-self-start gap-2"
           onClick={() => onActionChange({ mode: 'remove', vendor: action.vendor })}
         >
           <UserMinus className="h-4 w-4" /> {t('sellers.removeHelper')}
